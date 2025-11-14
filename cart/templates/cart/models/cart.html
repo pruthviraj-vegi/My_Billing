@@ -1,0 +1,195 @@
+{% load custom_filters %}
+{% load static %}
+<!-- Data Table -->
+<!-- Search and Filter Section -->
+<div class="search-filter-section">
+    <form href="" class="search-filter-form" id="barcodeForm" data-prevent-double-submit>
+        {% csrf_token %}
+        <div class="search-group search-expanded">
+            <i class="fas fa-search search-icon"></i>
+            <input type="search"
+                   name="barcode"
+                   class="search-input"
+                   placeholder="Scan barcode..."
+                   value=""
+                   id="barcodeInput"
+                   autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-search"></i>
+            Search
+        </button>
+    </form>
+</div>
+<div class="table-header">
+    <div class="col-lg-6">
+        <div class="row-lg-6">
+            <span class="label">Items:</span>
+            <span class="value strong " id="totalItems">{{ cart_list|currency }}</span>
+        </div>
+        <div class="row-lg-6">
+            <span class="label">Total Amount:</span>
+            <span class="value" id="totalSellingPrice">{{ total_selling_price|currency }}</span>
+        </div>
+        <div class="row-lg-6">
+            <span class="label">Amount:</span>
+            <span class="value" id="totalAmount">{{ cart.total_amount|currency }}</span>
+        </div>
+    </div>
+    <div class="col-lg-6 d-flex justify-content-end align-items-center">
+        <div class="d-flex gap-2">
+            <!-- Options Dropdown -->
+            <div class="dropdown cart-dropdown">
+                <button class="btn btn-sm btn-primary dropdown-toggle"
+                        type="button"
+                        id="cartOptionsDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    <i class="fas fa-cog"></i>
+                    Options
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end"
+                    aria-labelledby="cartOptionsDropdown">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'cart:edit_cart' cart.id %}">
+                            <i class="fas fa-edit"></i>
+                            Edit Cart
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           href="#"
+                           id="archiveCartBtn"
+                           data-cart-id="{{ cart.id }}">
+                            <i class="fas fa-archive"></i>
+                            Archive Cart
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           href="#"
+                           id="clearCartBtn"
+                           data-cart-id="{{ cart.id }}">
+                            <i class="fas fa-trash"></i>
+                            Clear Cart
+                        </a>
+                    </li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'report:estimate_pdf' cart.id %}" target="_blank">
+                            <i class="fas fa-print"></i>
+                            Print Estimate
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <a href="{% url 'invoice:create_invoice' cart.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i>
+                Submit
+            </a>
+        </div>
+    </div>
+</div>
+<div class="table-container" data-cart-id="{{ cart.id }}">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Barcode</th>
+                <th>Product</th>
+                <th>Variant</th>
+                <th id="priceColumnHeader">Selling Price</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Discount</th>
+                <th>Amount</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="cartItemsBody">
+            {% for data in cart_list %}
+                <tr id="cart-item-{{ data.id }}">
+                    <td>{{ data.product_variant.barcode }}</td>
+                    <td>{{ data.product_variant.product.brand }}</td>
+                    <td>{{ data.product_variant.simple_name }}</td>
+                    <td class="price-toggle-cell"
+                        data-selling-price="{{ data.product_variant.mrp }}"
+                        data-purchase-price="{{ data.product_variant.purchase_price }}">
+                        <span class="price-display">{{ data.product_variant.mrp|currency }}</span>
+                    </td>
+                    <td>
+                        <input type="number"
+                               class="form-input quantity-input"
+                               value="{{ data.quantity }}"
+                               data-item-id="{{ data.id }}"
+                               min="0.01"
+                               step="0.01">
+                    </td>
+                    <td>
+                        <input type="number"
+                               class="form-input price-input"
+                               value="{{ data.price }}"
+                               data-item-id="{{ data.id }}"
+                               min="0"
+                               step="0.01">
+                    </td>
+                    <td class="discount-cell">{{ data.discount_percentage }}%</td>
+                    <td class="amount-cell">{{ data.amount|currency }}</td>
+                    <td>
+                        <button class="btn btn-primary update-item-btn" data-item-id="{{ data.id }}">
+                            <i class="fas fa-save"></i>
+                        </button>
+                        <button class="btn btn-danger delete-item-btn" data-item-id="{{ data.id }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<!-- Confirmation Modal for Archive/Clear -->
+<div class="modal fade"
+     id="confirmModal"
+     tabindex="-1"
+     aria-labelledby="confirmModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                <!-- Modal content will be dynamically set -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% block extra_js %}
+    <!-- Global variables for JavaScript -->
+    <script>
+    // Make Django template variables available to external JavaScript
+    window.CART_DATA = {
+        csrfToken: "{{ csrf_token }}",
+        cartId: "{{ cart.id }}",
+        urls: {
+            scanBarcode: "{% url 'cart:scan_barcode' %}",
+            manageItem: "{% url 'cart:manage_cart_item' 0 %}",
+            archiveCart: "{% url 'cart:archive_cart' cart.id %}",
+            clearCart: "{% url 'cart:clear_cart' cart.id %}"
+        }
+    };
+    </script>
+    <!-- External Cart JavaScript -->
+    <script src="{% static 'js/cart.js' %}"></script>
+    <script src="{% static 'js/counting.js' %}"></script>
+{% endblock extra_js %}

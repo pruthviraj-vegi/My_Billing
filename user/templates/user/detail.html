@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}
+    {{ user.full_name }} - User Details
+{% endblock title %}
+
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="page-title">User Details</h2>
+        <div class="page-actions">
+            <a href="{% url 'user:edit' user.id %}" class="btn btn-outline">
+                <i class="fas fa-edit"></i>
+                Edit User
+            </a>
+            <a href="{% url 'user:reset_password' user.id %}" class="btn btn-warning">
+                <i class="fas fa-key"></i>
+                Reset Password
+            </a>
+            {% if user.is_active %}
+                <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-user-slash"></i>
+                        Deactivate
+                    </button>
+                </form>
+            {% else %}
+                <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-user-check"></i>
+                        Activate
+                    </button>
+                </form>
+            {% endif %}
+            <a href="{% url 'user:delete' user.id %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i>
+                Delete User
+            </a>
+        </div>
+    </div>
+
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">{{ user.full_name }}</span>
+    </nav>
+
+    <!-- User Information -->
+    <div class="detail-container">
+        <div class="detail-grid">
+            <!-- Basic Information -->
+            <div class="detail-section">
+                <h3 class="section-title">
+                    <i class="fas fa-user"></i>
+                    Basic Information
+                </h3>
+                <div class="detail-content">
+                    <div class="detail-row">
+                        <span class="detail-label">Full Name:</span>
+                        <span class="detail-value">{{ user.full_name }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Phone Number:</span>
+                        <span class="detail-value">{{ user.phone_number }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Email Address:</span>
+                        <span class="detail-value">{{ user.email|default:"Not provided" }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Role:</span>
+                        <span class="detail-value">
+                            <span class="badge badge-{{ user.role|lower }}">
+                                {{ user.get_role_display }}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Status -->
+            <div class="detail-section">
+                <h3 class="section-title">
+                    <i class="fas fa-shield-alt"></i>
+                    Account Status
+                </h3>
+                <div class="detail-content">
+                    <div class="detail-row">
+                        <span class="detail-label">Status:</span>
+                        <span class="detail-value">
+                            {% if user.is_active %}
+                                <span class="badge text-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    Active
+                                </span>
+                            {% else %}
+                                <span class="badge text-danger">
+                                    <i class="fas fa-times-circle"></i>
+                                    Inactive
+                                </span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Staff Status:</span>
+                        <span class="detail-value">
+                            {% if user.is_staff %}
+                                <span class="badge text-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    Staff Member
+                                </span>
+                            {% else %}
+                                <span class="badge text-secondary">
+                                    <i class="fas fa-user"></i>
+                                    Regular User
+                                </span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Date Joined:</span>
+                        <span class="detail-value">{{ user.date_joined|date:"F d, Y \a\t g:i A" }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Last Login:</span>
+                        <span class="detail-value">
+                            {% if user.last_login %}
+                                {{ user.last_login|date:"F d, Y \a\t g:i A" }}
+                            {% else %}
+                                Never logged in
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Permissions -->
+            <div class="detail-section">
+                <h3 class="section-title">
+                    <i class="fas fa-key"></i>
+                    Permissions
+                </h3>
+                <div class="detail-content">
+                    <div class="detail-row">
+                        <span class="detail-label">Owner Access:</span>
+                        <span class="detail-value">
+                            {% if user.is_owner %}
+                                <span class="badge text-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    Yes
+                                </span>
+                            {% else %}
+                                <span class="badge text-secondary">
+                                    <i class="fas fa-times-circle"></i>
+                                    No
+                                </span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Manager Access:</span>
+                        <span class="detail-value">
+                            {% if user.is_manager %}
+                                <span class="badge text-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    Yes
+                                </span>
+                            {% else %}
+                                <span class="badge text-secondary">
+                                    <i class="fas fa-times-circle"></i>
+                                    No
+                                </span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Groups:</span>
+                        <span class="detail-value">
+                            {% if user.groups.all %}
+                                {% for group in user.groups.all %}
+                                    <span class="badge badge-secondary">{{ group.name }}</span>
+                                {% endfor %}
+                            {% else %}
+                                No groups assigned
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="detail-actions">
+            <a href="{% url 'user:edit' user.id %}" class="btn btn-primary">
+                <i class="fas fa-edit"></i>
+                Edit User
+            </a>
+            <a href="{% url 'user:reset_password' user.id %}" class="btn btn-warning">
+                <i class="fas fa-key"></i>
+                Reset Password
+            </a>
+            <a href="{% url 'user:home' %}" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i>
+                Back to Users
+            </a>
+        </div>
+    </div>
+{% endblock content %}

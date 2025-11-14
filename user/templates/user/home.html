@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    Users Management
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="page-title">Users Management</h2>
+        <div class="page-actions">
+            <a href="{% url 'user:download' %}" class="btn">
+                <i class="fas fa-download"></i>
+                Download
+            </a>
+            <a href="{% url 'user:sessions' %}" class="btn">
+                <i class="fas fa-user-clock"></i>
+                Sessions
+            </a>
+            <a href="{% url 'user:logins' %}" class="btn">
+                <i class="fas fa-sign-in-alt"></i>
+                Login Activity
+            </a>
+            <a href="{% url 'user:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                New User
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="#" class="breadcrumb-item">Users</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">All Users</span>
+    </nav>
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <form method="get" class="search-filter-form" id="searchForm">
+            <div class="search-group search-expanded">
+                <i class="fas fa-search search-icon"></i>
+                <input type="search"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search users..."
+                       value="{{ search_query }}"
+                       id="searchInput"
+                       autofocus>
+            </div>
+            <select name="role" class="filter-select" id="roleFilter">
+                <option value="">All Roles</option>
+                {% for role_value, role_label in roles %}
+                    <option value="{{ role_value }}" {% if role_filter == role_value %}selected{% endif %}>{{ role_label }}</option>
+                {% endfor %}
+            </select>
+            <select name="status" class="filter-select" id="statusFilter">
+                <option value="">All Status</option>
+                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+            </select>
+            <select name="commission" class="filter-select" id="commissionFilter">
+                <option value="">All Commission</option>
+                <option value="yes" {% if commission_filter == 'yes' %}selected{% endif %}>Commission Eligible</option>
+                <option value="no" {% if commission_filter == 'no' %}selected{% endif %}>No Commission</option>
+            </select>
+            <select name="sort" class="filter-select" id="sortSelect">
+                <option value="-date_joined" {% if sort_by == '-date_joined' %}selected{% endif %}>Newest First</option>
+                <option value="date_joined" {% if sort_by == 'date_joined' %}selected{% endif %}>Oldest First</option>
+                <option value="full_name" {% if sort_by == 'full_name' %}selected{% endif %}>Name A-Z</option>
+                <option value="-full_name" {% if sort_by == '-full_name' %}selected{% endif %}>Name Z-A</option>
+                <option value="phone_number" {% if sort_by == 'phone_number' %}selected{% endif %}>Phone A-Z</option>
+                <option value="-phone_number" {% if sort_by == '-phone_number' %}selected{% endif %}>Phone Z-A</option>
+                <option value="role" {% if sort_by == 'role' %}selected{% endif %}>Role A-Z</option>
+                <option value="-role" {% if sort_by == '-role' %}selected{% endif %}>Role Z-A</option>
+                <option value="-commision" {% if sort_by == '-commision' %}selected{% endif %}>Commission First</option>
+                <option value="commision" {% if sort_by == 'commision' %}selected{% endif %}>No Commission First</option>
+            </select>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+        </form>
+    </div>
+    <!-- Data Table -->
+    <div class="table-container">
+        {% if data %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Phone No</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Address</th>
+                        <th>Commission</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in data %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>
+                                <div>
+                                    <span class="font-weight-bold">{{ user.full_name }}</span>
+                                </div>
+                            </td>
+                            <td>{{ user.phone_number }}</td>
+                            <td>{{ user.email|default:"-" }}</td>
+                            <td>
+                                <span class="badge badge-{{ user.role|lower }}">
+                                    {{ user.get_role_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if user.address %}
+                                    <span class="text-truncate" style="max-width: 150px; display: inline-block;" title="{{ user.address }}">
+                                        {{ user.address|truncatechars:30 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.commision %}
+                                    <span class="badge text-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        Yes
+                                    </span>
+                                {% else %}
+                                    <span class="badge text-secondary">
+                                        <i class="fas fa-times-circle"></i>
+                                        No
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_active %}
+                                    <span class="badge text-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        Active
+                                    </span>
+                                {% else %}
+                                    <span class="badge text-danger">
+                                        <i class="fas fa-times-circle"></i>
+                                        Inactive
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                            <td class="text-right">
+                                <div class="action-buttons">
+                                    <a href="{% url 'user:detail' user.id %}" class="btn-action btn-view" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'user:edit' user.id %}" class="btn-action btn-edit" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if user.is_active %}
+                                        <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-warning" title="Deactivate">
+                                                <i class="fas fa-user-slash"></i>
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success" title="Activate">
+                                                <i class="fas fa-user-check"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    <a href="{% url 'user:delete' user.id %}" class="btn-action btn-delete" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>No Users Found</h3>
+                <p>No users match your current search criteria.</p>
+                <a href="{% url 'user:create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    Create First User
+                </a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}

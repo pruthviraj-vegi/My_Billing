@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+    {{ page_title|default:"Shop Details" }}
+{% endblock title %}
+
+{% block content %}
+    <div class="page-header">
+        <h2 class="page-title">{{ page_title|default:"Shop Details" }}</h2>
+        <div class="page-actions">
+            <a href="{% url 'setting:shop_details_list' %}" class="btn">
+                <i class="fas fa-arrow-left"></i>
+                Back
+            </a>
+            <a href="{% url 'setting:shop_details_edit' shop.id %}" class="btn btn-primary">
+                <i class="fas fa-edit"></i>
+                Edit
+            </a>
+            <a href="{% url 'setting:shop_details_delete' shop.id %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i>
+                Delete
+            </a>
+        </div>
+    </div>
+
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'setting:shop_details_list' %}" class="breadcrumb-item">Shops</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">{{ shop.shop_name }}</span>
+    </nav>
+
+    <div class="table-container">
+        <table class="data-table">
+            <tbody>
+                <tr><th>Shop name</th><td>{{ shop.shop_name }}</td></tr>
+                <tr><th>Address</th><td>{{ shop.full_address }}</td></tr>
+                <tr><th>City</th><td>{{ shop.city }}</td></tr>
+                <tr><th>State</th><td>{{ shop.state }}</td></tr>
+                <tr><th>PIN</th><td>{{ shop.pincode }}</td></tr>
+                <tr><th>Country</th><td>{{ shop.country }}</td></tr>
+                <tr><th>GST</th><td>{{ shop.gst_no|default:"-" }}</td></tr>
+                <tr><th>Phone</th><td>{{ shop.contact_info }}</td></tr>
+                <tr><th>Email</th><td>{{ shop.email|default:"-" }}</td></tr>
+                <tr><th>Website</th><td>{% if shop.website %}<a href="{{ shop.website }}" target="_blank">{{ shop.website }}</a>{% else %}-{% endif %}</td></tr>
+                <tr><th>Active</th><td>{% if shop.is_active %}<span class="badge text-success">Active</span>{% else %}<span class="badge text-danger">Inactive</span>{% endif %}</td></tr>
+                <tr><th>Created</th><td>{{ shop.created_at|date:"Y-m-d H:i:s" }}</td></tr>
+                <tr><th>Updated</th><td>{{ shop.updated_at|date:"Y-m-d H:i:s" }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+
+

@@ -1,0 +1,97 @@
+{% load custom_filters %}
+{% if page_obj %}
+    {% for customer in page_obj %}
+        <tr>
+            <td>{{ customer.id }}</td>
+            <td>
+                <div class="customer-info">
+                    <strong>{{ customer.name }}</strong>
+                    {% if customer.address %}
+                        <br>
+                        <small class="text-muted">{{ customer.address|truncatechars:30 }}</small>
+                    {% endif %}
+                </div>
+            </td>
+            <td>{{ customer.phone_number|phone_number }}</td>
+            <td>
+                {{customer.credit_amount|currency}}
+            </td>
+            <td>
+                {{customer.debit_amount|currency}}
+            </td>
+            <td>
+                <span class="amount-display {% if customer.balance_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ customer.balance_amount|currency }}
+                </span>
+            </td>
+            <td>
+                {% with customer.credit_payment.all as payments %}
+                    {% if payments %}
+                        {% with payments|first as latest_payment %}
+                            <span class="date-display">
+                                {{ latest_payment.payment_date|date:"M d, Y" }}
+                            </span>
+                            <br>
+                            <small class="text-muted">
+                                {{ latest_payment.amount|currency }}
+                            </small>
+                        {% endwith %}
+                    {% else %}
+                        <span class="text-muted">No payments</span>
+                    {% endif %}
+                {% endwith %}
+            </td>
+            <td>
+                {% if customer.last_date %}
+                    <span class="{% if customer.is_overdue %} text-danger {% endif %}">
+                        {{ customer.last_date|timesince }}
+                    </span>
+                    <br>
+                    <small class="text-muted">
+                        {{ customer.last_date|date:"M d, Y" }}
+                    </small>
+                {% else %}
+                    <span class="text-muted">N/A</span>
+                {% endif %}
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <a href="{% url 'customer:credit_detail' customer.id %}" 
+                       class="btn-action btn-view" 
+                       title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="{% url 'customer:credit_create' customer.id %}" 
+                       class="btn-action btn-payment" 
+                       title="Add Payment">
+                        <i class="fas fa-credit-card"></i>
+                    </a>
+                    <a href="{% url 'customer:edit' customer.id %}" 
+                       class="btn-action btn-edit" 
+                       title="Edit Customer">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'customer:credit_auto_reallocate' customer.id %}" 
+                       class="btn-action btn-refresh" 
+                       title="Reallocate Payments">
+                        <i class="fas fa-sync-alt"></i>
+                    </a>
+                </div>
+            </td>
+        </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="9" class="text-center" style="padding: 2rem;">
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <h4>No Credit Customers Found</h4>
+                <p>No customers with credit invoices or payments found.</p>
+                <a href="{% url 'customer:create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    Add Customer
+                </a>
+            </div>
+        </td>
+    </tr>
+{% endif %}

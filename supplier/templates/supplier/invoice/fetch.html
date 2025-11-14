@@ -1,0 +1,79 @@
+{% load custom_filters %}
+
+{% if page_obj %}
+  {% for invoice in page_obj %}
+    <tr>
+      <td>
+        <div class="invoice-number">
+          <strong>{{ invoice.invoice_number }}</strong>
+          {% if invoice.notes %}<small class="text-muted">{{ invoice.notes|truncatechars:30 }}</small>{% endif %}
+        </div>
+      </td>
+      <td>{{ invoice.invoice_date|date:'M j, Y' }}</td>
+      <td>
+        {{ invoice.get_invoice_type_display }}
+        {% if invoice.gst_type %}
+          <br />
+          <small class="secondary-text">{{ invoice.get_gst_type_display }}</small>
+        {% endif %}
+      </td>
+      <td>{{ invoice.sub_total|currency }}</td>
+      <td>
+        {% if invoice.invoice_type == 'GST_APPLICABLE' %}
+          {% if invoice.gst_type == 'CGST_SGST' %}
+            CGST: {{ invoice.cgst_amount|currency }}<br />
+            SGST: {{ invoice.cgst_amount|currency }}
+          {% else %}
+            IGST: {{ invoice.igst_amount|currency }}
+          {% endif %}
+        {% else %}
+          <span class="text-muted">-</span>
+        {% endif %}
+      </td>
+      <td>
+        <strong>{{ invoice.total_amount|currency }}</strong>
+        {% if invoice.adjustment_amount != 0 %}
+          <br />
+          <small class="secondary-text">Adj: {{ invoice.adjustment_amount|currency }}</small>
+        {% endif %}
+      </td>
+      <td>
+        <span class="{% if invoice.status == 'PAID' %}text-success{% elif invoice.status == 'PARTIALLY_PAID' %}text-warning{% else %}text-danger{% endif %}">
+          {{ invoice.get_status_display }}
+        </span>
+        {% if invoice.paid_amount > 0 %}
+          <br />
+          <small class="secondary-text">Paid: {{ invoice.paid_amount|currency }}</small>
+        {% endif %}
+      </td>
+      <td>
+        <div class="action-buttons">
+          <a href="#" class="btn-action btn-view" title="View Invoice"><i class="fas fa-eye"></i></a>
+          <a href="{% url 'supplier:edit_invoice' supplier.pk invoice.pk %}"
+             class="btn-action btn-edit"
+             title="Edit Invoice"><i class="fas fa-edit"></i></a>
+          <a href="{% url 'supplier:delete_invoice' supplier.pk invoice.pk %}"
+             class="btn-action btn-delete"
+             title="Delete Invoice"><i class="fas fa-trash"></i></a>
+        </div>
+      </td>
+    </tr>
+  {% endfor %}
+{% else %}
+  <tr>
+    <td colspan="8" class="text-center" style="padding: 2rem;">
+      <div class="empty-state">
+        <i class="fas fa-file-invoice"></i>
+        <h4>No Invoices Found</h4>
+        <p>No invoices have been created for this supplier yet.</p>
+        <a href="{% url 'supplier:create_invoice' supplier.pk %}"
+           class="btn btn-primary">
+          <i class="fas fa-plus"></i>
+          Create First Invoice
+        </a>
+      </div>
+    </td>
+  </tr>
+{% endif %}
+
+

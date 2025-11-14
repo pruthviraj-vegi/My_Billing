@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+  {{ title }}
+{% endblock title %}
+
+{% block content %}
+  <div class="page-header">
+    <h2 class="page-title">{{ title }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'customer:credit_home' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back
+      </a>
+    </div>
+  </div>
+
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'customer:home' %}" class="breadcrumb-item">Customers</a>
+    <span class="breadcrumb-separator">/</span>
+    {% if customer %}
+      <a href="{% url 'customer:detail' customer.id %}"
+         class="breadcrumb-item">{{ customer.name }}</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-active">Edit</span>
+    {% else %}
+      <span class="breadcrumb-active">Create New</span>
+    {% endif %}
+  </nav>
+
+  <div class="form-container col-md-6">
+    <div class="form-card">
+      <form method="post" class="details-form" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="form-errors">
+            {% for error in form.non_field_errors %}
+              <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                {{ error }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if form.payment_type.value == 'PAID' or not form.payment_type.value %}
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Auto-Allocation:</strong> When you create a "Paid" payment, it will automatically be allocated to unpaid credit invoices using FIFO (oldest invoices first).
+          </div>
+        {% endif %}
+
+        <div class="form-group {% if form.customer.errors %}has-error{% endif %}">
+          <label class="form-label" for="{{ form.customer.id_for_label }}">{{ form.customer.label }}</label>
+          {{ form.customer }}
+          {% for error in form.customer.errors %}
+            <div class="error-message">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="form-group {% if form.payment_type.errors %}has-error{% endif %}">
+          <label class="form-label" for="{{ form.payment_type.id_for_label }}">{{ form.payment_type.label }}</label>
+          {{ form.payment_type }}
+          {% for error in form.payment_type.errors %}
+            <div class="error-message">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
+          <label class="form-label" for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>
+          {{ form.amount }}
+          {% for error in form.amount.errors %}
+            <div class="error-message">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="form-group {% if form.method.errors %}has-error{% endif %}">
+          <label class="form-label" for="{{ form.method.id_for_label }}">{{ form.method.label }}</label>
+          {{ form.method }}
+          {% for error in form.method.errors %}
+            <div class="error-message">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="form-group {% if form.transaction_id.errors %}has-error{% endif %}">
+          <label class="form-label" for="{{ form.transaction_id.id_for_label }}">{{ form.transaction_id.label }}</label>
+          {{ form.transaction_id }}
+          {% for error in form.transaction_id.errors %}
+            <div class="error-message">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="form-group {% if form.payment_date.errors %}has-error{% endif %}">
+          <label class="form-label" for="{{ form.payment_date.id_for_label }}">{{ form.payment_date.label }}</label>
+          {{ form.payment_date }}
+          {% for error in form.payment_date.errors %}
+            <div class="error-message">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
+          <label class="form-label" for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+          {{ form.notes }}
+          {% for error in form.notes.errors %}
+            <div class="error-message">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            Save
+          </button>
+          <a href="{% url 'customer:credit_home' %}" class="btn btn-secondary">
+            <i class="fas fa-times"></i>
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock content %}
+
+

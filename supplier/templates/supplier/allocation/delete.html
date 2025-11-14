@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+  Delete Allocation - {{ supplier.name }}
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">Delete Allocation</h2>
+    <div class="page-actions">
+      <a href="{% url 'supplier:payment_detail' supplier.pk payment.pk %}"
+         class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back to Payment
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:home' %}" class="breadcrumb-item">Suppliers</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:detail' supplier.pk %}"
+       class="breadcrumb-item">{{ supplier.name }}</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:payment_detail' supplier.pk payment.pk %}"
+       class="breadcrumb-item">Payment #{{ payment.id }}</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">Delete Allocation</span>
+  </nav>
+  <!-- Delete Warning -->
+  <div class="delete-warning">
+    <div class="warning-icon">
+      <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <div class="warning-content">
+      <h3>Are you sure you want to delete this allocation?</h3>
+      <p>This action will revert the allocation and update the payment and invoice amounts accordingly.</p>
+    </div>
+  </div>
+  <!-- Allocation Details -->
+  <div class="allocation-details">
+    <h4>Allocation Details</h4>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="detail-label">Payment</div>
+        <div class="detail-value">#{{ payment.id }} - {{ payment.amount|currency }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Invoice</div>
+        <div class="detail-value">{{ allocation.invoice.invoice_number }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Allocated Amount</div>
+        <div class="detail-value">{{ allocation.amount_allocated|currency }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Allocation Date</div>
+        <div class="detail-value">{{ allocation.allocated_at|date:'M j, Y g:i A' }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Invoice Total</div>
+        <div class="detail-value">{{ allocation.invoice.total_amount|currency }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Invoice Paid Amount</div>
+        <div class="detail-value">{{ allocation.invoice.paid_amount|currency }}</div>
+      </div>
+    </div>
+  </div>
+  <!-- Impact Summary -->
+  <div class="impact-summary">
+    <h4>Impact of Deletion</h4>
+    <div class="impact-grid">
+      <div class="impact-item">
+        <div class="impact-label">Payment Unallocated Amount</div>
+        <div class="impact-value">Will increase by {{ allocation.amount_allocated|currency }}</div>
+      </div>
+      <div class="impact-item">
+        <div class="impact-label">Invoice Paid Amount</div>
+        <div class="impact-value">Will decrease by {{ allocation.amount_allocated|currency }}</div>
+      </div>
+    </div>
+  </div>
+  <!-- Delete Form -->
+  <form method="post" class="delete-form">
+    {% csrf_token %}
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" class="form-checkbox" required />
+        I understand that this action will revert the allocation and update related amounts.
+      </label>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-danger">
+        <i class="fas fa-trash"></i>
+        Delete Allocation
+      </button>
+      <a href="{% url 'supplier:payment_detail' supplier.pk payment.pk %}"
+         class="btn btn-secondary">
+        <i class="fas fa-times"></i>
+        Cancel
+      </a>
+    </div>
+  </form>
+{% endblock content %}

@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Credit Ledger - {{ customer.name }}{% endblock title %}
+
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ customer.name }} - Credit Ledger</h2>
+    <div class="page-actions">
+      <a href="{% url 'customer:credit_home' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back
+      </a>
+      <a href="{% url 'customer:credit_create' customer.id %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i>
+        Add Payment
+      </a>
+      <a href="{% url 'customer:credit_auto_reallocate' customer.id %}"
+         class="btn btn-warning"
+         id="autoReallocateBtn"
+         onclick="return confirmAutoReallocate()">
+        <i class="fas fa-sync-alt"></i>
+        Auto Reallocate
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'customer:credit_home' %}" class="breadcrumb-item">Credit</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ customer.name }}</span>
+  </nav>
+
+  <!-- Main Layout -->
+  <div class="col d-flex flex-row">
+    <!-- Left Column - Customer Details and Summary -->
+    <div class="col-md-2 d-flex flex-column gap-2">
+      <!-- Customer Details Column -->
+      <div class="column details-column">
+        <div class="column-header">
+          <h3>
+            <i class="fas fa-user"></i> Customer Details
+          </h3>
+        </div>
+        <div class="details-info-compact">
+          <div class="detail-name-compact">
+            <h4>{{ customer.name }}</h4>
+            <span class="detail-status {% if not customer.is_deleted %}status-active{% else %}status-inactive{% endif %}">
+              {% if customer.is_deleted %}Inactive{% else %}Active{% endif %}
+            </span>
+          </div>
+          <div class="detail-contact-compact">
+            <div class="contact-item">
+              <i class="fas fa-phone"></i>
+              <span>{{ customer.phone_number|phone_number }}</span>
+            </div>
+            {% if customer.email %}
+              <div class="contact-item">
+                <i class="fas fa-envelope"></i>
+                <span>{{ customer.email }}</span>
+              </div>
+            {% endif %}
+            {% if customer.address %}
+              <div class="contact-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ customer.address|truncatechars:50 }}</span>
+              </div>
+            {% endif %}
+            <div class="contact-item">
+              <i class="fas fa-calendar"></i>
+              <span>{{ customer.created_at|date:"M d, Y" }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="summary-card-compact" id="creditSummaryCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-money-bill"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Amounts</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="total_credit" data-count="{{ total_credit|default:0 }}">0</span>
+              <span class="stat-label-compact">Total Credit</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="total_debit" data-count="{{ total_debit|default:0 }}">0</span>
+              <span class="stat-label-compact">Total Debit</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="balance" data-count="{{ balance|default:0 }}">0</span>
+              <span class="stat-label-compact">Outstanding</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Payment Summary Card (FIFO Auto-Allocation) -->
+      <div class="summary-card-compact" id="paymentSummaryCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-credit-card"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Payments (FIFO)</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="total_paid" data-count="{{ total_debit|default:0 }}">0</span>
+              <span class="stat-label-compact">Total Paid</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="unallocated_amount" data-count="{{ unallocated_amount|default:0 }}">0</span>
+              <span class="stat-label-compact">Unallocated</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column - Ledger Table -->
+    <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+      <!-- Hidden minimal forms used by AJAX table loader -->
+      <form id="dummyFormLedger" method="get" style="display:none"></form>
+      <!-- Ledger Table -->
+      <div class="table-section" id="ledgerSection">
+        <div class="table-header">
+          <h3>
+            <i class="fas fa-file-invoice-dollar"></i> Ledger
+          </h3>
+          <a href="{% url 'customer:credit_create' customer.id %}"
+             class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i>
+            Add Payment
+          </a>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="ledger_table" data-sort="-date">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="date">Date</th>
+                <th>Type</th>
+                <th>Reference</th>
+                <th>Method</th>
+                <th>Notes</th>
+                <th class="sortable" data-sort="credit">Credit</th>
+                <th class="sortable" data-sort="debit">Debit</th>
+                <th>Allocated</th>
+                <th class="sortable" data-sort="outstanding">Outstanding</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ledger_table_body">
+              <tr>
+                <td colspan="10" class="text-center" style="padding: 2rem;">
+                  <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading ledger...
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+{% block extra_js %}
+  <script src="{% static 'js/fetchData.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Summary card click handlers
+      const creditSummaryCard = document.getElementById('creditSummaryCard')
+      const paymentSummaryCard = document.getElementById('paymentSummaryCard')
+      const ledgerSection = document.getElementById('ledgerSection')
+    
+      creditSummaryCard.addEventListener('click', function () {
+        ledgerSection.scrollIntoView({ behavior: 'smooth' })
+      })
+    
+      paymentSummaryCard.addEventListener('click', function () {
+        ledgerSection.scrollIntoView({ behavior: 'smooth' })
+      })
+      // Initialize AJAX tables
+      const urls = {
+        ledger: '{% url "customer:fetch_credit_ledger" customer.id %}'
+      }
+
+      // Use the same helper as supplier page
+      initTableAjax('dummyFormLedger', 'ledger_table', urls.ledger, { autoLoad: true });
+      initTableSorting('ledger_table');
+    })
+    
+    function confirmAutoReallocate() {
+      const confirmed = confirm('⚠️ WARNING: This action will:\n\n' + '• Delete ALL existing payment allocations\n' + '• Reapply payments using FIFO method (oldest invoices first)\n' + '• This action cannot be undone\n\n' + 'Are you sure you want to continue?')
+    
+      if (confirmed) {
+        const btn = document.getElementById('autoReallocateBtn')
+        const originalText = btn.innerHTML
+        const originalClass = btn.className
+    
+        // Show loading state
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reallocating...'
+        btn.className = 'btn btn-warning disabled'
+        btn.style.pointerEvents = 'none'
+    
+        // Re-enable after a short delay (in case of errors)
+        setTimeout(() => {
+          btn.innerHTML = originalText
+          btn.className = originalClass
+          btn.style.pointerEvents = 'auto'
+        }, 10000)
+    
+        return true
+      }
+    
+      return false
+    }
+  </script>
+{% endblock extra_js %}
+
+

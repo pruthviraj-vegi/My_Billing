@@ -1,0 +1,67 @@
+<div class="modal fade" id="new_category" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title text-center">New Category</h4>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Simple Category Form for AJAX Modal -->
+          <form method="#" id="add_new_category" autocomplete="off">
+            {% csrf_token %}
+            
+            <!-- Form Errors -->
+            {% if category_form.non_field_errors %}
+              <div class="form-errors">
+                {% for error in category_form.non_field_errors %}
+                  <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    {{ error }}
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+            
+            <!-- Name Field -->
+            <div class="form-group {% if category_form.name.errors %}has-error{% endif %}">
+              <label for="{{ category_form.name.id_for_label }}">Category Name</label>
+              {{ category_form.name }}
+              <small class="form-help">e.g., Clothing, Electronics, Books, Home & Garden</small>
+              {% if category_form.name.errors %}
+                <div class="field-errors">
+                  {% for error in category_form.name.errors %}
+                    <div class="error-message">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+            
+            <!-- Description Field -->
+            <div class="form-group {% if category_form.description.errors %}has-error{% endif %}">
+              <label for="{{ category_form.description.id_for_label }}">Description (Optional)</label>
+              {{ category_form.description }}
+              <small class="form-help">e.g., All types of clothing and apparel items</small>
+              {% if category_form.description.errors %}
+                <div class="field-errors">
+                  {% for error in category_form.description.errors %}
+                    <div class="error-message">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+            
+            <!-- Submit Button -->
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">Add Category</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div> 

@@ -1,0 +1,259 @@
+/* ========================================
+   A4 CUSTOMER LIST TEMPLATE
+   ======================================== */
+
+/* ========================================
+   A4 PAGE SETUP & PRINT STYLES
+   ======================================== */
+@page {
+    size: A4;
+    margin: 5mm;
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 5mm;
+    }
+
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        margin: 0;
+        padding: 0;
+    }
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.7rem;
+    line-height: 1;
+    color: #1e293b;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+/* ========================================
+   CONTAINER & LAYOUT
+   ======================================== */
+.container {
+    max-width: 100%;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 0mm;
+}
+
+/* ========================================
+   HEADER SECTION
+   ======================================== */
+.header-section {
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 5px;
+}
+
+.shop-info {
+    flex: 1;
+}
+
+.shop-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 5px;
+}
+
+.shop-details {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.6;
+}
+
+.shop-details p {
+    margin: 2px 0;
+}
+
+.report-info {
+    text-align: right;
+    flex: 0 0 auto;
+}
+
+.report-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 5px;
+}
+
+.report-meta {
+    font-size: 10px;
+    color: #64748b;
+}
+
+.report-meta p {
+    margin: 2px 0;
+}
+
+/* ========================================
+   TABLE STYLES
+   ======================================== */
+.table-container {
+    width: 100%;
+    overflow: visible;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 10px;
+}
+
+.data-table thead {
+    background-color: #1e293b;
+    color: #ffffff;
+}
+
+.data-table th {
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10px;
+    border: 1px solid #334155;
+}
+
+.data-table th:first-child {
+    width: 50px;
+}
+
+.data-table th:nth-child(2) {
+    width: 150px;
+}
+
+.data-table th:nth-child(3) {
+    width: 120px;
+}
+
+.data-table th:nth-child(4) {
+    width: 120px;
+}
+
+.data-table th:nth-child(5) {
+    width: auto;
+}
+
+.data-table th:nth-child(6) {
+    width: 80px;
+}
+
+.data-table th:nth-child(7) {
+    width: 100px;
+}
+
+.data-table tbody tr {
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.data-table tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.data-table tbody tr:hover {
+    background-color: #f1f5f9;
+}
+
+.data-table td {
+    padding: 8px;
+    font-size: 10px;
+    color: #1e293b;
+    vertical-align: top;
+}
+
+.data-table td.text-center {
+    text-align: center;
+}
+
+.data-table td.text-right {
+    text-align: right;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-active {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.status-inactive {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* ========================================
+   FOOTER SECTION
+   ======================================== */
+.footer-section {
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 2px solid #e2e8f0;
+    text-align: center;
+    font-size: 10px;
+    color: #64748b;
+}
+
+.total-info {
+    text-align: right;
+    margin-bottom: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.text-bold {
+    font-weight: 600;
+}
+
+.text-muted {
+    color: #64748b;
+}
+
+.text-primary {
+    color: #1e293b;
+}
+
+/* Page break handling */
+.page-break {
+    page-break-after: always;
+}
+
+.no-break {
+    page-break-inside: avoid;
+}

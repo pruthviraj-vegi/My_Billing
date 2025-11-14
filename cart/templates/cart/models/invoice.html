@@ -1,0 +1,79 @@
+<!-- Invoice/Cart Summary Template -->
+<div class="invoice-summary">
+    <div class="summary-card">
+        <h3>Cart Summary</h3>
+        <p>Select a cart from the navigation above or create a new cart to start adding items.</p>
+        
+        <div class="summary-stats">
+            <div class="stat-item">
+                <span class="stat-label">Total Carts:</span>
+                <span class="stat-value">{{ carts|length }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Open Carts:</span>
+                <span class="stat-value">{{ carts|length }}</span>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="createCartBtnMain" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Create New Cart
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.invoice-summary {
+    padding: 2rem;
+    text-align: center;
+}
+
+.summary-card {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.summary-card h3 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.summary-card p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.summary-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    display: block;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.action-buttons {
+    margin-top: 1rem;
+}
+</style>

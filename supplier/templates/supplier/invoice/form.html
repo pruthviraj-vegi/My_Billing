@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+  {{ title }} - {{ supplier.name }}
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ title }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'supplier:detail' supplier.pk %}"
+         class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back to Supplier
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:home' %}" class="breadcrumb-item">Suppliers</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:detail' supplier.pk %}"
+       class="breadcrumb-item">{{ supplier.name }}</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ title }}</span>
+  </nav>
+  <!-- Supplier Invoice Form -->
+  <div class="form-container">
+    <div class="form-card">
+      <div class="info-summary">
+        <h4>Supplier: {{ supplier.name }}</h4>
+        <p class="text-muted">
+          {{ supplier.phone }}
+          {% if supplier.email %}• {{ supplier.email }}{% endif %}
+        </p>
+      </div>
+      <form method="post" class="details-form" id="invoiceForm">
+        {% csrf_token %}
+        <!-- Invoice Details Section -->
+        <div class="form-section">
+          <h5 class="section-title">Invoice Details</h5>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="{{ form.invoice_number.id_for_label }}" class="form-label">{{ form.invoice_number.label }}</label>
+                {{ form.invoice_number }}
+                <small class="form-help">Enter Invoice No (e.g., 4578, 1425)</small>
+                {% if form.invoice_number.errors %}
+                  <div class="field-errors">
+                    {% for error in form.invoice_number.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
+                {{ form.invoice_date }}
+                <small class="form-help">Select Invoice Date</small>
+                {% if form.invoice_date.errors %}
+                  <div class="field-errors">
+                    {% for error in form.invoice_date.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="{{ form.invoice_type.id_for_label }}" class="form-label">{{ form.invoice_type.label }}</label>
+                {{ form.invoice_type|add_class:"form-select" }}
+                <small class="form-help">Invoice Type as GST or Local</small>
+                {% if form.invoice_type.errors %}
+                  <div class="field-errors">
+                    {% for error in form.invoice_type.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6" id="gstTypeGroup">
+              <div class="form-group">
+                <label for="{{ form.gst_type.id_for_label }}" class="form-label">{{ form.gst_type.label }}</label>
+                {{ form.gst_type|add_class:"form-select" }}
+                <small class="form-help">Select GST Type</small>
+                {% if form.gst_type.errors %}
+                  <div class="field-errors">
+                    {% for error in form.gst_type.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Amount Details Section -->
+        <div class="form-section">
+          <h5 class="section-title">Amount Details</h5>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="{{ form.sub_total.id_for_label }}" class="form-label">{{ form.sub_total.label }}</label>
+                {{ form.sub_total }}
+                <small class="form-help">Amount Without Gst Amount</small>
+                {% if form.sub_total.errors %}
+                  <div class="field-errors">
+                    {% for error in form.sub_total.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="{{ form.adjustment_amount.id_for_label }}" class="form-label">{{ form.adjustment_amount.label }}</label>
+                {{ form.adjustment_amount }}
+                <small class="form-help">Any Fractional Adjsut Amounts(0.25, 0.45, -0.25)</small>
+                {% if form.adjustment_amount.errors %}
+                  <div class="field-errors">
+                    {% for error in form.adjustment_amount.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6" id="cgstGroup">
+              <div class="form-group">
+                <label for="{{ form.cgst_amount.id_for_label }}" class="form-label">{{ form.cgst_amount.label }}</label>
+                {{ form.cgst_amount }}
+                <small class="form-help">Enter CGST Amount Tax Amount (SGST is Calculated)</small>
+                {% if form.cgst_amount.errors %}
+                  <div class="field-errors">
+                    {% for error in form.cgst_amount.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6" id="igstGroup">
+              <div class="form-group">
+                <label for="{{ form.igst_amount.id_for_label }}" class="form-label">{{ form.igst_amount.label }}</label>
+                {{ form.igst_amount }}
+                <small class="form-help">Enter IGST Amount Tax Amount</small>
+                {% if form.igst_amount.errors %}
+                  <div class="field-errors">
+                    {% for error in form.igst_amount.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h5 class="section-title">Amount Summary</h5>
+            <div class="total-amount-display">
+              <div class="total-row">
+                <span class="total-label">Sub Total:</span>
+                <span class="total-value" id="subTotalDisplay">₹0.00</span>
+              </div>
+              <div class="total-row hidden" id="cgstDisplayRow">
+                <span class="total-label">CGST:</span>
+                <span class="total-value" id="cgstDisplay">₹0.00</span>
+              </div>
+              <div class="total-row hidden" id="sgstDisplayRow">
+                <span class="total-label">SGST:</span>
+                <span class="total-value" id="sgstDisplay">₹0.00</span>
+              </div>
+              <div class="total-row hidden" id="igstDisplayRow">
+                <span class="total-label">IGST:</span>
+                <span class="total-value" id="igstDisplay">₹0.00</span>
+              </div>
+              <div class="total-row">
+                <span class="total-label">Adjustment:</span>
+                <span class="total-value" id="adjustmentDisplay">₹0.00</span>
+              </div>
+              <div class="total-row total-final">
+                <span class="total-label">Total Amount:</span>
+                <span class="total-value" id="totalAmountDisplay">₹0.00</span>
+              </div>
+            </div>
+
+        </div>
+
+        <!-- Notes Section -->
+        <div class="form-section">
+          <h5 class="section-title">Additional Information</h5>
+          <div class="form-group">
+            <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+            {{ form.notes|add_class:"form-textarea" }}
+            {% if form.notes.errors %}
+              <div class="field-errors">
+                {% for error in form.notes.errors %}
+                  <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ error }}
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            {% if invoice %}
+              Update Invoice
+            {% else %}
+              Create Invoice
+            {% endif %}
+          </button>
+          <a href="{% url 'supplier:detail' supplier.pk %}"
+             class="btn btn-secondary">
+            <i class="fas fa-times"></i>
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock content %}
+{% block extra_js %}
+  <script>
+    // Global variables
+    let invoiceTypeSelect, gstTypeSelect, subTotalInput, cgstInput, igstInput, adjustmentInput
+    let gstTypeGroup, cgstGroup, igstGroup
+    let subTotalDisplay, cgstDisplay, sgstDisplay, igstDisplay, adjustmentDisplay, totalAmountDisplay
+    let cgstDisplayRow, sgstDisplayRow, igstDisplayRow
+    
+    // Global functions
+    function updateFormState() {
+      const invoiceType = invoiceTypeSelect.value
+      const gstType = gstTypeSelect.value
+      const isGstApplicable = invoiceType === 'GST_APPLICABLE'
+      const isCgstSgst = isGstApplicable && gstType === 'CGST_SGST'
+      const isIgst = isGstApplicable && gstType === 'IGST'
+    
+      // Show/hide the GST Type dropdown
+      setVisibility(gstTypeGroup, isGstApplicable)
+    
+      // Show/hide CGST/IGST input fields
+      setVisibility(cgstGroup, isCgstSgst)
+      setVisibility(igstGroup, isIgst)
+    
+      // Show/hide CGST/SGST/IGST display rows in the summary
+      setVisibility(cgstDisplayRow, isCgstSgst)
+      setVisibility(sgstDisplayRow, isCgstSgst)
+      setVisibility(igstDisplayRow, isIgst)
+    
+      // Clear input values if they are hidden to prevent miscalculations
+      if (!isCgstSgst) {
+        cgstInput.value = '0'
+      }
+      if (!isIgst) {
+        igstInput.value = '0'
+      }
+    
+      // Auto-calculate GST and update totals after any state change
+      autoCalculateGST()
+    }
+    
+    function updateTotals() {
+      const subTotal = parseFloat(subTotalInput.value) || 0
+      const cgst = parseFloat(cgstInput.value) || 0
+      const igst = parseFloat(igstInput.value) || 0
+      const adjustment = parseFloat(adjustmentInput.value) || 0
+    
+      // In CGST/SGST, total tax is cgst + sgst (where sgst = cgst)
+      const total = subTotal + cgst * 2 + igst + adjustment
+    
+      subTotalDisplay.textContent = formatCurrency(subTotal)
+      cgstDisplay.textContent = formatCurrency(cgst)
+      sgstDisplay.textContent = formatCurrency(cgst) // SGST is always the same as CGST
+      igstDisplay.textContent = formatCurrency(igst)
+      adjustmentDisplay.textContent = formatCurrency(adjustment)
+      totalAmountDisplay.textContent = formatCurrency(total)
+    }
+    
+    function autoCalculateGST() {
+      const subTotal = parseFloat(subTotalInput.value) || 0
+      const invoiceType = invoiceTypeSelect.value
+      const gstType = gstTypeSelect.value
+    
+      if (invoiceType === 'GST_APPLICABLE') {
+        if (gstType === 'CGST_SGST') {
+          // CGST = 2.5% of sub-total, SGST = 2.5% of sub-total
+          const cgstAmount = (subTotal * 0.025).toFixed(2)
+          cgstInput.value = cgstAmount
+        } else if (gstType === 'IGST') {
+          // IGST = 5% of sub-total
+          const igstAmount = (subTotal * 0.05).toFixed(2)
+          igstInput.value = igstAmount
+        }
+      }
+    
+      // Update totals immediately after setting GST values
+      updateTotals()
+    }
+    
+    function setVisibility(element, isVisible) {
+      if (isVisible) {
+        element.classList.remove('hidden')
+        element.classList.add('visible')
+      } else {
+        element.classList.remove('visible')
+        element.classList.add('hidden')
+      }
+    }
+    
+    function formatCurrency(value) {
+      return `₹${(parseFloat(value) || 0).toFixed(2)}`
+    }
+    
+    document.addEventListener('DOMContentLoaded', function () {
+      // --- Element Selections ---
+      invoiceTypeSelect = document.getElementById('{{ form.invoice_type.id_for_label }}')
+      gstTypeSelect = document.getElementById('{{ form.gst_type.id_for_label }}')
+      subTotalInput = document.getElementById('{{ form.sub_total.id_for_label }}')
+      cgstInput = document.getElementById('{{ form.cgst_amount.id_for_label }}')
+      igstInput = document.getElementById('{{ form.igst_amount.id_for_label }}')
+      adjustmentInput = document.getElementById('{{ form.adjustment_amount.id_for_label }}')
+    
+      // Input Groups
+      gstTypeGroup = document.getElementById('gstTypeGroup')
+      cgstGroup = document.getElementById('cgstGroup')
+      igstGroup = document.getElementById('igstGroup')
+    
+      // Display Elements
+      subTotalDisplay = document.getElementById('subTotalDisplay')
+      cgstDisplay = document.getElementById('cgstDisplay')
+      sgstDisplay = document.getElementById('sgstDisplay')
+      igstDisplay = document.getElementById('igstDisplay')
+      adjustmentDisplay = document.getElementById('adjustmentDisplay')
+      totalAmountDisplay = document.getElementById('totalAmountDisplay')
+      cgstDisplayRow = document.getElementById('cgstDisplayRow')
+      sgstDisplayRow = document.getElementById('sgstDisplayRow')
+      igstDisplayRow = document.getElementById('igstDisplayRow')
+    
+      // --- Event Listeners ---
+    
+      // --- Event Listeners ---
+    
+      // Listen for changes on the two select dropdowns
+      invoiceTypeSelect.addEventListener('change', updateFormState)
+      gstTypeSelect.addEventListener('change', updateFormState)
+    
+      // Listen for input on any financial field to update the totals in real-time
+      ;[subTotalInput, cgstInput, igstInput, adjustmentInput].forEach((input) => {
+        input.addEventListener('input', updateTotals)
+      })
+    
+      // Auto-calculate GST when sub-total changes
+      subTotalInput.addEventListener('input', autoCalculateGST)
+    
+      // --- Initial State ---
+    
+      // Set the correct form state when the page loads
+      updateFormState()
+    })
+  </script>
+{% endblock extra_js %}

@@ -1,0 +1,93 @@
+{% load custom_filters %}
+
+{% if page_obj %}
+  {% for row in page_obj %}
+    <tr>
+      <td>{{ row.date|date:"M j, Y" }}</td>
+      <td>
+        {% if row.type == "Invoice" %}
+          <span class="badge badge-info">Invoice</span>
+        {% else %}
+          <span class="badge badge-secondary">Payment</span>
+        {% endif %}
+      </td>
+      <td># {{ row.ref }}</td>
+      <td>
+        {% if row.type == "Payment" and row.method %}
+          <span class="badge badge-secondary">{{ row.method }}</span>
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>{{ row.notes|default:"-"|truncatechars:15 }}</td>
+      <td class="text-right">
+        {% if row.type == "Invoice" %}
+          <span title="Final Amount: ₹{{ row.gross_amount|floatformat:2 }} - ₹{{ row.discount_amount|floatformat:2 }} (discount) - ₹{{ row.advance_amount|floatformat:2 }} (advance) = ₹{{ row.credit|floatformat:2 }}">
+            {{ row.credit|currency }}
+          </span>
+        {% else %}
+          {{ row.credit|currency }}
+        {% endif %}
+      </td>
+      <td class="text-right">{{ row.debit|currency }}</td>
+      <td class="text-right">
+        {% if row.type == "Invoice" %}
+          {% if row.paid_amount > 0 %}
+            <span class="text-success">{{ row.paid_amount|currency }}</span>
+            {% if row.payment_status == "PAID" %}
+              <br><small class="secondary-text text-success">✓ Fully Paid</small>
+            {% elif row.payment_status == "PARTIALLY_PAID" %}
+              <br><small class="secondary-text text-warning">⚠ Partially Paid</small>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">₹0.00</span>
+          {% endif %}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td class="text-right">
+        {% if row.type == "Invoice" %}
+          {% if row.outstanding > 0 %}
+            <span class="text-danger">{{ row.outstanding|currency }}</span>
+          {% else %}
+            <span class="text-success">₹0.00</span>
+          {% endif %}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td class="text-center">
+        {% if row.type == "Invoice" %}
+          <a href="{% url 'invoice:detail' row.id %}"
+             class="btn-action btn-view"
+             title="View Invoice Details">
+            <i class="fas fa-eye"></i>
+          </a>
+        {% else %}
+          <a href="{% url 'customer:payment_edit' row.id %}"
+             class="btn-action btn-edit"
+             title="Edit Payment">
+            <i class="fas fa-edit"></i>
+          </a>
+          <a href="{% url 'customer:payment_delete' row.id %}"
+             class="btn-action btn-delete"
+             title="Delete Payment">
+            <i class="fas fa-trash"></i>
+          </a>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+{% else %}
+  <tr>
+    <td colspan="10" class="text-center" style="padding: 2rem;">
+      <div class="empty-state">
+        <i class="fas fa-file-invoice-dollar"></i>
+        <h4>No Ledger Entries Found</h4>
+        <p>No credit transactions have been recorded for this customer yet.</p>
+      </div>
+    </td>
+  </tr>
+{% endif %}
+

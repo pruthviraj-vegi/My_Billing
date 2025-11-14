@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    {{ audit_table.title }} - Audit Details
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="page-title">{{ audit_table.title }}</h2>
+        <div class="page-actions">
+            <a href="{% url 'invoice:audit_home' %}" class="btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to Audit Tables
+            </a>
+            <a href="{% url 'invoice:invoice_manager' audit_table.id %}" class="btn btn-primary">
+                <i class="fas fa-exchange-alt"></i>
+                Manage Conversions
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'invoice:home' %}" class="breadcrumb-item">Invoices</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="{% url 'invoice:audit_home' %}" class="breadcrumb-item">Audit Tables</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">{{ audit_table.title }}</span>
+    </nav>
+    <!-- Main Layout -->
+    <div class="col d-flex flex-row gap-2">
+        <!-- Left Column - Audit Details -->
+        <div class="col-md-2 d-flex flex-column gap-2">
+            <!-- Audit Details Column -->
+            <div class="column details-column">
+                <div class="column-header">
+                    <h3>
+                        <i class="fas fa-clipboard-check"></i> Audit Details
+                    </h3>
+                </div>
+                <div class="details-info-compact">
+                    <div class="detail-name-compact">
+                        <h4>{{ audit_table.title }}</h4>
+                        <span class="detail-status status-badge status-{{ audit_table.status|lower }}">{{ audit_table.status }}</span>
+                    </div>
+                    <div class="detail-contact-compact">
+                        <div class="contact-item">
+                            <i class="fas fa-info-circle"></i>
+                            <span><strong>Description:</strong> {{ audit_table.description|default:"No description provided"|truncatechars:50 }}</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-cog"></i>
+                            <span><strong>Type:</strong> {{ audit_table.get_audit_type_display }}</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-calendar"></i>
+                            <span><strong>Date Range:</strong> {{ audit_table.start_date|date:"M d, Y" }} - {{ audit_table.end_date|date:"M d, Y" }}</span>
+                        </div>
+                        {% if audit_table.financial_year %}
+                        <div class="contact-item">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span><strong>Financial Year:</strong> {{ audit_table.financial_year }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="contact-item">
+                            <i class="fas fa-user"></i>
+                            <span><strong>Created By:</strong> {{ audit_table.created_by.username|default:"Unknown" }}</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-clock"></i>
+                            <span><strong>Created:</strong> {{ audit_table.created_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Summary Cards -->
+            <div class="summary-card-compact" id="changesSummaryCard">
+                <div class="summary-icon-compact">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div class="summary-content-compact">
+                    <h4>Changes Summary</h4>
+                    <div class="summary-stats-compact">
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ audit_table.total_changes }}</span>
+                            <span class="stat-label-compact">Total Changes</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ invoice_audits|length }}</span>
+                            <span class="stat-label-compact">Records</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ audit_table.created_at|timesince }}</span>
+                            <span class="stat-label-compact">Age</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-card-compact" id="statusSummaryCard">
+                <div class="summary-icon-compact">
+                    <i class="fas fa-flag"></i>
+                </div>
+                <div class="summary-content-compact">
+                    <h4>Status</h4>
+                    <div class="summary-stats-compact">
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ audit_table.status }}</span>
+                            <span class="stat-label-compact">Current Status</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ audit_table.get_audit_type_display }}</span>
+                            <span class="stat-label-compact">Type</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ audit_table.financial_year|default:"N/A" }}</span>
+                            <span class="stat-label-compact">FY</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Right Column - Tables -->
+        <div class="col-md-10">
+            <!-- Invoice Audits Table -->
+            <div class="table-section" id="auditsSection">
+                <div class="table-header">
+                    <h3>
+                        <i class="fas fa-history"></i> Invoice Changes ({{ invoice_audits|length }})
+                    </h3>
+                </div>
+                {% if invoice_audits %}
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice</th>
+                                    <th>Old Invoice No</th>
+                                    <th>New Invoice No</th>
+                                    <th>Change Type</th>
+                                    <th>Reason</th>
+                                    <th>Changed By</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for audit in invoice_audits %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'invoice:detail' audit.invoice.id %}" target="_blank" style=" text-decoration: none;">
+                                            {{ audit.invoice.invoice_number }}
+                                        </a>
+                                    </td>
+                                    <td>{{ audit.old_invoice_no|default:"-" }}</td>
+                                    <td>{{ audit.new_invoice_no }}</td>
+                                    <td>
+                                        <span class="badge badge-info">{{ audit.get_change_type_display }}</span>
+                                    </td>
+                                    <td>{{ audit.reason }}</td>
+                                    <td>{{ audit.changed_by.full_name|default:"System" }}</td>
+                                    <td>{{ audit.created_at|date:"M d, Y H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-info-circle"></i>
+                        <h4>No Changes Recorded</h4>
+                        <p>This audit session doesn't have any invoice changes recorded yet.</p>
+                        <a href="{% url 'invoice:invoice_manager' audit_table.id %}" class="btn btn-primary">
+                            <i class="fas fa-exchange-alt"></i>
+                            Start Conversions
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+{% block extra_js %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Summary card click handlers
+      const changesSummaryCard = document.getElementById('changesSummaryCard')
+      const statusSummaryCard = document.getElementById('statusSummaryCard')
+      const auditsSection = document.getElementById('auditsSection')
+    
+      changesSummaryCard.addEventListener('click', function () {
+        auditsSection.scrollIntoView({ behavior: 'smooth' })
+      })
+    
+      statusSummaryCard.addEventListener('click', function () {
+        auditsSection.scrollIntoView({ behavior: 'smooth' })
+      })
+    })
+    </script>
+{% endblock extra_js %}

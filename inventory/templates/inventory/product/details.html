@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    {{ product.display_name }} - Product Details
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="page-title">{{ product.display_name }}</h2>
+        <div class="page-actions">
+            <a href="{% url 'inventory_products:home' %}" class="btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to Products
+            </a>
+            <a href="{% url 'inventory_products:edit' product.id %}"
+               class="btn btn-primary">
+                <i class="fas fa-edit"></i>
+                Edit Product
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Products</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">{{ product.display_name }}</span>
+    </nav>
+    <!-- Main Layout -->
+    <div class="col d-flex flex-row">
+        <!-- Left Column - Product Details -->
+        <div class="col-md-2 d-flex flex-column gap-2">
+            <!-- Product Details Column -->
+            <div class="column details-column">
+                <div class="column-header">
+                    <h3>
+                        <i class="fas fa-box"></i> Product Details
+                    </h3>
+                </div>
+                <div class="details-info-compact">
+                    <div class="detail-name-compact">
+                        <h4>{{ product.display_name }}</h4>
+                        <span class="detail-status status-badge status-{{ product.status|lower }}">{{ product.get_status_display }}</span>
+                    </div>
+                    <div class="detail-contact-compact">
+                        <div class="contact-item">
+                            <i class="fas fa-tag"></i>
+                            <span><strong>Brand:</strong> {{ product.brand }}</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-folder"></i>
+                            <span><strong>Category:</strong> {{ product.category.name }}</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-tshirt"></i>
+                            <span><strong>Cloth Type:</strong> {{ product.cloth_type.name }}</span>
+                        </div>
+                        {% if product.hsn_code %}
+                            <div class="contact-item">
+                                <i class="fas fa-barcode"></i>
+                                <span><strong>HSN Code:</strong> {{ product.hsn_code }}</span>
+                            </div>
+                        {% endif %}
+                        {% if product.gst_percentage %}
+                            <div class="contact-item">
+                                <i class="fas fa-percentage"></i>
+                                <span><strong>GST:</strong> {{ product.gst_percentage }}%</span>
+                            </div>
+                        {% endif %}
+                        {% if product.description %}
+                            <div class="contact-item">
+                                <i class="fas fa-info-circle"></i>
+                                <span><strong>Description:</strong> {{ product.description|truncatechars:50 }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- Summary Cards -->
+            <div class="summary-card-compact" id="inventorySummaryCard">
+                <div class="summary-icon-compact">
+                    <i class="fas fa-cubes"></i>
+                </div>
+                <div class="summary-content-compact">
+                    <h4>Inventory Summary</h4>
+                    <div class="summary-stats-compact">
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ total_variants }}</span>
+                            <span class="stat-label-compact">Variants</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ total_quantity|floatformat:0 }}</span>
+                            <span class="stat-label-compact">Quantity</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ total_inventory_value|floatformat:0 }}</span>
+                            <span class="stat-label-compact">Value</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-card-compact" id="stockSummaryCard">
+                <div class="summary-icon-compact">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="summary-content-compact">
+                    <h4>Stock Alerts</h4>
+                    <div class="summary-stats-compact">
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ out_of_stock }}</span>
+                            <span class="stat-label-compact">Out of Stock</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ low_stock }}</span>
+                            <span class="stat-label-compact">Low Stock</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ total_damaged|floatformat:0 }}</span>
+                            <span class="stat-label-compact">Damaged</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Right Column - Tables -->
+        <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+            <!-- Product Variants Table -->
+            <div class="table-section" id="variantsSection">
+                <div class="table-header">
+                    <h3>
+                        <i class="fas fa-list"></i> Product Variants ({{ variants.count }})
+                    </h3>
+                    <a href="{% url 'inventory_variant:create' product.id %}"
+                       class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Add Variant
+                    </a>
+                </div>
+                {% if variants %}
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Barcode</th>
+                                    <th>Size</th>
+                                    <th>Color</th>
+                                    <th>Quantity</th>
+                                    <th>Damaged</th>
+                                    <th>Purchase Price</th>
+                                    <th>Selling Price</th>
+                                    <th>Final Price</th>
+                                    <th>Stock Status</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for variant in variants %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ variant.barcode }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if variant.size %}
+                                                <span class="badge badge-secondary">{{ variant.size.name }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if variant.color %}
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="color-swatch"
+                                                         style="background-color: {{ variant.color.hex_code|default:'#ccc' }};
+                                                                width: 20px;
+                                                                height: 20px;
+                                                                border-radius: 50%;
+                                                                border: 1px solid var(--border-color)"></div>
+                                                    <span>{{ variant.color.name }}</span>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong>{{ variant.quantity|floatformat:0 }}</strong>
+                                            {% if variant.minimum_quantity > 0 %}
+                                                <br />
+                                                <small class="secondary-text">Min: {{ variant.minimum_quantity|floatformat:0 }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if variant.damaged_quantity > 0 %}
+                                                <span class="text-danger">{{ variant.damaged_quantity|floatformat:0 }}</span>
+                                            {% else %}
+                                                <span class="text-muted">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ variant.purchase_price|currency }}</td>
+                                        <td>{{ variant.mrp|currency }}</td>
+                                        <td>
+                                            <strong>{{ variant.final_price|currency }}</strong>
+                                            {% if variant.discount_percentage > 0 %}
+                                                <br />
+                                                <small class="secondary-text text-success">-{{ variant.discount_percentage }}%</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if variant.stock_status == 'Out of Stock' %}
+                                                <span class="badge text-danger">{{ variant.stock_status }}</span>
+                                            {% elif variant.stock_status == 'Low Stock' %}
+                                                <span class="badge text-warning">{{ variant.stock_status }}</span>
+                                            {% else %}
+                                                <span class="badge text-success">{{ variant.stock_status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if variant.status == 'ACTIVE' %}
+                                                <span class=" text-success">{{ variant.get_status_display }}</span>
+                                            {% else %}
+                                                <span class=" text-danger">{{ variant.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="{% url 'inventory_variant:details' variant.id %}"
+                                                   class="btn-action btn-view"
+                                                   title="View Details"><i class="fas fa-eye"></i></a>
+                                                <a href="{% url 'inventory_variant:edit' variant.id %}"
+                                                   class="btn-action btn-edit"
+                                                   title="Edit Variant"><i class="fas fa-edit"></i></a>
+                                                <a href="#" class="btn-action btn-delete" title="Delete Variant"><i class="fas fa-trash"></i></a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-box-open"></i>
+                        <h4>No Variants Found</h4>
+                        <p>This product doesn't have any variants yet.</p>
+                        <a href="{% url 'inventory_variant:create' product.id %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Add First Variant
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+{% block extra_js %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Summary card click handlers
+      const inventorySummaryCard = document.getElementById('inventorySummaryCard')
+      const stockSummaryCard = document.getElementById('stockSummaryCard')
+      const variantsSection = document.getElementById('variantsSection')
+      const activitySection = document.getElementById('activitySection')
+    
+      inventorySummaryCard.addEventListener('click', function () {
+        variantsSection.scrollIntoView({ behavior: 'smooth' })
+      })
+    
+      stockSummaryCard.addEventListener('click', function () {
+        variantsSection.scrollIntoView({ behavior: 'smooth' })
+      })
+    })
+    </script>
+{% endblock extra_js %}

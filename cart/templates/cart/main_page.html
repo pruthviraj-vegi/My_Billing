@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% load static %}
+{% block title %}
+    {% if cart %}
+        {{ cart.name }}
+    {% else %}
+        Cart Management
+    {% endif %}
+{% endblock title %}
+{% block content %}
+    {% csrf_token %}
+    <div class="page-header">
+        <h2 class="page-title">Carts</h2>
+        <div class="page-actions cart-navigation">
+            <button type="button" class="nav-arrow nav-arrow-left" onclick="scrollCarts('left')" id="leftArrow">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="cart-buttons-container" id="cartButtonsContainer">
+                {% for data in carts %}
+                    <a href="{% url 'cart:getCartData' data.id %}"
+                       class="btn cart-btn {% if data.id == cart.id %}btn-primary active-cart-btn{% else %}btn-secondary{% endif %}"
+                       data-cart-id="{{ data.id }}">
+                        {{ data.name }} - <span class="value" id="cart-button-total-{{ data.id }}">{{ data.total_amount|currency }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+            <button type="button" class="nav-arrow nav-arrow-right" onclick="scrollCarts('right')" id="rightArrow">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'cart:create_cart' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                New Cart
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="#" class="breadcrumb-item">Carts</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Cart Details</span>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">{{ cart.created_at|timesince }} ago</span>
+    </nav>
+    {% if cart %}
+        {% include "cart/models/cart.html" %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <h3>No Cart Selected</h3>
+            <p>Please select a cart from the buttons above or create a new one to start adding items.</p>
+        </div>
+    {% endif %}
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    function scrollCarts(direction) {
+        const container = document.getElementById('cartButtonsContainer');
+        const scrollAmount = 200; // pixels to scroll
+        
+        if (direction === 'left') {
+            container.scrollLeft -= scrollAmount;
+        } else {
+            container.scrollLeft += scrollAmount;
+        }
+        
+        // Update arrow visibility after scroll
+        updateArrowVisibility();
+    }
+    
+    function updateArrowVisibility() {
+        const container = document.getElementById('cartButtonsContainer');
+        const leftArrow = document.getElementById('leftArrow');
+        const rightArrow = document.getElementById('rightArrow');
+        
+        // Show/hide left arrow
+        if (container.scrollLeft <= 0) {
+            leftArrow.style.opacity = '0.5';
+            leftArrow.style.pointerEvents = 'none';
+        } else {
+            leftArrow.style.opacity = '1';
+            leftArrow.style.pointerEvents = 'auto';
+        }
+        
+        // Show/hide right arrow
+        const maxScrollLeft = container.scrollWidth - container.clientWidth;
+        if (container.scrollLeft >= maxScrollLeft - 5) { // Small tolerance for floating point issues
+            rightArrow.style.opacity = '0.5';
+            rightArrow.style.pointerEvents = 'none';
+        } else {
+            rightArrow.style.opacity = '1';
+            rightArrow.style.pointerEvents = 'auto';
+        }
+        
+    }
+    
+    // Scroll to active cart button
+    function scrollToActiveCart() {
+        const container = document.getElementById('cartButtonsContainer');
+        const activeButton = container.querySelector('.btn-primary');
+        
+        if (activeButton) {
+            const containerRect = container.getBoundingClientRect();
+            const buttonRect = activeButton.getBoundingClientRect();
+            
+            // Calculate scroll position to center the active button
+            const scrollLeft = activeButton.offsetLeft - (container.clientWidth / 2) + (activeButton.clientWidth / 2);
+            
+            container.scrollTo({
+                left: Math.max(0, scrollLeft),
+                behavior: 'smooth'
+            });
+        }
+    }
+    
+    // Initialize arrow visibility on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add delay to ensure container is fully rendered
+        setTimeout(() => {
+            // Scroll to active cart first
+            scrollToActiveCart();
+            
+            // Then update arrow visibility
+            setTimeout(() => {
+                updateArrowVisibility();
+                
+                // Update arrow visibility on scroll
+                const container = document.getElementById('cartButtonsContainer');
+                container.addEventListener('scroll', updateArrowVisibility);
+            }, 300);
+        }, 200);
+    });
+</script>
+
+<style>
+    .cart-navigation {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        max-width: 70%;
+        overflow: hidden;
+    }
+    
+    .nav-arrow {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+        z-index: 2;
+    }
+    
+    .nav-arrow:hover {
+        background: var(--primary-hover);
+        transform: scale(1.1);
+    }
+    
+    .nav-arrow:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .cart-buttons-container {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        flex: 1;
+        padding: 5px 0;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+        max-width: calc(100vw - 120px); /* Limit to viewport minus arrow space */
+        min-width: 200px; /* Minimum width */
+    }
+    
+    .cart-buttons-container::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
+    
+    .cart-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+        min-width: fit-content;
+        max-width: 200px; /* Limit individual button width */
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .nav-arrow {
+            width: 35px;
+            height: 35px;
+        }
+        
+        .cart-navigation {
+            gap: 8px;
+        }
+        
+        .cart-buttons-container {
+            max-width: calc(100vw - 100px); /* Adjust for smaller arrows */
+            min-width: 150px;
+        }
+        
+        .cart-btn {
+            max-width: 150px;
+            font-size: 0.9em;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .cart-buttons-container {
+            max-width: calc(100vw - 80px);
+            min-width: 120px;
+        }
+        
+        .cart-btn {
+            max-width: 120px;
+            font-size: 0.8em;
+            padding: 8px 12px;
+        }
+    }
+</style>
+{% endblock extra_js %}
+

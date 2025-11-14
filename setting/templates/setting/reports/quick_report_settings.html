@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Quick Report Settings{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-header">
+        <h1 class="page-title">Quick Report Settings</h1>
+        <div class="page-actions">
+            <a href="{% url 'setting:shop_settings_dashboard' %}" class="btn">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <div class="form-card">
+            <div class="info-summary">
+                <h4><i class="fas fa-info-circle"></i> Quick Settings</h4>
+                <p>Configure the most commonly used report settings for invoices. These settings will be applied to all new invoices generated.</p>
+            </div>
+
+            <form method="post" class="details-form">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                    <div class="form-errors">
+                        {% for error in form.non_field_errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Basic Settings Section -->
+                <div class="form-section">
+                    <h3 class="section-title">Basic Settings</h3>
+                    <div class="form-row">
+                        <div class="form-group {% if form.paper_size.errors %}has-error{% endif %}">
+                            <label for="{{ form.paper_size.id_for_label }}" class="form-label">
+                                {{ form.paper_size.label }}
+                            </label>
+                            {{ form.paper_size }}
+                            {% if form.paper_size.help_text %}
+                                <div class="form-help">{{ form.paper_size.help_text }}</div>
+                            {% endif %}
+                            {% if form.paper_size.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.paper_size.errors %}
+                                        <div class="error-message">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Options Section -->
+                <div class="form-section">
+                    <h3 class="section-title">Display Options</h3>
+                    <div class="form-row">
+                        <div class="form-group {% if form.show_logo.errors %}has-error{% endif %}">
+                            <label for="{{ form.show_logo.id_for_label }}" class="form-label">
+                                {{ form.show_logo.label }}
+                            </label>
+                            <div style="margin-top: 0.5rem;">
+                                {{ form.show_logo }}
+                            </div>
+                            {% if form.show_logo.help_text %}
+                                <div class="form-help">{{ form.show_logo.help_text }}</div>
+                            {% endif %}
+                            {% if form.show_logo.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.show_logo.errors %}
+                                        <div class="error-message">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group {% if form.show_qr_code.errors %}has-error{% endif %}">
+                            <label for="{{ form.show_qr_code.id_for_label }}" class="form-label">
+                                {{ form.show_qr_code.label }}
+                            </label>
+                            <div style="margin-top: 0.5rem;">
+                                {{ form.show_qr_code }}
+                            </div>
+                            {% if form.show_qr_code.help_text %}
+                                <div class="form-help">{{ form.show_qr_code.help_text }}</div>
+                            {% endif %}
+                            {% if form.show_qr_code.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.show_qr_code.errors %}
+                                        <div class="error-message">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group {% if form.show_terms_conditions.errors %}has-error{% endif %}">
+                            <label for="{{ form.show_terms_conditions.id_for_label }}" class="form-label">
+                                {{ form.show_terms_conditions.label }}
+                            </label>
+                            <div style="margin-top: 0.5rem;">
+                                {{ form.show_terms_conditions }}
+                            </div>
+                            {% if form.show_terms_conditions.help_text %}
+                                <div class="form-help">{{ form.show_terms_conditions.help_text }}</div>
+                            {% endif %}
+                            {% if form.show_terms_conditions.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.show_terms_conditions.errors %}
+                                        <div class="error-message">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Terms Section -->
+                <div class="form-section">
+                    <h3 class="section-title">Custom Terms & Conditions</h3>
+                    <div class="form-row">
+                        <div class="form-group {% if form.custom_terms.errors %}has-error{% endif %}">
+                            <label for="{{ form.custom_terms.id_for_label }}" class="form-label">
+                                {{ form.custom_terms.label }}
+                            </label>
+                            {{ form.custom_terms }}
+                            {% if form.custom_terms.help_text %}
+                                <div class="form-help">{{ form.custom_terms.help_text }}</div>
+                            {% endif %}
+                            {% if form.custom_terms.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.custom_terms.errors %}
+                                        <div class="error-message">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <a href="{% url 'setting:shop_settings_dashboard' %}" class="btn">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Additional Information -->
+    <div class="form-container" style="margin-top: 2rem;">
+        <div class="form-card">
+            <div class="info-summary">
+                <h4><i class="fas fa-lightbulb"></i> Need More Control?</h4>
+                <p>For advanced report configuration options, you can create detailed report configurations that allow you to customize every aspect of your invoices and reports.</p>
+                <div class="page-actions" style="margin-top: 1rem;">
+                    <a href="{% url 'setting:report_config_list' %}" class="btn btn-primary">
+                        <i class="fas fa-cog"></i> Advanced Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

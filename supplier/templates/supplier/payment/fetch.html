@@ -1,0 +1,61 @@
+{% load custom_filters %}
+
+{% if page_obj %}
+  {% for payment in page_obj %}
+    <tr>
+      <td>
+        <div class="payment-number">
+          <strong>#{{ payment.id }}</strong>
+        </div>
+      </td>
+      <td>{{ payment.payment_date|date:'M j, Y' }}</td>
+      <td><strong>{{ payment.amount|currency }}</strong></td>
+      <td><span class="badge badge-info">{{ payment.get_method_display }}</span></td>
+      <td>{% if payment.transaction_id %}{{ payment.transaction_id }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+      <td>
+        {% if payment.amount != payment.unallocated_amount %}
+          <span class="text-success">{{ payment.amount|sub:payment.unallocated_amount|currency }}</span>
+        {% else %}
+          <span class="text-muted">₹0.00</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if payment.unallocated_amount > 0 %}
+          <span class="text-warning">{{ payment.unallocated_amount|currency }}</span>
+        {% else %}
+          <span class="text-success">₹0.00</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="action-buttons">
+          <a href="{% url 'supplier:payment_detail' supplier.pk payment.pk %}"
+             class="btn-action btn-view"
+             title="View Payment"><i class="fas fa-eye"></i></a>
+          <a href="{% url 'supplier:edit_payment' supplier.pk payment.pk %}"
+             class="btn-action btn-edit"
+             title="Edit Payment"><i class="fas fa-edit"></i></a>
+          <a href="{% url 'supplier:delete_payment' supplier.pk payment.pk %}"
+             class="btn-action btn-delete"
+             title="Delete Payment"><i class="fas fa-trash"></i></a>
+        </div>
+      </td>
+    </tr>
+  {% endfor %}
+{% else %}
+  <tr>
+    <td colspan="8" class="text-center" style="padding: 2rem;">
+      <div class="empty-state">
+        <i class="fas fa-credit-card"></i>
+        <h4>No Payments Found</h4>
+        <p>No payments have been recorded for this supplier yet.</p>
+        <a href="{% url 'supplier:create_payment' supplier.pk %}"
+           class="btn btn-primary">
+          <i class="fas fa-plus"></i>
+          Record First Payment
+        </a>
+      </div>
+    </td>
+  </tr>
+{% endif %}
+
+

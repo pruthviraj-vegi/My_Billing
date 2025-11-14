@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+  {{ title }} - {{ supplier.name }}
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ title }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'supplier:payment_detail' supplier.pk payment.pk %}"
+         class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back to Payment
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:home' %}" class="breadcrumb-item">Suppliers</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:detail' supplier.pk %}"
+       class="breadcrumb-item">{{ supplier.name }}</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:payment_detail' supplier.pk payment.pk %}"
+       class="breadcrumb-item">Payment #{{ payment.id }}</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ title }}</span>
+  </nav>
+  <!-- Form Container -->
+  <div class="form-container">
+    <div class="form-card">
+      <!-- Payment Summary -->
+      <div class="payment-summary">
+        <h4>Payment Information</h4>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-label">Payment Amount</div>
+            <div class="summary-value">{{ payment.amount|currency }}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">
+              {% if available_amount %}
+                Available Amount
+              {% else %}
+                Unallocated Amount
+              {% endif %}
+            </div>
+            <div class="summary-value {% if available_amount %} {% if available_amount > 0 %} text-warning {% else %} text-success {% endif %} {% else %} {% if payment.unallocated_amount > 0 %} text-warning {% else %} text-success {% endif %} {% endif %}">
+              {% if available_amount %}
+                {{ available_amount|currency }}
+              {% else %}
+                {{ payment.unallocated_amount|currency }}
+              {% endif %}
+            </div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Payment Method</div>
+            <div class="summary-value">{{ payment.get_method_display }}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Payment Date</div>
+            <div class="summary-value">{{ payment.payment_date|date:'M j, Y' }}</div>
+          </div>
+        </div>
+      </div>
+      <!-- Allocation Form -->
+      <form method="post" class="details-form">
+        {% csrf_token %}
+        <!-- Allocation Details Section -->
+        <div class="form-section">
+          <h3 class="section-title">Allocation Details</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="{{ form.invoice.id_for_label }}" class="form-label">Invoice *</label>
+              {{ form.invoice }}
+              {% if form.invoice.errors %}
+                <div class="field-errors">
+                  {% for error in form.invoice.errors %}
+                    <div class="error-message">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+            <div class="form-group">
+              <label for="{{ form.amount_allocated.id_for_label }}" class="form-label">Amount to Allocate *</label>
+              {{ form.amount_allocated }}
+              {% if form.amount_allocated.errors %}
+                <div class="field-errors">
+                  {% for error in form.amount_allocated.errors %}
+                    <div class="error-message">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            {% if allocation %}
+              Update Allocation
+            {% else %}
+              Create Allocation
+            {% endif %}
+          </button>
+          <a href="{% url 'supplier:payment_detail' supplier.pk payment.pk %}"
+             class="btn btn-secondary">
+            <i class="fas fa-times"></i>
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock content %}
+{% block extra_js %}
+  <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const invoiceSelect = document.getElementById('{{ form.invoice.id_for_label }}');
+    const amountInput = document.getElementById('{{ form.amount_allocated.id_for_label }}');
+    
+    // Auto-fill amount when invoice is selected
+    invoiceSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            // Extract remaining amount from option text
+            const optionText = selectedOption.text;
+            const match = optionText.match(/₹([\d,]+\.?\d*)/);
+            if (match) {
+                const remainingAmount = parseFloat(match[1].replace(/,/g, ''));
+                {% if available_amount %}
+                    const availableAmount = {{ available_amount }};
+                {% else %}
+                    const availableAmount = {{ payment.unallocated_amount }};
+                {% endif %}
+                const maxAmount = Math.min(remainingAmount, availableAmount);
+                amountInput.value = maxAmount.toFixed(2);
+            }
+        }
+    });
+    
+    // Validate amount on input
+    amountInput.addEventListener('input', function() {
+        const amount = parseFloat(this.value) || 0;
+        {% if available_amount %}
+            const availableAmount = {{ available_amount }};
+        {% else %}
+            const availableAmount = {{ payment.unallocated_amount }};
+        {% endif %}
+        
+        if (amount > availableAmount) {
+            this.setCustomValidity('Amount cannot exceed available amount (₹' + availableAmount.toFixed(2) + ')');
+        } else if (amount <= 0) {
+            this.setCustomValidity('Amount must be greater than zero');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+});
+  </script>
+{% endblock extra_js %}

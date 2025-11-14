@@ -1,0 +1,541 @@
+:root {
+  --highlight-bg: rgb(158, 158, 158);
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 27px;
+  margin-bottom: 0;
+}
+
+.switch input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50px;
+  background-color: #ccc;
+  -webkit-transition: 0.4s;
+  transition: 0.4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 19px;
+  width: 19px;
+  left: 4px;
+  bottom: 4px;
+  border-radius: 50px;
+  background-color: white;
+  -webkit-transition: 0.4s;
+  transition: 0.4s;
+}
+
+.switch input:checked+.slider {
+  background-color: #2196f3;
+}
+
+.switch input:focus+.slider {
+  box-shadow: 0 0 1px #2196f3;
+}
+
+.switch input:checked+.slider:before {
+  -webkit-transform: translateX(22px);
+  -ms-transform: translateX(22px);
+  transform: translateX(22px);
+}
+
+.sliderButtonLabel {
+  font-size: 13px;
+  color: #ababab;
+  font-weight: 500;
+  background: #ffffff82;
+  margin-bottom: 0;
+  padding: 0 5px;
+  z-index: 99;
+}
+
+.highlight td {
+  color: white;
+}
+
+.highlight {
+  box-shadow: inset 0 0 0 9999px var(--highlight-bg);
+}
+
+tbody tr.table-secondary.highlight {
+  background-color: var(--highlight-bg) !important;
+}
+
+.room-table input {
+  text-align: center;
+}
+
+.room-table b .currency {
+  font-size: 1.5rem;
+}
+
+.round-button {
+  font-size: 25px;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+
+.offcanvas-body .modal-content {
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.offcanvas-body .modal-content form {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  height: 100%;
+}
+
+.offcanvas-body .modal-content .modal-footer {
+  justify-content: flex-start;
+}
+
+.table_inputs input {
+  text-align: center;
+}
+
+table.table#table__data .form-group.local-forms {
+  margin-bottom: 0;
+}
+
+.radio-button-options {
+  font-size: 1.3rem;
+}
+
+.form-error-server {
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875em;
+  color: #dc3545;
+}
+
+.auth-wrapper {
+  width: 100%;
+  height: 100%;
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.auth-wrapper .auth-box {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  margin: 1.875rem auto;
+  max-width: 800px;
+  min-height: 500px;
+  justify-content: center;
+  width: 100%;
+}
+
+.auth-wrapper .auth-box .auth-center {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+  width: 400px;
+}
+
+.auth-center-wrap {
+  max-width: 100%;
+  flex: 0 0 100%;
+}
+
+.copyable {
+  cursor: pointer;
+  color: blue;
+}
+
+.filter-icon {
+  max-width: 10mm;
+  height: 45px;
+  padding-right: 28px;
+  padding-top: 10px;
+}
+
+.to-upper {
+  text-transform: uppercase;
+}
+
+.form-group.local-forms {
+  margin-bottom: 1.5rem;
+}
+
+.form-group.local-forms label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-error-server {
+  color: red;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+#regular-payment-group,
+#local-payment-group {
+  transition: all 0.3s ease;
+}
+
+.present-qty-badge {
+  margin-inline: 15px;
+  display: inline-block;
+  padding: 2px 8px;
+  margin-left: 10px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  color: #495057;
+  font-weight: bold;
+}
+
+.filter-icon {
+  max-width: 10mm;
+  height: 45px;
+  padding-top: 12px;
+  padding-right: 28px;
+}
+
+.price-hover {
+  position: relative;
+  display: inline-block;
+}
+
+.price-popup {
+  position: fixed;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  min-width: 300px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 99999;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.price-popup::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 10px 10px 0;
+  border-style: solid;
+  border-color: white transparent transparent;
+}
+
+.price-popup::before {
+  content: '';
+  position: absolute;
+  bottom: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 11px 11px 0;
+  border-style: solid;
+  border-color: #ddd transparent transparent;
+}
+
+.popup-content {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.price-hover:hover .price-popup {
+  display: block !important;
+}
+
+.popup-bills-table {
+  font-size: 0.9em;
+}
+
+.popup-positioned {
+  visibility: visible;
+}
+
+/* Bubble Container */
+.bubble-container {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Bubble Style */
+.bubble {
+  padding: 5px 15px;
+  background-color: #e0e0e0;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+/* Hover Effect */
+.bubble:hover {
+  background-color: #bdbdbd;
+}
+
+/* Active Bubble */
+.bubble.active {
+  background-color: #3d5ee1;
+  color: white;
+}
+
+/* ===== ROOM PAGE STYLES ===== */
+
+/* Custom modal styling */
+#stockSearchModal .modal-dialog {
+  max-width: 95%;
+  margin: 1.75rem auto;
+}
+
+#stockSearchModal .modal-content {
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+#stockSearchModal .modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
+}
+
+#stockSearchModal .modal-title {
+  font-weight: 600;
+}
+
+#stockSearchModal .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+#stockSearchModal .table th {
+  background-color: #f8f9fa;
+  border-top: none;
+  font-weight: 600;
+  color: #495057;
+}
+
+#stockSearchModal .form-control {
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+#stockSearchModal .form-control:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+#stockSearchModal .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+#stockSearchModal .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Search results styling */
+#search_body tr {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+#search_body tr:hover {
+  background-color: #f8f9fa;
+  transform: scale(1.01);
+}
+
+/* Keyboard navigation styling */
+#search_body tr.table-active {
+  background-color: #667eea !important;
+  color: white !important;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+#search_body tr.table-active:hover {
+  background-color: #5a6fd8 !important;
+}
+
+#search_body tr.table-active .btn {
+  background-color: white !important;
+  color: #667eea !important;
+  border-color: white !important;
+}
+
+#search_body tr.table-active .btn:hover {
+  background-color: #f8f9fa !important;
+  color: #667eea !important;
+}
+
+/* Quantity badge styling */
+.quantity-badge {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Enhanced price hover effect for room page */
+.room-page .price-hover {
+  position: relative;
+  cursor: pointer;
+}
+
+.room-page .price-popup {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  min-width: 300px;
+  display: none;
+}
+
+.room-page .popup-content h6 {
+  color: #667eea;
+  margin-bottom: 10px;
+}
+
+.room-page .popup-stats {
+  margin-bottom: 15px;
+}
+
+.room-page .popup-stats div {
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+}
+
+/* Responsive adjustments for room page */
+@media (max-width: 768px) {
+  #stockSearchModal .modal-dialog {
+    max-width: 98%;
+    margin: 0.5rem auto;
+  }
+
+  #stockSearchModal .modal-body {
+    max-height: 60vh;
+  }
+}
+
+/* ===== CREDIT REPORT MODAL STYLES ===== */
+
+/* Custom credit report modal styling - matching search modal */
+#custom_report .modal-dialog {
+  max-width: 30%;
+  margin: 1.75rem auto;
+}
+
+#custom_report .modal-content {
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+#custom_report .modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
+}
+
+#custom_report .modal-title {
+  font-weight: 600;
+}
+
+#custom_report .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+#custom_report .form-control {
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+#custom_report .form-control:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+#custom_report .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+#custom_report .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+#custom_report .checkbox-title {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+#custom_report .date-list {
+  margin-bottom: 1rem;
+}
+
+#custom_report .date-picker {
+  margin-bottom: 0.5rem;
+}
+
+#custom_report .data-list {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+}
+
+#custom_report .checkbox label {
+  font-weight: 500;
+  color: #495057;
+  cursor: pointer;
+}
+
+#custom_report .checkbox input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+/* Responsive adjustments for credit report modal */
+@media (max-width: 768px) {
+  #custom_report .modal-dialog {
+    max-width: 95%;
+    margin: 0.5rem auto;
+  }
+
+  #custom_report .modal-body {
+    max-height: 60vh;
+  }
+}

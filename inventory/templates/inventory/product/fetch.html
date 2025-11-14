@@ -1,0 +1,87 @@
+{% load custom_filters %}
+{% load static %}
+
+<!-- Table Body Content -->
+{% if page_obj %}
+    {% for product in page_obj %}
+        <tr>
+            <td>{{ product.id }}</td>
+            <td>
+                <div>
+                    <span class="font-weight-bold text-primary">{{ product.brand }}</span>
+                </div>
+            </td>
+            <td>
+                <div>
+                    <span class="font-weight-bold text-primary">{{ product.name }}</span>
+                </div>
+            </td>
+            <td>
+                <span class="text-muted">{{ product.category.name|default:"-" }}</span>
+            </td>
+            <td>
+                <span class="text-muted">{{ product.cloth_type.name|default:"-" }}</span>
+            </td>
+            <td>
+                <span class="text-muted">{{ product.hsn_code.code|default:"-" }}</span>
+            </td>
+            <td>
+                <span class="badge badge-info">{{ product.product_variants.count }}</span>
+            </td>
+            <td>{{ product.hsn_code.gst_percentage }}%</td>
+            <td>
+                {% if product.status == 'ACTIVE' %}
+                    <span class="badge badge-success">
+                        <i class="fas fa-check-circle"></i>
+                        Active
+                    </span>
+                {% elif product.status == 'DRAFT' %}
+                    <span class="badge badge-warning">
+                        <i class="fas fa-edit"></i>
+                        Draft
+                    </span>
+                {% else %}
+                    <span class="badge badge-danger">
+                        <i class="fas fa-times-circle"></i>
+                        Discontinued
+                    </span>
+                {% endif %}
+            </td>
+            <td>{{ product.created_at|date:"M d, Y" }}</td>
+            <td>
+                <div class="action-buttons">
+                    <a href="{% url 'inventory_products:details' product.id %}"
+                       class="btn-action btn-view"
+                       title="View Product Details">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="{% url 'inventory_products:edit' product.id %}"
+                       class="btn-action btn-edit"
+                       title="Edit Product">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="#" class="btn-action btn-delete" title="Delete Product">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+            </td>
+        </tr>
+    {% endfor %}
+{% else %}
+    <!-- Empty state -->
+    <tr>
+        <td colspan="11" class="text-center" style="padding: 3rem;">
+            <div class="empty-state">
+                <i class="fas fa-boxes" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
+                <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Products Found</h4>
+                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">No products match your search criteria. Try adjusting your filters or add a new product.</p>
+                <a href="{% url 'inventory_products:create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    Create First Product
+                </a>
+            </div>
+        </td>
+    </tr>
+{% endif %}
+
+<!-- Pagination separated from table content -->

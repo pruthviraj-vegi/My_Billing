@@ -1,0 +1,874 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    {{ variant.full_name }}
+    - Variant Details
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="page-title">{{ variant.full_name }}</h2>
+        <div class="page-actions">
+            <a href="{% url 'inventory_products:details' variant.product.id %}"
+               class="btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to Variants
+            </a>
+            <a href="{% url 'inventory_variant:edit' variant.id %}"
+               class="btn btn-primary">
+                <i class="fas fa-edit"></i>
+                Edit Variant
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Products</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="{% url 'inventory_products:details' variant.product.id %}"
+           class="breadcrumb-item">{{ variant.product.display_name }}</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">{{ variant.full_name }}</span>
+    </nav>
+    <!-- Main Layout -->
+    <div class="col d-flex flex-row">
+        <!-- Left Column - Variant Details -->
+        <div class="col-md-2 d-flex flex-column gap-2">
+            <!-- Variant Details Column -->
+            <div class="column details-column">
+                <div class="column-header">
+                    <h3>
+                        <i class="fas fa-box"></i>
+                        Variant Details
+                    </h3>
+                </div>
+                <div class="details-info-compact">
+                    <div class="detail-name-compact">
+                        <h4>{{ variant.full_name }}</h4>
+                        <span class="detail-status status-badge status-{{ variant.status|lower }}">{{ variant.get_status_display }}</span>
+                    </div>
+                    <div class="supplier-contact-compact">
+                        <div class="contact-item">
+                            <i class="fas fa-barcode"></i>
+                            <span>
+                                <strong>Barcode:</strong>
+                            {{ variant.barcode }}</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-tag"></i>
+                            <span>
+                                <strong>Product:</strong>
+                            {{ variant.product.display_name }}</span>
+                        </div>
+                        {% if variant.size %}
+                            <div class="contact-item">
+                                <i class="fas fa-ruler"></i>
+                                <span>
+                                    <strong>Size:</strong>
+                                {{ variant.size.name }}</span>
+                            </div>
+                        {% endif %}
+                        {% if variant.color %}
+                            <div class="contact-item">
+                                <i class="fas fa-palette"></i>
+                                <span>
+                                    <strong>Color:</strong>
+                                    <div class="d-inline-flex align-items-center gap-2">
+                                        <div class="color-swatch"
+                                             style="background-color: {{ variant.color.hex_code|default:'#ccc' }};
+                                                    width: 16px;
+                                                    height: 16px;
+                                                    border-radius: 50%;
+                                                    border: 1px solid var(--border-color)"></div>
+                                        {{ variant.color.name }}
+                                    </div>
+                                </span>
+                            </div>
+                        {% endif %}
+                        {% if variant.extra_attributes %}
+                            <div class="contact-item">
+                                <i class="fas fa-info-circle"></i>
+                                <span>
+                                    <strong>Attributes:</strong>
+                                {{ variant.extra_attributes|truncatechars:50 }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- Stock Summary Cards -->
+            <div class="summary-card-compact" id="stockSummaryCard">
+                <div class="summary-icon-compact">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <div class="summary-content-compact">
+                    <h4>Stock Summary</h4>
+                    <div class="summary-stats-compact">
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ stock_stats.available_quantity|floatformat:0 }}</span>
+                            <span class="stat-label-compact">Available</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ stock_stats.damaged_quantity|floatformat:0 }}</span>
+                            <span class="stat-label-compact">Damaged</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ stock_stats.total_quantity|floatformat:0 }}</span>
+                            <span class="stat-label-compact">Total</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-card-compact" id="valueSummaryCard">
+                <div class="summary-icon-compact">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="summary-content-compact">
+                    <h4>Value Summary</h4>
+                    <div class="summary-stats-compact">
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact" id="purchasePriceSummary" data-price="{{ variant.purchase_price|currency_abbreviation }}">XXXX</span>
+                            <span class="stat-label-compact">Purchase</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ variant.mrp|currency_abbreviation }}</span>
+                            <span class="stat-label-compact">Selling</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ variant.final_price|currency_abbreviation }}</span>
+                            <span class="stat-label-compact">Final</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-card-compact" id="healthSummaryCard">
+                <div class="summary-icon-compact">
+                    <h4>
+                        <i class="fas fa-heartbeat"></i>
+                    </h4>
+                </div>
+                <div class="summary-content-compact">
+                    <h4>Stock Health</h4>
+                    <div class="summary-stats-compact">
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ stock_stats.profit_margin|floatformat:1 }}%</span>
+                            <span class="stat-label-compact">Margin</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ stock_stats.damage_percentage|floatformat:1 }}%</span>
+                            <span class="stat-label-compact">Damage</span>
+                        </div>
+                        <div class="stat-item-compact">
+                            <span class="stat-number-compact">{{ variant.stock_status }}</span>
+                            <span class="stat-label-compact">Status</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Quick Actions Section -->
+            <div class="summary-cards-compact">
+                
+                <div class="quick-actions-grid">
+                    <a href="{% url 'inventory_variant:stock_in' variant.id %}"
+                       class="quick-action-btn btn-success">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Stock In</span>
+                    </a>
+                    <a href="{% url 'inventory_variant:adjustment_in' variant.id %}"
+                       class="quick-action-btn btn-info">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Adjust In</span>
+                    </a>
+                    <a href="{% url 'inventory_variant:adjustment_out' variant.id %}"
+                       class="quick-action-btn btn-warning">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>Adjust Out</span>
+                    </a>
+                    <a href="{% url 'inventory_variant:damage_create' variant.id %}"
+                       class="quick-action-btn btn-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Mark Damaged</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Right Column - Tables -->
+        <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+            <!-- Stock and Price Information Side by Side -->
+            <div class="info-tables-container gap-2">
+                <!-- Stock Information Table -->
+                <div class="table-section" id="stockSection">
+                    <div class="table-header">
+                        <h3>
+                            <i class="fas fa-chart-bar"></i>
+                            Stock Information
+                        </h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <strong>Available Quantity</strong>
+                                    </td>
+                                    <td>
+                                        <span class="{% if variant.is_low_stock %} text-warning {% elif variant.available_quantity == 0 %} text-danger {% else %} text-success {% endif %}">
+                                            {{ variant.available_quantity|floatformat:0 }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Damaged Quantity</strong>
+                                    </td>
+                                    <td>
+                                        <span class="{% if variant.damaged_quantity > 0 %} text-danger {% else %} text-muted {% endif %}">
+                                            {{ variant.damaged_quantity|floatformat:0 }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Total Quantity</strong>
+                                    </td>
+                                    <td>{{ variant.total_quantity|floatformat:0 }}</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Minimum Quantity</strong>
+                                    </td>
+                                    <td>{{ variant.minimum_quantity|floatformat:0 }}</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Stock Status</strong>
+                                    </td>
+                                    <td>
+                                        {% if variant.stock_status == 'Out of Stock' %}
+                                            <span class="badge text-danger">{{ variant.stock_status }}</span>
+                                        {% elif variant.stock_status == 'Low Stock' %}
+                                            <span class="badge text-warning">{{ variant.stock_status }}</span>
+                                        {% else %}
+                                            <span class="badge text-success">{{ variant.stock_status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Stock Health</strong>
+                                    </td>
+                                    <td>{{ variant.stock_health }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Price Information Table -->
+                <div class="table-section" id="priceSection">
+                    <div class="table-header">
+                        <h3>
+                            <i class="fas fa-tags"></i>
+                            Price Information
+                        </h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <strong>Purchase Price</strong>
+                                    </td>
+                                    <td>
+                                        <span id="purchasePriceDisplay" data-price="{{ variant.purchase_price|currency }}">XXXX</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Selling Price</strong>
+                                    </td>
+                                    <td>{{ variant.mrp|currency }}</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Discount</strong>
+                                    </td>
+                                    <td>
+                                        {% if variant.discount_percentage > 0 %}
+                                            <span class="text-success">-{{ variant.discount_percentage }}%</span>
+                                        {% else %}
+                                            <span class="text-muted">No discount</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Final Price</strong>
+                                    </td>
+                                    <td>
+                                        <strong>{{ variant.final_price|currency }}</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Profit Margin</strong>
+                                    </td>
+                                    <td>
+                                        <span class="{% if variant.profit_margin > 0 %} text-success {% else %} text-danger {% endif %}">
+                                            {{ variant.profit_margin|floatformat:1 }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Total Value</strong>
+                                    </td>
+                                    <td>{{ variant.total_value|currency }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Recent Activity Table -->
+            {% if recent_logs %}
+                <div class="table-section" id="activitySection">
+                    <div class="table-header">
+                        <h3>
+                            <i class="fas fa-history"></i>
+                            Recent Activity ({{ recent_logs.count }})
+                        </h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Change</th>
+                                    <th>New Quantity</th>
+                                    <th>Value</th>
+                                    <th>Supplier Invoice</th>
+                                    <th>User</th>
+                                    <th>Time</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                    <tr>
+                                        <td>
+                                            <span class="text-center {% if log.transaction_type == 'SALE' %}text-danger{% elif log.transaction_type == 'STOCK_IN' %}text-success{% elif log.transaction_type == 'RETURN' %}                text-success                 {% elif log.transaction_type == 'ADJUSTMENT_IN' %}                text-info                 {% elif log.transaction_type == 'ADJUSTMENT_OUT' %}                text-warning                 {% elif log.transaction_type == 'DAMAGE' %}                text-danger                 {% else %}                text-success                {% endif %}">
+                                                {{ log.get_transaction_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="{% if log.quantity_change > 0 %} text-success{% else %} text-danger{% endif %}">
+                                                {% if log.quantity_change > 0 %}+{% endif %}
+                                                {{ log.quantity_change|floatformat:0 }}
+                                            </span>
+                                        </td>
+                                        <td>{{ log.new_quantity|floatformat:0 }}</td>
+                                        <td>
+                                            {% if log.total_value %}
+                                                {{ log.total_value|currency }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if log.supplier_invoice %}
+                                                <div class="invoice-info-compact">
+                                                    <span class="invoice-number">{{ log.supplier_invoice.invoice_number }}</span>
+                                                    <small class="secondary-text">{{ log.supplier_invoice.supplier.name|truncatechars:15 }}</small>
+                                                </div>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if log.created_by %}
+                                                {{ log.created_by.full_name }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ log.timestamp|date:'M d, Y H:i' }}</td>
+                                        <td>
+                                            {% if log.notes %}
+                                                <span title="{{ log.notes }}">{{ log.notes|truncatechars:20 }}</span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <h4>No Activity Found</h4>
+                    <p>No activity has been recorded for this variant yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock content %}
+{% block extra_js %}
+    <style>
+        /* Side by side layout for stock and price information */
+        .info-tables-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        /* Responsive design for mobile */
+        @media(max-width: 768px) {
+            .info-tables-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+
+        /* Ensure tables have consistent height */
+        .info-tables-container .table-section {
+            height: fit-content;
+        }
+
+        .info-tables-container .table-container {
+            max-height: none;
+        }
+
+        /* Compact invoice info styles */
+        .invoice-info-compact {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            line-height: 1.2;
+        }
+
+        .invoice-info-compact i {
+            font-size: 0.75rem;
+            margin-right: 0.25rem;
+        }
+
+        .invoice-number {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .invoice-info-compact small {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Compact table styles for Recent Activity */
+        .data-table {
+            font-size: 0.875rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 0.5rem 0.75rem;
+            vertical-align: top;
+        }
+
+        .data-table th {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Column width optimization */
+        .data-table th:nth-child(1), /* Type */
+        .data-table td:nth-child(1) {
+            width: 100px;
+            min-width: 100px;
+        }
+
+        .data-table th:nth-child(2), /* Change */
+        .data-table td:nth-child(2) {
+            width: 80px;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .data-table th:nth-child(3), /* New Quantity */
+        .data-table td:nth-child(3) {
+            width: 100px;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .data-table th:nth-child(4), /* Value */
+        .data-table td:nth-child(4) {
+            width: 100px;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        .data-table th:nth-child(5), /* Supplier Invoice */
+        .data-table td:nth-child(5) {
+            width: 140px;
+            min-width: 140px;
+        }
+
+        .data-table th:nth-child(6), /* User */
+        .data-table td:nth-child(6) {
+            width: 120px;
+            min-width: 120px;
+        }
+
+        .data-table th:nth-child(7), /* Time */
+        .data-table td:nth-child(7) {
+            width: 120px;
+            min-width: 120px;
+        }
+
+        .data-table th:nth-child(8), /* Notes */
+        .data-table td:nth-child(8) {
+            width: 150px;
+            min-width: 150px;
+        }
+
+        /* Responsive table for mobile */
+        @media(max-width: 1024px) {
+            .data-table {
+                font-size: 0.8rem;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 0.4rem 0.5rem;
+            }
+        }
+
+        /* Modal Styles - Theme Compatible */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: var(--bg-surface);
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 0.75rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-md);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.show .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: var(--heading-weight);
+        }
+
+        .close {
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+
+        .close:hover,
+        .close:focus {
+            background-color: var(--bg-surface-hover);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            background-color: var(--bg-surface);
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            border-radius: 0 0 0.75rem 0.75rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+            background-color: var(--bg-surface);
+            color: var(--text-primary);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--border-color-focus);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+        }
+
+        .form-text {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* Quick Actions Styles */
+        .quick-actions {
+            padding: 1rem;
+        }
+
+        .action-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .action-group h4 {
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .action-buttons .btn {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        /* Invoice Information Styles */
+        .invoice-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .invoice-info i {
+            margin-right: 4px;
+        }
+
+        .invoice-info strong {
+            color: var(--primary-color);
+        }
+
+        .invoice-info small {
+            font-size: 0.75rem;
+            line-height: 1.2;
+        }
+
+        /* Quick Actions Styles */
+        .quick-actions-section {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+        }
+
+        .quick-actions-section h4 {
+            margin: 0 0 1rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .quick-action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            color: white;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            color: white;
+            text-decoration: none;
+        }
+
+        .quick-action-btn i {
+            font-size: 1.5rem;
+        }
+
+        .quick-action-btn span {
+            font-size: 0.875rem;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8, #6f42c1);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+        }
+
+        /* Responsive improvements */
+        @media(max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .action-buttons .btn {
+                min-width: auto;
+            }
+
+            .quick-actions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-action-btn {
+                padding: 0.75rem;
+            }
+
+            .quick-action-btn i {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+    <script src="{% static 'js/counting.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let purchasePriceVisible = false;
+            const purchasePriceDisplay = document.getElementById('purchasePriceDisplay');
+            const purchasePriceSummary = document.getElementById('purchasePriceSummary');
+            
+            // Extract numeric value from currency string
+            function extractNumericValue(currencyString) {
+                // Remove currency symbols, commas, and spaces, keep only numbers and decimal point
+                const numericString = currencyString.replace(/[^\d.-]/g, '');
+                return parseFloat(numericString) || 0;
+            }
+            
+            // Toggle purchase price visibility
+            function togglePurchasePrice() {
+                purchasePriceVisible = !purchasePriceVisible;
+                
+                if (purchasePriceVisible) {
+                    // Show with animation
+                    if (purchasePriceDisplay) {
+                        const priceValue = extractNumericValue(purchasePriceDisplay.getAttribute('data-price'));
+                        purchasePriceDisplay.textContent = '0';
+                        purchasePriceDisplay.setAttribute('data-count', priceValue);
+                        animateCounter(purchasePriceDisplay, 0, priceValue, 1000);
+                    }
+                    
+                    if (purchasePriceSummary) {
+                        const summaryValue = extractNumericValue(purchasePriceSummary.getAttribute('data-price'));
+                        purchasePriceSummary.textContent = '0';
+                        purchasePriceSummary.setAttribute('data-count', summaryValue);
+                        animateCounter(purchasePriceSummary, 0, summaryValue, 1000);
+                    }
+                } else {
+                    // Hide - show XXXX
+                    if (purchasePriceDisplay) {
+                        purchasePriceDisplay.textContent = 'XXXX';
+                    }
+                    
+                    if (purchasePriceSummary) {
+                        purchasePriceSummary.textContent = 'XXXX';
+                    }
+                }
+            }
+            
+            // Listen for F9 key press
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'F9') {
+                    event.preventDefault();
+                    togglePurchasePrice();
+                }
+            });
+        });
+    </script>
+{% endblock extra_js %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+    {{ page_title|default:"Report Configuration" }}
+{% endblock title %}
+
+{% block content %}
+    <div class="page-header">
+        <h2 class="page-title">{{ page_title|default:"Report Configuration" }}</h2>
+        <div class="page-actions">
+            <a href="{% url 'setting:report_config_list' %}" class="btn">
+                <i class="fas fa-arrow-left"></i>
+                Back
+            </a>
+            <a href="{% url 'setting:report_config_edit' config.id %}" class="btn btn-primary">Edit</a>
+            <a href="{% url 'setting:report_config_delete' config.id %}" class="btn btn-danger">Delete</a>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <tbody>
+                <tr><th>Type</th><td>{{ config.get_report_type_display }}</td></tr>
+                <tr><th>Paper</th><td>{{ config.get_paper_size_display }}</td></tr>
+                <tr><th>Currency</th><td>{{ config.get_currency_display }}</td></tr>
+                <tr><th>Default</th><td>{% if config.is_default %}Yes{% else %}No{% endif %}</td></tr>
+                <tr><th>Active</th><td>{% if config.is_active %}Yes{% else %}No{% endif %}</td></tr>
+                <tr><th>Show logo</th><td>{{ config.show_logo }}</td></tr>
+                <tr><th>Show shop</th><td>{{ config.show_shop_name }}</td></tr>
+                <tr><th>Show address</th><td>{{ config.show_address }}</td></tr>
+                <tr><th>Contact</th><td>{{ config.show_contact }}</td></tr>
+                <tr><th>GST</th><td>{{ config.show_gst }}</td></tr>
+                <tr><th>Terms</th><td><pre>{{ config.terms_conditions|default:"-" }}</pre></td></tr>
+                <tr><th>Thanks</th><td><pre>{{ config.thank_you_message|default:"-" }}</pre></td></tr>
+                <tr><th>Footer note</th><td><pre>{{ config.footer_note|default:"-" }}</pre></td></tr>
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+
+

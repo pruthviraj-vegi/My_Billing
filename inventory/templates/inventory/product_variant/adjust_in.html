@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  {{ title }} - Stock Management
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ title }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'inventory:stock_management_home' %}" class="btn">
+        <i class="fas fa-arrow-left"></i>
+        Back to Stock Management
+      </a>
+      <a href="{% url 'inventory:stock_in' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i>
+        Stock In
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'inventory:stock_management_home' %}"
+       class="breadcrumb-item">Stock Management</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ title }}</span>
+  </nav>
+  <!-- Main Content -->
+  <div class="form-container">
+    <div class="form-card">
+      <div class="form-header">
+        <h3>
+          <i class="fas fa-edit"></i> {{ subtitle }}
+        </h3>
+        <p>Add stock to existing variants and optionally update their pricing information.</p>
+      </div>
+      <form method="post" class="details-form">
+        {% csrf_token %}
+        <!-- Product Variant Selection -->
+        <div class="form-section">
+          <h4>
+            <i class="fas fa-box"></i> Product Variant
+          </h4>
+          <div class="form-group">
+            <label for="{{ form.product_variant.id_for_label }}">{{ form.product_variant.label }}</label>
+            {{ form.product_variant }}
+            {% if form.product_variant.help_text %}
+              <small class="form-help">{{ form.product_variant.help_text }}</small>
+            {% endif %}
+            {% if form.product_variant.errors %}
+              <div class="field-errors">
+                {% for error in form.product_variant.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          <!-- Current Variant Info (will be populated via JavaScript) -->
+          <div id="variant-info" class="variant-info field-disabled">
+            <div class="info-grid">
+              <div class="info-item">
+                <strong>Current Stock:</strong>
+                <span id="current-stock">-</span>
+              </div>
+              <div class="info-item">
+                <strong>Purchase Price:</strong>
+                <span id="current-purchase-price">-</span>
+              </div>
+              <div class="info-item">
+                <strong>Selling Price:</strong>
+                <span id="current-selling-price">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Stock Details -->
+        <div class="form-section">
+          <h4>
+            <i class="fas fa-cubes"></i> Stock Details
+          </h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}</label>
+              {{ form.quantity }}
+              {% if form.quantity.help_text %}<small class="form-help">{{ form.quantity.help_text }}</small>{% endif %}
+              {% if form.quantity.errors %}
+                <div class="field-errors">
+                  {% for error in form.quantity.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <!-- Price Update Options -->
+        <div class="form-section">
+          <h4>
+            <i class="fas fa-tags"></i> Price Update Options
+          </h4>
+          <div class="form-group">
+            <label for="{{ form.update_prices.id_for_label }}" class="checkbox-label">
+              {{ form.update_prices }}
+              <span>{{ form.update_prices.label }}</span>
+            </label>
+            {% if form.update_prices.help_text %}<small class="form-help">{{ form.update_prices.help_text }}</small>{% endif %}
+          </div>
+          <div id="price-update-fields" class="field-disabled">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="{{ form.new_purchase_price.id_for_label }}">{{ form.new_purchase_price.label }}</label>
+                {{ form.new_purchase_price }}
+                {% if form.new_purchase_price.help_text %}
+                  <small class="form-help">{{ form.new_purchase_price.help_text }}</small>
+                {% endif %}
+                {% if form.new_purchase_price.errors %}
+                  <div class="field-errors">
+                    {% for error in form.new_purchase_price.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              <div class="form-group">
+                <label for="{{ form.new_mrp.id_for_label }}">{{ form.new_mrp.label }}</label>
+                {{ form.new_mrp }}
+                {% if form.new_mrp.help_text %}<small class="form-help">{{ form.new_mrp.help_text }}</small>{% endif %}
+                {% if form.new_mrp.errors %}
+                  <div class="field-errors">
+                    {% for error in form.new_mrp.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Notes -->
+        <div class="form-section">
+          <h4>
+            <i class="fas fa-sticky-note"></i> Additional Information
+          </h4>
+          <div class="form-group">
+            <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+            {{ form.notes }}
+            {% if form.notes.help_text %}<small class="form-help">{{ form.notes.help_text }}</small>{% endif %}
+            {% if form.notes.errors %}
+              <div class="field-errors">
+                {% for error in form.notes.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-save"></i>
+            Adjust Stock
+          </button>
+          <a href="{% url 'inventory:stock_management_home' %}"
+             class="btn btn-secondary">
+            <i class="fas fa-times"></i>
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock content %}
+{% block extra_js %}
+  <script>
+    // Show/hide price update fields based on checkbox
+    document.getElementById('{{ form.update_prices.id_for_label }}').addEventListener('change', function () {
+      const priceFields = document.getElementById('price-update-fields')
+      if (this.checked) {
+        priceFields.style.display = 'block'
+      } else {
+        priceFields.style.display = 'none'
+      }
+    })
+    
+    // Show variant info when variant is selected
+    document.getElementById('{{ form.product_variant.id_for_label }}').addEventListener('change', function () {
+      const variantSelect = this
+      const selectedOption = variantSelect.options[variantSelect.selectedIndex]
+      const variantInfo = document.getElementById('variant-info')
+    
+      if (selectedOption && selectedOption.value) {
+        // You can add AJAX call here to fetch variant details
+        // For now, we'll show the info section
+        variantInfo.style.display = 'block'
+    
+        // Focus on quantity field
+        document.getElementById('{{ form.quantity.id_for_label }}').focus()
+      } else {
+        variantInfo.style.display = 'none'
+      }
+    })
+    
+    // Auto-populate new selling price based on new purchase price
+    document.getElementById('{{ form.new_purchase_price.id_for_label }}').addEventListener('input', function () {
+      const newPurchasePrice = parseFloat(this.value) || 0
+      const newSellingPriceField = document.getElementById('{{ form.new_mrp.id_for_label }}')
+    
+      if (newPurchasePrice > 0 && !newSellingPriceField.value) {
+        const suggestedSellingPrice = newPurchasePrice * 1.3 // 30% markup
+        newSellingPriceField.value = suggestedSellingPrice.toFixed(2)
+      }
+    })
+    
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function (e) {
+      const updatePrices = document.getElementById('{{ form.update_prices.id_for_label }}').checked
+      const newPurchasePrice = parseFloat(document.getElementById('{{ form.new_purchase_price.id_for_label }}').value) || 0
+      const newSellingPrice = parseFloat(document.getElementById('{{ form.new_mrp.id_for_label }}').value) || 0
+    
+      if (updatePrices && newSellingPrice > 0 && newSellingPrice <= newPurchasePrice) {
+        e.preventDefault()
+        alert('New selling price must be greater than new purchase price.')
+        return false
+      }
+    })
+  </script>
+  <style>
+    .variant-info {
+      background-color: var(--bg-surface-hover);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem;
+      background-color: var(--bg-surface);
+      border-radius: 4px;
+    }
+    
+    .info-item strong {
+      color: var(--text-secondary);
+    }
+    
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+    
+    .form-checkbox {
+      margin: 0;
+    }
+  </style>
+{% endblock extra_js %}

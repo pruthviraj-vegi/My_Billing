@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  {{ title }}
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ title }}</h2>
+    <div class="page-actions">
+      {% if invoice %}
+        <a href="{% url 'invoice:detail' invoice.id %}"
+           class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i>
+          Back to Details
+        </a>
+      {% endif %}
+      {% if cart %}
+        <a href="{% url 'cart:getCartData' cart.id %}" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i>
+          Back to Cart
+        </a>
+      {% endif %}
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    {% if cart %}
+      <a href="{% url 'cart:getCartData' cart.id %}" class="breadcrumb-item">Cart Details</a>
+      <span class="breadcrumb-separator">/</span>
+    {% endif %}
+    <span class="breadcrumb-separator">/</span>
+    {% if invoice %}
+      <a href="#" class="breadcrumb-item">{{ invoice.invoice_number }}</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-active">Edit</span>
+    {% else %}
+      <span class="breadcrumb-active">Create New</span>
+    {% endif %}
+  </nav>
+  <!-- Invoice Form -->
+  <div class="form-container">
+    <div class="form-card">
+      <form method="post" class="details-form" novalidate autocomplete="off">
+        {% csrf_token %}
+        <!-- Form Errors -->
+        {% if form.non_field_errors %}
+          <div class="form-errors">
+            {% for error in form.non_field_errors %}
+              <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                {{ error }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <!-- Invoice Details Section -->
+        <div class="form-section mb-2">
+          <h5 class="section-title">Invoice Details</h5>
+          <!-- Customer Field -->
+          <div class="row">
+            <div class="col-md-12 mb-2">
+              <div class="form-group {% if form.customer.errors %}has-error{% endif %}">
+                <label for="{{ form.customer.id_for_label }}" class="form-label">{{ form.customer.label }}</label>
+                {{ form.customer }}
+                <small class="form-help">Select the customer for the invoice</small>
+                {% if form.customer.errors %}
+                  <div class="field-errors">
+                    {% for error in form.customer.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Created By, Amount, and Discount Row -->
+            <!-- Created By Field -->
+            {% comment %} <div class="col-md-4">
+              <div class="form-group {% if form.created_by.errors %}has-error{% endif %}">
+                <label for="{{ form.created_by.id_for_label }}" class="form-label">{{ form.created_by.label }}</label>
+                {{ form.created_by }}
+                <small class="form-help">Select the user who created the invoice</small>
+                {% if form.created_by.errors %}
+                  <div class="field-errors">
+                    {% for error in form.created_by.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div> {% endcomment %}
+            <!-- Amount Field -->
+            <div class="col-md-4">
+              <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
+                <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
+                {{ form.amount }}
+                {% if form.amount.help_text %}<small class="form-help">{{ form.amount.help_text }}</small>{% endif %}
+                {% if form.amount.errors %}
+                  <div class="field-errors">
+                    {% for error in form.amount.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Discount Amount Field -->
+            <div class="col-md-4">
+              <div class="form-group {% if form.discount_amount.errors %}has-error{% endif %}">
+                <label for="{{ form.discount_amount.id_for_label }}" class="form-label">{{ form.discount_amount.label }}</label>
+                {{ form.discount_amount }}
+                {% if form.discount_amount.help_text %}
+                  <small class="form-help">{{ form.discount_amount.help_text }}</small>
+                {% endif %}
+                {% if form.discount_amount.errors %}
+                  <div class="field-errors">
+                    {% for error in form.discount_amount.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Invoice Type, Advance Amount, and Due Date Row -->
+            <!-- Invoice Type Field -->
+            <div class="col-md-4">
+              <div class="form-group {% if form.payment_type.errors %}has-error{% endif %}">
+                <label for="{{ form.payment_type.id_for_label }}" class="form-label">{{ form.payment_type.label }}</label>
+                {{ form.payment_type }}
+                <small class="form-help">Select the type of invoice (Cash or Credit)</small>
+                {% if form.payment_type.errors %}
+                  <div class="field-errors">
+                    {% for error in form.payment_type.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Advance Amount and Notes Row -->
+            <!-- Advance Amount Field -->
+            <div class="col-md-4">
+              <div class="form-group {% if form.advance_amount.errors %}has-error{% endif %}">
+                <label for="{{ form.advance_amount.id_for_label }}" class="form-label">{{ form.advance_amount.label }}</label>
+                {{ form.advance_amount }}
+                {% if form.advance_amount.help_text %}<small class="form-help">{{ form.advance_amount.help_text }}</small>{% endif %}
+                {% if form.advance_amount.errors %}
+                  <div class="field-errors">
+                    {% for error in form.advance_amount.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Due Date Field -->
+            <div class="col-md-4">
+              <div class="form-group {% if form.due_date.errors %}has-error{% endif %}">
+                <label for="{{ form.due_date.id_for_label }}" class="form-label">{{ form.due_date.label }}</label>
+                {{ form.due_date }}
+                <small class="form-help">Required for credit invoices</small>
+                {% if form.due_date.errors %}
+                  <div class="field-errors">
+                    {% for error in form.due_date.errors %}
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <!-- Payment Method and Invoice Date Row -->
+          <div class="row">
+            <!-- Payment Method Field -->
+            <div class="col-md-6 mb-2 {% if form.payment_method.errors %}has-error{% endif %}">
+              <label for="{{ form.payment_method.id_for_label }}" class="form-label">{{ form.payment_method.label }}</label>
+              {{ form.payment_method }}
+              <small class="form-help">Select the payment method for the invoice</small>
+              {% if form.payment_method.errors %}
+                <div class="field-errors">
+                  {% for error in form.payment_method.errors %}
+                    <div class="error-message">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+            <!-- Invoice Date Field -->
+            <div class="col-md-6 mb-2 {% if form.invoice_date.errors %}has-error{% endif %}">
+              <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
+              {{ form.invoice_date }}
+              <small class="form-help">Select the date of the invoice</small>
+              {% if form.invoice_date.errors %}
+                <div class="field-errors">
+                  {% for error in form.invoice_date.errors %}
+                    <div class="error-message">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          <!-- Notes Field -->
+          <div class="col-md-12">
+            <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
+              <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+              {{ form.notes }}
+              {% if form.notes.help_text %}<small class="form-help">{{ form.notes.help_text }}</small>{% endif %}
+              {% if form.notes.errors %}
+                <div class="field-errors">
+                  {% for error in form.notes.errors %}
+                    <div class="error-message">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <!-- Amount Summary Section -->
+        <div class="form-section">
+          <div class="section-title">Amount Summary</div>
+          <div class="total-amount-display">
+            <div class="total-row">
+              <span class="total-label">Sub Total:</span>
+              <span class="total-value" id="subTotalDisplay">₹0.00</span>
+            </div>
+            <div class="total-row">
+              <span class="total-label">Discount:</span>
+              <span class="total-value text-danger" id="discountDisplay">₹0.00</span>
+            </div>
+            <div class="total-row">
+              <span class="total-label">Total:</span>
+              <span class="total-value" id="totalDisplay">₹0.00</span>
+            </div>
+            <div class="total-row">
+              <span class="total-label">Advance:</span>
+              <span class="total-value text-success" id="advanceDisplay">₹0.00</span>
+            </div>
+            <div class="total-row total-final">
+              <span class="total-label">Balance Due:</span>
+              <span class="total-value" id="balanceDisplay">₹0.00</span>
+            </div>
+          </div>
+        </div>
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            {% if invoice %}
+              Update Invoice
+            {% else %}
+              Create Invoice
+            {% endif %}
+          </button>
+          {% if invoice %}
+            <a href="{% url 'invoice:detail' invoice.id %}"
+               class="btn btn-secondary">
+              <i class="fas fa-times"></i>
+              Cancel
+            </a>
+          {% elif cart %}
+            <a href="{% url 'cart:getCartData' cart.id %}" class="btn btn-secondary">
+              <i class="fas fa-times"></i>
+              Cancel
+            </a>
+          {% endif %}
+          {% if invoice %}
+            <a href="{% url 'invoice:detail' invoice.id %}"
+               class="btn btn-secondary">
+              <i class="fas fa-eye"></i>
+              View Invoice
+            </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% include "model_forms/customer.html" %}
+  
+{% endblock content %}
+{% block extra_js %}
+  
+   <script>
+     $(document).ready(function() {
+       $('#id_customer').select2({
+         placeholder: "Type to search customers...",
+         width: '100%'
+       });
+    });
+   </script>
+
+   <script src="{% static 'js/modelSetup.js' %}"></script>
+   <script>
+     
+     // Wait for DOM to be fully loaded
+     $(document).ready(function() {       
+       setupModal('id_customer', 'Customer', 'new_customer', '#add_new_customer', '{% url "customer:create_ajax" %}');
+       });
+   </script>
+
+   <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const PaymentTypeSelect = document.getElementById('{{ form.payment_type.id_for_label }}');
+      const advanceAmountField = document.getElementById('{{ form.advance_amount.id_for_label }}');
+      const dueDateField = document.getElementById('{{ form.due_date.id_for_label }}');
+      const discountAmountField = document.getElementById('{{ form.discount_amount.id_for_label }}');
+      const amountField = document.getElementById('{{ form.amount.id_for_label }}');
+      
+      // Display elements
+      const subTotalDisplay = document.getElementById('subTotalDisplay');
+      const discountDisplay = document.getElementById('discountDisplay');
+      const totalDisplay = document.getElementById('totalDisplay');
+      const advanceDisplay = document.getElementById('advanceDisplay');
+      const balanceDisplay = document.getElementById('balanceDisplay');
+      
+      function updateTotals() {
+        const subTotal = parseFloat(amountField.value) || 0;
+        const discount = parseFloat(discountAmountField.value) || 0;
+        const advance = parseFloat(advanceAmountField.value) || 0;
+        
+        const total = subTotal - discount;
+        const balance = total - advance;
+        
+        subTotalDisplay.textContent = formatCurrency(subTotal);
+        discountDisplay.textContent = formatCurrency(discount);
+        totalDisplay.textContent = formatCurrency(total);
+        advanceDisplay.textContent = formatCurrency(advance);
+        balanceDisplay.textContent = formatCurrency(balance);
+      }
+      
+      function formatCurrency(value) {
+        return `₹${(parseFloat(value) || 0).toFixed(2)}`;
+      }
+      
+      function toggleFields() {
+        const selectedValue = PaymentTypeSelect.value;
+        
+        if (selectedValue === 'CASH') {
+          // Make advance amount and due date readonly for cash invoices
+          advanceAmountField.readOnly = true;
+          dueDateField.readOnly = true;
+          
+          // Clear values when readonly
+          advanceAmountField.value = '0';
+          dueDateField.value = '';
+          
+          // Remove required attribute for cash invoices
+          advanceAmountField.removeAttribute('required');
+          dueDateField.removeAttribute('required');
+          
+          // Add visual indication
+          advanceAmountField.parentElement.classList.add('field-disabled');
+          dueDateField.parentElement.classList.add('field-disabled');
+          
+          
+          
+          // For cash invoices, payment status will automatically be set to PAID
+        } else {
+          // Enable fields for credit invoices
+          advanceAmountField.readOnly = false;
+          dueDateField.readOnly = false;
+          
+          // Add required attribute for credit invoices
+          dueDateField.setAttribute('required', 'required');
+          
+          // Remove visual indication
+          advanceAmountField.parentElement.classList.remove('field-disabled');
+          dueDateField.parentElement.classList.remove('field-disabled');
+          
+          
+        }
+        
+        // Update totals after field changes
+        updateTotals();
+      }
+      
+      // Handle form submission to ensure empty fields are treated as zero
+      document.querySelector('form').addEventListener('submit', function(e) {
+        const selectedValue = PaymentTypeSelect.value;
+        
+        // Set empty numeric fields to 0 before submission
+        if (!discountAmountField.value || discountAmountField.value === '') {
+          discountAmountField.value = '0';
+        }
+        
+        // For cash invoices, ensure advance amount is 0 and due date is empty
+        if (selectedValue === 'CASH') {
+          advanceAmountField.value = '0';
+          dueDateField.value = '';
+          
+          // Add a hidden field to indicate this is a cash invoice
+          let cashInvoiceField = document.getElementById('cash_invoice_indicator');
+          if (!cashInvoiceField) {
+            cashInvoiceField = document.createElement('input');
+            cashInvoiceField.type = 'hidden';
+            cashInvoiceField.name = 'cash_invoice_indicator';
+            cashInvoiceField.value = 'true';
+            document.querySelector('form').appendChild(cashInvoiceField);
+          }
+        } else {
+          // For credit invoices, ensure advance amount is 0 if empty
+          if (!advanceAmountField.value || advanceAmountField.value === '') {
+            advanceAmountField.value = '0';
+          }
+          
+          // Remove cash invoice indicator if it exists
+          const cashInvoiceField = document.getElementById('cash_invoice_indicator');
+          if (cashInvoiceField) {
+            cashInvoiceField.remove();
+          }
+        }
+      });
+      
+      // Listen for input changes to update totals in real-time
+      [amountField, discountAmountField, advanceAmountField].forEach(field => {
+        field.addEventListener('input', updateTotals);
+      });
+      
+      // Initial setup
+      toggleFields();
+      updateTotals();
+      // Listen for changes
+      PaymentTypeSelect.addEventListener('change', toggleFields);
+    });
+  </script>
+
+{% endblock extra_js %}

@@ -1,0 +1,138 @@
+* {
+  font-size: 14px;
+  font-family: "Times New Roman", Times, serif;
+}
+body {
+  margin: 0 auto;
+  background-color: #ffffff;
+}
+.header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  line-height: 4px;
+}
+.merchant_details {
+  text-align: right;
+  padding-top: 10px;
+  padding-right: 15px;
+}
+.merchant_logo img {
+  padding-left: 2mm;
+  width: 60px;
+  height: 60px;
+}
+.merchant_title {
+  font-size: 20px;
+  font-weight: bold;
+}
+.borrow-details{
+  line-height: 4px;
+  text-align: right;
+  padding-right: 15px;
+}
+.borrow-details .title{
+  font-weight: bold;
+  font-size: 15px;
+}
+.table-heading {
+  text-align: left;
+  padding: 3px 0 3px 0;
+}
+.table-heading .title {
+  font-weight: bold;
+  font-size: 16px;
+}
+.table-heading .dates{
+  font-style: italic;
+  font-weight: bold;
+  font-size: 16px;
+}
+table {
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+  align-items: center;
+  text-align: center;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+table tbody tr {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.295);
+}
+tbody tr:nth-child(even) {
+  background-color: #e8e8e8c6;
+}
+.table-stripes table tbody tr:nth-child(even) {
+  background-color: #e8e8e8c6;
+}
+table th {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background-color: #318df7;
+  color: white;
+}
+.one-column-right tbody td:nth-last-child(1) {
+  text-align: right;
+  padding-right: 20px;
+}
+.two-column-right tbody td:nth-last-child(1),
+.two-column-right tbody td:nth-last-child(2) {
+  text-align: right;
+  padding-right: 20px;
+}
+.three-column-right tbody td:nth-last-child(1),
+.three-column-right tbody td:nth-last-child(2),
+.three-column-right tbody td:nth-last-child(3) {
+  text-align: right;
+  padding-right: 20px;
+}
+.four-column-right tbody td:nth-last-child(1),
+.four-column-right tbody td:nth-last-child(2),
+.four-column-right tbody td:nth-last-child(3),
+.four-column-right tbody td:nth-last-child(4) {
+  text-align: right;
+  padding-right: 20px;
+}
+.five-column-right tbody td:nth-last-child(1),
+.five-column-right tbody td:nth-last-child(2),
+.five-column-right tbody td:nth-last-child(3),
+.five-column-right tbody td:nth-last-child(4),
+.five-column-right tbody td:nth-last-child(5) {
+  text-align: right;
+  padding-right: 20px;
+}
+.one-column-left tbody td:nth-child(1) {
+  text-align: left;
+  padding-left: 10px;
+}
+.two-column-left tbody td:nth-child(1),
+.two-column-left tbody td:nth-child(2) {
+  text-align: left;
+  padding-left: 10px;
+}
+.bills_details{
+  min-height: 200mm;
+}
+.bills_amount{
+  display: flex;
+  justify-content: space-between;
+}
+.bill_top{
+  text-align: left;
+  line-height: 5px;
+  padding-top: 15px;
+}
+a{
+  text-decoration: none;
+}
+.bill_top a{
+  font-size: 1.5rem;
+  color: #318df7;
+}
+.text-end{
+  text-align: right;
+}
+.text-start{
+  text-align: left;
+}

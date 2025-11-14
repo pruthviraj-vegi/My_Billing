@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+  Suppliers Management
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">Suppliers</h2>
+    <div class="page-actions">
+      <a href="{% url 'supplier:dashboard' %}" class="btn btn-info">
+        <i class="fas fa-chart-line"></i>
+        Dashboard
+      </a>
+      <a href="#" id="downloadBtn" class="btn btn-primary">
+        <i class="fas fa-download"></i>
+        Download
+      </a>
+      <a href="{% url 'supplier:create' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i>
+        Add Supplier
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:dashboard' %}" class="breadcrumb-item">Supplier Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">All Suppliers</span>
+  </nav>
+  <!-- Search and Filter Section -->
+  <div class="search-filter-section">
+    <form method="get" class="search-filter-form" id="searchForm">
+      <div class="search-group search-expanded">
+        <i class="fas fa-search search-icon"></i>
+        <input type="search"
+               name="search"
+               value="{{ search_query }}"
+               class="search-input"
+               placeholder="Search suppliers by name, contact, phone, email, or GSTIN..."
+               id="searchInput"
+               autofocus />
+        <i class="fas fa-search search-icon"></i>
+      </div>
+      <select name="status" class="filter-select">
+        <option value="">All Status</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+        <option value="inactive"
+                {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-search"></i>
+        Search
+      </button>
+    </form>
+  </div>
+  <!-- Suppliers Table -->
+  <div class="table-container">
+      <table class="data-table" id="data_table" data-sort="">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="id">ID</th>
+            <th class="sortable" data-sort="name">Supplier Name</th>
+            <th>Address</th>
+            <th class="sortable" data-sort="phone">Phone</th>
+            <th class="sortable" data-sort="gstin">GSTIN</th>
+            <th>Status</th>
+            <th class="sortable" data-sort="balance_due">Balance Due</th>
+            <th class="sortable" data-sort="created_at">Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="table_body">
+          <tr>
+            <td colspan="9" class="text-center" style="padding: 2rem;">
+              <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                Loading suppliers...
+              </div>
+              <br><br>
+              <button type="button" class="btn btn-sm" onclick="document.dispatchEvent(new Event('reloadTable'))">
+                <i class="fas fa-refresh"></i>
+                Retry
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+  </div>
+{% endblock content %}
+
+{% block extra_js %}
+  <script>
+    urls = {
+      fetch: '{% url "supplier:fetch" %}',
+      suggestions: '{% url "suggestions:supplier_all" %}',
+      suppliers_pdf: '{% url "report:suppliers_pdf" %}',
+    }
+  </script>
+
+  <script src="{% static 'js/wordSuggestion.js' %}"></script>
+  <script src="{% static 'js/fetchData.js' %}"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      $('#searchInput').wordSuggestion({
+        url: urls.suggestions,
+        placeholder: 'Type to search suppliers...',
+        minLength: 2,
+        onSelect: function() { reloadTable('data_table'); }
+      });
+
+      $('#searchForm').ajax({
+        tableId: 'data_table',
+        url: urls.fetch,
+        placeholder: 'Loading suppliers...'
+      });
+    });
+    const downloadBtn = document.getElementById('downloadBtn');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        downloadTablePDF('searchForm', 'data_table', urls.suppliers_pdf);
+      });
+    }
+  </script>
+{% endblock extra_js %}

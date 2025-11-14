@@ -1,0 +1,76 @@
+from django.urls import path
+from . import views, views_, views_return
+
+app_name = "invoice"
+
+urlpatterns = [
+    path("", views.invoiceHome, name="home"),
+    path("dashboard/", views.invoice_dashboard, name="dashboard"),
+    path("dashboard/fetch/", views.invoice_dashboard_fetch, name="dashboard_fetch"),
+    path("fetch/", views.fetch_invoices, name="fetch"),
+    path("download-data/", views.download_invoices, name="download_data"),
+    path(
+        "create-invoice/<int:pk>/", views.CreateInvoice.as_view(), name="create_invoice"
+    ),
+    path("detail/<int:pk>/", views.InvoiceDetail.as_view(), name="detail"),
+    path("edit/<int:pk>/", views.InvoiceEdit.as_view(), name="edit"),
+    path("delete/<int:pk>/", views.InvoiceDelete.as_view(), name="delete"),
+    path("download/", views.InvoiceDownload.as_view(), name="download"),
+    # invoice audit
+    path("audits/", views_.audit_home, name="audit_home"),
+    path("audit-fetch/", views_.fetch_audit_tables, name="audit_fetch"),
+    path("audits/create/", views_.AuditTableCreateView.as_view(), name="audit_create"),
+    path(
+        "audits/manager/<int:pk>/",
+        views_.InvoiceManager.as_view(),
+        name="invoice_manager",
+    ),
+    path("audits/detail/<int:pk>/", views_.audit_detail, name="audit_detail"),
+    path(
+        "audits/delete/<int:pk>/",
+        views_.AuditTableDeleteView.as_view(),
+        name="audit_delete",
+    ),
+    # path("submit-conversions/", views_.submit_conversions_view, name="submit_conversions"),
+    # Return Invoices
+    path("returns/", views_return.home, name="return_home"),
+    path(
+        "returns/fetch/",
+        views_return.fetch_return_invoices,
+        name="fetch_return_invoices",
+    ),
+    path(
+        "returns/create/",
+        views_return.ReturnInvoiceCreateView.as_view(),
+        name="return_create",
+    ),
+    path(
+        "returns/detail/<int:pk>/",
+        views_return.ReturnInvoiceDetailView.as_view(),
+        name="return_detail",
+    ),
+    path(
+        "returns/auto-create/<int:invoice_id>/",
+        views_return.create_auto_return_invoice,
+        name="create_auto_return_invoice",
+    ),
+    path(
+        "returns/stock-adjustment/<int:pk>/",
+        views_return.ReturnStockAdjustmentView.as_view(),
+        name="return_stock_adjustment",
+    ),
+    path(
+        "returns/update-item/<int:item_id>/",
+        views_return.update_return_item,
+        name="update_return_item",
+    ),
+    path(
+        "returns/submit/<int:pk>/",
+        views_return.submit_return_invoice,
+        name="submit_return_invoice",
+    ),
+    # path("returns/edit/<int:pk>/", views_return.ReturnInvoiceEditView.as_view(), name="return_edit"),
+    # path("returns/delete/<int:pk>/", views_return.ReturnInvoiceDeleteView.as_view(), name="return_delete"),
+    # path("returns/approve/<int:pk>/", views_return.approve_return, name="return_approve"),
+    # path("returns/process/<int:pk>/", views_return.process_return, name="return_process"),
+]

@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+    Low Stock Items
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="page-title">Low Stock Items</h2>
+        <div class="page-actions">
+            <a href="{% url 'inventory:dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Low Stock</span>
+    </nav>
+    <!-- Summary Stats -->
+    <div class="stats-container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ total_low_stock }}</div>
+                    <div class="stat-label">Total Low Stock</div>
+                </div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ out_of_stock }}</div>
+                    <div class="stat-label">Out of Stock</div>
+                </div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ critical_stock }}</div>
+                    <div class="stat-label">Critical Stock</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <form method="get" class="search-filter-form" id="searchForm">
+            <div class="search-group search-expanded">
+                <i class="fas fa-search search-icon"></i>
+                <input type="search"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search low stock items..."
+                       value="{{ search_query }}"
+                       id="searchInput"
+                       autofocus />
+            </div>
+            <select name="sort" class="filter-select" id="sortSelect">
+                <option value="-quantity" {% if sort_by == '-quantity' %}selected{% endif %}>Stock High to Low</option>
+                <option value="quantity" {% if sort_by == 'quantity' %}selected{% endif %}>Stock Low to High</option>
+                <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name A-Z</option>
+                <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name Z-A</option>
+                <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest First</option>
+                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Oldest First</option>
+            </select>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+        </form>
+    </div>
+    <!-- Data Table -->
+    <div class="table-container">
+        {% if page_obj %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Product Name</th>
+                        <th>Current Stock</th>
+                        <th>Min Stock</th>
+                        <th>Critical Threshold</th>
+                        <th>Price</th>
+                        <th>Created</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variant in page_obj %}
+                        <tr>
+                            <td>{{ variant.id }}</td>
+                            <td>
+                                {% if variant.quantity == 0 %}
+                                    <span class="badge badge-danger">
+                                        <i class="fas fa-times-circle"></i>
+                                        Out of Stock
+                                    </span>
+                                {% elif variant.quantity < variant.critical_threshold %}
+                                    <span class="badge badge-warning">
+                                        <i class="fas fa-exclamation"></i>
+                                        Critical
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-info">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Low Stock
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-bold text-primary">{{ variant.full_name }}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-bold {% if variant.quantity == 0 %}text-danger{% elif variant.quantity < variant.critical_threshold %}text-warning{% else %}text-info{% endif %}">
+                                    {{ variant.quantity }}
+                                </span>
+                            </td>
+                            <td>{{ variant.minimum_quantity }}</td>
+                            <td>{{ variant.critical_threshold }}</td>
+                            <td>₹{{ variant.mrp }}</td>
+                            <td>{{ variant.created_at|date:'M d, Y' }}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{% url 'inventory_variant:stock_in' variant.id %}"
+                                       class="btn-action btn-primary"
+                                       title="Add Stock">
+                                        <i class="fas fa-plus"></i>
+                                    </a>
+                                    <a href="{% url 'inventory_variant:details' variant.id %}"
+                                       class="btn-action btn-secondary"
+                                       title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination-container">
+                    <nav class="pagination">
+                        {% if page_obj.has_previous %}
+                            <a href="?page=1" class="page-link"><i class="fas fa-angle-double-left"></i></a>
+                            <a href="?page={{ page_obj.previous_page_number }}" class="page-link"><i class="fas fa-angle-left"></i></a>
+                        {% endif %}
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <span class="page-link active">{{ num }}</span>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <a href="?page={{ num }}" class="page-link">{{ num }}</a>
+                            {% endif %}
+                        {% endfor %}
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}" class="page-link"><i class="fas fa-angle-right"></i></a>
+                            <a href="?page={{ page_obj.paginator.num_pages }}" class="page-link"><i class="fas fa-angle-double-right"></i></a>
+                        {% endif %}
+                    </nav>
+                    <div class="pagination-info">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        ({{ page_obj.paginator.count }} items)
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-check-circle"></i>
+                <h3>No Low Stock Items Found</h3>
+                <p>All your inventory items are above their minimum stock levels.</p>
+                <a href="{% url 'inventory:dashboard' %}"
+                   class="btn btn-primary"
+                   id="backToDashboardBtn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Dashboard
+                </a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}
+{% block extra_css %}
+    <style>
+        /* Stats Container */
+        .stats-container {
+            margin-bottom: 30px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-card.danger {
+            border-left: 4px solid var(--danger-color);
+        }
+        
+        .stat-card.warning {
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--text-primary);
+            background: var(--bg-surface-hover);
+        }
+        
+        .stat-card.danger .stat-icon {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .stat-card.warning .stat-icon {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .stat-content {
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Pagination */
+        .pagination-container {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .pagination {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .page-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 35px;
+            height: 35px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .page-link:hover {
+            background: var(--bg-surface-hover);
+            border-color: var(--primary-color);
+        }
+        
+        .page-link.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .pagination-info {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .pagination-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+{% endblock extra_css %}
+{% block extra_js %}
+    <script>
+        // Search and filter functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const sortSelect = document.getElementById('sortSelect');
+            const searchForm = document.getElementById('searchForm');
+            
+            // Auto-submit form on filter change
+            sortSelect.addEventListener('change', function() {
+                searchForm.submit();
+            });
+            
+            // Debounced search
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    searchForm.submit();
+                }, 500);
+            });
+        });
+    </script>
+{% endblock extra_js %}

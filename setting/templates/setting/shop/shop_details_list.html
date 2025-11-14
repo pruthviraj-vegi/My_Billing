@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Shop Details{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1 class="page-title">Shop Details</h1>
+        <div class="page-actions">
+            <a href="{% url 'setting:shop_details_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Shop Details
+            </a>
+        </div>
+    </div>
+
+   <!-- Breadcrumb Navigation -->
+   <nav class="breadcrumb breadcrumb-right">
+        <a href="#" class="breadcrumb-item">Address</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">All Address</span>
+    </nav>
+
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <form method="get" class="search-filter-form">
+            <div class="search-group search-expanded">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" name="search" class="search-input" 
+                       placeholder="Search by shop name, city, state, or phone..." 
+                       value="{{ search_query }}">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i> Search
+            </button>
+            {% if search_query %}
+                <a href="{% url 'setting:shop_details_list' %}" class="btn">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Shop Details Table -->
+    <div class="table-container">
+        {% if shops %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Shop Name</th>
+                        <th>Address</th>
+                        <th>Contact</th>
+                        <th>GST Number</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shop in shops %}
+                        <tr>
+                            <td>
+                                <div class="supplier-info">
+                                    <strong>{{ shop.shop_name }}</strong>
+                                    {% if shop.logo %}
+                                        <small><i class="fas fa-image"></i> Has Logo</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="supplier-info">
+                                    <strong>{{ shop.city }}, {{ shop.state }}</strong>
+                                </br>
+                                    <div class="secondary-text">{{ shop.pincode }}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="supplier-info">
+                                    <strong>{{ shop.phone_number }}</strong>
+                                    {% if shop.phone_two %}
+                                    </br>
+                                        <div class="secondary-text">{{ shop.phone_two }}</div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if shop.gst_no %}
+                                    <span class="badge badge-info">{{ shop.gst_no }}</span>
+                                {% else %}
+                                    <span class="text-muted">No GST</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if shop.is_active %}
+                                    <span class="status-badge status-active">
+                                        <i class="fas fa-check-circle"></i> Active
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge status-inactive">
+                                        <i class="fas fa-times-circle"></i> Inactive
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ shop.created_at|date:"M d, Y" }}</small>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{% url 'setting:shop_details_detail' shop.pk %}" 
+                                       class="btn-action btn-view" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'setting:shop_details_edit' shop.pk %}" 
+                                       class="btn-action btn-edit" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'setting:shop_details_delete' shop.pk %}" 
+                                       class="btn-action btn-delete" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            {% if shops.has_other_pages %}
+                <div class="pagination">
+                    {% if shops.has_previous %}
+                        <a href="?page=1" class="pagination-item">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                        <a href="?page={{ shops.previous_page_number }}" class="pagination-item">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    {% endif %}
+
+                    {% for num in shops.paginator.page_range %}
+                        {% if shops.number == num %}
+                            <span class="pagination-item active">{{ num }}</span>
+                        {% elif num > shops.number|add:'-3' and num < shops.number|add:'3' %}
+                            <a href="?page={{ num }}" class="pagination-item">{{ num }}</a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if shops.has_next %}
+                        <a href="?page={{ shops.next_page_number }}" class="pagination-item">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                        <a href="?page={{ shops.paginator.num_pages }}" class="pagination-item">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-store empty-state-icon"></i>
+                <h3>No Shop Details Found</h3>
+                <p>Get started by adding your shop details to generate professional invoices.</p>
+                <a href="{% url 'setting:shop_details_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Shop Details
+                </a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

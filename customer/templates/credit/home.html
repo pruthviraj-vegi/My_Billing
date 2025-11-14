@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    Credit Management
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="heading page-title">Credit Management</h2>
+        <div class="page-actions">
+            <a href="#" id="downloadBtn" class="btn btn-primary">
+                <i class="fas fa-download"></i>
+                Download
+            </a>
+            <a href="{% url 'customer:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                New Customer
+            </a>
+            <a href="{% url 'customer:payment_create' %}" class="btn btn-secondary">
+                <i class="fas fa-credit-card"></i>
+                Add Payment
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="#" class="breadcrumb-item">Credit</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">All Credit Customers</span>
+    </nav>
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <form method="get" class="search-filter-form" id="searchForm">
+            <div class="search-group search-expanded">
+                <i class="fas fa-search search-icon"></i>
+                <div class="search-input-container">
+                    <div class="word-suggestion-container">
+                        <input type="search"
+                               name="search"
+                               class="search-input"
+                               placeholder="Search credit customers by name, phone, email, or address..."
+                               value=""
+                               id="searchInput"
+                               data-url="{% url 'suggestions:customer_all' %}"
+                               autocomplete="off"
+                               autofocus>
+                    </div>
+                    <div class="filter-tags-inline" id="filterTagsInline">
+                        <!-- Filter tags will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+            <select name="status" class="filter-select" id="statusFilter">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+             
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+        </form>
+    </div>
+    
+    <!-- Data Table -->
+    <div class="table-container">
+            <table class="data-table" id="data_table">
+                <thead>
+                    <tr>
+                    <th class="sortable" data-sort="id">ID</th>
+                    <th class="sortable" data-sort="name">Customer</th>
+                    <th class="sortable" data-sort="phone_number">Phone No</th>
+                    <th class="sortable" data-sort="credit_amount">Total Credit</th>
+                    <th class="sortable" data-sort="debit_amount">Total Debit</th>
+                    <th class="sortable" data-sort="balance_amount">Balance</th>
+                    <th>Last Payment</th>
+                    <th class="sortable" data-sort="last_date">Last Invoice</th>
+                    <th>Actions</th>
+                    </tr>
+                    </thead>
+                <tbody id="table_body">
+                    <!-- Empty table body - data will be loaded via AJAX -->
+                    <tr>
+                        <td colspan="9" class="text-center" style="padding: 2rem;">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                Loading credit customers...
+                            </div>
+                            <br><br>
+                            <button type="button" class="btn btn-sm" onclick="window.retryTableLoad()">
+                                <i class="fas fa-refresh"></i>
+                                Retry
+                            </button>
+                        </td>
+                    </tr>
+                    </tbody>
+            </table>
+    </div>
+    
+{% endblock content %}
+
+{% block extra_js %}
+
+    <script>
+        urls = {
+            fetch: '{% url "customer:credit_fetch" %}',
+            suggestions: '{% url "suggestions:customer_all" %}',
+            credit_customers_pdf: '{% url "report:credit_customers_pdf" %}',
+        }
+    </script>
+    <!-- Load dependencies -->
+    <script src="{% static 'js/wordSuggestion.js' %}"></script>
+    <script src="{% static 'js/fetchData.js' %}"></script>
+
+    <script>
+        // Simple, clean initialization - just like Select2!
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize word suggestion on search input - jQuery-like syntax!
+            $('#searchInput').wordSuggestion({
+                url: urls.suggestions,
+                placeholder: 'Type to search customers...',
+                minLength: 2,
+                onSelect: function(suggestion, input) {
+                    // Auto-reload table when suggestion is selected
+                    reloadTable('data_table');
+                }
+            });
+            
+            // Initialize table AJAX on search form - jQuery-like syntax!
+            $('#searchForm').ajax({
+                tableId: 'data_table',
+                url: urls.fetch,
+                placeholder: 'Loading customers...',
+                includeInputs: false
+            });
+
+
+            // Setup download button using fetchData.js helper functions
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    downloadTablePDF('searchForm', 'data_table', urls.credit_customers_pdf);
+                });
+            }
+        });
+    </script>
+    
+{% endblock extra_js %}

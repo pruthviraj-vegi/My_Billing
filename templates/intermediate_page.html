@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    {{ title }}
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="heading page-title">Invoice Created Successfully</h2>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+        $(function () {
+          var invoiceNo = "{{ invoice_no }}";
+      
+          if (invoiceNo !== null && Number.isInteger(parseInt(invoiceNo))) {
+            var generateInvoiceUrl = "{% url 'report:invoice_pdf' 0 %}".replace(
+              "0",
+              invoiceNo
+            );
+            window.open(generateInvoiceUrl, "_blank");
+          }
+      
+          setTimeout(function () {
+            var invoiceDetailsUrl = "{% url 'cart:auto_cart_create' %}"
+            window.location.href = invoiceDetailsUrl;
+          }, 1000);
+        });
+      </script>
+
+{% endblock extra_js %}

@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+  {{ supplier.name }} - Supplier Details
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ supplier.name }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'supplier:home' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back
+      </a>
+      <!-- <a href="{% url 'supplier:report' supplier.pk %}" class="btn btn-info">
+        <i class="fas fa-chart-line"></i>
+        View Report
+      </a> -->
+      <a href="{% url 'supplier:auto_reallocate' supplier.pk %}"
+         class="btn btn-warning"
+         id="autoReallocateBtn"
+         onclick="return confirmAutoReallocate()">
+        <i class="fas fa-sync-alt"></i>
+        Auto Reallocate
+      </a>
+      <a href="{% url 'supplier:edit' supplier.pk %}" class="btn btn-primary">
+        <i class="fas fa-edit"></i>
+        Edit Supplier
+      </a>
+      <a href="{% url 'supplier:delete' supplier.pk %}" class="btn btn-danger">
+        <i class="fas fa-trash"></i>
+        Delete Supplier
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:home' %}" class="breadcrumb-item">Suppliers</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ supplier.name }}</span>
+  </nav>
+  <!-- Main Layout -->
+  <div class="col d-flex flex-row">
+    <!-- Left Column - Supplier Details -->
+    <div class="col-md-2 d-flex flex-column gap-2">
+      <!-- Supplier Details Column -->
+      <div class="column details-column">
+        <div class="column-header">
+          <h3>
+            <i class="fas fa-user"></i> Supplier Details
+          </h3>
+        </div>
+        <div class="details-info-compact">
+          <div class="detail-name-compact">
+            <h4>{{ supplier.name }}</h4>
+            <span class="detail-status  {{ supplier.is_deleted|status_badge }}">{{ supplier.is_deleted|yesno:'Inactive,Active' }}</span>
+          </div>
+          <div class="detail-contact-compact">
+            <div class="contact-item">
+              <i class="fas fa-phone"></i>
+              <span>{{ supplier.phone|phone_number }}</span>
+            </div>
+            {% if supplier.email %}
+              <div class="contact-item">
+                <i class="fas fa-envelope"></i>
+                <span>{{ supplier.email }}</span>
+              </div>
+            {% endif %}
+            {% if supplier.contact_person %}
+              <div class="contact-item">
+                <i class="fas fa-user"></i>
+                <span>{{ supplier.contact_person }}</span>
+              </div>
+            {% endif %}
+            {% if supplier.gstin %}
+              <div class="contact-item">
+                <i class="fas fa-id-card"></i>
+                <span>{{ supplier.gstin }}</span>
+              </div>
+            {% endif %}
+            {% if supplier.address %}
+              <div class="contact-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ supplier.address|truncatechars:50 }}</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <!-- Summary Cards -->
+      <div class="summary-card-compact" id="invoiceSummaryCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-file-invoice"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Invoice Summary</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="invoice_count" data-count="{{ invoices.count }}">0</span>
+              <span class="stat-label-compact">Total</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="invoice_amount" data-count="{{ total_invoice_amount}}">0</span>
+              <span class="stat-label-compact">Amount</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="unpaid_invoice_count" data-count="{{ unpaid_invoices_count }}">0</span>
+              <span class="stat-label-compact">Unpaid</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card-compact" id="paymentSummaryCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-credit-card"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Payment Summary</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="payment_count" data-count="{{ payments.count }}">0</span>
+              <span class="stat-label-compact">Total</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="payment_amount" data-count="{{ total_payment_amount}}">0</span>
+              <span class="stat-label-compact">Amount</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="outstanding_amount" data-count="{{ outstanding_amount}}">0</span>
+              <span class="stat-label-compact">Outstanding</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Right Column - Tables -->
+    <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+      <!-- Hidden minimal forms used by AJAX table loader -->
+      <form id="dummyFormInvoices" method="get" style="display:none"></form>
+      <form id="dummyFormPayments" method="get" style="display:none"></form>
+      <!-- Invoices Table -->
+      <div class="table-section" id="invoicesSection">
+        <div class="table-header">
+          <h3>
+            <i class="fas fa-file-invoice"></i> Invoices
+          </h3>
+          <a href="{% url 'supplier:create_invoice' supplier.pk %}"
+             class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i>
+            Add Invoice
+          </a>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="invoices_table" data-sort="-invoice_date">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="invoice_number">Invoice #</th>
+                <th class="sortable" data-sort="invoice_date">Date</th>
+                <th>Type</th>
+                <th class="sortable" data-sort="sub_total">Sub Total</th>
+                <th>GST</th>
+                <th class="sortable" data-sort="total_amount">Total Amount</th>
+                <th class="sortable" data-sort="status">Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoices_table_body">
+              <tr>
+                <td colspan="8" class="text-center" style="padding: 2rem;">
+                  <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading invoices...
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Payments Table -->
+      <div class="table-section" id="paymentsSection">
+        <div class="table-header">
+          <h3>
+            <i class="fas fa-credit-card"></i> Payments
+          </h3>
+          <a href="{% url 'supplier:create_payment' supplier.pk %}"
+             class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i>
+            Add Payment
+          </a>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="payments_table" data-sort="-payment_date">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="id">Payment #</th>
+                <th class="sortable" data-sort="payment_date">Date</th>
+                <th class="sortable" data-sort="amount">Amount</th>
+                <th class="sortable" data-sort="method">Method</th>
+                <th>Reference</th>
+                <th>Allocated</th>
+                <th class="sortable" data-sort="unallocated_amount">Unallocated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="payments_table_body">
+              <tr>
+                <td colspan="8" class="text-center" style="padding: 2rem;">
+                  <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading payments...
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+{% block extra_js %}
+  <script src="{% static 'js/fetchData.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Summary card click handlers
+      const invoiceSummaryCard = document.getElementById('invoiceSummaryCard')
+      const paymentSummaryCard = document.getElementById('paymentSummaryCard')
+      const invoicesSection = document.getElementById('invoicesSection')
+      const paymentsSection = document.getElementById('paymentsSection')
+    
+      invoiceSummaryCard.addEventListener('click', function () {
+        invoicesSection.scrollIntoView({ behavior: 'smooth' })
+      })
+    
+      paymentSummaryCard.addEventListener('click', function () {
+        paymentsSection.scrollIntoView({ behavior: 'smooth' })
+      })
+      // Initialize AJAX tables
+      const urls = {
+        invoices: '{% url "supplier:fetch_invoices" supplier.pk %}',
+        payments: '{% url "supplier:fetch_payments" supplier.pk %}'
+      }
+
+      // Use the same helper as home page
+      initTableAjax('dummyFormInvoices', 'invoices_table', urls.invoices, { autoLoad: true });
+      initTableSorting('invoices_table');
+
+      initTableAjax('dummyFormPayments', 'payments_table', urls.payments, { autoLoad: true });
+      initTableSorting('payments_table');
+    })
+    
+    function confirmAutoReallocate() {
+      const confirmed = confirm('⚠️ WARNING: This action will:\n\n' + '• Delete ALL existing payment allocations\n' + '• Reapply payments using FIFO method (oldest invoices first)\n' + '• This action cannot be undone\n\n' + 'Are you sure you want to continue?')
+    
+      if (confirmed) {
+        const btn = document.getElementById('autoReallocateBtn')
+        const originalText = btn.innerHTML
+        const originalClass = btn.className
+    
+        // Show loading state
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reallocating...'
+        btn.className = 'btn btn-warning disabled'
+        btn.style.pointerEvents = 'none'
+    
+        // Re-enable after a short delay (in case of errors)
+        setTimeout(() => {
+          btn.innerHTML = originalText
+          btn.className = originalClass
+          btn.style.pointerEvents = 'auto'
+        }, 10000)
+    
+        return true
+      }
+    
+      return false
+    }
+  </script>
+{% endblock extra_js %}

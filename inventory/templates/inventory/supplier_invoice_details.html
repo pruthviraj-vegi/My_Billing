@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    Invoice {{ invoice_number }} Details
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="page-title">Invoice {{ invoice_number }}</h2>
+        <div class="page-actions">
+            <a href="{% url 'inventory:supplier_invoice_tracking' %}"
+               class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Back to Tracking
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="{% url 'inventory:supplier_invoice_tracking' %}"
+           class="breadcrumb-item">Supplier Invoices</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">{{ invoice_number }}</span>
+    </nav>
+    <!-- Main Layout -->
+    <div class="col d-flex flex-row gap-2">
+        <!-- Left Column - Invoice Details and Summary Cards -->
+        <div class="col-md-2 d-flex flex-column gap-2">
+            <!-- Invoice Details Column -->
+            {% if invoice_info %}
+                <div class="column details-column">
+                    <div class="column-header">
+                        <h3>
+                            <i class="fas fa-file-invoice"></i> Invoice Details
+                        </h3>
+                    </div>
+                    <div class="details-info-compact">
+                        <div class="detail-name-compact">
+                            <h4>Invoice {{ invoice_number }}</h4>
+                            <span class="detail-status status-badge status-active">Active</span>
+                        </div>
+                        <div class="detail-contact-compact">
+                            <div class="contact-item">
+                                <i class="fas fa-building"></i>
+                                <span><strong>Supplier:</strong> {{ invoice_info.supplier_invoice__supplier__name }}</span>
+                            </div>
+                            <div class="contact-item">
+                                <i class="fas fa-calendar"></i>
+                                <span><strong>Invoice Date:</strong> {{ invoice_info.supplier_invoice__invoice_date|date:"M d, Y" }}</span>
+                            </div>
+                            <div class="contact-item">
+                                <i class="fas fa-boxes"></i>
+                                <span><strong>Total Products:</strong> {{ products_in_invoice|length }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            <!-- Summary Cards -->
+            <div class="summary-cards-compact">
+                <div class="summary-card-compact" id="stockSummaryCard">
+                    <div class="summary-icon-compact">
+                        <i class="fas fa-cubes"></i>
+                    </div>
+                    <div class="summary-content-compact">
+                        <h4>Stock Summary</h4>
+                        <div class="summary-stats-compact">
+                            <div class="stat-item-compact">
+                                <span class="stat-number-compact">{{ total_stock_in|floatformat:0 }}</span>
+                                <span class="stat-label-compact">Stock In</span>
+                            </div>
+                            <div class="stat-item-compact">
+                                <span class="stat-number-compact">{{ total_sales|floatformat:0 }}</span>
+                                <span class="stat-label-compact">Sales</span>
+                            </div>
+                            <div class="stat-item-compact">
+                                <span class="stat-number-compact">{{ total_remaining|floatformat:0 }}</span>
+                                <span class="stat-label-compact">Remaining</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="summary-card-compact" id="statusSummaryCard">
+                    <div class="summary-icon-compact">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div class="summary-content-compact">
+                        <h4>Status Summary</h4>
+                        <div class="summary-stats-compact">
+                            {% with in_stock=0 sold_out=0 low_stock=0 %}
+                                {% for product in products_in_invoice %}
+                                    {% if product.remaining_quantity > 5 %}
+                                        {% with in_stock=in_stock|add:1 %}{% endwith %}
+                                    {% elif product.remaining_quantity > 0 %}
+                                        {% with low_stock=low_stock|add:1 %}{% endwith %}
+                                    {% else %}
+                                        {% with sold_out=sold_out|add:1 %}{% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                                <div class="stat-item-compact">
+                                    <span class="stat-number-compact">{{ in_stock }}</span>
+                                    <span class="stat-label-compact">In Stock</span>
+                                </div>
+                                <div class="stat-item-compact">
+                                    <span class="stat-number-compact">{{ low_stock }}</span>
+                                    <span class="stat-label-compact">Low Stock</span>
+                                </div>
+                                <div class="stat-item-compact">
+                                    <span class="stat-number-compact">{{ sold_out }}</span>
+                                    <span class="stat-label-compact">Sold Out</span>
+                                </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Right Column - Products Table -->
+        <div class="col-md-10 d-flex flex-column gap-2">
+            <!-- Products in Invoice Table -->
+            <div class="table-section" id="productsSection">
+                <div class="table-header">
+                    <h3>
+                        <i class="fas fa-list"></i> Products in Invoice ({{ products_in_invoice|length }})
+                    </h3>
+                </div>
+                <!-- Search and Filter Section -->
+                <div class="search-filter-section">
+                    <form method="get" class="search-filter-form" id="searchForm">
+                        <div class="search-group search-expanded">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="search"
+                                   name="search"
+                                   class="search-input"
+                                   placeholder="Search products in invoice..."
+                                   value="{{ search_query }}"
+                                   id="searchInput"
+                                   autofocus>
+                        </div>
+                        <select name="status" class="filter-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="in_stock"
+                                    {% if status_filter == 'in_stock' %}selected{% endif %}>In Stock</option>
+                            <option value="sold_out"
+                                    {% if status_filter == 'sold_out' %}selected{% endif %}>Sold Out</option>
+                            <option value="low_stock"
+                                    {% if status_filter == 'low_stock' %}selected{% endif %}>Low Stock</option>
+                        </select>
+                        <select name="sort" class="filter-select" id="sortSelect">
+                            <option value="-stock_in_quantity"
+                                    {% if sort_by == '-stock_in_quantity' %}selected{% endif %}>
+                                Stock In High-Low
+                            </option>
+                            <option value="stock_in_quantity"
+                                    {% if sort_by == 'stock_in_quantity' %}selected{% endif %}>
+                                Stock In Low-High
+                            </option>
+                            <option value="-sales_quantity"
+                                    {% if sort_by == '-sales_quantity' %}selected{% endif %}>Sales High-Low</option>
+                            <option value="sales_quantity"
+                                    {% if sort_by == 'sales_quantity' %}selected{% endif %}>Sales Low-High</option>
+                            <option value="brand" {% if sort_by == 'brand' %}selected{% endif %}>Brand A-Z</option>
+                            <option value="-brand" {% if sort_by == '-brand' %}selected{% endif %}>Brand Z-A</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                            Search
+                        </button>
+                    </form>
+                </div>
+                {% if products_in_invoice %}
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Size</th>
+                                    <th>Color</th>
+                                    <th>Barcode</th>
+                                    <th>Stock In</th>
+                                    <th>Sales</th>
+                                    <th>Remaining</th>
+                                    <th>Purchase Price</th>
+                                    <th>Stock Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products_in_invoice %}
+                                    <tr>
+                                        <td>
+                                            <div class="product-info">
+                                                <div class="product-brand">{{ product.variant__product__brand }}</div>
+                                                {% if product.variant__product__name %}
+                                                    <small class="text-muted">{{ product.variant__product__name }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if product.variant__size__name %}
+                                                <span class="badge badge-secondary">{{ product.variant__size__name }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if product.variant__color__name %}
+                                                <div class="color-display">
+                                                    <div class="color-swatch"></div>
+                                                    <span>{{ product.variant__color__name }}</span>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <code>{{ product.variant__barcode }}</code>
+                                        </td>
+                                        <td>
+                                            <strong>{{ product.stock_in_quantity|floatformat:0 }}</strong>
+                                        </td>
+                                        <td>{{ product.sales_quantity|floatformat:0 }}
+                                        </td>
+                                        <td>
+                                            {{ product.remaining_quantity|floatformat:0 }}
+                                        </td>
+                                        <td>{{ product.purchase_price|currency }}</td>
+                                        <td>
+                                            {% if product.remaining_quantity > 5 %}
+                                                <span class="status-badge status-active">In Stock</span>
+                                            {% elif product.remaining_quantity > 0 %}
+                                                <span class="status-badge status-warning">Low Stock</span>
+                                            {% else %}
+                                                <span class="status-badge status-danger">Sold Out</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="{% url 'inventory_variant:details' product.variant__id %}"
+                                                   class="btn-action btn-view"
+                                                   title="View Product Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-boxes"></i>
+                        <h4>No Products Found</h4>
+                        <p>No products found in this invoice. Try adjusting your search criteria.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+{% block extra_js %}
+    <script>
+    // Search and filter functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const sortSelect = document.getElementById('sortSelect');
+        const searchForm = document.getElementById('searchForm');
+        
+        // Auto-submit form on filter change
+        statusFilter.addEventListener('change', function() {
+            searchForm.submit();
+        });
+        
+        sortSelect.addEventListener('change', function() {
+            searchForm.submit();
+        });
+        
+        // Debounced search
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                searchForm.submit();
+            }, 500);
+        });
+
+        // Summary card click handlers
+        const stockSummaryCard = document.getElementById('stockSummaryCard');
+        const statusSummaryCard = document.getElementById('statusSummaryCard');
+        const productsSection = document.getElementById('productsSection');
+        
+        stockSummaryCard.addEventListener('click', function() {
+            productsSection.scrollIntoView({ behavior: 'smooth' });
+        });
+        
+        statusSummaryCard.addEventListener('click', function() {
+            productsSection.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+    </script>
+{% endblock extra_js %}
+

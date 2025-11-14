@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    Product Variants Management
+{% endblock title %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="heading page-title">Product Variants Management</h2>
+        <div class="page-actions">
+            <a href="#" id="downloadBtn" class="btn btn-primary">
+                <i class="fas fa-download"></i>
+                Download
+            </a>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Products</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">All Variants</span>
+    </nav>
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <form method="get" class="search-filter-form" id="searchForm">
+            <div class="search-group search-expanded">
+                <i class="fas fa-search search-icon"></i>
+                <div class="search-input-container">
+                    <input type="search"
+                           name="search"
+                           class="search-input"
+                           placeholder="Search by Variant name, brand, barcode, or description..."
+                           value=""
+                           id="searchInput"
+                           autocomplete="off"
+                           autofocus>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary" id="toggleFiltersBtn">
+                <i class="fas fa-filter"></i>
+                Filters
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+            
+            <!-- Hidden Filters Row (inside form for filter-tags.js to work) -->
+            <div class="filters-row" id="filtersRow" style="display: none;">
+                <div class="filters-container">
+                    <select name="category" class="filter-select" id="categoryFilter">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}">
+                                {{ category.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <select name="color" class="filter-select" id="colorFilter">
+                        <option value="">All Colors</option>
+                        {% for color in colors %}
+                            <option value="{{ color.id }}">
+                                {{ color.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <select name="size" class="filter-select" id="sizeFilter">
+                        <option value="">All Sizes</option>
+                        {% for size in sizes %}
+                            <option value="{{ size.id }}">
+                                {{ size.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <select name="status" class="filter-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}">
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <select name="stock" class="filter-select" id="stockFilter">
+                        <option value="">All Stock</option>
+                        <option value="in_stock">In Stock</option>
+                        <option value="out_of_stock">Out of Stock</option>
+                        <option value="low_stock">Low Stock</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+    <!-- Data Table -->
+    <div class="table-container">
+            <table class="data-table" id="data_table">
+                <thead>
+                    <tr>
+                    <th class="sortable" data-sort="id">ID</th>
+                    <th class="sortable" data-sort="barcode">Barcode</th>
+                    <th class="sortable" data-sort="product__brand">Brand</th>
+                    <th class="sortable" data-sort="product__name">Product Name</th>
+                    <th>Size/Color</th>
+                    <th class="sortable" data-sort="quantity">Quantity</th>
+                    <th class="sortable" data-sort="mrp">MRP</th>
+                    <th>Discount</th>
+                    <th>Final Price</th>
+                    <th class="sortable" data-sort="status">Status</th>
+                    <th class="sortable" data-sort="created_at">Date</th>
+                    <th>Actions</th>
+                    </tr>
+                    </thead>
+                <tbody id="table_body">
+                    <!-- Empty table body - data will be loaded via AJAX -->
+                    <tr>
+                        <td colspan="12" class="text-center" style="padding: 2rem;">
+                            <i class="fas fa-spinner fa-spin" style="color: var(--primary); margin-right: 0.5rem;"></i>
+                            Loading variants...
+                            <br><br>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.retryTableLoad()">
+                                <i class="fas fa-refresh"></i>
+                                Retry
+                            </button>
+                                </td>
+                            </tr>
+                    </tbody>
+                    <tfoot id="table_footer">
+                        <!-- Pagination will be loaded here via AJAX -->
+                    </tfoot>
+            </table>
+    </div>
+    
+{% endblock content %}
+
+{% block extra_js %}
+
+    <script>
+        urls = {
+            fetch: '{% url "inventory_variant:fetch" %}',
+            suggestions: '{% url "suggestions:product_variant_all" %}',
+            variants_pdf: '{% url "report:variants_pdf" %}',
+        }
+    </script>
+    
+    <!-- Toggle Filters Functionality -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('toggleFiltersBtn');
+            const filtersRow = document.getElementById('filtersRow');
+            
+            toggleBtn.addEventListener('click', function() {
+                if (filtersRow.style.display === 'none') {
+                    filtersRow.style.display = 'block';
+                    toggleBtn.innerHTML = '<i class="fas fa-filter"></i> Hide Filters';
+                    toggleBtn.classList.add('active');
+                } else {
+                    filtersRow.style.display = 'none';
+                    toggleBtn.innerHTML = '<i class="fas fa-filter"></i> Filters';
+                    toggleBtn.classList.remove('active');
+                }
+            });
+        });
+    </script>
+
+    <!-- Load dependencies -->
+    <script src="{% static 'js/wordSuggestion.js' %}"></script>
+    <script src="{% static 'js/fetchData.js' %}"></script>
+    
+    <script>
+        // Simple, clean initialization - just like Select2!
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize word suggestion on search input - jQuery-like syntax!
+            $('#searchInput').wordSuggestion({
+                url: urls.suggestions,
+                placeholder: 'Type to search variants...',
+                minLength: 2,
+                onSelect: function(suggestion, input) {
+                    // Auto-reload table when suggestion is selected
+                    reloadTable('data_table');
+                }
+            });
+            
+            // Initialize table AJAX on search form - jQuery-like syntax!
+            $('#searchForm').ajax({
+                tableId: 'data_table',
+                url: urls.fetch,
+                placeholder: 'Loading variants...',
+                includeInputs: false
+            });
+
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    downloadTablePDF('searchForm', 'data_table', urls.variants_pdf);
+                });
+            }
+        });
+    </script>
+            
+    
+{% endblock extra_js %}

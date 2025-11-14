@@ -1,0 +1,146 @@
+<nav class="navbar">
+  <button class="mobile-menu-toggle" id="mobileMenuToggle">
+    <i class="fas fa-bars"></i>
+  </button>
+  <ul class="nav-menu" id="navMenu">
+    <li class="nav-item">
+      <a href="{% url 'base:home' %}"
+         class="nav-link {% if request.resolver_match.namespace == 'base' and request.resolver_match.url_name == 'home' %}active{% endif %}">
+        <i class="fas fa-tachometer-alt"></i>
+        <span>Dashboard</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'cart:main_page' %}"
+         class="nav-link {% if 'cart' in request.resolver_match.namespace %}active{% endif %}">
+        <i class="fas fa-shopping-cart"></i>
+        <span>Carts</span>
+      </a>
+      <div class="dropdown-menu">
+        <a href="{% url 'cart:main_page' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'main_page' %}active{% endif %}">View Carts</a>
+         <a href="{% url 'cart:create_cart' %}"
+            class="dropdown-item {% if request.resolver_match.url_name == 'create_cart' %}active{% endif %}">Create Cart</a>
+        <a href="{% url 'cart:auto_cart_create' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'auto_cart_create' %}active{% endif %}">Auto Create Cart</a>
+        <a href="#" class="dropdown-item">Payment History</a>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="#"
+         class="nav-link {% if 'invoice' in request.resolver_match.namespace %}active{% endif %}">
+        <i class="fas fa-file-invoice-dollar"></i>
+        <span>Invoices</span>
+      </a>
+      <div class="dropdown-menu">
+        <a href="{% url 'invoice:dashboard' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'invoice:home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">All Invoices</a>
+         <div class="dropdown-divider"></div>
+         <a href="{% url 'invoice:audit_home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'invoices_audit' %}active{% endif %}">Invoices Audit</a>
+         <div class="dropdown-divider"></div>
+         <a href="{% url 'invoice:return_home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'return_home' %}active{% endif %}">Return Invoices</a>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'inventory:dashboard' %}"
+         class="nav-link {% if 'inventory' in request.resolver_match.namespace %}active{% endif %}">
+        <i class="fas fa-boxes"></i>
+        <span>Inventory</span>
+      </a>
+      <div class="dropdown-menu">
+        <a href="{% url 'inventory:dashboard' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'inventory_products:home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'product_home' %}active{% endif %}">All Products</a>
+        <a href="{% url 'inventory_variant:home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'variant_home' %}active{% endif %}">All Variants</a>
+        <a href="{% url 'inventory:supplier_invoice_tracking' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'supplier_invoice_tracking' %}active{% endif %}">Supplier Invoices</a>
+        <a href="{% url 'inventory:low_stock' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'low_stock' %}active{% endif %}">Low Stock</a>
+        <div class="dropdown-divider"></div>
+        <a href="{% url 'inventory:category_home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'category_home' %}active{% endif %}">Categories</a>
+        {% comment %} <a href="{% url 'inventory:color_home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'color_home' %}active{% endif %}">Colors</a> {% endcomment %}
+        <a href="{% url 'inventory:size_home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'size_home' %}active{% endif %}">Sizes</a>
+        {% comment %} <a href="{% url 'inventory:cloth_home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'cloth_home' %}active{% endif %}">Cloth Types</a> {% endcomment %}
+        <a href="{% url 'inventory:uom_home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'uom_home' %}active{% endif %}">UOMs</a>
+        <a href="{% url 'inventory:gst_hsn_home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'gst_hsn_home' %}active{% endif %}">GST HSN Codes</a>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'customer:home' %}"
+         class="nav-link {% if 'customer' in request.resolver_match.namespace %}active{% endif %}">
+        <i class="fas fa-users"></i>
+        <span>Customers</span>
+      </a>
+      <div class="dropdown-menu">
+        <a href="{% url 'customer:dashboard' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'customer:home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Customer List</a>
+        <a href="{% url 'customer:create' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add Customer</a>
+        <a href="{% url "customer:credit_home"%}" class="dropdown-item">Credits</a>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'supplier:home' %}"
+         class="nav-link {% if 'supplier' in request.resolver_match.namespace %}active{% endif %}">
+        <i class="fas fa-truck"></i>
+        <span>Suppliers</span>
+      </a>
+      <div class="dropdown-menu">
+        <a href="{% url 'supplier:dashboard' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'supplier:home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Supplier List</a>
+        <a href="{% url 'supplier:create' %}"
+        class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add Supplier</a>
+        {% comment %} <a href="#" class="dropdown-item">Purchase Orders</a> {% endcomment %}
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'user:home' %}"
+         class="nav-link {% if 'user' in request.resolver_match.namespace %}active{% endif %}">
+        <i class="fas fa-users-cog"></i>
+        <span>Users</span>
+      </a>
+      <div class="dropdown-menu">
+        <a href="{% url 'user:home' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">All Users</a>
+        <a href="{% url 'user:create' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add User</a>
+        <a href="{% url 'user:sessions' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'sessions' %}active{% endif %}">Sessions</a>
+        <a href="{% url 'user:logins' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'logins' %}active{% endif %}">Login Activity</a>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a href="#" class="nav-link">
+        <i class="fas fa-cog"></i>
+        <span>Settings</span>
+      </a>
+      <div class="dropdown-menu">
+        <a href="{% url 'setting:shop_settings_dashboard' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'shop_settings_dashboard' %}active{% endif %}">Settings Dashboard</a>
+        <a href="{% url 'setting:shop_details_list' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'shop_details_list' %}active{% endif %}">Shop Details</a>
+        <a href="{% url 'setting:report_config_list' %}"
+           class="dropdown-item {% if request.resolver_match.url_name == 'report_config_list' %}active{% endif %}">Report Configs</a>
+        {% comment %} <a href="#" class="dropdown-item">General Settings</a>
+        <a href="#" class="dropdown-item">System Preferences</a> {% endcomment %}
+      </div>
+    </li>
+  </ul>
+</nav>

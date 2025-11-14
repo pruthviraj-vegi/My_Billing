@@ -1,0 +1,227 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description"
+          content="Billing System for managing invoices, payments, and clients." />
+    <meta name="keywords"
+          content="billing, invoices, payments, clients, management, system" />
+    <title>
+      {% block title %}
+        Billing System
+      {% endblock title %}
+    </title>
+    <!-- Resource Hints for Performance (offline-friendly) -->
+    <link rel="dns-prefetch" href="//localhost:8000">
+    <link rel="shortcut icon"
+          type="image/ico"
+          href="{% static 'images/favicon.ico' %}" />
+    <!-- Local fonts only; no external font preloads for offline mode -->
+    <!-- Critical CSS (load synchronously) -->
+    <link rel="stylesheet"
+          href="{% static 'assets/plugins/bootstrap/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+    
+    <!-- Select2 CSS - Load early for forms (local) -->
+    <link rel="stylesheet"
+          href="{% static 'assets/plugins/select2/css/select2.min.css' %}" />
+    <link rel="stylesheet" 
+          href="{% static 'assets/plugins/select2/css/selectTheme.css' %}" />
+    
+    <!-- Non-critical CSS (load with JavaScript) -->
+    <script>
+      // Load non-critical CSS asynchronously
+      function loadCSS(href) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        link.media = 'all';
+        document.head.appendChild(link);
+      }
+      
+      // Load CSS after page load (ensure local Font Awesome loaded if not already)
+      window.addEventListener('load', function() {
+        const hasFA = !!document.querySelector('link[href*="fontawesom.min.css"]');
+        if (!hasFA) {
+          loadCSS('{% static "assets/plugins/fontawesome/css/fontawesom.min.css" %}');
+        }
+      });
+    </script>
+    
+    <!-- Fallback for critical icons -->
+    <style>
+      /* Minimal icon fallbacks */
+      .fas, .far, .fab { 
+        font-family: 'Font Awesome 5 Free', 'Font Awesome 5 Brands', sans-serif; 
+        font-weight: 900;
+      }
+      .fa-bell:before { content: "🔔"; }
+      .fa-moon:before { content: "🌙"; }
+      .fa-sign-out-alt:before { content: "🚪"; }
+      .fa-tachometer-alt:before { content: "📊"; }
+    </style>
+    {% block extra_css %}
+    {% endblock extra_css %}
+  </head>
+  <body>
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <a href="{% url 'admin:index' %}" class="logo">
+          <img src="{% static 'images/logo.svg' %}"
+               height="30"
+               width="30"
+               alt="Logo"
+               loading="eager"
+               fetchpriority="high"
+               onerror="this.style.display='none'" />
+          <span>Billing System</span>
+        </a>
+      </div>
+      <div class="topbar-right">
+        <button class="top-bar-btn notification-btn" id="notificationBtn">
+          <i class="fas fa-bell"></i>
+          <span class="notification-badge">3</span>
+        </button>
+        <button class="top-bar-btn theme-toggle" id="themeToggle">
+          <i class="fas fa-moon"></i>
+        </button>
+        <a href="{% url 'base:logout' %}" class="top-bar-btn logout-btn">
+          <i class="fas fa-sign-out-alt"></i>
+          <span class="hidden sm:inline"></span>
+        </a>
+      </div>
+    </header>
+    <!-- Navigation Bar -->
+    {% include "navbar.html" %}
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+    <!-- Main Content -->
+    <main class="main-content">
+      {% block content %}<!-- Content will be injected here -->{% endblock %}
+    </main>
+    <!-- Critical JavaScript (load synchronously) -->
+    <script src="{% static 'assets/js/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'assets/plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    
+    <!-- Critical UI functionality (load early) -->
+    <script>
+      // Critical UI functions that need to work immediately
+      function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          notification.classList.add('show');
+        }, 100);
+
+        setTimeout(() => {
+          notification.classList.remove('show');
+          setTimeout(() => {
+            notification.remove();
+          }, 300);
+        }, 3000);
+      }
+
+      // Theme toggle functionality
+      document.addEventListener('DOMContentLoaded', function() {
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+
+        if (themeToggle) {
+          // Check for saved theme preference or default to 'light'
+          const currentTheme = localStorage.getItem('theme') || 'light';
+          body.setAttribute('data-theme', currentTheme);
+          updateThemeIcon(currentTheme);
+
+          themeToggle.addEventListener('click', () => {
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+          });
+
+          function updateThemeIcon(theme) {
+            const icon = themeToggle.querySelector('i');
+            if (icon) {
+              if (theme === 'dark') {
+                icon.className = 'fas fa-sun';
+              } else {
+                icon.className = 'fas fa-moon';
+              }
+            }
+          }
+        }
+
+        // Notification functionality
+        const notificationBtn = document.getElementById('notificationBtn');
+        if (notificationBtn) {
+          notificationBtn.addEventListener('click', () => {
+            showNotification('Notifications feature coming soon!', 'info');
+            
+            const badge = notificationBtn.querySelector('.notification-badge');
+            if (badge) {
+              const currentCount = parseInt(badge.textContent) || 0;
+              if (currentCount > 0) {
+                badge.textContent = currentCount - 1;
+                if (currentCount - 1 === 0) {
+                  badge.style.display = 'none';
+                }
+              }
+            }
+          });
+        }
+
+        // Performance toggle functionality
+        const perfToggle = document.getElementById('performanceToggle');
+        if (perfToggle) {
+          perfToggle.addEventListener('click', function() {
+            if (window.togglePerformanceDashboard) {
+              window.togglePerformanceDashboard();
+            }
+          });
+        }
+      });
+    </script>
+    
+    <!-- Form Submit Guard - Prevents duplicate form submissions -->
+    <script src="{% static 'js/form-submit-guard.js' %}"></script>
+    
+    <!-- Select2 - Load early for forms -->
+    <script src="{% static 'assets/plugins/select2/js/select2.min.js' %}" defer></script>
+    <script src="{% static 'js/select2-init.js' %}" defer></script>
+    <script src="{% static 'js/counting.js' %}"></script>
+    
+    <!-- Non-critical JavaScript (load after page load) -->
+    <script>
+      // Load non-critical JavaScript after page load
+      window.addEventListener('load', function() {
+        // Load Chart.js
+        const chartScript = document.createElement('script');
+        chartScript.src = '{% static "assets/plugins/chart/chart-4.5.js" %}';
+        document.head.appendChild(chartScript);
+        
+        // Load remaining main.js functionality
+        const mainScript = document.createElement('script');
+        mainScript.src = '{% static "js/main.js" %}';
+        document.head.appendChild(mainScript);
+      });
+    </script>
+    
+    <!-- Performance Analyzer (load async) -->
+    {% comment %} <script src="{% static 'js/performance-analyzer.js' %}" async></script> {% endcomment %}
+    {% block extra_js %}
+    {% endblock extra_js %}
+    
+    {% if messages %}
+      {% for message in messages %}<script>showNotification('{{message}}', '{{message.tags}}')</script>{% endfor %}
+    {% endif %}
+  </body>
+</html>

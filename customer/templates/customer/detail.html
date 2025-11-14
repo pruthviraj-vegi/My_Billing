@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+  {{ customer.name }} - Member Details
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ customer.name }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'customer:home' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back
+      </a>
+      <a href="{% url 'customer:edit' customer.id %}" class="btn btn-primary">
+        <i class="fas fa-edit"></i>
+        Edit Member
+      </a>
+      <a href="{% url 'customer:credit_detail' customer.id %}" class="btn btn-info">
+        <i class="fas fa-credit-card"></i>
+        Credit Ledger
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'customer:home' %}" class="breadcrumb-item">Member Management</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ customer.name }}</span>
+  </nav>
+  <!-- Main Layout -->
+  <div class="col d-flex flex-row">
+    <!-- Left Column - Customer Details and Summary -->
+    <div class="col-md-2 d-flex flex-column gap-2">
+      <!-- Customer Details Column -->
+      <div class="column details-column">
+        <div class="column-header">
+          <h3>
+            <i class="fas fa-user"></i> Customer Details
+          </h3>
+        </div>
+        <div class="details-info-compact">
+          <div class="detail-name-compact">
+            <h4>{{ customer.name }}</h4>
+            <span class="detail-status {% if not customer.is_deleted %}status-active{% else %}status-inactive{% endif %}">
+              {% if customer.is_deleted %}Inactive{% else %}Active{% endif %}
+            </span>
+          </div>
+          <div class="detail-contact-compact">
+            <div class="contact-item">
+              <i class="fas fa-phone"></i>
+              <span>{{ customer.phone_number|phone_number }}</span>
+            </div>
+            {% if customer.email %}
+              <div class="contact-item">
+                <i class="fas fa-envelope"></i>
+                <span>{{ customer.email }}</span>
+              </div>
+            {% endif %}
+            {% if customer.address %}
+              <div class="contact-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ customer.address|truncatechars:50 }}</span>
+              </div>
+            {% endif %}
+            <div class="contact-item">
+              <i class="fas fa-calendar"></i>
+              <span>{{ customer.created_at|date:"M d, Y" }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Summary Cards -->
+      <div class="summary-card-compact" id="invoiceSummaryCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-file-invoice"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Invoice Summary</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="invoice_count" data-count="{{ total_invoices|default:0 }}">0</span>
+              <span class="stat-label-compact">Total Bills</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="invoice_amount" data-count="{{ invoices_amount|default:0 }}">0</span>
+              <span class="stat-label-compact">Total Amount</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Amount Summary Card -->
+      <div class="summary-card-compact" id="amountSummaryCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-calculator"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Amount Breakdown</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="cash_amount" data-count="{{ cash_amount|default:0 }}">0</span>
+              <span class="stat-label-compact">Cash</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="credit_amount" data-count="{{ credit_amount|default:0 }}">0</span>
+              <span class="stat-label-compact">Credit</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" id="total_amount" data-count="{{ invoices_amount|default:0 }}">0</span>
+              <span class="stat-label-compact">Total</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Right Column - Tables -->
+    <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+      <!-- Hidden minimal forms used by AJAX table loader -->
+      <form id="dummyFormInvoices" method="get" style="display:none"></form>
+      <!-- Invoices Table -->
+      <div class="table-section" id="invoicesSection">
+        <div class="table-header">
+          <h3>
+            <i class="fas fa-file-invoice"></i> Invoices
+          </h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="invoices_table" data-sort="-invoice_date">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="invoice_number">Invoice #</th>
+                <th class="sortable" data-sort="invoice_date">Date</th>
+                <th>Type</th>
+                <th class="sortable" data-sort="amount">Sub Total</th>
+                <th class="sortable" data-sort="total_payable">Total Amount</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoices_table_body">
+              <tr>
+                <td colspan="6" class="text-center" style="padding: 2rem;">
+                  <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading invoices...
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+{% block extra_js %}
+  <script src="{% static 'js/fetchData.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Summary card click handlers
+      const invoiceSummaryCard = document.getElementById('invoiceSummaryCard')
+      const amountSummaryCard = document.getElementById('amountSummaryCard')
+      const invoicesSection = document.getElementById('invoicesSection')
+    
+      invoiceSummaryCard.addEventListener('click', function () {
+        invoicesSection.scrollIntoView({ behavior: 'smooth' })
+      })
+    
+      amountSummaryCard.addEventListener('click', function () {
+        invoicesSection.scrollIntoView({ behavior: 'smooth' })
+      })
+      // Initialize AJAX tables
+      const urls = {
+        invoices: '{% url "customer:fetch_invoices" customer.id %}'
+      }
+
+      // Use the same helper as supplier page
+      initTableAjax('dummyFormInvoices', 'invoices_table', urls.invoices, { autoLoad: true });
+      initTableSorting('invoices_table');
+    })
+  </script>
+{% endblock extra_js %}

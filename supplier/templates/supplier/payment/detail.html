@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+  Payment #{{ payment.id }} - {{ supplier.name }}
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">Payment #{{ payment.id }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'supplier:detail' supplier.pk %}"
+         class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back to Supplier
+      </a>
+      <a href="{% url 'supplier:edit_payment' supplier.pk payment.pk %}"
+         class="btn btn-primary">
+        <i class="fas fa-edit"></i>
+        Edit Payment
+      </a>
+      <a href="{% url 'supplier:delete_payment' supplier.pk payment.pk %}"
+         class="btn btn-danger">
+        <i class="fas fa-trash"></i>
+        Delete Payment
+      </a>
+      <a href="#"
+         class="btn btn-info">
+        <i class="fas fa-download"></i>
+        Download Receipt
+      </a>
+      {% if payment.unallocated_amount > 0 %}
+        <a href="{% url 'supplier:create_allocation' supplier.pk payment.pk %}"
+           class="btn btn-success">
+          <i class="fas fa-link"></i>
+          Allocate Payment
+        </a>
+      {% endif %}
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:home' %}" class="breadcrumb-item">Suppliers</a>
+    <span class="breadcrumb-separator">/</span>
+    <a href="{% url 'supplier:detail' supplier.pk %}"
+       class="breadcrumb-item">{{ supplier.name }}</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">Payment #{{ payment.id }}</span>
+  </nav>
+  <!-- Payment Details -->
+  <div class="payment-details">
+    <div class="detail-card">
+      <div class="detail-header">
+        <h3>Payment Information</h3>
+        <div class="payment-status">
+          {% if payment.unallocated_amount > 0 %}
+            <span class="status-badge status-warning">
+              <i class="fas fa-clock"></i>
+              Partially Allocated
+            </span>
+          {% else %}
+            <span class="status-badge status-active">
+              <i class="fas fa-check-circle"></i>
+              Fully Allocated
+            </span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="detail-content">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-label">Payment Amount</div>
+            <div class="detail-value amount-value">{{ payment.amount|currency }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Payment Method</div>
+            <div class="detail-value">
+              <span class="badge badge-info">{{ payment.get_method_display }}</span>
+            </div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Payment Date</div>
+            <div class="detail-value">{{ payment.payment_date|date:'F j, Y g:i A' }}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Transaction ID</div>
+            <div class="detail-value">
+              {% if payment.transaction_id %}
+                {{ payment.transaction_id }}
+              {% else %}
+                <span class="text-muted">Not provided</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Allocated Amount</div>
+            <div class="detail-value">
+              {% if payment.amount != payment.unallocated_amount %}
+                <span class="text-success">{{ payment.amount|sub:payment.unallocated_amount|currency }}</span>
+              {% else %}
+                <span class="text-muted">₹0.00</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Unallocated Amount</div>
+            <div class="detail-value">
+              {% if payment.unallocated_amount > 0 %}
+                <span class="text-warning">{{ payment.unallocated_amount|currency }}</span>
+              {% else %}
+                <span class="text-success">₹0.00</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Supplier Information -->
+    <div class="supplier-info-card">
+      <h4>Supplier Information</h4>
+      <div class="supplier-details">
+        <div class="supplier-name">
+          <strong>{{ supplier.name }}</strong>
+        </div>
+        <div class="supplier-contact">
+          {% if supplier.contact_person %}
+            <p>
+              <i class="fas fa-user"></i> {{ supplier.contact_person }}
+            </p>
+          {% endif %}
+          <p>
+            <i class="fas fa-phone"></i> {{ supplier.phone }}
+          </p>
+          {% if supplier.email %}
+            <p>
+              <i class="fas fa-envelope"></i> {{ supplier.email }}
+            </p>
+          {% endif %}
+          {% if supplier.gstin %}
+            <p>
+              <i class="fas fa-id-card"></i> {{ supplier.gstin }}
+            </p>
+          {% endif %}
+          {% if supplier.address %}
+            <p>
+              <i class="fas fa-map-marker-alt"></i> {{ supplier.address }}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <!-- Payment Allocations -->
+    {% if allocations %}
+      <div class="allocations-section">
+        <h4>Payment Allocations</h4>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Invoice Date</th>
+                <th>Invoice Amount</th>
+                <th>Allocated Amount</th>
+                <th>Remaining Balance</th>
+                <th>Allocation Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for allocation in allocations %}
+                <tr>
+                  <td>
+                    <div class="invoice-number">
+                      <strong>{{ allocation.invoice.invoice_number }}</strong>
+                    </div>
+                  </td>
+                  <td>{{ allocation.invoice.invoice_date|date:'M j, Y' }}</td>
+                  <td>{{ allocation.invoice.total_amount|currency }}</td>
+                  <td>
+                    <span class="text-success">{{ allocation.amount_allocated|currency }}</span>
+                  </td>
+                  <td>
+                    {% with remaining=allocation.invoice.total_amount|sub:allocation.invoice.paid_amount %}
+                      {% if remaining > 0 %}
+                        <span class="text-warning">{{ remaining|currency }}</span>
+                      {% else %}
+                        <span class="text-success">₹0.00</span>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                  <td>{{ allocation.allocated_at|date:'M j, Y' }}</td>
+                  <td>
+                    <div class="action-buttons">
+                      <a href="{% url 'supplier:edit_allocation' supplier.pk payment.pk allocation.pk %}"
+                         class="btn-action btn-edit"
+                         title="Edit Allocation"><i class="fas fa-edit"></i></a>
+                      <a href="{% url 'supplier:delete_allocation' supplier.pk payment.pk allocation.pk %}"
+                         class="btn-action btn-delete"
+                         title="Delete Allocation"><i class="fas fa-trash"></i></a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-link"></i>
+        <h4>No Allocations Found</h4>
+        <p>This payment has not been allocated to any invoices yet.</p>
+      </div>
+    {% endif %}
+    <!-- System Information -->
+    <div class="system-info">
+      <h4>System Information</h4>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Created By</div>
+          <div class="detail-value">
+            {% if payment.created_by %}
+              {{ payment.created_by.full_name }}
+            {% else %}
+              <span class="text-muted">System</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Created At</div>
+          <div class="detail-value">{{ payment.created_at|date:'F j, Y g:i A' }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Last Updated</div>
+          <div class="detail-value">{{ payment.updated_at|date:'F j, Y g:i A' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
