@@ -23,13 +23,13 @@
     <link rel="stylesheet"
           href="{% static 'assets/plugins/bootstrap/css/bootstrap.min.css' %}" />
     <link rel="stylesheet" href="{% static 'css/main.css' %}" />
-    
     <!-- Select2 CSS - Load early for forms (local) -->
     <link rel="stylesheet"
           href="{% static 'assets/plugins/select2/css/select2.min.css' %}" />
-    <link rel="stylesheet" 
+    <link rel="stylesheet"
           href="{% static 'assets/plugins/select2/css/selectTheme.css' %}" />
-    
+    <!-- Datelite DatePicker CSS -->
+    <link rel="stylesheet" href="{% static 'assets/plugins/datelite.css' %}" />
     <!-- Non-critical CSS (load with JavaScript) -->
     <script>
       // Load non-critical CSS asynchronously
@@ -49,7 +49,6 @@
         }
       });
     </script>
-    
     <!-- Fallback for critical icons -->
     <style>
       /* Minimal icon fallbacks */
@@ -105,7 +104,6 @@
     <!-- Critical JavaScript (load synchronously) -->
     <script src="{% static 'assets/js/jquery-3.7.1.min.js' %}"></script>
     <script src="{% static 'assets/plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-    
     <!-- Critical UI functionality (load early) -->
     <script>
       // Critical UI functions that need to work immediately
@@ -190,16 +188,14 @@
         }
       });
     </script>
-    
     <!-- Form Submit Guard - Prevents duplicate form submissions -->
     <script src="{% static 'js/form-submit-guard.js' %}"></script>
-    
     <!-- Select2 - Load early for forms -->
     <script src="{% static 'assets/plugins/select2/js/select2.min.js' %}" defer></script>
     <script src="{% static 'js/select2-init.js' %}" defer></script>
     <script src="{% static 'js/counting.js' %}"></script>
-    
-    <!-- Non-critical JavaScript (load after page load) -->
+    <!-- Datelite DatePicker JS -->
+    <script src="{% static 'assets/plugins/DatePicker.js' %}" defer></script>
     <script>
       // Load non-critical JavaScript after page load
       window.addEventListener('load', function() {
@@ -212,16 +208,114 @@
         const mainScript = document.createElement('script');
         mainScript.src = '{% static "js/main.js" %}';
         document.head.appendChild(mainScript);
+
+          
       });
+
+      // Check if there's a barcode URL to open
+      {% if redirect_url %}
+      // Open barcode in new tab
+          window.open("{{ redirect_url }}", '_blank');
+      {% endif %}
     </script>
-    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          function formatIndianNumber(value, maxDecimals = 2) {
+              // Remove all non-numeric except decimal point
+              value = value.replace(/[^\d.]/g, '');
+              
+              // Allow only one decimal point
+              const decimalCount = (value.match(/\./g) || []).length;
+              if (decimalCount > 1) {
+                  const firstDecimalIndex = value.indexOf('.');
+                  value = value.slice(0, firstDecimalIndex + 1) + 
+                          value.slice(firstDecimalIndex + 1).replace(/\./g, '');
+              }
+              
+              // Split integer and decimal
+              let [intPart, decPart] = value.split('.');
+              
+              // Format integer part (Indian style)
+              if (intPart && intPart.length > 0) {
+                  // Remove leading zeros
+                  intPart = intPart.replace(/^0+/, '') || '0';
+                  
+                  if (intPart.length > 3) {
+                      let last3 = intPart.slice(-3);
+                      let others = intPart.slice(0, -3);
+                      intPart = others.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
+                  }
+              }
+              
+              // Limit decimal places
+              if (decPart !== undefined) {
+                  decPart = decPart.slice(0, maxDecimals);
+                  return intPart + '.' + decPart;
+              }
+              
+              // If user is typing decimal point
+              if (value.endsWith('.')) {
+                  return intPart + '.';
+              }
+              
+              return intPart;
+          }
+          
+          // Apply to all .indian-number inputs
+          document.querySelectorAll('.indian-number').forEach(input => {
+              const maxDecimals = parseInt(input.dataset.decimals) || 2;
+              
+              input.addEventListener('input', function(e) {
+                  const cursorPos = e.target.selectionStart;
+                  const oldLength = e.target.value.length;
+                  
+                  const formatted = formatIndianNumber(e.target.value, maxDecimals);
+                  e.target.value = formatted;
+                  
+                  // Adjust cursor position
+                  const newLength = formatted.length;
+                  const diff = newLength - oldLength;
+                  e.target.setSelectionRange(cursorPos + diff, cursorPos + diff);
+              });
+              
+              // Clean up on blur
+              input.addEventListener('blur', function(e) {
+                  let value = e.target.value;
+                  
+                  // Remove trailing decimal point
+                  if (value.endsWith('.')) {
+                      value = value.slice(0, -1);
+                  }
+                  
+                  // Add .00 if no decimal for money fields
+                  if (maxDecimals > 0 && !value.includes('.') && value !== '') {
+                      value += '.00';
+                  }
+                  
+                  e.target.value = value;
+              });
+          });
+          
+          // Remove commas before form submission
+          document.querySelectorAll('form').forEach(form => {
+              form.addEventListener('submit', function(e) {
+                  form.querySelectorAll('.indian-number').forEach(input => {
+                      // Remove commas but keep decimal point
+                      input.value = input.value.replace(/,/g, '');
+                  });
+              });
+          });
+      });
+      </script>
+
+
     <!-- Performance Analyzer (load async) -->
     {% comment %} <script src="{% static 'js/performance-analyzer.js' %}" async></script> {% endcomment %}
     {% block extra_js %}
     {% endblock extra_js %}
-    
     {% if messages %}
       {% for message in messages %}<script>showNotification('{{message}}', '{{message.tags}}')</script>{% endfor %}
     {% endif %}
+
   </body>
 </html>

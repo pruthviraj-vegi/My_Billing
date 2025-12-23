@@ -3,24 +3,20 @@
 {% if page_obj %}
   {% for row in page_obj %}
     <tr>
-      <td>{{ row.date|date:"M j, Y" }}</td>
-      <td>
+      <td class="text-center">{{ row.date|date:"M j, Y" }}</td>
+      <td class="text-center">
         {% if row.type == "Invoice" %}
           <span class="badge badge-info">Invoice</span>
         {% else %}
-          <span class="badge badge-secondary">Payment</span>
+          <span class="badge {% if row.type == "Purchased" %}badge-info{% else %}badge-secondary{% endif %}">{{ row.type }}</span>
         {% endif %}
       </td>
-      <td># {{ row.ref }}</td>
-      <td>
-        {% if row.type == "Payment" and row.method %}
-          <span class="badge badge-secondary">{{ row.method }}</span>
-        {% else %}
-          -
-        {% endif %}
+      <td class="text-center"># {{ row.ref }}</td>
+      <td class="text-center">{{ row.method|default:"-" }}</span>
+        
       </td>
-      <td>{{ row.notes|default:"-"|truncatechars:15 }}</td>
-      <td class="text-right">
+      <td class="text-center">{{ row.notes|default:"-"|truncatechars:15 }}</td>
+      <td class="text-center">
         {% if row.type == "Invoice" %}
           <span title="Final Amount: ₹{{ row.gross_amount|floatformat:2 }} - ₹{{ row.discount_amount|floatformat:2 }} (discount) - ₹{{ row.advance_amount|floatformat:2 }} (advance) = ₹{{ row.credit|floatformat:2 }}">
             {{ row.credit|currency }}
@@ -29,8 +25,8 @@
           {{ row.credit|currency }}
         {% endif %}
       </td>
-      <td class="text-right">{{ row.debit|currency }}</td>
-      <td class="text-right">
+      <td class="text-center">{{ row.debit|currency }}</td>
+      <td class="text-center">
         {% if row.type == "Invoice" %}
           {% if row.paid_amount > 0 %}
             <span class="text-success">{{ row.paid_amount|currency }}</span>
@@ -46,7 +42,7 @@
           -
         {% endif %}
       </td>
-      <td class="text-right">
+      <td class="text-center">
         {% if row.type == "Invoice" %}
           {% if row.outstanding > 0 %}
             <span class="text-danger">{{ row.outstanding|currency }}</span>

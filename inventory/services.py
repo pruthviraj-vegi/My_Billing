@@ -364,7 +364,12 @@ class InventoryService:
 
     @staticmethod
     def damage_log(
-        variant, quantity_damaged, user=None, notes="", damage_type="General", supplier_invoice=None
+        variant,
+        quantity_damaged,
+        user=None,
+        notes="",
+        damage_type="General",
+        supplier_invoice=None,
     ):
         """Mark items as damaged and move them to damaged inventory"""
         with transaction.atomic():

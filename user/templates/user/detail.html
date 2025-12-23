@@ -3,211 +3,378 @@
 {% load custom_filters %}
 
 {% block title %}
-    {{ user.full_name }} - User Details
+  {{ user.full_name }} - User Details
 {% endblock title %}
 
 {% block content %}
-    <!-- Page Header -->
-    <div class="page-header">
-        <h2 class="page-title">User Details</h2>
-        <div class="page-actions">
-            <a href="{% url 'user:edit' user.id %}" class="btn btn-outline">
-                <i class="fas fa-edit"></i>
-                Edit User
-            </a>
-            <a href="{% url 'user:reset_password' user.id %}" class="btn btn-warning">
-                <i class="fas fa-key"></i>
-                Reset Password
-            </a>
-            {% if user.is_active %}
-                <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-user-slash"></i>
-                        Deactivate
-                    </button>
-                </form>
-            {% else %}
-                <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-user-check"></i>
-                        Activate
-                    </button>
-                </form>
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ user.full_name }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'user:home' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        Back
+      </a>
+      <a href="{% url 'user:edit' user.id %}" class="btn btn-primary">
+        <i class="fas fa-edit"></i>
+        Edit User
+      </a>
+      <a href="{% url 'user:reset_password' user.id %}" class="btn btn-warning">
+        <i class="fas fa-key"></i>
+        Reset Password
+      </a>
+      {% if user.is_active %}
+        <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-user-slash"></i>
+            Deactivate
+          </button>
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-user-check"></i>
+            Activate
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ user.full_name }}</span>
+  </nav>
+
+  <!-- Main Layout -->
+  <div class="col d-flex flex-row">
+    <!-- Left Column - User Details and Summary -->
+    <div class="col-md-2 d-flex flex-column gap-2">
+      <!-- User Details Column -->
+      <div class="column details-column">
+        <div class="column-header">
+          <h3>
+            <i class="fas fa-user"></i> User Details
+          </h3>
+        </div>
+        <div class="details-info-compact">
+          <div class="detail-name-compact">
+            <h4>{{ user.full_name }}</h4>
+            <span class="detail-status {% if user.is_active %}status-active{% else %}status-inactive{% endif %}">
+              {% if user.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
+          </div>
+          <div class="detail-contact-compact">
+            <div class="contact-item">
+              <i class="fas fa-phone"></i>
+              <span>{{ user.phone_number }}</span>
+            </div>
+            {% if user.email %}
+              <div class="contact-item">
+                <i class="fas fa-envelope"></i>
+                <span>{{ user.email }}</span>
+              </div>
             {% endif %}
-            <a href="{% url 'user:delete' user.id %}" class="btn btn-danger">
-                <i class="fas fa-trash"></i>
-                Delete User
-            </a>
+            {% if user.address %}
+              <div class="contact-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ user.address|truncatechars:50 }}</span>
+              </div>
+            {% endif %}
+            <div class="contact-item">
+              <i class="fas fa-user-tag"></i>
+              <span>{{ user.get_role_display }}</span>
+            </div>
+            {% if current_salary %}
+              <div class="contact-item">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>{{ current_salary.amount|currency }}/mo</span>
+              </div>
+            {% endif %}
+            <div class="contact-item">
+              <i class="fas fa-calendar"></i>
+              <span>{{ user.date_joined|date:"M d, Y" }}</span>
+            </div>
+            {% if user.last_login %}
+              <div class="contact-item">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Last: {{ user.last_login|date:"M d, Y" }}</span>
+              </div>
+            {% endif %}
+          </div>
         </div>
+      </div>
+
+      <!-- Salary Summary Card -->
+      <div class="summary-card-compact" id="salarySummaryCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Salary Summary</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" data-count="{{ total_salaries|default:0 }}">0</span>
+              <span class="stat-label-compact">Total Records</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact">
+                {% if current_salary %}
+                  {{ current_salary.amount|currency }}
+                {% else %}
+                  ₹0
+                {% endif %}
+              </span>
+              <span class="stat-label-compact">Current</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact">
+                {% if current_salary and current_salary.commission %}
+                  <i class="fas fa-check text-success"></i>
+                {% else %}
+                  <i class="fas fa-times text-secondary"></i>
+                {% endif %}
+              </span>
+              <span class="stat-label-compact">Commission</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaction Summary Card -->
+      <div class="summary-card-compact" id="transactionSummaryCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-exchange-alt"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Transaction Summary</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact">
+              <span class="stat-number-compact counting-number" data-count="{{ total_transactions|default:0 }}">0</span>
+              <span class="stat-label-compact">Total</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact">{{ credit_transactions|currency|default:0 }}</span>
+              <span class="stat-label-compact">Credit</span>
+            </div>
+            <div class="stat-item-compact">
+              <span class="stat-number-compact">{{ debit_transactions|currency|default:0 }}</span>
+              <span class="stat-label-compact">Debit</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Net Amount Card -->
+      <div class="summary-card-compact" id="netAmountCard">
+        <div class="summary-icon-compact">
+          <i class="fas fa-calculator"></i>
+        </div>
+        <div class="summary-content-compact">
+          <h4>Net Amount</h4>
+          <div class="summary-stats-compact">
+            <div class="stat-item-compact" style="grid-column: 1 / -1;">
+              <span class="stat-number-compact {% if net_amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {{ net_amount|currency|default:0 }}
+              </span>
+              <span class="stat-label-compact">Balance</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Breadcrumb Navigation -->
-    <nav class="breadcrumb breadcrumb-right">
-        <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-active">{{ user.full_name }}</span>
-    </nav>
-
-    <!-- User Information -->
-    <div class="detail-container">
-        <div class="detail-grid">
-            <!-- Basic Information -->
-            <div class="detail-section">
-                <h3 class="section-title">
-                    <i class="fas fa-user"></i>
-                    Basic Information
-                </h3>
-                <div class="detail-content">
-                    <div class="detail-row">
-                        <span class="detail-label">Full Name:</span>
-                        <span class="detail-value">{{ user.full_name }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Phone Number:</span>
-                        <span class="detail-value">{{ user.phone_number }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Email Address:</span>
-                        <span class="detail-value">{{ user.email|default:"Not provided" }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Role:</span>
-                        <span class="detail-value">
-                            <span class="badge badge-{{ user.role|lower }}">
-                                {{ user.get_role_display }}
-                            </span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Account Status -->
-            <div class="detail-section">
-                <h3 class="section-title">
-                    <i class="fas fa-shield-alt"></i>
-                    Account Status
-                </h3>
-                <div class="detail-content">
-                    <div class="detail-row">
-                        <span class="detail-label">Status:</span>
-                        <span class="detail-value">
-                            {% if user.is_active %}
-                                <span class="badge text-success">
-                                    <i class="fas fa-check-circle"></i>
-                                    Active
-                                </span>
-                            {% else %}
-                                <span class="badge text-danger">
-                                    <i class="fas fa-times-circle"></i>
-                                    Inactive
-                                </span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Staff Status:</span>
-                        <span class="detail-value">
-                            {% if user.is_staff %}
-                                <span class="badge text-success">
-                                    <i class="fas fa-check-circle"></i>
-                                    Staff Member
-                                </span>
-                            {% else %}
-                                <span class="badge text-secondary">
-                                    <i class="fas fa-user"></i>
-                                    Regular User
-                                </span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Date Joined:</span>
-                        <span class="detail-value">{{ user.date_joined|date:"F d, Y \a\t g:i A" }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Last Login:</span>
-                        <span class="detail-value">
-                            {% if user.last_login %}
-                                {{ user.last_login|date:"F d, Y \a\t g:i A" }}
-                            {% else %}
-                                Never logged in
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Permissions -->
-            <div class="detail-section">
-                <h3 class="section-title">
-                    <i class="fas fa-key"></i>
-                    Permissions
-                </h3>
-                <div class="detail-content">
-                    <div class="detail-row">
-                        <span class="detail-label">Owner Access:</span>
-                        <span class="detail-value">
-                            {% if user.is_owner %}
-                                <span class="badge text-success">
-                                    <i class="fas fa-check-circle"></i>
-                                    Yes
-                                </span>
-                            {% else %}
-                                <span class="badge text-secondary">
-                                    <i class="fas fa-times-circle"></i>
-                                    No
-                                </span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Manager Access:</span>
-                        <span class="detail-value">
-                            {% if user.is_manager %}
-                                <span class="badge text-success">
-                                    <i class="fas fa-check-circle"></i>
-                                    Yes
-                                </span>
-                            {% else %}
-                                <span class="badge text-secondary">
-                                    <i class="fas fa-times-circle"></i>
-                                    No
-                                </span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Groups:</span>
-                        <span class="detail-value">
-                            {% if user.groups.all %}
-                                {% for group in user.groups.all %}
-                                    <span class="badge badge-secondary">{{ group.name }}</span>
-                                {% endfor %}
-                            {% else %}
-                                No groups assigned
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-            </div>
+    <!-- Right Column - Tables -->
+    <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+      <!-- Salary Table Section -->
+      <div class="table-section" id="salarySection">
+        <div class="table-header">
+          <h3>
+            <i class="fas fa-money-bill-wave"></i> Salary History
+          </h3>
+          <a href="{% url 'user:salary_create' user.id %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i>
+            Add Salary
+          </a>
         </div>
-
-        <!-- Action Buttons -->
-        <div class="detail-actions">
-            <a href="{% url 'user:edit' user.id %}" class="btn btn-primary">
-                <i class="fas fa-edit"></i>
-                Edit User
-            </a>
-            <a href="{% url 'user:reset_password' user.id %}" class="btn btn-warning">
-                <i class="fas fa-key"></i>
-                Reset Password
-            </a>
-            <a href="{% url 'user:home' %}" class="btn btn-outline">
-                <i class="fas fa-arrow-left"></i>
-                Back to Users
-            </a>
+        <div class="table-container">
+          {% if salaries %}
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Amount</th>
+                  <th>Commission</th>
+                  <th>Effective From</th>
+                  <th>Effective To</th>
+                  <th>Created At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for salary in salaries %}
+                  <tr>
+                    <td>{{ salary.amount|currency }}</td>
+                    <td>
+                      {% if salary.commission %}
+                        <span class="badge badge-success">Yes</span>
+                      {% else %}
+                        <span class="badge badge-secondary">No</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ salary.effective_from|date:"M d, Y" }}</td>
+                    <td>
+                      {% if salary.effective_to %}
+                        {{ salary.effective_to|date:"M d, Y" }}
+                      {% else %}
+                        <span class="badge badge-success">Current</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ salary.created_at|date:"M d, Y" }}</td>
+                    <td>
+                      <div class="action-buttons">
+                        <a href="{% url 'user:salary_edit' user.id salary.id %}" class="btn btn-sm btn-outline" title="Edit">
+                          <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'user:salary_delete' user.id salary.id %}" class="btn btn-sm btn-danger" title="Delete">
+                          <i class="fas fa-trash"></i>
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="text-center" style="padding: 2rem;">
+              <p class="text-muted">No salary records found.</p>
+              <a href="{% url 'user:salary_create' user.id %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Add First Salary
+              </a>
+            </div>
+          {% endif %}
         </div>
+      </div>
+
+      <!-- Transaction Table Section -->
+      <div class="table-section" id="transactionSection">
+        <div class="table-header">
+          <h3>
+            <i class="fas fa-exchange-alt"></i> Transactions
+          </h3>
+          <a href="{% url 'user:transaction_create' user.id %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i>
+            Add Transaction
+          </a>
+        </div>
+        <div class="table-container">
+          {% if transactions %}
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Payment Method</th>
+                  <th>Description</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for transaction in transactions %}
+                  <tr>
+                    <td>{{ transaction.transaction_id }}</td>
+                    <td>
+                        {{ transaction.get_transaction_type_display }}
+                    </td>
+                    <td>
+                      {% if transaction.is_debit %}
+                        <span class="text-danger">-{{ transaction.amount|currency }}</span>
+                      {% else %}
+                        <span class="text-success">+{{ transaction.amount|currency }}</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ transaction.get_payment_method_display }}</td>
+                    <td>{{ transaction.description|truncatewords:10|default:"-" }}</td>
+                    <td>{{ transaction.created_at|date:"M d, Y" }}</td>
+                    <td>
+                      <div class="action-buttons">
+                        <a href="{% url 'user:transaction_edit' user.id transaction.id %}" class="btn btn-sm btn-outline" title="Edit">
+                          <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'user:transaction_delete' user.id transaction.id %}" class="btn btn-sm btn-danger" title="Delete">
+                          <i class="fas fa-trash"></i>
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="text-center" style="padding: 2rem;">
+              <p class="text-muted">No transactions found.</p>
+              <a href="{% url 'user:transaction_create' user.id %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Add First Transaction
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
+  </div>
 {% endblock content %}
+
+{% block extra_js %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Summary card click handlers
+      const salarySummaryCard = document.getElementById('salarySummaryCard')
+      const transactionSummaryCard = document.getElementById('transactionSummaryCard')
+      const netAmountCard = document.getElementById('netAmountCard')
+      const salarySection = document.getElementById('salarySection')
+      const transactionSection = document.getElementById('transactionSection')
+    
+      if (salarySummaryCard && salarySection) {
+        salarySummaryCard.addEventListener('click', function () {
+          salarySection.scrollIntoView({ behavior: 'smooth' })
+        })
+      }
+    
+      if (transactionSummaryCard && transactionSection) {
+        transactionSummaryCard.addEventListener('click', function () {
+          transactionSection.scrollIntoView({ behavior: 'smooth' })
+        })
+      }
+
+      if (netAmountCard && transactionSection) {
+        netAmountCard.addEventListener('click', function () {
+          transactionSection.scrollIntoView({ behavior: 'smooth' })
+        })
+      }
+
+      // Animate counting numbers
+      const countingNumbers = document.querySelectorAll('.counting-number')
+      countingNumbers.forEach(function(element) {
+        const target = parseInt(element.getAttribute('data-count')) || 0
+        let current = 0
+        const increment = target / 50
+        const timer = setInterval(function() {
+          current += increment
+          if (current >= target) {
+            element.textContent = target
+            clearInterval(timer)
+          } else {
+            element.textContent = Math.floor(current)
+          }
+        }, 20)
+      })
+    })
+  </script>
+{% endblock extra_js %}

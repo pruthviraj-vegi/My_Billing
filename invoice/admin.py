@@ -25,7 +25,7 @@ class InvoiceAdmin(admin.ModelAdmin):
         "total_received_display",
         "remaining_amount_display",
         "invoice_date",
-        "created_by",
+        "sold_by",
     )
     list_filter = (
         "payment_type",
@@ -33,7 +33,7 @@ class InvoiceAdmin(admin.ModelAdmin):
         "payment_status",
         "payment_method",
         "invoice_date",
-        "created_by",
+        "sold_by",
     )
     search_fields = (
         "invoice_number",

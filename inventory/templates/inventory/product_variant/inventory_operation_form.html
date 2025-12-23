@@ -39,11 +39,18 @@
     <span class="breadcrumb-active">{{ title }}</span>
   </nav>
   <!-- Inventory Operation Form -->
-  <div class="form-container">
+  <div class="form-container col-md-8">
     <div class="form-card">
+      <!-- Info Summary -->
+      {% if selected_variant %}
+        <div class="info-summary">
+          <h4>{{ selected_variant.full_name }}</h4>
+          <p>{{ selected_variant.barcode }}</p>
+        </div>
+      {% endif %}
+      
       <form method="post" class="details-form" novalidate autocomplete="off">
         {% csrf_token %}
-        <!-- Form Errors -->
         {% if form.non_field_errors %}
           <div class="form-errors">
             {% for error in form.non_field_errors %}
@@ -58,23 +65,10 @@
         <!-- Product Selection Section -->
         {% if not selected_variant %}
           <div class="form-section">
-            <h5 class="form-section-title">Product Selection</h5>
+            <h5 class="section-title">Product Selection</h5>
             <div class="alert alert-info">
               <i class="fas fa-info-circle"></i>
               <strong>Note:</strong> To add stock, please go to the variant details page and click "Stock In" from there.
-            </div>
-          </div>
-        {% else %}
-          <div class="form-section">
-            <h5 class="form-section-title">Selected Product</h5>
-            <div class="selection-display">
-              <div class="selection-icon">
-                <i class="fas fa-box"></i>
-              </div>
-              <div class="selection-content">
-                <div class="selection-title">{{ selected_variant.full_name }}</div>
-                <div class="selection-subtitle">({{ selected_variant.barcode }})</div>
-              </div>
             </div>
           </div>
         {% endif %}
@@ -82,25 +76,22 @@
         <!-- Supplier Invoice Section (only for Stock In) -->
         {% if form.supplier_invoice %}
           <div class="form-section">
-            <h5 class="form-section-title">Supplier Invoice (Optional)</h5>
+            <h5 class="section-title">Supplier Invoice (Optional)</h5>
             <div class="row">
-              <div class="col-md-6 form-group {% if form.supplier_invoice.errors %}has-error{% endif %}">
+              <div class="form-group {% if form.supplier_invoice.errors %}has-error{% endif %}">
                 <label for="{{ form.supplier_invoice.id_for_label }}" class="form-label">{{ form.supplier_invoice.label }}</label>
                 {{ form.supplier_invoice }}
-                <small class="form-help">Link this operation to a supplier invoice for tracking</small>
-                {% if form.supplier_invoice.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if form.supplier_invoice.errors %}has-error{% endif %}">
+                  {% if form.supplier_invoice.errors %}
                     {% for error in form.supplier_invoice.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
-              </div>
-              <div class="col-md-6">
-                <!-- Empty column for balance -->
+                  {% endif %}
+                  <span class="form-help-text">Link this operation to a supplier invoice for tracking</span>
+                </small>
               </div>
             </div>
           </div>
@@ -108,74 +99,73 @@
         
         <!-- Quantity & Pricing Section -->
         <div class="form-section">
-          <h5 class="form-section-title">Quantity & Pricing</h5>
+          <h5 class="section-title">Quantity & Pricing</h5>
           <!-- Row 1: Quantity -->
           <div class="row">
-            <div class="col-md-6 form-group {% if form.quantity_change.errors %}has-error{% endif %}">
+            <div class="form-group {% if form.quantity_change.errors %}has-error{% endif %}">
               <label for="{{ form.quantity_change.id_for_label }}" class="form-label">{{ form.quantity_change.label }}</label>
               {{ form.quantity_change }}
-              <small class="form-help">
-                {% if operation_type == 'stock_in' %}
-                  Enter the quantity to add to inventory
-                {% elif operation_type == 'adjustment_in' %}
-                  Enter the quantity to add (e.g., found items, corrections)
-                {% elif operation_type == 'adjustment_out' %}
-                  Enter the quantity to remove (e.g., lost items, corrections)
-                {% elif operation_type == 'damage' %}
-                  Enter the quantity to mark as damaged
-                {% endif %}
-              </small>
-              {% if form.quantity_change.errors %}
-                <div class="field-errors">
+              <small class="form-help {% if form.quantity_change.errors %}has-error{% endif %}">
+                {% if form.quantity_change.errors %}
                   {% for error in form.quantity_change.errors %}
-                    <div class="error-message">
+                    <span class="form-error-inline">
                       <i class="fas fa-exclamation-circle"></i>
                       {{ error }}
-                    </div>
+                    </span>
                   {% endfor %}
-                </div>
-              {% endif %}
-            </div>
-            <div class="col-md-6">
-              <!-- Empty column for balance -->
+                {% endif %}
+                <span class="form-help-text">
+                  {% if operation_type == 'stock_in' %}
+                    Enter the quantity to add to inventory
+                  {% elif operation_type == 'adjustment_in' %}
+                    Enter the quantity to add (e.g., found items, corrections)
+                  {% elif operation_type == 'adjustment_out' %}
+                    Enter the quantity to remove (e.g., lost items, corrections)
+                  {% elif operation_type == 'damage' %}
+                    Enter the quantity to mark as damaged
+                  {% endif %}
+                </span>
+              </small>
             </div>
           </div>
           
           <!-- Row 2: Purchase Price and Selling Price (only for Stock In) -->
           {% if form.purchase_price %}
             <div class="row">
-              <div class="col-md-6 form-group {% if form.purchase_price.errors %}has-error{% endif %}">
+              <div class="form-group {% if form.purchase_price.errors %}has-error{% endif %}">
                 <label for="{{ form.purchase_price.id_for_label }}" class="form-label">
                   {{ form.purchase_price.label }}
                   {% if operation_type == 'stock_in' %}*{% endif %}
                 </label>
                 {{ form.purchase_price }}
-                <small class="form-help">Cost price per unit</small>
-                {% if form.purchase_price.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if form.purchase_price.errors %}has-error{% endif %}">
+                  {% if form.purchase_price.errors %}
                     {% for error in form.purchase_price.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Cost price per unit</span>
+                </small>
               </div>
-              <div class="col-md-6 form-group {% if form.mrp.errors %}has-error{% endif %}">
+            </div>
+            <div class="row">
+              <div class="form-group {% if form.mrp.errors %}has-error{% endif %}">
                 <label for="{{ form.mrp.id_for_label }}" class="form-label">{{ form.mrp.label }}</label>
                 {{ form.mrp }}
-                <small class="form-help">Selling price per unit (optional)</small>
-                {% if form.mrp.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if form.mrp.errors %}has-error{% endif %}">
+                  {% if form.mrp.errors %}
                     {% for error in form.mrp.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Selling price per unit (optional)</span>
+                </small>
               </div>
             </div>
           {% endif %}
@@ -183,31 +173,33 @@
         
         <!-- Notes Section -->
         <div class="form-section">
-          <h5 class="form-section-title">Additional Information</h5>
-          <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
-            <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
-            {{ form.notes }}
-            <small class="form-help">
-              {% if operation_type == 'stock_in' %}
-                Optional notes about this stock addition
-              {% elif operation_type == 'adjustment_in' %}
-                Reason for adding items (e.g., "Found in warehouse", "Correction")
-              {% elif operation_type == 'adjustment_out' %}
-                Reason for removing items (e.g., "Lost during transport", "Correction")
-              {% elif operation_type == 'damage' %}
-                Details about the damage (e.g., "Water damage", "Broken packaging")
-              {% endif %}
-            </small>
-            {% if form.notes.errors %}
-              <div class="field-errors">
-                {% for error in form.notes.errors %}
-                  <div class="error-message">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ error }}
-                  </div>
-                {% endfor %}
-              </div>
-            {% endif %}
+          <h5 class="section-title">Additional Information</h5>
+          <div class="row">
+            <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
+              <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+              {{ form.notes }}
+              <small class="form-help {% if form.notes.errors %}has-error{% endif %}">
+                {% if form.notes.errors %}
+                  {% for error in form.notes.errors %}
+                    <span class="form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </span>
+                  {% endfor %}
+                {% endif %}
+                <span class="form-help-text">
+                  {% if operation_type == 'stock_in' %}
+                    Optional notes about this stock addition
+                  {% elif operation_type == 'adjustment_in' %}
+                    Reason for adding items (e.g., "Found in warehouse", "Correction")
+                  {% elif operation_type == 'adjustment_out' %}
+                    Reason for removing items (e.g., "Lost during transport", "Correction")
+                  {% elif operation_type == 'damage' %}
+                    Details about the damage (e.g., "Water damage", "Broken packaging")
+                  {% endif %}
+                </span>
+              </small>
+            </div>
           </div>
         </div>
         
@@ -290,51 +282,70 @@
           }
         })
       }
-    })
-    
-    // Form validation for supplier invoice with custom modal
-    let allowSubmitWithoutInvoice = false
-
-    document.querySelector('form').addEventListener('submit', function (e) {
+      
+      // Form validation for supplier invoice with custom modal
+      let allowSubmitWithoutInvoice = false
+      const form = document.querySelector('form')
       const supplierInvoiceField = document.getElementById('{{ form.supplier_invoice.id_for_label }}')
-      if (supplierInvoiceField) {
-        const selectedInvoice = supplierInvoiceField.value
-        const isEmpty = !selectedInvoice || selectedInvoice === ''
-        if (isEmpty && !allowSubmitWithoutInvoice) {
-          e.preventDefault()
-          showSupplierInvoiceModal()
-          return false
+      const modal = document.getElementById('supplierInvoiceModal')
+      const modalCancelBtn = document.getElementById('modalCancelBtn')
+      const modalContinueBtn = document.getElementById('modalContinueBtn')
+
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          if (supplierInvoiceField) {
+            const selectedInvoice = supplierInvoiceField.value
+            const isEmpty = !selectedInvoice || selectedInvoice === ''
+            if (isEmpty && !allowSubmitWithoutInvoice) {
+              e.preventDefault()
+              if (modal) {
+                showSupplierInvoiceModal()
+              }
+              return false
+            }
+          }
+        })
+      }
+      
+      // Custom modal functions
+      function showSupplierInvoiceModal() {
+        if (modal) {
+          modal.style.display = 'flex'
         }
       }
-    })
-    
-    // Custom modal functions
-    function showSupplierInvoiceModal() {
-      const modal = document.getElementById('supplierInvoiceModal')
-      modal.style.display = 'flex'
-    }
-    
-    function hideSupplierInvoiceModal() {
-      const modal = document.getElementById('supplierInvoiceModal')
-      modal.style.display = 'none'
-    }
-    
-    // Modal button event listeners
-    document.getElementById('modalCancelBtn').addEventListener('click', function () {
-      hideSupplierInvoiceModal()
-    })
-    
-    document.getElementById('modalContinueBtn').addEventListener('click', function () {
-      hideSupplierInvoiceModal()
-      allowSubmitWithoutInvoice = true
-      document.querySelector('form').submit()
-    })
-    
-    // Close modal when clicking outside
-    document.getElementById('supplierInvoiceModal').addEventListener('click', function (e) {
-      if (e.target === this) {
-        hideSupplierInvoiceModal()
+      
+      function hideSupplierInvoiceModal() {
+        if (modal) {
+          modal.style.display = 'none'
+        }
       }
+      
+      // Modal button event listeners
+      if (modalCancelBtn) {
+        modalCancelBtn.addEventListener('click', function () {
+          hideSupplierInvoiceModal()
+        })
+      }
+      
+      if (modalContinueBtn) {
+        modalContinueBtn.addEventListener('click', function () {
+          hideSupplierInvoiceModal()
+          allowSubmitWithoutInvoice = true
+          if (form) {
+            form.submit()
+          }
+        })
+      }
+      
+      // Close modal when clicking outside
+      if (modal) {
+        modal.addEventListener('click', function (e) {
+          if (e.target === this) {
+            hideSupplierInvoiceModal()
+          }
+        })
+      }
+      Select2Helper.init('#id_supplier_invoice');
     })
   </script>
 {% endblock extra_js %}

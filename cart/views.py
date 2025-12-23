@@ -13,9 +13,13 @@ from .serializers import (
     BarcodeScanSerializer,
     CartItemUpdateSerializer,
 )
-from inventory.models import ProductVariant
+from inventory.models import ProductVariant, FavoriteVariant
+from inventory.views_variant import get_variants_data
 from django.views.generic import CreateView, UpdateView
+from django.db.models import Q
+
 from django.urls import reverse
+from base.utility import render_paginated_response
 
 # Template view for the main cart page
 from django.views.generic import TemplateView
@@ -142,6 +146,24 @@ def auto_cart_create(request):
     return redirect("cart:getCartData", pk=cart.id)
 
 
+def get_favorites(request):
+    favorites = (
+        FavoriteVariant.objects.filter(user=request.user)
+        .select_related("variant")
+        .prefetch_related("variant__product")
+    )
+    return render_paginated_response(request, favorites, "cart/models/favorites.html")
+
+
+def custom_search(request):
+    variants = get_variants_data(request)
+    return render_paginated_response(
+        request,
+        variants,
+        "cart/models/variants_fetch.html",
+    )
+
+
 # API Views for Cart Operations
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -182,7 +204,8 @@ def scan_barcode(request):
             cart_item, created = CartItem.objects.get_or_create(
                 cart=cart,
                 product_variant=product_variant,
-                defaults={"quantity": quantity, "price": product_variant.final_price},
+                price=product_variant.final_price,
+                defaults={"quantity": quantity},
             )
 
             if not created:

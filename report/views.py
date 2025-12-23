@@ -1,9 +1,9 @@
+from decimal import Decimal
 import logging
 from weasyprint import HTML
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.template.loader import get_template
-from django.contrib.auth.decorators import login_required
 import io
 import qrcode
 from barcode import Code128
@@ -13,25 +13,32 @@ import base64
 from PIL import Image
 from inventory.models import ProductVariant
 from invoice.models import Invoice, InvoiceItem
-from setting.models import ShopDetails, ReportConfiguration
+from setting.models import ShopDetails, ReportConfiguration, PaymentDetails, BarcodeConfiguration
 from cart.models import Cart, CartItem
+from customer.models import Customer
+from customer.views_credit import _build_ledger_rows
 from datetime import datetime
-
-from customer.views import get_data
-from customer.views_credit import credit_customers_data, total_credit_customers_data
+from django.db.models import Sum
+from django.db.models.functions import Coalesce
+from base.getDates import getDates
+from customer.views import get_data as get_customers_data
+from customer.views_credit import (
+    credit_customers_data,
+    total_credit_customers_data,
+    get_opening_balance,
+)
 from supplier.views import (
     get_suppliers_data,
     get_total_outstanding_balance as supplier_total_outstanding_balance,
+    Supplier,
+    SupplierInvoice,
+    get_supplier_report_data,
 )
 from inventory.views_variant import get_variants_data
 
 Barcode.default_writer_options["write_text"] = False
 
 logger = logging.getLogger(__name__)
-
-
-def get_print_count(num):
-    return num // 2 if num % 2 == 0 else num // 2 + 1
 
 
 # general pdf creation values for all data
@@ -86,7 +93,10 @@ def createInvoice(request, pk):
     report_config = ReportConfiguration.get_default_config(
         ReportConfiguration.ReportType.INVOICE
     )
-
+    payment_details = PaymentDetails.get_active_payments(shop=shop_details).order_by(
+        "display_order"
+    ).first()
+    
     if report_config.paper_size == ReportConfiguration.PaperSize._58mm:
         template = "report/58mm.html"
     else:
@@ -97,13 +107,14 @@ def createInvoice(request, pk):
         "details": invoice,
         "shop_details": shop_details,
         "report_config": report_config,
+        "payment_details": payment_details,
     }
 
     # Generate QR code if enabled in config
-    if report_config and report_config.show_qr_code and shop_details:
+    if report_config and report_config.show_qr_code and payment_details and payment_details.upi_id:
         try:
             # Create UPI payment QR code
-            qr_data = f"upi://pay?pa={shop_details.phone_number}&pn={shop_details.shop_name}&am={invoice.amount}&tn=Invoice {invoice.invoice_number}&cu=INR"
+            qr_data = f"upi://pay?pa={payment_details.upi_id}&pn={shop_details.shop_name}&am={invoice.net_amount_due}&tn=for bill no {invoice.invoice_number}&cu=INR"
             qr_code = qrcode.make(qr_data)
             image_bytes = io.BytesIO()
             qr_code.save(image_bytes, format="PNG")
@@ -142,22 +153,69 @@ def generate_barcode(request, pk):
     buffer.seek(0)
     barcode_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
+    barcode_config = BarcodeConfiguration.get_active_barcodes(shop_details).first()
+    
     # Add the barcode image to the context dictionary
     context = {
         "values": variant,
-        "print_count": get_print_count(variant.quantity),
+        "print_count": variant.get_barcode_qty,
         "barcode_svg": barcode_image,
         "shop_details": shop_details,
+        "barcode_config": barcode_config,
     }
     return render(request, template, context)
 
 
-@login_required
+def generate_invoices_pdf(request):
+    start_date, end_date = getDates(request)
+    invoices = Invoice.objects.filter(
+        invoice_type=Invoice.Invoice_type.GST,
+        invoice_date__range=(start_date, end_date),
+    ).order_by("invoice_date")
+
+    total_count = invoices.count()
+
+    total_tax_value = 0
+    total_gst_amount = 0
+    total_payable = 0
+    for invoice in invoices:
+        total_tax_value += invoice.total_tax_value
+        total_gst_amount += invoice.total_gst_amount
+        total_payable += invoice.total_payable
+
+    # Handle invoice numbers range
+    if total_count == 0:
+        invoice_numbers = 0
+    elif total_count == 1:
+        invoice_numbers = str(invoices.first().invoice_number)
+    else:
+        first_invoice = invoices.first()
+        last_invoice = invoices.last()
+        invoice_numbers = (
+            f"{first_invoice.invoice_number} to {last_invoice.invoice_number}"
+        )
+
+    context = {
+        "data": invoices,
+        "total_count": total_count,
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_tax_value": total_tax_value,
+        "total_gst_amount": total_gst_amount,
+        "total_payable": total_payable,
+        "invoice_numbers": invoice_numbers,
+    }
+
+    template = "invoice_report.html"
+    filename = f"invoices_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
+    return generatePdf(template, filename, context, request)
+
+
 def generate_customers_pdf(request):
     """Generate PDF for customers list with search and sort parameters."""
 
     # Get customers using the same logic as fetch_customers
-    customers = get_data(request)
+    customers = get_customers_data(request)
 
     # Prepare context
     context = {
@@ -173,7 +231,6 @@ def generate_customers_pdf(request):
     return generatePdf(template, filename, context, request)
 
 
-@login_required
 def generate_credit_pdf(request):
     """Generate PDF for credit customers list with search and sort parameters."""
     customers = credit_customers_data(request)
@@ -198,7 +255,32 @@ def generate_credit_pdf(request):
     return generatePdf(template, filename, context, request)
 
 
-@login_required
+def generate_credit_ind_pdf(request, pk):
+    """Generate PDF for credit individual customer with search and sort parameters."""
+    customer = get_object_or_404(Customer, pk=pk)
+    start_date, end_date = getDates(request)
+    ledger = _build_ledger_rows(customer, start_date, end_date)
+    opening_balance = get_opening_balance(customer, start_date)
+
+    ledger.sort(key=lambda r: (r["date"] or datetime.min, r["type"]))
+
+    balance = opening_balance
+    for i in ledger:
+        balance += i["credit"] - i["debit"]
+        i["balance"] = balance
+
+    context = {
+        "customer": customer,
+        "ledger": ledger,
+        "start_date": start_date,
+        "end_date": end_date,
+        "opening_balance": opening_balance,
+    }
+    template = "customer_credit_ind.html"
+    filename = "credit_individual_customer"
+    return generatePdf(template, filename, context, request)
+
+
 def generate_suppliers_pdf(request):
     """Generate PDF for suppliers list with search and sort parameters."""
     suppliers = get_suppliers_data(request)
@@ -223,7 +305,6 @@ def generate_suppliers_pdf(request):
     return generatePdf(template, filename, context, request)
 
 
-@login_required
 def generate_variants_pdf(request):
     """Generate PDF for variants list with search and sort parameters."""
     variants = get_variants_data(request)
@@ -238,5 +319,67 @@ def generate_variants_pdf(request):
     # Render template
     template = "variants_pdf.html"
     filename = "variants"
+
+    return generatePdf(template, filename, context, request)
+
+
+def generate_purchase_orders_pdf(request):
+    """Generate PDF for purchase order list with search and sort parameters."""
+
+    start_date, end_date = getDates(request)
+
+    purchase_orders = SupplierInvoice.objects.filter(
+        is_deleted=False,
+        invoice_type=SupplierInvoice.InvoiceType.GST_APPLICABLE,
+        invoice_date__range=(start_date, end_date),
+    )
+
+    total_count = purchase_orders.count()
+
+    # Use Coalesce to handle NULL values properly
+    aggregates = purchase_orders.aggregate(
+        total_subtotal=Coalesce(Sum("sub_total"), Decimal("0.00")),
+        total_cgst=Coalesce(Sum("cgst_amount"), Decimal("0.00")),
+        total_igst=Coalesce(Sum("igst_amount"), Decimal("0.00")),
+        total_amount=Coalesce(Sum("total_amount"), Decimal("0.00")),
+        total_adjustment=Coalesce(Sum("adjustment_amount"), Decimal("0.00")),
+    )
+
+    context = {
+        "data": purchase_orders,
+        "total_count": total_count,
+        "total_subtotal": aggregates["total_subtotal"],
+        "total_cgst": aggregates["total_cgst"] * 2,  # CGST + SGST
+        "total_igst": aggregates["total_igst"],
+        "total_amount": aggregates["total_amount"],
+        "total_adjustment": aggregates["total_adjustment"],
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+
+    template = "supplier_purchased_pdf.html"
+    filename = "purchase_orders"
+    return generatePdf(template, filename, context, request)
+
+
+def generate_supplier_ind_pdf(request, pk):
+    """Generate PDF for individual supplier purchase order with search and sort parameters."""
+    supplier = get_object_or_404(Supplier, pk=pk)
+    start_date, end_date = getDates(request)
+    date_range = [start_date, end_date]
+    report_data = get_supplier_report_data(supplier, date_range)
+
+    context = {
+        "supplier": supplier,
+        "transactions": report_data["transactions"],
+        "total_invoiced": report_data["total_invoiced"],
+        "total_paid": report_data["total_paid"],
+        "outstanding_balance": report_data["outstanding_balance"],
+        "opening_balance": report_data["opening_balance"],
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    template = "supplier_ind_report_pdf.html"
+    filename = "supplier_individual_report"
 
     return generatePdf(template, filename, context, request)

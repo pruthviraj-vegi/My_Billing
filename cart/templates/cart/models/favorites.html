@@ -1,0 +1,30 @@
+{% load custom_filters %}
+{% load static %}
+<!-- Table Body Content -->
+{% if page_obj %}
+    {% for value in page_obj %}
+        <tr data-value = {{ value.variant.id }}>
+            <td id="data-barcode">{{ value.variant.barcode }}</td>
+            <td><strong>{{ value.variant.product.brand }}</strong></td>
+            <td><strong>{{ value.variant.simple_name }}</strong></td>
+            <td>{{ value.variant.mrp|currency }}</td>
+            <td>{{ value.variant.quantity|floatformat:0 }}</td>
+            <td><strong>{{ value.variant.final_price|currency }}</strong></td>
+            <td>
+                <button class="btn btn-primary add-to-cart-btn" data-variant-id="{{ value.variant.id }}">
+                    <i class="fas fa-cart-plus"></i>
+                </button>
+            </td>
+        </tr>
+    {% endfor %}
+    {% else %}
+        <tr>
+            <td colspan="8" class="text-center">
+                <div class="empty-state">
+                    <i class="fas fa-star"></i>
+                    No favorites found
+                </div>
+            </td>
+        </tr>
+    {% endif %}
+<!-- Pagination separated from table content -->

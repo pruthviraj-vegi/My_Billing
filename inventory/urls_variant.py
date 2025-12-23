@@ -6,7 +6,6 @@ app_name = "inventory_variant"
 urlpatterns = [
     path("", views_variant.variant_home, name="home"),
     path("fetch/", views_variant.fetch_variants, name="fetch"),
-    path("download-data/", views_variant.download_variants, name="download_data"),
     path("<int:variant_id>/", views_variant.variant_details, name="details"),
     path(
         "create/<int:product_id>/",
@@ -18,7 +17,7 @@ urlpatterns = [
         views_variant.EditProductVariant.as_view(),
         name="edit",
     ),
-     # Inventory Operations
+    # Inventory Operations
     path(
         "operations/stock-in/<int:variant_id>/",
         views_variant.StockInCreate.as_view(),
@@ -38,5 +37,26 @@ urlpatterns = [
         "operations/damage/<int:variant_id>/",
         views_variant.DamageCreate.as_view(),
         name="damage_create",
+    ),
+    # Favorite operations
+    path(
+        "favorites/",
+        views_variant.favorites_home,
+        name="favorites_home",
+    ),
+    path(
+        "favorites/fetch/",
+        views_variant.fetch_favorites,
+        name="fetch_favorites",
+    ),
+    path(
+        "favorites/get-variants/",
+        views_variant.get_variants_for_favorites,
+        name="get_variants_for_favorites",
+    ),
+    path(
+        "favorites/add-bulk/",
+        views_variant.add_favorites_bulk,
+        name="add_favorites_bulk",
     ),
 ]

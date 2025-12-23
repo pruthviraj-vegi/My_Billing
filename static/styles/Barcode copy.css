@@ -1,0 +1,120 @@
+/* Screen styles */
+@media screen {
+  body {
+    background-color: #b9b9b9;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    font-size: 0.7rem;
+    font-weight: bold;
+  }
+}
+
+/* Print styles */
+@media print {
+  @page {
+    size: 110mm 26mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: white;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    font-size: 0.7rem;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .wrapper {
+    width: 110mm;
+    height: 25mm;
+    margin: 0;
+    padding: 2px;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    text-align: center;
+    page-break-after: always;
+    page-break-inside: avoid;
+  }
+}
+
+.wrapper {
+  max-width: 110mm;
+  max-height: 25mm;
+  margin: 0 auto;
+  background-color: #ffffff;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  text-align: center;
+}
+
+.slot {
+  max-width: 55mm;
+  max-height: 25mm;
+  position: relative;
+}
+
+.shop-name {
+  text-align: center;
+  font-size: 0.7rem;
+  padding-top: 2px;
+  margin-bottom: 3px;
+  font-weight: 200;
+}
+
+.barcode .text {
+  font-size: 0.6rem;
+  display: inline-block;
+}
+
+.image img {
+  width: 40mm;
+  height: 15px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.names {
+  text-align: center;
+  max-width: 50mm;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 0.5rem;
+  margin-bottom: 3px;
+  font-weight: 200;
+}
+
+.price-details {
+  display: flex;
+  direction: row;
+  justify-content: space-between;
+  padding-inline: 2px;
+  flex-direction: row-reverse;
+}
+
+.price-text {
+  padding-inline: 15px;
+  font-weight: 200;
+}
+
+.price {
+  text-align: left;
+  font-size: 0.8rem;
+  padding-top: 4px;
+  font-weight: bold;
+}
+
+/* Hide elements during print */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

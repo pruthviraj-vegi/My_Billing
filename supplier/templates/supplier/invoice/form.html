@@ -37,80 +37,80 @@
           {% if supplier.email %}• {{ supplier.email }}{% endif %}
         </p>
       </div>
-      <form method="post" class="details-form" id="invoiceForm">
+      <form method="post" class="details-form" novalidate autocomplete="off" id="invoiceForm">
         {% csrf_token %}
         <!-- Invoice Details Section -->
         <div class="form-section">
           <h5 class="section-title">Invoice Details</h5>
           <div class="row">
             <div class="col-md-6">
-              <div class="form-group">
+              <div class="form-group {% if form.invoice_number.errors %}has-error{% endif %}">
                 <label for="{{ form.invoice_number.id_for_label }}" class="form-label">{{ form.invoice_number.label }}</label>
                 {{ form.invoice_number }}
-                <small class="form-help">Enter Invoice No (e.g., 4578, 1425)</small>
-                {% if form.invoice_number.errors %}
-                  <div class="field-errors">
+                <small class="form-help">
+                  {% if form.invoice_number.errors %}
                     {% for error in form.invoice_number.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Enter Invoice No (e.g., 4578, 1425)</span>
+                </small>  
               </div>
             </div>
             <div class="col-md-6">
-              <div class="form-group">
+              <div class="form-group {% if form.invoice_date.errors %}has-error{% endif %}">
                 <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
                 {{ form.invoice_date }}
-                <small class="form-help">Select Invoice Date</small>
-                {% if form.invoice_date.errors %}
-                  <div class="field-errors">
+                <small class="form-help">
+                  {% if form.invoice_date.errors %}
                     {% for error in form.invoice_date.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Select Invoice Date</span>
+                </small>
               </div>
             </div>
           </div>
           <div class="row">
             <div class="col-md-6">
-              <div class="form-group">
+              <div class="form-group {% if form.invoice_type.errors %}has-error{% endif %}">
                 <label for="{{ form.invoice_type.id_for_label }}" class="form-label">{{ form.invoice_type.label }}</label>
                 {{ form.invoice_type|add_class:"form-select" }}
-                <small class="form-help">Invoice Type as GST or Local</small>
-                {% if form.invoice_type.errors %}
-                  <div class="field-errors">
+                <small class="form-help">
+                  {% if form.invoice_type.errors %}
                     {% for error in form.invoice_type.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Invoice Type as GST or Local</span>
+                </small>
               </div>
             </div>
             <div class="col-md-6" id="gstTypeGroup">
-              <div class="form-group">
+              <div class="form-group {% if form.gst_type.errors %}has-error{% endif %}">
                 <label for="{{ form.gst_type.id_for_label }}" class="form-label">{{ form.gst_type.label }}</label>
                 {{ form.gst_type|add_class:"form-select" }}
-                <small class="form-help">Select GST Type</small>
-                {% if form.gst_type.errors %}
-                  <div class="field-errors">
+                <small class="form-help">
+                  {% if form.gst_type.errors %}
                     {% for error in form.gst_type.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Select GST Type</span>
+                </small>
               </div>
             </div>
           </div>
@@ -119,78 +119,78 @@
         <div class="form-section">
           <h5 class="section-title">Amount Details</h5>
           <div class="row">
-            <div class="col-md-6">
-              <div class="form-group">
+            <div class="col-md-4">
+              <div class="form-group {% if form.sub_total.errors %}has-error{% endif %}">
                 <label for="{{ form.sub_total.id_for_label }}" class="form-label">{{ form.sub_total.label }}</label>
                 {{ form.sub_total }}
-                <small class="form-help">Amount Without Gst Amount</small>
-                {% if form.sub_total.errors %}
-                  <div class="field-errors">
+                <small class="form-help">
+                  {% if form.sub_total.errors %}
                     {% for error in form.sub_total.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Amount Without Gst Amount</span>
+                </small>
               </div>
             </div>
-            <div class="col-md-6">
-              <div class="form-group">
-                <label for="{{ form.adjustment_amount.id_for_label }}" class="form-label">{{ form.adjustment_amount.label }}</label>
-                {{ form.adjustment_amount }}
-                <small class="form-help">Any Fractional Adjsut Amounts(0.25, 0.45, -0.25)</small>
-                {% if form.adjustment_amount.errors %}
-                  <div class="field-errors">
-                    {% for error in form.adjustment_amount.errors %}
-                      <div class="error-message">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-6" id="cgstGroup">
-              <div class="form-group">
+            
+          
+            <div class="col-md-4" id="cgstGroup">
+              <div class="form-group {% if form.cgst_amount.errors %}has-error{% endif %}">
                 <label for="{{ form.cgst_amount.id_for_label }}" class="form-label">{{ form.cgst_amount.label }}</label>
                 {{ form.cgst_amount }}
-                <small class="form-help">Enter CGST Amount Tax Amount (SGST is Calculated)</small>
-                {% if form.cgst_amount.errors %}
-                  <div class="field-errors">
+                <small class="form-help">
+                  {% if form.cgst_amount.errors %}
                     {% for error in form.cgst_amount.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Enter CGST Amount Tax Amount (SGST is Calculated)</span>
+                </small>
               </div>
             </div>
-            <div class="col-md-6" id="igstGroup">
-              <div class="form-group">
+            <div class="col-md-4" id="igstGroup">
+              <div class="form-group {% if form.igst_amount.errors %}has-error{% endif %}">
                 <label for="{{ form.igst_amount.id_for_label }}" class="form-label">{{ form.igst_amount.label }}</label>
                 {{ form.igst_amount }}
-                <small class="form-help">Enter IGST Amount Tax Amount</small>
-                {% if form.igst_amount.errors %}
-                  <div class="field-errors">
+                <small class="form-help">
+                  {% if form.igst_amount.errors %}
                     {% for error in form.igst_amount.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Enter IGST Amount Tax Amount</span>
+                </small>
               </div>
             </div>
-          </div>
+            <div class="col-md-4">
+              <div class="form-group {% if form.adjustment_amount.errors %}has-error{% endif %}">
+                <label for="{{ form.adjustment_amount.id_for_label }}" class="form-label">{{ form.adjustment_amount.label }}</label>
+                {{ form.adjustment_amount }}
+                <small class="form-help">
+                  {% if form.adjustment_amount.errors %}
+                    {% for error in form.adjustment_amount.errors %}
+                      <span class="form-error-inline">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </span>
+                    {% endfor %}
+                  {% endif %}
+                  <span class="form-help-text">Any Fractional Adjsut Amounts(0.25, 0.45, -0.25)</span>
+                </small>
+              </div>
+            </div>
         </div>
+      </div>
 
         <div class="form-section">
           <h5 class="section-title">Amount Summary</h5>
@@ -226,19 +226,22 @@
         <!-- Notes Section -->
         <div class="form-section">
           <h5 class="section-title">Additional Information</h5>
-          <div class="form-group">
+          <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
             <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
             {{ form.notes|add_class:"form-textarea" }}
-            {% if form.notes.errors %}
-              <div class="field-errors">
+            <small class="form-help">
+              {% if form.notes.errors %}
                 {% for error in form.notes.errors %}
-                  <div class="error-message">
+                  <span class="form-error-inline">
                     <i class="fas fa-exclamation-circle"></i>
                     {{ error }}
-                  </div>
+                  </span>
                 {% endfor %}
-              </div>
-            {% endif %}
+              {% endif %}
+              {% if form.notes.help_text %}
+                <span class="form-help-text">{{ form.notes.help_text }}</span>
+              {% endif %}
+            </small>
           </div>
         </div>
         <!-- Form Actions -->
@@ -347,10 +350,6 @@
         element.classList.remove('visible')
         element.classList.add('hidden')
       }
-    }
-    
-    function formatCurrency(value) {
-      return `₹${(parseFloat(value) || 0).toFixed(2)}`
     }
     
     document.addEventListener('DOMContentLoaded', function () {

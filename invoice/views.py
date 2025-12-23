@@ -1,6 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.db.models import Q, Sum, Count, F
 from django.contrib import messages
 from django.views import View
@@ -9,123 +8,24 @@ from .form import InvoiceForm
 from .models import Invoice, InvoiceItem
 from django.utils import timezone
 from django.db import transaction
-from django.core.paginator import Paginator
 from inventory.services import InventoryService
 from datetime import timedelta
-from invoice.views_ import resequence_invoices
-from django.template.loader import render_to_string
-import json
-from django.core.exceptions import ValidationError
 import logging
 from customer.forms import CustomerForm
 from decimal import Decimal
 from base.getDates import getDates
+from base.utility import get_periodic_data, get_period_label, render_paginated_response
 
 logger = logging.getLogger(__name__)
 
 
 def get_comparison_data(date_filter, current_start, current_end):
     """Generate comparison data for line chart based on date filter"""
-    from datetime import timedelta
 
     # Calculate previous period dates
-    period_duration = current_end - current_start
-
-    if date_filter in ["today", "yesterday"]:
-        # Daily comparison - compare with previous day
-        previous_start = current_start - timedelta(days=1)
-        previous_end = current_end - timedelta(days=1)
-        period_type = "daily"
-
-    elif date_filter in ["this_month", "last_month"]:
-        # Monthly comparison - compare with previous month
-        if current_start.month == 1:
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=12
-            )
-        else:
-            previous_start = current_start.replace(month=current_start.month - 1)
-
-        # Calculate previous month end date
-        if previous_start.month == 12:
-            next_month = previous_start.replace(year=previous_start.year + 1, month=1)
-        else:
-            next_month = previous_start.replace(month=previous_start.month + 1)
-
-        previous_end = next_month - timedelta(days=1)
-        period_type = "monthly"
-
-    elif date_filter in ["this_quarter", "last_quarter"]:
-        # Quarterly comparison - compare with previous quarter
-        quarter_start_month = ((current_start.month - 1) // 3) * 3 + 1
-        current_quarter_start = current_start.replace(month=quarter_start_month, day=1)
-
-        if quarter_start_month == 1:
-            previous_quarter_start = current_quarter_start.replace(
-                year=current_quarter_start.year - 1, month=10
-            )
-        elif quarter_start_month == 4:
-            previous_quarter_start = current_quarter_start.replace(month=1)
-        elif quarter_start_month == 7:
-            previous_quarter_start = current_quarter_start.replace(month=4)
-        else:  # quarter_start_month == 10
-            previous_quarter_start = current_quarter_start.replace(month=7)
-
-        # Calculate previous quarter end
-        if previous_quarter_start.month == 10:
-            previous_end = previous_quarter_start.replace(
-                year=previous_quarter_start.year + 1, month=1, day=1
-            ) - timedelta(days=1)
-        elif previous_quarter_start.month == 1:
-            previous_end = previous_quarter_start.replace(month=4, day=1) - timedelta(
-                days=1
-            )
-        elif previous_quarter_start.month == 4:
-            previous_end = previous_quarter_start.replace(month=7, day=1) - timedelta(
-                days=1
-            )
-        else:  # month == 7
-            previous_end = previous_quarter_start.replace(month=10, day=1) - timedelta(
-                days=1
-            )
-
-        previous_start = previous_quarter_start
-        period_type = "quarterly"
-
-    elif date_filter in ["this_finance", "last_finance"]:
-        # Financial year comparison - compare with previous financial year
-        if current_start.month >= 4:  # April onwards
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=4, day=1
-            )
-            previous_end = current_start.replace(
-                year=current_start.year, month=3, day=31
-            )
-        else:  # Before April
-            previous_start = current_start.replace(
-                year=current_start.year - 2, month=4, day=1
-            )
-            previous_end = current_start.replace(
-                year=current_start.year - 1, month=3, day=31
-            )
-        period_type = "yearly"
-
-    else:
-        # Default to monthly comparison
-        if current_start.month == 1:
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=12
-            )
-        else:
-            previous_start = current_start.replace(month=current_start.month - 1)
-
-        if previous_start.month == 12:
-            next_month = previous_start.replace(year=previous_start.year + 1, month=1)
-        else:
-            next_month = previous_start.replace(month=previous_start.month + 1)
-
-        previous_end = next_month - timedelta(days=1)
-        period_type = "monthly"
+    previous_start, previous_end, period_type = get_periodic_data(
+        date_filter, current_start, current_end
+    )
 
     # Get current period data
     current_invoices = Invoice.objects.filter(
@@ -266,18 +166,6 @@ def get_period_data(invoices, start_date, end_date, period_type):
         return monthly_data
 
 
-def get_period_label(start_date, end_date, period_type):
-    """Generate human-readable label for period"""
-    if period_type == "daily":
-        return start_date.strftime("%B %d, %Y")
-    elif period_type == "monthly":
-        return f"{start_date.strftime('%B %d')} - {end_date.strftime('%B %d, %Y')}"
-    elif period_type == "quarterly":
-        return f"Q{((start_date.month - 1) // 3) + 1} {start_date.year}"
-    else:  # yearly
-        return f"FY {start_date.year}-{end_date.year}"
-
-
 # Create your views here.
 
 VALID_SORT_FIELDS = {
@@ -301,23 +189,18 @@ VALID_SORT_FIELDS = {
     "-created_at",
 }
 
-INVOICES_PER_PAGE = 20
 
-
-@login_required
 def invoiceHome(request):
     """Invoice management main page - initial load only."""
     # For initial page load, just render the template with empty data
 
-    financial_years = sorted(
-        set(
-            Invoice.objects.filter(financial_year__isnull=False).values_list(
-                "financial_year", flat=True
-            )
-        )
+    financial_years = (
+        Invoice.objects.values_list("financial_year", flat=True)
+        .distinct()
+        .filter(financial_year__isnull=False)
+        .order_by("-financial_year")
     )
     context = {
-        "payment_status_choices": Invoice.PaymentStatus.choices,
         "payment_type_choices": Invoice.PaymentType.choices,
         "bill_types": Invoice.Invoice_type.choices,
         "financial_years": financial_years,
@@ -325,9 +208,7 @@ def invoiceHome(request):
     return render(request, "invoice/home.html", context)
 
 
-@login_required
-def fetch_invoices(request):
-    """AJAX endpoint to fetch invoices with search, filter, and pagination."""
+def get_data(request):
     # Get search and filter parameters
     search_query = request.GET.get("search", "")
     status_filter = request.GET.get("status", "")
@@ -357,47 +238,37 @@ def fetch_invoices(request):
     if bill_types_filter:
         filters &= Q(invoice_type=bill_types_filter)
 
-    invoices = Invoice.objects.select_related("customer", "created_by").filter(filters)
+    invoices = Invoice.objects.select_related("customer", "sold_by").filter(filters)
 
-    # Apply sorting
-    if sort_by == "gst_bills":
-        invoices = invoices.filter(invoice_type=Invoice.Invoice_type.GST).order_by(
-            "-invoice_date"
-        )
-    elif sort_by == "cash_bills":
-        invoices = invoices.filter(invoice_type=Invoice.Invoice_type.CASH).order_by(
-            "-invoice_date"
-        )
-    elif sort_by not in VALID_SORT_FIELDS:
-        sort_by = "-invoice_date"
-        invoices = invoices.order_by(sort_by)
-    else:
-        invoices = invoices.order_by(sort_by)
-
-    # Pagination
-    paginator = Paginator(invoices, INVOICES_PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    # Render the HTML template
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-        "search_query": search_query,
+    # ---------------- SORTING MAP ----------------
+    SORT_MAP = {
+        "gst_bills": ("invoice_type", Invoice.Invoice_type.GST),
+        "cash_bills": ("invoice_type", Invoice.Invoice_type.CASH),
     }
 
-    # Render the table content (without pagination)
-    table_html = render_to_string("invoice/fetch.html", context, request=request)
+    # Special type sorting
+    if sort_by in SORT_MAP:
+        field, value = SORT_MAP[sort_by]
+        invoices = invoices.filter(**{field: value}).order_by("-invoice_date")
 
-    # Render pagination separately
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
+    # Validate sort field
+    elif sort_by in VALID_SORT_FIELDS:
+        invoices = invoices.order_by(sort_by)
 
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    else:
+        invoices = invoices.order_by("-invoice_date")
+
+    return invoices
+
+
+def fetch_invoices(request):
+    """AJAX endpoint to fetch invoices with search, filter, and pagination."""
+    invoices = get_data(request)
+
+    return render_paginated_response(
+        request,
+        invoices,
+        "invoice/fetch.html",
     )
 
 
@@ -438,7 +309,6 @@ class CreateInvoice(View):
                 invoice.amount = cart.total_amount
                 invoice.modified_by = request.user
                 invoice.created_by = request.user
-
                 invoice.save()
 
                 for item in cart.cart_items.all():
@@ -449,6 +319,7 @@ class CreateInvoice(View):
                         unit_price=item.price,
                         purchase_price=item.product_variant.actual_purchased_price,
                         mrp=item.product_variant.mrp,
+                        commission_percentage=item.product_variant.commission_percentage,
                     )
                     InventoryService.sale(
                         variant=item.product_variant,
@@ -549,17 +420,26 @@ class InvoiceEdit(View):
         invoice = get_object_or_404(Invoice, id=pk)
         form = self.form_class(request.POST, instance=invoice)
 
-        if form.is_valid():
-            if (
-                invoice.payment_type == Invoice.PaymentType.CASH
-                and form.cleaned_data.get("payment_type") == Invoice.PaymentType.CREDIT
-            ):
-                invoice.paid_amount = 0
+        new_payment_type = request.POST.get("payment_type")
+        old_payment_type = invoice.payment_type
 
-                raise ValidationError(
-                    "Payment type cannot be changed from cash to credit"
-                )
-            form.save()
+        if form.is_valid():
+            # Handle payment type changes and set paid_amount accordingly
+            invoice_instance = form.save(commit=False)
+
+            if (
+                new_payment_type == Invoice.PaymentType.CREDIT
+                and old_payment_type == Invoice.PaymentType.CASH
+            ):
+                # When changing from CASH to CREDIT: reset paid_amount to 0
+                # For CASH invoices, paid_amount = amount - discount_amount
+                # For CREDIT invoices, paid_amount should start at 0
+                invoice_instance.paid_amount = Decimal("0")
+
+            # Model's save() will handle CASH invoices automatically
+            # (setting paid_amount = amount - discount_amount and advance_amount = 0)
+            invoice_instance.save()
+
             messages.success(request, "Invoice updated successfully")
             return redirect("invoice:detail", pk=invoice.id)
 
@@ -581,85 +461,17 @@ class InvoiceDelete(View):
         return redirect("invoice:home")
 
 
-@login_required
-def download_invoices(request):
-    """Download invoices data as JSON."""
-    invoices = Invoice.objects.select_related("customer").all()
-    data = []
-
-    for invoice in invoices:
-        data.append(
-            {
-                "id": invoice.id,
-                "invoice_number": invoice.invoice_number,
-                "customer_name": invoice.customer.name,
-                "customer_phone": invoice.customer.phone_number,
-                "amount": str(invoice.amount),
-                "payment_status": invoice.payment_status,
-                "payment_type": invoice.payment_type,
-                "invoice_date": invoice.invoice_date.strftime("%Y-%m-%d %H:%M:%S"),
-                "due_date": (
-                    invoice.due_date.strftime("%Y-%m-%d %H:%M:%S")
-                    if invoice.due_date
-                    else None
-                ),
-                "remaining_amount": str(invoice.remaining_amount),
-            }
-        )
-
-    response = HttpResponse(json.dumps(data, indent=2), content_type="application/json")
-    response["Content-Disposition"] = 'attachment; filename="invoices.json"'
-    return response
-
-
-@login_required
-def search_invoices_ajax(request):
-    """AJAX endpoint for real-time invoice search."""
-    search_query = request.GET.get("q", "")
-
-    if len(search_query) < 2:
-        return JsonResponse({"invoices": []})
-
-    invoices = Invoice.objects.select_related("customer").filter(
-        Q(invoice_number__icontains=search_query)
-        | Q(customer__name__icontains=search_query)
-        | Q(customer__phone_number__icontains=search_query)
-    )[
-        :10
-    ]  # Limit to 10 results
-
-    data = []
-    for invoice in invoices:
-        data.append(
-            {
-                "id": invoice.id,
-                "invoice_number": invoice.invoice_number,
-                "customer_name": invoice.customer.name,
-                "customer_phone": invoice.customer.phone_number,
-                "amount": str(invoice.amount),
-                "payment_status": invoice.payment_status,
-                "payment_type": invoice.payment_type,
-            }
-        )
-
-    return JsonResponse({"invoices": data})
-
-
-class InvoiceDownload(View):
-
-    def get(self, request):
-        resequence_invoices("24-25", request.user)
-        return JsonResponse({"message": "Invoices resequenced successfully"})
-
-
-@login_required
 def invoice_dashboard(request):
     """Invoice dashboard with date filtering and metrics"""
 
     return render(request, "invoice/dashboard.html")
 
 
-@login_required
+def invoice_dashboard_modern(request):
+    """Modern Invoice dashboard"""
+    return render(request, "invoice/dashboard_modern.html")
+
+
 def invoice_dashboard_fetch(request):
     """AJAX endpoint to fetch dashboard data"""
 
@@ -736,9 +548,7 @@ def invoice_dashboard_fetch(request):
     # Add percentage calculations for breakdowns
     payment_status_data = []
     for status in payment_status_breakdown:
-        percentage = (
-            (status["count"] / total_invoices * 100) if total_invoices > 0 else 0
-        )
+        percentage = (status["amount"] / total_amount * 100) if total_amount > 0 else 0
         payment_status_data.append(
             {
                 "payment_status": status["payment_status"].title(),
@@ -751,7 +561,7 @@ def invoice_dashboard_fetch(request):
     payment_type_data = []
     for type_data in payment_type_breakdown:
         percentage = (
-            (type_data["count"] / total_invoices * 100) if total_invoices > 0 else 0
+            (type_data["amount"] / total_amount * 100) if total_amount > 0 else 0
         )
         payment_type_data.append(
             {
@@ -763,16 +573,27 @@ def invoice_dashboard_fetch(request):
         )
 
     # Category data processing
+    # Calculate total for category percentages
+    category_total = float(
+        sum(cat["amount"] for cat in category_breakdown if cat["amount"])
+    )
+
     category_data = []
     for category in category_breakdown:
         category_name = (
             category["product_variant__product__category__name"] or "Uncategorized"
         )
+        category_amount = float(category["amount"] or 0)
+        percentage = (
+            (category_amount / category_total * 100) if category_total > 0 else 0
+        )
+
         category_data.append(
             {
                 "category_name": category_name,
                 "count": category["count"],
-                "amount": float(category["amount"] or 0),
+                "amount": category_amount,
+                "percentage": round(percentage, 1),
             }
         )
 

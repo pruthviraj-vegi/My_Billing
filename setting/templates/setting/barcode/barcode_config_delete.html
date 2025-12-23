@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{{ page_title }}</h1>
+    <div class="page-actions">
+        <a href="{% url 'setting:barcode_config_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Cancel
+        </a>
+    </div>
+</div>
+
+<div class="delete-container">
+    <div class="delete-card">
+        <div class="delete-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h2>Confirm Deletion</h2>
+        <p>Are you sure you want to delete the barcode configuration <strong>"{{ config.config_name }}"</strong>?</p>
+        <p class="text-danger">This action cannot be undone.</p>
+
+        <form method="post" class="delete-form">
+            {% csrf_token %}
+            <div class="form-actions centered">
+                <a href="{% url 'setting:barcode_config_list' %}" class="btn btn-secondary">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete Configuration
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .delete-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 50vh;
+    }
+    .delete-card {
+        background: var(--card-bg);
+        padding: 3rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-md);
+        text-align: center;
+        max-width: 500px;
+        width: 100%;
+    }
+    .delete-icon {
+        font-size: 4rem;
+        color: var(--warning-color);
+        margin-bottom: 1.5rem;
+    }
+    .delete-card h2 {
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+    .delete-card p {
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+    }
+    .form-actions.centered {
+        justify-content: center;
+        margin-top: 2rem;
+    }
+</style>
+{% endblock %}

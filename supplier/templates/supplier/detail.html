@@ -13,10 +13,10 @@
         <i class="fas fa-arrow-left"></i>
         Back
       </a>
-      <!-- <a href="{% url 'supplier:report' supplier.pk %}" class="btn btn-info">
+      <a href="{% url 'supplier:report' supplier.pk %}" class="btn btn-info">
         <i class="fas fa-chart-line"></i>
         View Report
-      </a> -->
+      </a>
       <a href="{% url 'supplier:auto_reallocate' supplier.pk %}"
          class="btn btn-warning"
          id="autoReallocateBtn"
@@ -56,7 +56,9 @@
         <div class="details-info-compact">
           <div class="detail-name-compact">
             <h4>{{ supplier.name }}</h4>
-            <span class="detail-status  {{ supplier.is_deleted|status_badge }}">{{ supplier.is_deleted|yesno:'Inactive,Active' }}</span>
+            <span class="detail-status {% if not supplier.is_deleted %}status-active{% else %}status-inactive{% endif %}">
+              {% if supplier.is_deleted %}Inactive{% else %}Active{% endif %}
+            </span>
           </div>
           <div class="detail-contact-compact">
             <div class="contact-item">
@@ -138,9 +140,6 @@
     </div>
     <!-- Right Column - Tables -->
     <div class="col-md-10 d-flex flex-column gap-2 ps-1">
-      <!-- Hidden minimal forms used by AJAX table loader -->
-      <form id="dummyFormInvoices" method="get" style="display:none"></form>
-      <form id="dummyFormPayments" method="get" style="display:none"></form>
       <!-- Invoices Table -->
       <div class="table-section" id="invoicesSection">
         <div class="table-header">
@@ -245,11 +244,11 @@
         payments: '{% url "supplier:fetch_payments" supplier.pk %}'
       }
 
-      // Use the same helper as home page
-      initTableAjax('dummyFormInvoices', 'invoices_table', urls.invoices, { autoLoad: true });
+      // Initialize table without form (form is now optional)
+      initTableAjax(null, 'invoices_table', urls.invoices, { autoLoad: true });
       initTableSorting('invoices_table');
 
-      initTableAjax('dummyFormPayments', 'payments_table', urls.payments, { autoLoad: true });
+      initTableAjax(null, 'payments_table', urls.payments, { autoLoad: true });
       initTableSorting('payments_table');
     })
     

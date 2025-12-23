@@ -8,7 +8,7 @@
   <div class="page-header">
     <h2 class="page-title">{{ title }}</h2>
     <div class="page-actions">
-      <a href="{% url 'inventory:stock_management_home' %}" class="btn">
+      <a href="{% url 'inventory:stock_management_home' %}" class="btn btn-secondary">
         <i class="fas fa-arrow-left"></i>
         Back to Stock Management
       </a>
@@ -27,36 +27,50 @@
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">{{ title }}</span>
   </nav>
-  <!-- Main Content -->
-  <div class="form-container">
+  <!-- Stock Adjustment Form -->
+  <div class="form-container col-md-6">
     <div class="form-card">
-      <div class="form-header">
-        <h3>
-          <i class="fas fa-edit"></i> {{ subtitle }}
-        </h3>
+      <!-- Info Summary -->
+      <div class="info-summary">
+        <h4>{{ subtitle }}</h4>
         <p>Add stock to existing variants and optionally update their pricing information.</p>
       </div>
-      <form method="post" class="details-form">
+      
+      <form method="post" class="details-form" novalidate autocomplete="off">
         {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="form-errors">
+            {% for error in form.non_field_errors %}
+              <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                {{ error }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        
         <!-- Product Variant Selection -->
         <div class="form-section">
-          <h4>
-            <i class="fas fa-box"></i> Product Variant
-          </h4>
-          <div class="form-group">
-            <label for="{{ form.product_variant.id_for_label }}">{{ form.product_variant.label }}</label>
-            {{ form.product_variant }}
-            {% if form.product_variant.help_text %}
-              <small class="form-help">{{ form.product_variant.help_text }}</small>
-            {% endif %}
-            {% if form.product_variant.errors %}
-              <div class="field-errors">
-                {% for error in form.product_variant.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
-              </div>
-            {% endif %}
+          <h5 class="section-title">Product Variant</h5>
+          <div class="row">
+            <div class="form-group {% if form.product_variant.errors %}has-error{% endif %}">
+              <label for="{{ form.product_variant.id_for_label }}" class="form-label">{{ form.product_variant.label }}</label>
+              {{ form.product_variant }}
+              <small class="form-help {% if form.product_variant.errors %}has-error{% endif %}">
+                {% if form.product_variant.errors %}
+                  {% for error in form.product_variant.errors %}
+                    <span class="form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </span>
+                  {% endfor %}
+                {% endif %}
+                <span class="form-help-text">Select the product variant to adjust stock for</span>
+              </small>
+            </div>
           </div>
           <!-- Current Variant Info (will be populated via JavaScript) -->
-          <div id="variant-info" class="variant-info field-disabled">
+          <div id="variant-info" class="variant-info field-disabled" style="display: none;">
             <div class="info-grid">
               <div class="info-item">
                 <strong>Current Stock:</strong>
@@ -73,82 +87,106 @@
             </div>
           </div>
         </div>
+        
         <!-- Stock Details -->
         <div class="form-section">
-          <h4>
-            <i class="fas fa-cubes"></i> Stock Details
-          </h4>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}</label>
+          <h5 class="section-title">Stock Details</h5>
+          <div class="row">
+            <div class="form-group {% if form.quantity.errors %}has-error{% endif %}">
+              <label for="{{ form.quantity.id_for_label }}" class="form-label">{{ form.quantity.label }}</label>
               {{ form.quantity }}
-              {% if form.quantity.help_text %}<small class="form-help">{{ form.quantity.help_text }}</small>{% endif %}
-              {% if form.quantity.errors %}
-                <div class="field-errors">
-                  {% for error in form.quantity.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
-                </div>
-              {% endif %}
+              <small class="form-help {% if form.quantity.errors %}has-error{% endif %}">
+                {% if form.quantity.errors %}
+                  {% for error in form.quantity.errors %}
+                    <span class="form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </span>
+                  {% endfor %}
+                {% endif %}
+                <span class="form-help-text">Enter the quantity of stock to add</span>
+              </small>
             </div>
           </div>
         </div>
+        
         <!-- Price Update Options -->
         <div class="form-section">
-          <h4>
-            <i class="fas fa-tags"></i> Price Update Options
-          </h4>
-          <div class="form-group">
-            <label for="{{ form.update_prices.id_for_label }}" class="checkbox-label">
-              {{ form.update_prices }}
-              <span>{{ form.update_prices.label }}</span>
-            </label>
-            {% if form.update_prices.help_text %}<small class="form-help">{{ form.update_prices.help_text }}</small>{% endif %}
+          <h5 class="section-title">Price Update Options</h5>
+          <div class="row">
+            <div class="form-group">
+              <label for="{{ form.update_prices.id_for_label }}" class="checkbox-label">
+                {{ form.update_prices }}
+                <span>{{ form.update_prices.label }}</span>
+              </label>
+              <small class="form-help">
+                <span class="form-help-text">Check this to update purchase price and MRP for this variant</span>
+              </small>
+            </div>
           </div>
-          <div id="price-update-fields" class="field-disabled">
-            <div class="form-row">
-              <div class="form-group">
-                <label for="{{ form.new_purchase_price.id_for_label }}">{{ form.new_purchase_price.label }}</label>
+          <div id="price-update-fields" class="field-disabled" style="display: none;">
+            <div class="row">
+              <div class="form-group {% if form.new_purchase_price.errors %}has-error{% endif %}">
+                <label for="{{ form.new_purchase_price.id_for_label }}" class="form-label">{{ form.new_purchase_price.label }}</label>
                 {{ form.new_purchase_price }}
-                {% if form.new_purchase_price.help_text %}
-                  <small class="form-help">{{ form.new_purchase_price.help_text }}</small>
-                {% endif %}
-                {% if form.new_purchase_price.errors %}
-                  <div class="field-errors">
-                    {% for error in form.new_purchase_price.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
-                  </div>
-                {% endif %}
+                <small class="form-help {% if form.new_purchase_price.errors %}has-error{% endif %}">
+                  {% if form.new_purchase_price.errors %}
+                    {% for error in form.new_purchase_price.errors %}
+                      <span class="form-error-inline">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </span>
+                    {% endfor %}
+                  {% endif %}
+                  <span class="form-help-text">Enter the new purchase price per unit</span>
+                </small>
               </div>
-              <div class="form-group">
-                <label for="{{ form.new_mrp.id_for_label }}">{{ form.new_mrp.label }}</label>
+            </div>
+            <div class="row">
+              <div class="form-group {% if form.new_mrp.errors %}has-error{% endif %}">
+                <label for="{{ form.new_mrp.id_for_label }}" class="form-label">{{ form.new_mrp.label }}</label>
                 {{ form.new_mrp }}
-                {% if form.new_mrp.help_text %}<small class="form-help">{{ form.new_mrp.help_text }}</small>{% endif %}
-                {% if form.new_mrp.errors %}
-                  <div class="field-errors">
-                    {% for error in form.new_mrp.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
-                  </div>
-                {% endif %}
+                <small class="form-help {% if form.new_mrp.errors %}has-error{% endif %}">
+                  {% if form.new_mrp.errors %}
+                    {% for error in form.new_mrp.errors %}
+                      <span class="form-error-inline">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </span>
+                    {% endfor %}
+                  {% endif %}
+                  <span class="form-help-text">Enter the new MRP (Maximum Retail Price) per unit</span>
+                </small>
               </div>
             </div>
           </div>
         </div>
+        
         <!-- Notes -->
         <div class="form-section">
-          <h4>
-            <i class="fas fa-sticky-note"></i> Additional Information
-          </h4>
-          <div class="form-group">
-            <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
-            {{ form.notes }}
-            {% if form.notes.help_text %}<small class="form-help">{{ form.notes.help_text }}</small>{% endif %}
-            {% if form.notes.errors %}
-              <div class="field-errors">
-                {% for error in form.notes.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
-              </div>
-            {% endif %}
+          <h5 class="section-title">Additional Information</h5>
+          <div class="row">
+            <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
+              <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+              {{ form.notes }}
+              <small class="form-help {% if form.notes.errors %}has-error{% endif %}">
+                {% if form.notes.errors %}
+                  {% for error in form.notes.errors %}
+                    <span class="form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </span>
+                  {% endfor %}
+                {% endif %}
+                <span class="form-help-text">Optional: Enter any additional notes about this stock adjustment</span>
+              </small>
+            </div>
           </div>
         </div>
+        
         <!-- Form Actions -->
         <div class="form-actions">
-          <button type="submit" class="btn btn-success">
+          <button type="submit" class="btn btn-primary">
             <i class="fas fa-save"></i>
             Adjust Stock
           </button>
@@ -164,55 +202,79 @@
 {% endblock content %}
 {% block extra_js %}
   <script>
-    // Show/hide price update fields based on checkbox
-    document.getElementById('{{ form.update_prices.id_for_label }}').addEventListener('change', function () {
+    document.addEventListener('DOMContentLoaded', function () {
+      const updatePricesCheckbox = document.getElementById('{{ form.update_prices.id_for_label }}')
       const priceFields = document.getElementById('price-update-fields')
-      if (this.checked) {
-        priceFields.style.display = 'block'
-      } else {
-        priceFields.style.display = 'none'
-      }
-    })
-    
-    // Show variant info when variant is selected
-    document.getElementById('{{ form.product_variant.id_for_label }}').addEventListener('change', function () {
-      const variantSelect = this
-      const selectedOption = variantSelect.options[variantSelect.selectedIndex]
+      const variantSelect = document.getElementById('{{ form.product_variant.id_for_label }}')
       const variantInfo = document.getElementById('variant-info')
-    
-      if (selectedOption && selectedOption.value) {
-        // You can add AJAX call here to fetch variant details
-        // For now, we'll show the info section
-        variantInfo.style.display = 'block'
-    
-        // Focus on quantity field
-        document.getElementById('{{ form.quantity.id_for_label }}').focus()
-      } else {
-        variantInfo.style.display = 'none'
-      }
-    })
-    
-    // Auto-populate new selling price based on new purchase price
-    document.getElementById('{{ form.new_purchase_price.id_for_label }}').addEventListener('input', function () {
-      const newPurchasePrice = parseFloat(this.value) || 0
+      const newPurchasePriceField = document.getElementById('{{ form.new_purchase_price.id_for_label }}')
       const newSellingPriceField = document.getElementById('{{ form.new_mrp.id_for_label }}')
-    
-      if (newPurchasePrice > 0 && !newSellingPriceField.value) {
-        const suggestedSellingPrice = newPurchasePrice * 1.3 // 30% markup
-        newSellingPriceField.value = suggestedSellingPrice.toFixed(2)
+      
+      // Show/hide price update fields based on checkbox
+      if (updatePricesCheckbox) {
+        updatePricesCheckbox.addEventListener('change', function () {
+          if (this.checked) {
+            priceFields.style.display = 'block'
+            priceFields.classList.remove('field-disabled')
+          } else {
+            priceFields.style.display = 'none'
+            priceFields.classList.add('field-disabled')
+          }
+        })
       }
-    })
-    
-    // Form validation
-    document.querySelector('form').addEventListener('submit', function (e) {
-      const updatePrices = document.getElementById('{{ form.update_prices.id_for_label }}').checked
-      const newPurchasePrice = parseFloat(document.getElementById('{{ form.new_purchase_price.id_for_label }}').value) || 0
-      const newSellingPrice = parseFloat(document.getElementById('{{ form.new_mrp.id_for_label }}').value) || 0
-    
-      if (updatePrices && newSellingPrice > 0 && newSellingPrice <= newPurchasePrice) {
-        e.preventDefault()
-        alert('New selling price must be greater than new purchase price.')
-        return false
+      
+      // Show variant info when variant is selected
+      if (variantSelect) {
+        variantSelect.addEventListener('change', function () {
+          const selectedOption = this.options[this.selectedIndex]
+          
+          if (selectedOption && selectedOption.value) {
+            // You can add AJAX call here to fetch variant details
+            // For now, we'll show the info section
+            if (variantInfo) {
+              variantInfo.style.display = 'block'
+            }
+            
+            // Focus on quantity field
+            const quantityField = document.getElementById('{{ form.quantity.id_for_label }}')
+            if (quantityField) {
+              quantityField.focus()
+            }
+          } else {
+            if (variantInfo) {
+              variantInfo.style.display = 'none'
+            }
+          }
+        })
+      }
+      
+      // Auto-populate new selling price based on new purchase price
+      if (newPurchasePriceField && newSellingPriceField) {
+        newPurchasePriceField.addEventListener('input', function () {
+          const newPurchasePrice = parseFloat(this.value) || 0
+          
+          if (newPurchasePrice > 0 && !newSellingPriceField.value) {
+            const suggestedSellingPrice = newPurchasePrice * 1.3 // 30% markup
+            newSellingPriceField.value = suggestedSellingPrice.toFixed(2)
+          }
+        })
+      }
+      
+      // Form validation
+      const form = document.querySelector('form')
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          if (updatePricesCheckbox && updatePricesCheckbox.checked) {
+            const newPurchasePrice = parseFloat(newPurchasePriceField ? newPurchasePriceField.value : 0) || 0
+            const newSellingPrice = parseFloat(newSellingPriceField ? newSellingPriceField.value : 0) || 0
+            
+            if (newSellingPrice > 0 && newSellingPrice <= newPurchasePrice) {
+              e.preventDefault()
+              alert('New selling price must be greater than new purchase price.')
+              return false
+            }
+          }
+        })
       }
     })
   </script>

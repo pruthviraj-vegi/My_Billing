@@ -1,0 +1,40 @@
+// scss/main.scss
+// --------------------------------------------------
+// Main SCSS entry — imports everything
+// --------------------------------------------------
+
+@use "variables";
+@use "mixins";
+@use "reset";
+
+// Make the variables available as plain vars (optional convenience)
+$primary: variables.$primary;
+$bg-surface: variables.$bg-surface;
+$text-primary: variables.$text-primary;
+
+// Base
+@import "reset";
+@import "variables";
+@import "mixins";
+
+/*
+  Next imports (layouts, components, pages, utilities) will be added
+  as we convert them. For now we've created core primitives and base.
+*/
+
+/* Example: a small demo of using mixins & variables */
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: variables.$topbar-height;
+    background-color: $bg-surface;
+    border-bottom: 1px solid variables.$border-color;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    z-index: 1001;
+    overflow: hidden;
+}

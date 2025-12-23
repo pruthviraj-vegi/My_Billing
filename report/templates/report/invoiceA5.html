@@ -241,18 +241,7 @@
       </div>
       {% endif %}
     </div>
-    <script>
-      document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-          window.close()
-        }
-        if (event.key === 'Enter') {
-          window.print()
-        }
-      })
-      window.addEventListener('afterprint', function () {
-        window.close()
-      })
-    </script>
+    <script src="{% static 'js/print.js' %}"></script>
+    
   </body>
 </html>

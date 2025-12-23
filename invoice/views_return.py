@@ -1,25 +1,21 @@
-from django.db import transaction, connection
+from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Sum, Q
-from django.template.loader import render_to_string
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-import json
-from django.core.paginator import Paginator
 from django.db.models import Q
 
-from django.views.generic.edit import CreateView, DeleteView, View
+from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.urls import reverse_lazy
-from datetime import datetime, time
+from datetime import datetime
 from decimal import Decimal
 from .models import ReturnInvoice, Invoice, InvoiceItem, ReturnInvoiceItem
 from .form import ReturnInvoiceForm
 from .choices import ItemConditionChoices, ItemReturnReasonChoices, RefundStatusChoices
-from customer.models import Customer
 from inventory.services import InventoryService
+from base.utility import render_paginated_response
 import logging
 
 logger = logging.getLogger(__name__)
@@ -103,30 +99,10 @@ def fetch_return_invoices(request):
 
     return_invoices = return_invoices.order_by(sort_by)
 
-    # Pagination
-    paginator = Paginator(return_invoices, 20)  # 20 items per page
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    # Render the HTML template
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-        "search_query": search_query,
-    }
-
-    # Render the table content (without pagination)
-    table_html = render_to_string("invoice_return/fetch.html", context, request=request)
-
-    # Render pagination separately
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        return_invoices,
+        "invoice_return/fetch.html",
     )
 
 
@@ -274,6 +250,7 @@ class ReturnInvoiceDetailView(DetailView):
 
         return context
 
+
 @transaction.atomic
 def create_auto_return_invoice(request, invoice_id):
 
@@ -302,7 +279,7 @@ def create_auto_return_invoice(request, invoice_id):
             return_invoice.clean()
         except ValidationError as ve:
             return JsonResponse({"success": False, "error": str(ve)})
-        
+
         return_invoice.save()
 
         return_items_to_create = []

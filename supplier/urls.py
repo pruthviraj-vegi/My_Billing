@@ -20,6 +20,7 @@ urlpatterns = [
     path("<int:pk>/edit/", views.EditSupplier.as_view(), name="edit"),
     path("<int:pk>/delete/", views.DeleteSupplier.as_view(), name="delete"),
     path("<int:pk>/report/", views.supplier_report, name="report"),
+    path("<int:pk>/report/fetch/", views.supplier_report_fetch, name="report_fetch"),
     path("<int:pk>/auto-reallocate/", views.auto_reallocate, name="auto_reallocate"),
     # Invoice URLs
     path(
@@ -57,21 +58,5 @@ urlpatterns = [
         "<int:supplier_pk>/payments/<int:payment_pk>/delete/",
         views.delete_payment,
         name="delete_payment",
-    ),
-    # Allocation URLs
-    path(
-        "<int:supplier_pk>/payments/<int:payment_pk>/allocate/",
-        views.CreateAllocation.as_view(),
-        name="create_allocation",
-    ),
-    path(
-        "<int:supplier_pk>/payments/<int:payment_pk>/allocations/<int:allocation_pk>/edit/",
-        views.EditAllocation.as_view(),
-        name="edit_allocation",
-    ),
-    path(
-        "<int:supplier_pk>/payments/<int:payment_pk>/allocations/<int:allocation_pk>/delete/",
-        views.delete_allocation,
-        name="delete_allocation",
     ),
 ]

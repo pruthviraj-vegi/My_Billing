@@ -297,10 +297,7 @@
         restockingFeeDisplay.textContent = formatCurrency(restockingFee);
         netRefundDisplay.textContent = formatCurrency(netRefund);
       }
-      
-      function formatCurrency(value) {
-        return `₹${(parseFloat(value) || 0).toFixed(2)}`;
-      }
+    
       
       function fetchInvoiceDetails(invoiceId) {
         if (!invoiceId) {

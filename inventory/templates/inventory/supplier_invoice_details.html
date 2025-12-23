@@ -26,7 +26,7 @@
         <span class="breadcrumb-active">{{ invoice_number }}</span>
     </nav>
     <!-- Main Layout -->
-    <div class="col d-flex flex-row gap-2">
+    <div class="col d-flex flex-row">
         <!-- Left Column - Invoice Details and Summary Cards -->
         <div class="col-md-2 d-flex flex-column gap-2">
             <!-- Invoice Details Column -->
@@ -119,7 +119,7 @@
             </div>
         </div>
         <!-- Right Column - Products Table -->
-        <div class="col-md-10 d-flex flex-column gap-2">
+        <div class="col-md-10 d-flex flex-column ps-2">
             <!-- Products in Invoice Table -->
             <div class="table-section" id="productsSection">
                 <div class="table-header">
@@ -140,31 +140,6 @@
                                    id="searchInput"
                                    autofocus>
                         </div>
-                        <select name="status" class="filter-select" id="statusFilter">
-                            <option value="">All Status</option>
-                            <option value="in_stock"
-                                    {% if status_filter == 'in_stock' %}selected{% endif %}>In Stock</option>
-                            <option value="sold_out"
-                                    {% if status_filter == 'sold_out' %}selected{% endif %}>Sold Out</option>
-                            <option value="low_stock"
-                                    {% if status_filter == 'low_stock' %}selected{% endif %}>Low Stock</option>
-                        </select>
-                        <select name="sort" class="filter-select" id="sortSelect">
-                            <option value="-stock_in_quantity"
-                                    {% if sort_by == '-stock_in_quantity' %}selected{% endif %}>
-                                Stock In High-Low
-                            </option>
-                            <option value="stock_in_quantity"
-                                    {% if sort_by == 'stock_in_quantity' %}selected{% endif %}>
-                                Stock In Low-High
-                            </option>
-                            <option value="-sales_quantity"
-                                    {% if sort_by == '-sales_quantity' %}selected{% endif %}>Sales High-Low</option>
-                            <option value="sales_quantity"
-                                    {% if sort_by == 'sales_quantity' %}selected{% endif %}>Sales Low-High</option>
-                            <option value="brand" {% if sort_by == 'brand' %}selected{% endif %}>Brand A-Z</option>
-                            <option value="-brand" {% if sort_by == '-brand' %}selected{% endif %}>Brand Z-A</option>
-                        </select>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-search"></i>
                             Search
@@ -222,11 +197,8 @@
                                         <td>
                                             <strong>{{ product.stock_in_quantity|floatformat:0 }}</strong>
                                         </td>
-                                        <td>{{ product.sales_quantity|floatformat:0 }}
-                                        </td>
-                                        <td>
-                                            {{ product.remaining_quantity|floatformat:0 }}
-                                        </td>
+                                        <td>{{ product.sales_quantity|floatformat:0 }}</td>
+                                        <td>{{ product.remaining_quantity|floatformat:0 }}</td>
                                         <td>{{ product.purchase_price|currency }}</td>
                                         <td>
                                             {% if product.remaining_quantity > 5 %}
@@ -304,4 +276,3 @@
     });
     </script>
 {% endblock extra_js %}
-

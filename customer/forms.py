@@ -13,30 +13,26 @@ class CustomerForm(forms.ModelForm):
                     "autofocus": True,
                 }
             ),
-            "phone_number": forms.NumberInput(
+            "phone_number": forms.TextInput(
                 attrs={
+                    "type": "tel",
                     "placeholder": "Enter 10-digit phone number",
                     "maxlength": "10",
                     "pattern": "[0-9]{10}",
+                    "inputmode": "numeric",
                 }
             ),
-            "email": forms.EmailInput(
-                attrs={ "placeholder": "Enter email address"}
-            ),
+            "email": forms.EmailInput(attrs={"placeholder": "Enter email address"}),
             "address": forms.Textarea(
                 attrs={
                     "placeholder": "Enter complete address",
                     "rows": "4",
                 }
             ),
-            "referred_by": forms.Select(
-                attrs={
-                }
-            ),
+            "referred_by": forms.Select(attrs={}),
         }
 
     def __init__(self, *args, **kwargs):
-        self.instance = kwargs.get("instance")
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
@@ -48,10 +44,15 @@ class CustomerForm(forms.ModelForm):
         for visible in self.visible_fields():
             visible.field.widget.attrs["class"] = "form-input"
 
+        # Override maxlength for phone_number to enforce 10 digits
+        self.fields["phone_number"].widget.attrs["maxlength"] = "10"
+
         # Referred by is optional; exclude self from choices if editing
         self.fields["referred_by"].required = False
-        if self.instance and getattr(self.instance, "pk", None):
-            self.fields["referred_by"].queryset = Customer.objects.exclude(pk=self.instance.pk)
+        if self.instance.pk:
+            self.fields["referred_by"].queryset = Customer.objects.exclude(
+                pk=self.instance.pk
+            )
         else:
             self.fields["referred_by"].queryset = Customer.objects.all()
 
@@ -68,7 +69,7 @@ class CustomerForm(forms.ModelForm):
 
         # Check for duplicate phone number, excluding current instance
         existing_customer = Customer.objects.filter(phone_number=phone_number)
-        if self.instance:
+        if self.instance.pk:
             existing_customer = existing_customer.exclude(pk=self.instance.pk)
 
         if existing_customer.exists():
@@ -78,57 +79,97 @@ class CustomerForm(forms.ModelForm):
 
         return phone_number
 
-
     def clean_email(self):
         email = self.cleaned_data.get("email")
-        if email and not "@" in email:
-            raise forms.ValidationError("Please enter a valid email address.")
-        return email.lower() if email else email
+        if email:
+            # Additional validation (Django's EmailField already validates basic format)
+            if "@" not in email:
+                raise forms.ValidationError("Please enter a valid email address.")
+            return email.lower()
+        return email
 
 
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ["customer", "payment_type", "amount", "method", "transaction_id", "payment_date", "notes"]
+        fields = [
+            "customer",
+            "payment_type",
+            "amount",
+            "method",
+            "transaction_id",
+            "payment_date",
+            "notes",
+        ]
         widgets = {
-            "customer": forms.Select(attrs={"class": "form-select"}),
-            "payment_type": forms.Select(attrs={"class": "form-select"}),
-            "amount": forms.NumberInput(
+            "customer": forms.Select(
                 attrs={
-                    "class": "form-input",
-                    "step": "0.01",
-                    "min": "0",
-                    "placeholder": "0.00",
+                    "placeholder": "Select customer",
+                    "help_text": "Select the customer for the payment",
                 }
             ),
-            "method": forms.Select(attrs={"class": "form-select"}),
+            "payment_type": forms.Select(
+                attrs={
+                    "placeholder": "Select payment type",
+                    "help_text": "Select the payment type for the payment",
+                }
+            ),
+            "amount": forms.NumberInput(
+                attrs={
+                    "placeholder": "Enter amount",
+                    "autofocus": True,
+                    "help_text": "Enter the amount for the payment",
+                }
+            ),
+            "method": forms.Select(attrs={}),
             "transaction_id": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Transaction reference (optional)",
+                    "help_text": "Enter the transaction reference for the payment",
                 }
             ),
             "payment_date": forms.DateTimeInput(
-                attrs={"class": "form-input", "type": "datetime-local"}
+                attrs={
+                    "type": "datetime-local",
+                    "help_text": "Select the date and time for the payment",
+                }
             ),
             "notes": forms.Textarea(
-                attrs={"class": "form-textarea", "rows": "3", "placeholder": "Payment notes"}
+                attrs={
+                    "placeholder": "Enter payment notes",
+                    "rows": "2",
+                    "help_text": "Enter the notes for the payment",
+                }
             ),
         }
 
     def __init__(self, *args, **kwargs):
         self.customer = kwargs.pop("customer", None)
         super().__init__(*args, **kwargs)
-        
+
+        # Add required field indicators
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.label = f"{field.label} *"
+
+        # Apply appropriate classes to fields
+        for field_name, field in self.fields.items():
+            widget = field.widget
+            if isinstance(widget, forms.Select):
+                widget.attrs["class"] = "form-select"
+            elif isinstance(widget, forms.Textarea):
+                widget.attrs["class"] = "form-textarea"
+            else:
+                widget.attrs["class"] = "form-input"
+
+        # Handle customer field if provided
         if self.customer:
             self.fields["customer"].initial = self.customer
-            # Create a custom widget that shows customer name but is read-only
-            self.fields["customer"].widget.attrs['readonly'] = True
+            # Disable the field to prevent selection (readonly doesn't work on select elements)
+            self.fields["customer"].widget.attrs["readonly"] = True
 
     def clean_amount(self):
         amount = self.cleaned_data.get("amount")
         if amount is None or amount <= 0:
             raise forms.ValidationError("Amount must be greater than zero.")
         return amount
-
-

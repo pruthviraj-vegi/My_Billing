@@ -278,3 +278,341 @@ class ReportConfiguration(models.Model):
             return self.thank_you_message
 
         return "Thank You Please Visit Again"
+
+
+class PaymentDetails(models.Model):
+    """Model to store multiple payment methods and QR codes for the shop."""
+
+    class PaymentType(models.TextChoices):
+        UPI = "UPI", "UPI"
+        BANK_ACCOUNT = "BANK", "Bank Account"
+        QR_CODE = "QR", "QR Code"
+        CARD = "CARD", "Card Payment"
+        WALLET = "WALLET", "Wallet"
+        OTHER = "OTHER", "Other"
+
+    # Basic Information
+    payment_name = models.CharField(
+        max_length=255,
+        help_text="Name/Label for this payment method (e.g., 'Main Counter UPI', 'Paytm QR')",
+    )
+    payment_type = models.CharField(
+        max_length=10,
+        choices=PaymentType.choices,
+        default=PaymentType.UPI,
+        help_text="Type of payment method",
+    )
+
+    # UPI Details
+    upi_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="UPI ID for payments (e.g., shopname@paytm)",
+    )
+
+    # Bank Account Details
+    account_holder_name = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Name of account holder"
+    )
+    bank_name = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Name of the bank"
+    )
+    account_number = models.CharField(
+        max_length=50, blank=True, null=True, help_text="Bank account number"
+    )
+    ifsc_code = models.CharField(
+        max_length=11, blank=True, null=True, help_text="IFSC code"
+    )
+    branch_name = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Bank branch name"
+    )
+
+    # QR Code Details
+    qr_code_image = models.ImageField(
+        upload_to="payment_qr_codes/",
+        blank=True,
+        null=True,
+        help_text="Upload QR code image",
+    )
+    qr_code_url = models.URLField(
+        blank=True, null=True, help_text="URL to generate QR code dynamically"
+    )
+
+    # Additional Details
+    description = models.TextField(
+        blank=True, null=True, help_text="Additional notes about this payment method"
+    )
+
+    # Counter/Location Linking (Future use)
+    counter_name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Counter/Location name (e.g., 'Counter 1', 'Online Store')",
+    )
+
+    # Status & Priority
+    is_active = models.BooleanField(
+        default=True, help_text="Whether this payment method is currently active"
+    )
+    is_default = models.BooleanField(
+        default=False, help_text="Use as default payment method on invoices"
+    )
+    display_order = models.PositiveIntegerField(
+        default=0,
+        help_text="Order in which to display this payment method (lower number = higher priority)",
+    )
+
+    # Link to Shop
+    shop = models.ForeignKey(
+        "ShopDetails",
+        on_delete=models.CASCADE,
+        related_name="payment_methods",
+        help_text="Shop this payment method belongs to",
+    )
+
+    # Metadata
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_details_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Payment Detail"
+        verbose_name_plural = "Payment Details"
+        ordering = ["display_order", "-is_default", "-created_at"]
+        # Ensure only one default per shop
+        constraints = [
+            models.UniqueConstraint(
+                fields=["shop", "is_default"],
+                condition=models.Q(is_default=True),
+                name="unique_default_payment_per_shop",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.payment_name} ({self.get_payment_type_display()})"
+
+    def clean(self):
+        """Validate conditional fields."""
+        from django.core.exceptions import ValidationError
+
+        if self.payment_type == self.PaymentType.UPI and not self.upi_id:
+            raise ValidationError(
+                {"upi_id": "UPI ID is required for UPI payment type."}
+            )
+
+        if self.payment_type == self.PaymentType.BANK_ACCOUNT:
+            if not self.account_number:
+                raise ValidationError(
+                    {"account_number": "Account Number is required for Bank Account."}
+                )
+            if not self.ifsc_code:
+                raise ValidationError(
+                    {"ifsc_code": "IFSC Code is required for Bank Account."}
+                )
+
+    def save(self, *args, **kwargs):
+        """Override save to clean and format data."""
+        # Format text fields
+        if self.payment_name:
+            self.payment_name = StringProcessor(self.payment_name).toTitle()
+        if self.account_holder_name:
+            self.account_holder_name = StringProcessor(
+                self.account_holder_name
+            ).toTitle()
+        if self.bank_name:
+            self.bank_name = StringProcessor(self.bank_name).toTitle()
+        if self.branch_name:
+            self.branch_name = StringProcessor(self.branch_name).toTitle()
+        if self.ifsc_code:
+            self.ifsc_code = StringProcessor(self.ifsc_code).toUppercase()
+        # Handle default payment method
+        if self.is_default:
+            # Set all other payment methods for this shop to not default
+            PaymentDetails.objects.filter(shop=self.shop, is_default=True).exclude(
+                pk=self.pk
+            ).update(is_default=False)
+
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_default_payment(cls, shop):
+        """Get the default payment method for a shop."""
+        try:
+            return cls.objects.get(shop=shop, is_default=True, is_active=True)
+        except cls.DoesNotExist:
+            # Return first active payment method if no default is set
+            return cls.objects.filter(shop=shop, is_active=True).first()
+
+    @classmethod
+    def get_active_payments(cls, shop):
+        """Get all active payment methods for a shop."""
+        return cls.objects.filter(shop=shop, is_active=True)
+
+    @property
+    def payment_info(self):
+        """Return formatted payment information based on type."""
+        if self.payment_type == self.PaymentType.UPI and self.upi_id:
+            return f"UPI: {self.upi_id}"
+        elif self.payment_type == self.PaymentType.BANK_ACCOUNT and self.account_number:
+            return f"A/C: {self.account_number} | IFSC: {self.ifsc_code}"
+        elif self.payment_type == self.PaymentType.QR_CODE:
+            return "Scan QR Code to Pay"
+        return self.payment_name
+
+    @property
+    def bank_details_formatted(self):
+        """Return formatted bank details."""
+        if not self.account_number:
+            return None
+
+        details = []
+        if self.account_holder_name:
+            details.append(f"A/C Holder: {self.account_holder_name}")
+        if self.bank_name:
+            details.append(f"Bank: {self.bank_name}")
+        if self.account_number:
+            details.append(f"A/C No: {self.account_number}")
+        if self.ifsc_code:
+            details.append(f"IFSC: {self.ifsc_code}")
+        if self.branch_name:
+            details.append(f"Branch: {self.branch_name}")
+
+        return " | ".join(details)
+
+
+class BarcodeConfiguration(models.Model):
+    """Simplified model to store barcode/label printing preferences."""
+
+    class BarcodeType(models.TextChoices):
+        CODE128 = "CODE128", "Code 128"
+        EAN13 = "EAN13", "EAN-13"
+        QR_CODE = "QR", "QR Code"
+
+    class LabelSize(models.TextChoices):
+        SMALL = "25x12", "25mm x 12mm"
+        MEDIUM = "38x25", "38mm x 25mm"
+        LARGE = "50x25", "50mm x 25mm"
+        CUSTOM = "CUSTOM", "Custom Size"
+
+    class PaperSize(models.TextChoices):
+        A4 = "A4", "A4 (210 x 297 mm)"
+        ROLL = "ROLL", "Label Roll"
+
+    # --- Basic Config ---
+    config_name = models.CharField(max_length=100, default="Default Barcode")
+    barcode_type = models.CharField(
+        max_length=10, choices=BarcodeType.choices, default=BarcodeType.CODE128
+    )
+    label_size = models.CharField(
+        max_length=10, choices=LabelSize.choices, default=LabelSize.MEDIUM
+    )
+    paper_size = models.CharField(
+        max_length=10, choices=PaperSize.choices, default=PaperSize.A4
+    )
+
+    # --- Heading ---
+    show_heading = models.BooleanField(
+        default=True, help_text="Show heading on barcode print page"
+    )
+    heading_text = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        help_text="Custom heading to display on the barcode print page (e.g., 'SRI SAI GARMENTS' or 'Product Labels')",
+    )
+
+    # --- Custom Sizes ---
+    custom_label_width = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True
+    )
+    custom_label_height = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True
+    )
+
+    # --- Layout ---
+    labels_per_row = models.PositiveIntegerField(default=2)
+
+    # --- Display Options ---
+    show_product_name = models.BooleanField(default=True)
+    show_product_code = models.BooleanField(default=True)
+    show_mrp = models.BooleanField(default=True)
+    show_price = models.BooleanField(default=True)
+    show_discount = models.BooleanField(default=True)
+    show_shop_logo = models.BooleanField(default=False)
+
+    # --- Link to Shop ---
+    shop = models.ForeignKey(
+        "ShopDetails", on_delete=models.CASCADE, related_name="barcode_configs"
+    )
+    is_default = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Barcode Configuration"
+        verbose_name_plural = "Barcode Configurations"
+        ordering = ["-is_default", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["shop", "is_default"],
+                condition=models.Q(is_default=True),
+                name="unique_default_barcode_per_shop",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.config_name} ({self.barcode_type})"
+
+    def save(self, *args, **kwargs):
+        try:
+            self.config_name = StringProcessor(self.config_name).toTitle()
+            self.heading_text = StringProcessor(self.heading_text).toTitle()
+        except BaseException as e:
+            logger.error(str(e))
+
+        return super().save(*args, **kwargs)
+
+    @property
+    def labels_per_page(self):
+        return self.labels_per_row * self.labels_per_column
+
+    @classmethod
+    def get_active_barcodes(cls, shop):
+        """Get all active payment methods for a shop."""
+        return cls.objects.filter(shop=shop, is_active=True)
+
+    @property
+    def actual_label_width(self):
+        if self.label_size == self.LabelSize.CUSTOM and self.custom_label_width:
+            return float(self.custom_label_width)
+        if "x" in self.label_size:
+            return float(self.label_size.split("x")[0])
+        return 38.0
+
+    @property
+    def actual_label_height(self):
+        if self.label_size == self.LabelSize.CUSTOM and self.custom_label_height:
+            return float(self.custom_label_height)
+        if "x" in self.label_size:
+            return float(self.label_size.split("x")[1])
+        return 25.0
+
+    @property
+    def display_heading(self):
+        """Return the heading text or fallback to shop name."""
+        if self.show_heading:
+            return self.heading_text or self.shop.shop_name
+        return None

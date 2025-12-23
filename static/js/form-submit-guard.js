@@ -7,13 +7,13 @@
  * 2. Or call FormSubmitGuard.init() to auto-protect all forms
  */
 
-(function(window) {
+(function (window) {
     'use strict';
 
     const FormSubmitGuard = {
         // Track active submissions
         activeSubmissions: new Set(),
-        
+
         // Default options
         defaults: {
             disableButton: true,
@@ -29,9 +29,9 @@
         /**
          * Initialize - Auto-protect all forms with data-prevent-double-submit
          */
-        init: function(options = {}) {
+        init: function (options = {}) {
             const config = { ...this.defaults, ...options };
-            
+
             // Protect forms with data attribute
             document.querySelectorAll('form[data-prevent-double-submit]').forEach(form => {
                 this.protectForm(form, config);
@@ -55,23 +55,26 @@
         /**
          * Protect a form from double submission
          */
-        protectForm: function(form, options = {}) {
+        protectForm: function (form, options = {}) {
             const config = { ...this.defaults, ...options };
             const formId = form.id || `form_${Date.now()}_${Math.random()}`;
-            
-            form.addEventListener('submit', function(e) {
-                // Check if already submitting
+
+            form.addEventListener('submit', function (e) {
+                // CRITICAL: Mark as submitting FIRST to prevent race conditions
+                // If two submit events are queued rapidly, both need to check the SAME state
                 if (FormSubmitGuard.activeSubmissions.has(formId)) {
+                    // Already submitting - block this attempt
                     e.preventDefault();
                     e.stopPropagation();
+                    e.stopImmediatePropagation(); // Stop other listeners too
                     return false;
                 }
 
-                // Mark as submitting
+                // Mark as submitting IMMEDIATELY before any async operations
                 FormSubmitGuard.activeSubmissions.add(formId);
-                
+
                 // Get submit button
-                const submitButton = form.querySelector('button[type="submit"], input[type="submit"]') 
+                const submitButton = form.querySelector('button[type="submit"], input[type="submit"]')
                     || form.querySelector('button:not([type]), input:not([type])');
 
                 // Store original state
@@ -82,15 +85,17 @@
                     innerHTML: submitButton ? submitButton.innerHTML : ''
                 };
 
-                // Disable button and show loading state
+                // Disable button and show loading state IMMEDIATELY (synchronous)
                 if (submitButton && config.disableButton) {
+                    // Disable BEFORE setSubmittingState to prevent double clicks
+                    submitButton.disabled = true;
                     FormSubmitGuard.setSubmittingState(submitButton, config);
                 }
 
                 // Handle form submission completion
-                const handleComplete = function() {
+                const handleComplete = function () {
                     FormSubmitGuard.activeSubmissions.delete(formId);
-                    
+
                     if (submitButton && config.disableButton) {
                         if (config.restoreOnError) {
                             // Auto-restore after delay (in case of network issues)
@@ -120,11 +125,11 @@
         /**
          * Protect a button from double clicks
          */
-        protectButton: function(button, options = {}) {
+        protectButton: function (button, options = {}) {
             const config = { ...this.defaults, ...options };
             const buttonId = button.id || `btn_${Date.now()}_${Math.random()}`;
-            
-            button.addEventListener('click', function(e) {
+
+            button.addEventListener('click', function (e) {
                 // Check if already submitting
                 if (FormSubmitGuard.activeSubmissions.has(buttonId)) {
                     e.preventDefault();
@@ -139,7 +144,7 @@
 
                 // Mark as submitting
                 FormSubmitGuard.activeSubmissions.add(buttonId);
-                
+
                 // Store original state
                 const originalState = {
                     disabled: button.disabled,
@@ -153,7 +158,7 @@
                 }
 
                 // Restore after delay or on completion
-                const handleComplete = function() {
+                const handleComplete = function () {
                     FormSubmitGuard.activeSubmissions.delete(buttonId);
                     if (config.restoreOnError) {
                         setTimeout(() => {
@@ -177,10 +182,10 @@
         /**
          * Set button to submitting state
          */
-        setSubmittingState: function(button, config) {
+        setSubmittingState: function (button, config) {
             button.disabled = true;
             button.classList.add('submitting');
-            
+
             if (config.showSpinner) {
                 const spinner = '<i class="fas fa-spinner fa-spin"></i> ';
                 if (button.tagName === 'INPUT') {
@@ -196,12 +201,12 @@
         /**
          * Restore button to original state
          */
-        restoreButtonState: function(button, originalState) {
+        restoreButtonState: function (button, originalState) {
             if (!button) return;
-            
+
             button.disabled = originalState.disabled;
             button.classList.remove('submitting');
-            
+
             if (button.tagName === 'INPUT') {
                 button.value = originalState.text;
             } else {
@@ -212,19 +217,19 @@
         /**
          * Manually mark submission as complete (for custom AJAX handlers)
          */
-        complete: function(formOrButton) {
-            const element = typeof formOrButton === 'string' 
-                ? document.getElementById(formOrButton) 
+        complete: function (formOrButton) {
+            const element = typeof formOrButton === 'string'
+                ? document.getElementById(formOrButton)
                 : formOrButton;
-            
+
             if (element) {
                 const id = element.id || `element_${Date.now()}`;
                 this.activeSubmissions.delete(id);
-                
+
                 // Restore button if exists
-                const button = element.querySelector('button[type="submit"], input[type="submit"]') 
+                const button = element.querySelector('button[type="submit"], input[type="submit"]')
                     || element;
-                
+
                 if (button && button.classList.contains('submitting')) {
                     const originalText = button.dataset.originalText || button.textContent;
                     button.disabled = false;
@@ -239,13 +244,13 @@
         /**
          * Check if form/button is currently submitting
          */
-        isSubmitting: function(formOrButton) {
-            const element = typeof formOrButton === 'string' 
-                ? document.getElementById(formOrButton) 
+        isSubmitting: function (formOrButton) {
+            const element = typeof formOrButton === 'string'
+                ? document.getElementById(formOrButton)
                 : formOrButton;
-            
+
             if (!element) return false;
-            
+
             const id = element.id || 'unknown';
             return this.activeSubmissions.has(id);
         }

@@ -176,10 +176,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Format currency
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR'
-    }).format(amount);
+    try {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'decimal',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(parseFloat(amount) || 0);
+    } catch (error) {
+        console.error('Error formatting currency:', error);
+        return amount;
+    }
 }
 
 // Format date

@@ -12,13 +12,11 @@ from django.urls import reverse
 from django.shortcuts import render
 from django.contrib import messages
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
-from django.template.loader import render_to_string
 from django.db.models import Q
-from fuzzywuzzy import process
 from django.views.decorators.http import require_http_methods
 import logging
+
+from base.utility import render_paginated_response
 
 logger = logging.getLogger(__name__)
 
@@ -272,7 +270,6 @@ VALID_CATEGORY_SORT_FIELDS = {
 }
 
 
-@login_required
 def search_suggestions(request):
     """AJAX endpoint for category search suggestions."""
     query = request.GET.get("q", "").strip()
@@ -321,7 +318,6 @@ def search_suggestions(request):
     return JsonResponse({"suggestions": suggestions})
 
 
-@login_required
 def fetch_categories(request):
     """AJAX endpoint to fetch categories with search, filter, and pagination."""
     # Get search and filter parameters
@@ -342,32 +338,10 @@ def fetch_categories(request):
         sort_by = "-created_at"
     categories = categories.order_by(sort_by)
 
-    # Pagination
-    paginator = Paginator(categories, OBJECTS_PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    # Render the HTML template
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-        "search_query": search_query,
-    }
-
-    # Render the table content (without pagination)
-    table_html = render_to_string(
-        "inventory/category/fetch.html", context, request=request
-    )
-
-    # Render pagination separately
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        categories,
+        "inventory/category/fetch.html",
     )
 
 
@@ -538,7 +512,6 @@ VALID_UOM_SORT_FIELDS = {
 UOM_OBJECTS_PER_PAGE = 10
 
 
-@login_required
 def uom_search_suggestions(request):
     """AJAX endpoint for UOM search suggestions."""
     query = request.GET.get("q", "").strip()
@@ -597,7 +570,6 @@ def uom_search_suggestions(request):
     return JsonResponse({"suggestions": suggestions})
 
 
-@login_required
 def fetch_uoms(request):
     """AJAX endpoint to fetch UOMs with search, filter, and pagination."""
     # Get search and filter parameters
@@ -621,30 +593,10 @@ def fetch_uoms(request):
         sort_by = "-created_at"
     uoms = uoms.order_by(sort_by)
 
-    # Pagination
-    paginator = Paginator(uoms, UOM_OBJECTS_PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    # Render the HTML template
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-        "search_query": search_query,
-    }
-
-    # Render the table content (without pagination)
-    table_html = render_to_string("inventory/uom/fetch.html", context, request=request)
-
-    # Render pagination separately
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        uoms,
+        "inventory/uom/fetch.html",
     )
 
 
@@ -659,7 +611,6 @@ VALID_GST_HSN_SORT_FIELDS = [
 ]
 
 
-@login_required
 def gst_hsn_search_suggestions(request):
     """AJAX endpoint for GST HSN Code search suggestions"""
     query = request.GET.get("q", "").strip()
@@ -682,8 +633,6 @@ def gst_hsn_search_suggestions(request):
         combined_items.append(f"{code} - {desc}" if desc else code)
 
     # Fuzzy match against combined items
-    from fuzzywuzzy import fuzz
-
     matches = process.extract(
         query, combined_items, limit=10, scorer=fuzz.partial_ratio
     )
@@ -696,7 +645,6 @@ def gst_hsn_search_suggestions(request):
     return JsonResponse({"suggestions": suggestions})
 
 
-@login_required
 def fetch_gst_hsn_codes(request):
     """AJAX endpoint for fetching GST HSN codes with pagination and search"""
     # Get search query
@@ -728,37 +676,10 @@ def fetch_gst_hsn_codes(request):
     # Apply sorting
     queryset = queryset.order_by(sort_by)
 
-    # Pagination
-    page = request.GET.get("page", 1)
-    paginator = Paginator(queryset, OBJECTS_PER_PAGE or 20)
-
-    try:
-        page_obj = paginator.page(page)
-    except:
-        page_obj = paginator.page(1)
-
-    context = {
-        "gst_hsn_codes": page_obj,
-        "page_obj": page_obj,
-        "search_query": search_query,
-        "sort_by": sort_by.replace("-", "") if sort_by.startswith("-") else sort_by,
-        "sort_order": "desc" if sort_by.startswith("-") else "asc",
-    }
-
-    # Render the table content (without pagination)
-    table_html = render_to_string(
-        "inventory/gst_hsn/fetch.html", context, request=request
-    )
-
-    # Render pagination separately
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        queryset,
+        "inventory/gst_hsn/fetch.html",
     )
 
 
@@ -814,7 +735,6 @@ class DeleteGSTHsnCode(DeleteView):
         return reverse("inventory:gst_hsn_home")
 
 
-@login_required
 @require_http_methods(["POST"])
 def create_category_ajax(request):
     """AJAX endpoint for creating categories via modal"""
@@ -872,7 +792,6 @@ def create_category_ajax(request):
         )
 
 
-@login_required
 @require_http_methods(["POST"])
 def create_cloth_type_ajax(request):
     """AJAX endpoint for creating cloth types via modal"""
@@ -930,7 +849,6 @@ def create_cloth_type_ajax(request):
         )
 
 
-@login_required
 @require_http_methods(["POST"])
 def create_uom_ajax(request):
     """AJAX endpoint for creating UOMs via modal"""
@@ -985,7 +903,6 @@ def create_uom_ajax(request):
         )
 
 
-@login_required
 @require_http_methods(["POST"])
 def create_gst_hsn_code_ajax(request):
     """AJAX endpoint for creating GST HSN codes via modal"""
@@ -1044,7 +961,6 @@ def create_gst_hsn_code_ajax(request):
         )
 
 
-@login_required
 @require_http_methods(["POST"])
 def create_size_ajax(request):
     """AJAX endpoint for creating sizes via modal"""
@@ -1096,7 +1012,6 @@ def create_size_ajax(request):
         )
 
 
-@login_required
 @require_http_methods(["POST"])
 def create_color_ajax(request):
     """AJAX endpoint for creating colors via modal"""

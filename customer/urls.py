@@ -52,4 +52,9 @@ urlpatterns = [
         views_credit.auto_reallocate,
         name="credit_auto_reallocate",
     ),
+    path(
+        "credit/auto-allot-all/",
+        views_credit.auto_allot_all,
+        name="credit_auto_allot_all",
+    ),
 ]

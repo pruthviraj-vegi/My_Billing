@@ -14,27 +14,6 @@
         {% include 'report/barcode_slot.html' %}
       </div>
     {% endfor %}
-    <script>
-      document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-          window.close()
-        }
-        if (event.key === 'Enter') {
-          setTimeout(() => {
-            window.print()
-          }, 100)
-        }
-      })
-      
-      window.addEventListener('afterprint', function () {
-        window.close()
-      })
-      
-      window.addEventListener('load', function () {
-        setTimeout(() => {
-          window.print()
-        }, 500)
-      })
-    </script>
+     <script src="{% static 'js/print.js' %}"></script>
   </body>
 </html>

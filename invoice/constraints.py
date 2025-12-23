@@ -1,12 +1,13 @@
 """
 Invoice model constraints and validation rules
 """
+
 from django.db import models
 
 
 class InvoiceConstraints:
     """Invoice model constraints"""
-    
+
     @staticmethod
     def get_all_constraints():
         """Return all constraints for Invoice model"""
@@ -23,11 +24,21 @@ class InvoiceConstraints:
                 name="advance_amount_check",
             ),
             # Ensure paid amount doesn't exceed remaining amount
+            # For CASH: paid_amount <= amount - discount_amount (advance_amount is 0)
+            # For CREDIT: paid_amount <= amount - discount_amount - advance_amount
             models.CheckConstraint(
-                check=models.Q(
+                check=(
+                    models.Q(payment_type="CASH")
+                    & models.Q(
+                        paid_amount__lte=models.F("amount")
+                        - models.F("discount_amount")
+                    )
+                )
+                | models.Q(
+                    payment_type="CREDIT",
                     paid_amount__lte=models.F("amount")
                     - models.F("discount_amount")
-                    - models.F("advance_amount")
+                    - models.F("advance_amount"),
                 ),
                 name="paid_amount_check",
             ),
@@ -49,7 +60,7 @@ class InvoiceConstraints:
 
 class InvoiceIndexes:
     """Invoice model indexes"""
-    
+
     @staticmethod
     def get_all_indexes():
         """Return all indexes for Invoice model"""
@@ -67,7 +78,7 @@ class InvoiceIndexes:
 
 class InvoiceItemConstraints:
     """InvoiceItem model constraints"""
-    
+
     @staticmethod
     def get_all_indexes():
         """Return all indexes for InvoiceItem model"""
@@ -80,7 +91,7 @@ class InvoiceItemConstraints:
 
 class AuditTableConstraints:
     """AuditTable model constraints"""
-    
+
     @staticmethod
     def get_all_indexes():
         """Return all indexes for AuditTable model"""
@@ -95,7 +106,7 @@ class AuditTableConstraints:
 
 class InvoiceAuditConstraints:
     """InvoiceAudit model constraints"""
-    
+
     @staticmethod
     def get_all_indexes():
         """Return all indexes for InvoiceAudit model"""
@@ -108,7 +119,7 @@ class InvoiceAuditConstraints:
 
 class InvoiceSequenceConstraints:
     """InvoiceSequence model constraints"""
-    
+
     @staticmethod
     def get_all_indexes():
         """Return all indexes for InvoiceSequence model"""

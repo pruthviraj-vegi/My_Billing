@@ -3,7 +3,7 @@
 
 {% block title %}
   Dashboard - Billing System
-{% endblock %}
+{% endblock title %}
 
 {% block content %}
   <!-- Page Header -->
@@ -34,108 +34,5 @@
     <p class="welcome-subtitle">Here's what's happening with your billing system today.</p>
   </div>
 
-  <!-- Quick Stats -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="fas fa-file-invoice-dollar"></i>
-      </div>
-      <div class="stat-content">
-        <h3 class="stat-number">₹45,250</h3>
-        <p class="stat-label">Today's Revenue</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="fas fa-shopping-cart"></i>
-      </div>
-      <div class="stat-content">
-        <h3 class="stat-number">24</h3>
-        <p class="stat-label">Orders Today</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="fas fa-users"></i>
-      </div>
-      <div class="stat-content">
-        <h3 class="stat-number">156</h3>
-        <p class="stat-label">Total Members</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="fas fa-boxes"></i>
-      </div>
-      <div class="stat-content">
-        <h3 class="stat-number">89</h3>
-        <p class="stat-label">Low Stock Items</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recent Activity -->
-  <div class="activity-section">
-    <h2 class="section-title">Recent Activity</h2>
-    <div class="activity-list">
-      <div class="activity-item">
-        <div class="activity-icon">
-          <i class="fas fa-plus-circle"></i>
-        </div>
-        <div class="activity-content">
-          <h4>New Invoice Created</h4>
-          <p>Invoice #INV-2024-001 created for John Doe</p>
-          <span class="activity-time">2 minutes ago</span>
-        </div>
-      </div>
-
-      <div class="activity-item">
-        <div class="activity-icon">
-          <i class="fas fa-user-plus"></i>
-        </div>
-        <div class="activity-content">
-          <h4>New Member Added</h4>
-          <p>Jane Smith has been added as a new member</p>
-          <span class="activity-time">15 minutes ago</span>
-        </div>
-      </div>
-
-      <div class="activity-item">
-        <div class="activity-icon">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="activity-content">
-          <h4>Payment Received</h4>
-          <p>Payment of ₹2,500 received for Invoice #INV-2024-000</p>
-          <span class="activity-time">1 hour ago</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Quick Actions -->
-  <div class="quick-actions">
-    <h2 class="section-title">Quick Actions</h2>
-    <div class="actions-grid">
-      <a href="#" class="action-card">
-        <i class="fas fa-plus"></i>
-        <span>Create Invoice</span>
-      </a>
-      <a href="#" class="action-card">
-        <i class="fas fa-user-plus"></i>
-        <span>Add Member</span>
-      </a>
-      <a href="#" class="action-card">
-        <i class="fas fa-box"></i>
-        <span>Add Product</span>
-      </a>
-      <a href="#" class="action-card">
-        <i class="fas fa-chart-bar"></i>
-        <span>View Reports</span>
-      </a>
-    </div>
-  </div>
-{% endblock %}
+  
+{% endblock content %}

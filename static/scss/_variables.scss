@@ -1,0 +1,61 @@
+// scss/_variables.scss
+// --------------------------------------------------
+// Theme & core variables (desktop-first)
+// --------------------------------------------------
+
+// Colors
+$primary: #2563eb;
+$primary-hover: #1d4ed8;
+$secondary: #64748b;
+
+$success: #198754;
+$warning: #ffc107;
+$danger: #dc3545;
+
+$text-primary: #1e293b;
+$text-secondary: #64748b;
+$text-on-primary: #ffffff;
+
+// Backgrounds & surfaces
+$bg-body: #e2dacf;
+$bg-surface: #ffffff;
+$bg-surface-hover: #f8fafc;
+
+// Borders & focus
+$border-color: #e2e8f0;
+$border-color-focus: #2563eb;
+$focus-ring: rgba(59, 130, 246, 0.35);
+
+// Typography
+$font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+$font-size-base: 16px;
+$heading-weight: 600;
+
+// Layout
+$topbar-height: 50px;
+$navbar-height: 50px;
+$max-width: 1200px;
+
+// Shadows
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+// Dark theme overrides (use inside [data-theme="dark"])
+$dark: (
+    primary: #3b82f6,
+    primary-hover: #60a5fa,
+    secondary: #94a3b8,
+    success: #22c55e,
+    warning: #facc15,
+    danger: #f87171,
+    text-primary: #f1f5f9,
+    text-secondary: #94a3b8,
+    bg-body: #0f172a,
+    bg-surface: #1e293b,
+    bg-surface-hover: #334155,
+    border-color: #334155,
+    border-focus: #3b82f6,
+    shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2),
+    shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3)
+);

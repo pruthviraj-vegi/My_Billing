@@ -4,8 +4,7 @@ from supplier.models import SupplierInvoice
 from base.manager import SoftDeleteModel
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
-import random, string
-from .manager import ProductVariantManager
+from .manager import ProductVariantManager, InventoryLogManager
 
 from base.utility import StringProcessor
 from django.urls import reverse
@@ -265,23 +264,23 @@ class ProductVariant(SoftDeleteModel):
         DISCONTINUED = "DISCONTINUED", "Discontinued"
 
     class Meta:
-        # constraints = [
-        #     models.UniqueConstraint(
-        #         fields=["product", "size", "color"],
-        #         name="unique_product_size_color",
-        #         condition=models.Q(size__isnull=False, color__isnull=False),
-        #     ),
-        #     models.UniqueConstraint(
-        #         fields=["product", "size"],
-        #         name="unique_product_size_null_color",
-        #         condition=models.Q(size__isnull=False, color__isnull=True),
-        #     ),
-        #     models.UniqueConstraint(
-        #         fields=["product", "color"],
-        #         name="unique_product_color_null_size",
-        #         condition=models.Q(size__isnull=True, color__isnull=False),
-        #     ),
-        # ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "size", "color"],
+                name="unique_product_size_color",
+                condition=models.Q(size__isnull=False, color__isnull=False),
+            ),
+            models.UniqueConstraint(
+                fields=["product", "size"],
+                name="unique_product_size_null_color",
+                condition=models.Q(size__isnull=False, color__isnull=True),
+            ),
+            models.UniqueConstraint(
+                fields=["product", "color"],
+                name="unique_product_color_null_size",
+                condition=models.Q(size__isnull=True, color__isnull=False),
+            ),
+        ]
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["barcode"]),
@@ -576,6 +575,34 @@ class ProductVariant(SoftDeleteModel):
             )
         return round(self.mrp * self.quantity, 2)
 
+    @property
+    def get_barcode_qty(self):
+        """
+        Get the minimum of:
+        1. Current quantity (self.quantity)
+        2. Quantity change from first INITIAL transaction
+        3. Quantity change from first STOCK_IN transaction
+        """
+        quantities = [self.quantity]
+
+        # Get the first transaction (INITIAL or STOCK_IN) by timestamp
+        first_log = (
+            self.inventory_logs.filter(
+                transaction_type__in=[
+                    InventoryLog.TransactionTypes.INITIAL,
+                    InventoryLog.TransactionTypes.STOCK_IN,
+                ]
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+
+        if first_log:
+            quantities.append(first_log.quantity_change)
+
+        qty = min(quantities) if quantities else 0
+        return max(1, int(qty + 1) // 2) if qty > 0 else 1
+
     def clean(self):
         """Custom validation"""
         from django.core.exceptions import ValidationError
@@ -592,13 +619,13 @@ class ProductVariant(SoftDeleteModel):
         """Override save to include validation"""
         self.clean()
 
-        if not self.barcode:
-            for _ in range(5):
-                barcode = "".join(random.choices(string.digits, k=6))
-                if not ProductVariant.objects.filter(barcode=barcode).exists():
-                    self.barcode = barcode
-                    break
-        super().save(*args, **kwargs)
+        # If new record and no barcode, generate after getting ID
+        if not self.pk and not self.barcode:
+            super().save(*args, **kwargs)  # First save to get ID
+            self.barcode = f"{self.id:06d}3"  # 6 digits with zero padding
+            super().save(update_fields=["barcode"])  # Update only barcode
+        else:
+            super().save(*args, **kwargs)
 
 
 class ProductImage(models.Model):
@@ -738,6 +765,8 @@ class InventoryLog(SoftDeleteModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = InventoryLogManager()
+
     class Meta:
         ordering = ["-timestamp"]
         indexes = [
@@ -765,3 +794,26 @@ class InventoryLog(SoftDeleteModel):
             self.remaining_quantity = abs(self.quantity_change)
 
         super().save(*args, **kwargs)
+
+
+class FavoriteVariant(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="favorite_variants"
+    )
+    variant = models.ForeignKey(
+        ProductVariant, on_delete=models.CASCADE, related_name="favorite_variants"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.variant.full_name}"
+
+    class Meta:
+        unique_together = ["user", "variant"]
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user"]),
+            models.Index(fields=["variant"]),
+            models.Index(fields=["created_at"]),
+        ]

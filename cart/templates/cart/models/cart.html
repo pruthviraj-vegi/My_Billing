@@ -3,7 +3,7 @@
 <!-- Data Table -->
 <!-- Search and Filter Section -->
 <div class="search-filter-section">
-    <form href="" class="search-filter-form" id="barcodeForm" data-prevent-double-submit>
+    <form href="" class="search-filter-form" id="barcodeForm"> 
         {% csrf_token %}
         <div class="search-group search-expanded">
             <i class="fas fa-search search-icon"></i>
@@ -15,6 +15,12 @@
                    id="barcodeInput"
                    autofocus>
         </div>
+        <button type="button" class="btn btn-primary" id="favoriteBtn">
+            <i class="fas fa-star"></i>
+        </button>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
+            <i class="fas fa-search"></i>
+        </button>
         <button type="submit" class="btn btn-primary">
             <i class="fas fa-search"></i>
             Search
@@ -25,15 +31,21 @@
     <div class="col-lg-6">
         <div class="row-lg-6">
             <span class="label">Items:</span>
+            <strong>
             <span class="value strong " id="totalItems">{{ cart_list|currency }}</span>
+            </strong>
         </div>
         <div class="row-lg-6">
             <span class="label">Total Amount:</span>
+            <strong>
             <span class="value" id="totalSellingPrice">{{ total_selling_price|currency }}</span>
+            </strong>
         </div>
         <div class="row-lg-6">
             <span class="label">Amount:</span>
+            <strong>
             <span class="value" id="totalAmount">{{ cart.total_amount|currency }}</span>
+            </strong>
         </div>
     </div>
     <div class="col-lg-6 d-flex justify-content-end align-items-center">
@@ -99,7 +111,7 @@
                 <th>Barcode</th>
                 <th>Product</th>
                 <th>Variant</th>
-                <th id="priceColumnHeader">Selling Price</th>
+                <th>Mrp</th>
                 <th>Quantity</th>
                 <th>Price</th>
                 <th>Discount</th>
@@ -120,19 +132,19 @@
                     </td>
                     <td>
                         <input type="number"
-                               class="form-input quantity-input"
+                               class="form-input quantity-input strong"
                                value="{{ data.quantity }}"
                                data-item-id="{{ data.id }}"
-                               min="0.01"
-                               step="0.01">
+                               min="0"
+                               step="1">
                     </td>
                     <td>
                         <input type="number"
-                               class="form-input price-input"
+                               class="form-input price-input strong"
                                value="{{ data.price }}"
                                data-item-id="{{ data.id }}"
                                min="0"
-                               step="0.01">
+                               step="1">
                     </td>
                     <td class="discount-cell">{{ data.discount_percentage }}%</td>
                     <td class="amount-cell">{{ data.amount|currency }}</td>
@@ -149,33 +161,167 @@
         </tbody>
     </table>
 </div>
-<!-- Confirmation Modal for Archive/Clear -->
+<!-- Favorites Modal -->
 <div class="modal fade"
-     id="confirmModal"
+     id="favoritesModal"
      tabindex="-1"
-     aria-labelledby="confirmModalLabel"
+     aria-labelledby="favoritesModalLabel"
      aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 95vw; width: 95vw;">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
+                <h5 class="modal-title" id="favoritesModalLabel"> Favorite Products
+                </h5>
                 <button type="button"
                         class="btn-close"
                         data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+                        aria-label="Close">
+                </button>
             </div>
-            <div class="modal-body" id="confirmModalBody">
-                <!-- Modal content will be dynamically set -->
+
+            <div class="modal-body p-0 m-0" id="favoritesModalBody">  
+                <div class="table-container">
+                    <table class="data-table" id="favorites_table" data-sort="">
+                        <thead>
+                            <tr>
+                                <th>Barcode</th>
+                                <th>Product</th>
+                                <th>Variant</th>
+                                <th>Selling Price</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table_body">
+                            <!-- Empty table body - data will be loaded via AJAX -->
+                            <tr>
+                                <td colspan="8" class="text-center loading-cell">
+                                    <div class="loading">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        Loading favorites...
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirmActionBtn">Confirm</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 95vw; width: 95vw;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="searchModalLabel"> Search Products
+                </h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close">
+                </button>
+            </div>
+
+            <div class="modal-body p-0 m-0" id="searchModalBody">  
+                <!-- Search Form - Outside table for proper HTML structure -->
+                <form id="searchForm" method="get" class="p-3 border-bottom">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label for="searchInput" class="form-label small">Search</label>
+                            <input type="text" 
+                                   id="searchInput" 
+                                   name="search" 
+                                   class="form-input" 
+                                   placeholder="Barcode, brand, name...">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="categoryFilter" class="form-label small">Category</label>
+                            <input type="text" 
+                                   id="categoryFilter" 
+                                   name="category" 
+                                   class="form-input" 
+                                   placeholder="Category">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="colorFilter" class="form-label small">Color</label>
+                            <input type="text" 
+                                   id="colorFilter" 
+                                   name="color" 
+                                   class="form-input" 
+                                   placeholder="Color">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="sizeFilter" class="form-label small">Size</label>
+                            <input type="text" 
+                                   id="sizeFilter" 
+                                   name="size" 
+                                   class="form-input" 
+                                   placeholder="Size">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="stockFilter" class="form-label small">Stock</label>
+                            <select id="stockFilter" 
+                                    name="stock" 
+                                    class="form-input">
+                                <option value="">All</option>
+                                <option value="in_stock">In Stock</option>
+                                <option value="out_of_stock">Out of Stock</option>
+                                <option value="low_stock">Low Stock</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div class="table-container">
+                    <table class="data-table" id="search_table" data-sort="">
+                        <thead>
+                            <tr>
+                                <th>Barcode</th>
+                                <th>Brand</th>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Color</th>
+                                <th>Size</th>
+                                <th>Quantity</th>
+                                <th>MRP</th>
+                                <th>Discount</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="search_table_body">
+                            <!-- Empty table body - data will be loaded via AJAX -->
+                            <tr>
+                                <td colspan="11" class="text-center loading-cell">
+                                    <div class="loading">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        Loading search results...
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block extra_js %}
     <!-- Global variables for JavaScript -->
+    <script src="{% static 'js/fetchData.js' %}"></script>
     <script>
     // Make Django template variables available to external JavaScript
     window.CART_DATA = {
@@ -185,11 +331,143 @@
             scanBarcode: "{% url 'cart:scan_barcode' %}",
             manageItem: "{% url 'cart:manage_cart_item' 0 %}",
             archiveCart: "{% url 'cart:archive_cart' cart.id %}",
-            clearCart: "{% url 'cart:clear_cart' cart.id %}"
+            clearCart: "{% url 'cart:clear_cart' cart.id %}",
+            getFavorites: "{% url 'cart:get_favorites' %}",
+            customSearch: "{% url 'cart:custom_search' %}",
         }
     };
     </script>
     <!-- External Cart JavaScript -->
-    <script src="{% static 'js/cart.js' %}"></script>
     <script src="{% static 'js/counting.js' %}"></script>
+    <script src="{% static 'js/cart.js' %}"></script>
+    <script>
+    // Optimized favorites modal handler
+    (function() {
+        'use strict';
+        
+        // Cache DOM elements
+        const elements = {
+            favoriteBtn: null,
+            favoritesModal: null,
+            favoritesModalBody: null,
+            barcodeInput: null,
+            barcodeForm: null
+        };
+        
+        // Initialize DOM element cache
+        function cacheDOMElements() {
+            elements.favoriteBtn = document.getElementById('favoriteBtn');
+            elements.favoritesModal = document.getElementById('favoritesModal');
+            elements.favoritesModalBody = document.getElementById('favoritesModalBody');
+            elements.barcodeInput = document.getElementById('barcodeInput');
+            elements.barcodeForm = document.getElementById('barcodeForm');
+        }
+        
+        // Handle favorite button click
+        function handleFavoriteClick() {
+            if (elements.favoritesModal) {
+                const modal = new bootstrap.Modal(elements.favoritesModal);
+                modal.show();
+            }
+        }
+        
+        // Handle add to cart action
+        function handleAddToCart(barcode) {
+            if (!barcode || !elements.barcodeInput || !elements.barcodeForm) return;
+            
+            // Set barcode value
+            elements.barcodeInput.value = barcode;
+            
+            // Close any open modals (favorites or search)
+            const favoritesModalInstance = bootstrap.Modal.getInstance(elements.favoritesModal);
+            favoritesModalInstance?.hide();
+            
+            const searchModal = document.getElementById('searchModal');
+            if (searchModal) {
+                const searchModalInstance = bootstrap.Modal.getInstance(searchModal);
+                searchModalInstance?.hide();
+            }
+            
+            // Submit form after modal animation
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    elements.barcodeInput.focus();
+                    elements.barcodeForm.requestSubmit(); // Better than dispatchEvent
+                }, 300);
+            });
+        }
+        
+        // Handle clicks within favorites modal (event delegation)
+        function handleModalClick(e) {
+            const addToCartBtn = e.target.closest('.add-to-cart-btn');
+            if (!addToCartBtn) return;
+            
+            e.preventDefault();
+            
+            // Extract barcode from row
+            const row = addToCartBtn.closest('tr');
+            const barcodeCell = row?.querySelector('#data-barcode');
+            const barcode = barcodeCell?.textContent.trim();
+            
+            if (barcode) {
+                handleAddToCart(barcode);
+            }
+        }
+        
+        // Handle clicks within search modal (event delegation)
+        function handleSearchModalClick(e) {
+            const addToCartBtn = e.target.closest('.add-to-cart-btn');
+            if (!addToCartBtn) return;
+            
+            e.preventDefault();
+            
+            // Extract barcode from data attribute or row
+            const barcode = addToCartBtn.dataset.barcode;
+            if (!barcode) {
+                // Fallback: try to find barcode in first cell of row
+                const row = addToCartBtn.closest('tr');
+                const barcodeCell = row?.querySelector('td:first-child');
+                const barcodeText = barcodeCell?.textContent.trim();
+                if (barcodeText) {
+                    handleAddToCart(barcodeText);
+                }
+            } else {
+                handleAddToCart(barcode);
+            }
+        }
+        
+        // Initialize event listeners
+        function initEventListeners() {
+            elements.favoriteBtn?.addEventListener('click', handleFavoriteClick);
+            elements.favoritesModalBody?.addEventListener('click', handleModalClick);
+            
+            // Add search modal click handler
+            const searchModalBody = document.getElementById('searchModalBody');
+            if (searchModalBody) {
+                searchModalBody.addEventListener('click', handleSearchModalClick);
+            }
+        }
+        
+        // Main initialization
+        function init() {
+            cacheDOMElements();
+            initEventListeners();
+        }
+        
+        // Run on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    
+    // Initialize favorites table
+    initTableAjax(null, 'favorites_table', CART_DATA.urls.getFavorites, { autoLoad: true });
+    
+    // Initialize search table with form
+    initTableAjax('searchForm', 'search_table', CART_DATA.urls.customSearch, { autoLoad: true });
+    initTableSorting('favorites_table');
+    initTableSorting('search_table');
+    </script>
 {% endblock extra_js %}

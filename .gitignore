@@ -12,3 +12,4 @@ generate_customer_data.py
 .vscode/*
 logs/*
 .cursor/*
+.env

@@ -128,36 +128,7 @@
                 </tbody>
             </table>
 
-            <!-- Pagination -->
-            {% if configs.has_other_pages %}
-                <div class="pagination">
-                    {% if configs.has_previous %}
-                        <a href="?page=1" class="pagination-item">
-                            <i class="fas fa-angle-double-left"></i>
-                        </a>
-                        <a href="?page={{ configs.previous_page_number }}" class="pagination-item">
-                            <i class="fas fa-angle-left"></i>
-                        </a>
-                    {% endif %}
-
-                    {% for num in configs.paginator.page_range %}
-                        {% if configs.number == num %}
-                            <span class="pagination-item active">{{ num }}</span>
-                        {% elif num > configs.number|add:'-3' and num < configs.number|add:'3' %}
-                            <a href="?page={{ num }}" class="pagination-item">{{ num }}</a>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if configs.has_next %}
-                        <a href="?page={{ configs.next_page_number }}" class="pagination-item">
-                            <i class="fas fa-angle-right"></i>
-                        </a>
-                        <a href="?page={{ configs.paginator.num_pages }}" class="pagination-item">
-                            <i class="fas fa-angle-double-right"></i>
-                        </a>
-                    {% endif %}
-                </div>
-            {% endif %}
+            
         {% else %}
             <div class="empty-state">
                 <i class="fas fa-file-alt empty-state-icon"></i>

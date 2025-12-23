@@ -1,0 +1,49 @@
+{% load custom_filters %}
+{% load static %}
+
+<!-- Favorites Modal Table Body -->
+{% if favorites %}
+    {% for favorite in favorites %}
+        {% with variant=favorite.variant %}
+        <tr style="transition: background-color 0.2s ease;" 
+            onmouseover="this.style.backgroundColor='var(--bg-surface-hover, #f9fafb)'" 
+            onmouseout="this.style.backgroundColor='transparent'">
+            <td style="padding: 0.875rem; vertical-align: middle;">
+                <strong style="color: var(--text-primary, #111827); font-family: 'Courier New', monospace; font-size: 0.95rem;">{{ variant.barcode }}</strong>
+            </td>
+            <td style="padding: 0.875rem; vertical-align: middle;">
+                <div style="font-weight: 600; color: var(--text-primary, #111827); font-size: 0.95rem;">{{ variant.product.brand }}</div>
+            </td>
+            <td style="padding: 0.875rem; vertical-align: middle;">
+                <span style="color: var(--text-secondary, #6b7280); font-size: 0.875rem;">{{ variant.simple_name|default:"-" }}</span>
+            </td>
+            <td style="padding: 0.875rem; vertical-align: middle;">
+                <strong style="color: var(--primary, #2563eb); font-size: 0.95rem;">{{ variant.final_price|currency }}</strong>
+            </td>
+            <td style="padding: 0.875rem; vertical-align: middle;">
+                <span class="badge {% if variant.quantity > 0 %}badge-success{% else %}badge-danger{% endif %}" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; font-weight: 500;">
+                    <i class="fas {% if variant.quantity > 0 %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i>
+                    {{ variant.quantity|floatformat:0 }}
+                </span>
+            </td>
+            <td style="padding: 0.875rem; vertical-align: middle; text-align: right;">
+                <button class="btn btn-primary add-favorite-to-cart" 
+                        data-barcode="{{ variant.barcode }}"
+                        style="min-width: 120px; font-size: 0.875rem; padding: 0.5rem 1rem;">
+                    <i class="fas fa-cart-plus"></i> Add to Cart
+                </button>
+            </td>
+        </tr>
+        {% endwith %}
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="6" class="text-center text-muted" style="padding: 2rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.75rem; opacity: 0.5;">
+                <i class="fas fa-star"></i>
+            </div>
+            <h5 style="margin-bottom: 0.5rem; color: var(--text-secondary, #6b7280); font-size: 1rem;">No Favorites Found</h5>
+            <p style="color: var(--text-secondary, #9ca3af); margin: 0; font-size: 0.875rem;">Add favorites from the product variant list</p>
+        </td>
+    </tr>
+{% endif %}

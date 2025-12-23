@@ -63,53 +63,52 @@
               <div class="form-group {% if form.customer.errors %}has-error{% endif %}">
                 <label for="{{ form.customer.id_for_label }}" class="form-label">{{ form.customer.label }}</label>
                 {{ form.customer }}
-                <small class="form-help">Select the customer for the invoice</small>
-                {% if form.customer.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if form.customer.errors %}has-error{% endif %}">
+                  {% if form.customer.errors %}
                     {% for error in form.customer.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Select the customer for the invoice</span>
+                </small>
               </div>
             </div>
             <!-- Created By, Amount, and Discount Row -->
             <!-- Created By Field -->
-            {% comment %} <div class="col-md-4">
-              <div class="form-group {% if form.created_by.errors %}has-error{% endif %}">
-                <label for="{{ form.created_by.id_for_label }}" class="form-label">{{ form.created_by.label }}</label>
-                {{ form.created_by }}
-                <small class="form-help">Select the user who created the invoice</small>
-                {% if form.created_by.errors %}
-                  <div class="field-errors">
-                    {% for error in form.created_by.errors %}
-                      <div class="error-message">
+            <div class="col-md-4">
+              <div class="form-group {% if form.sold_by.errors %}has-error{% endif %}">
+                <label for="{{ form.sold_by.id_for_label }}" class="form-label">{{ form.sold_by.label }}</label>
+                {{ form.sold_by }}
+                <small class="form-help {% if form.sold_by.errors %}has-error{% endif %}">
+                  {% if form.sold_by.errors %}
+                    {% for error in form.sold_by.errors %}
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Select the user who created the invoice</span>
+                </small>
               </div>
-            </div> {% endcomment %}
+            </div>
             <!-- Amount Field -->
             <div class="col-md-4">
               <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
                 <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
                 {{ form.amount }}
-                {% if form.amount.help_text %}<small class="form-help">{{ form.amount.help_text }}</small>{% endif %}
                 {% if form.amount.errors %}
-                  <div class="field-errors">
-                    {% for error in form.amount.errors %}
-                      <div class="error-message">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </div>
-                    {% endfor %}
-                  </div>
+                  {% for error in form.amount.errors %}
+                    <small class="form-help form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </small>
+                  {% endfor %}
+                {% elif form.amount.help_text %}
+                  <small class="form-help">{{ form.amount.help_text }}</small>
                 {% endif %}
               </div>
             </div>
@@ -118,18 +117,15 @@
               <div class="form-group {% if form.discount_amount.errors %}has-error{% endif %}">
                 <label for="{{ form.discount_amount.id_for_label }}" class="form-label">{{ form.discount_amount.label }}</label>
                 {{ form.discount_amount }}
-                {% if form.discount_amount.help_text %}
-                  <small class="form-help">{{ form.discount_amount.help_text }}</small>
-                {% endif %}
                 {% if form.discount_amount.errors %}
-                  <div class="field-errors">
-                    {% for error in form.discount_amount.errors %}
-                      <div class="error-message">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </div>
-                    {% endfor %}
-                  </div>
+                  {% for error in form.discount_amount.errors %}
+                    <small class="form-help form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </small>
+                  {% endfor %}
+                {% elif form.discount_amount.help_text %}
+                  <small class="form-help">{{ form.discount_amount.help_text }}</small>
                 {% endif %}
               </div>
             </div>
@@ -139,17 +135,17 @@
               <div class="form-group {% if form.payment_type.errors %}has-error{% endif %}">
                 <label for="{{ form.payment_type.id_for_label }}" class="form-label">{{ form.payment_type.label }}</label>
                 {{ form.payment_type }}
-                <small class="form-help">Select the type of invoice (Cash or Credit)</small>
-                {% if form.payment_type.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if form.payment_type.errors %}has-error{% endif %}">
+                  {% if form.payment_type.errors %}
                     {% for error in form.payment_type.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Select the type of invoice (Cash or Credit)</span>
+                </small>
               </div>
             </div>
             <!-- Advance Amount and Notes Row -->
@@ -158,16 +154,15 @@
               <div class="form-group {% if form.advance_amount.errors %}has-error{% endif %}">
                 <label for="{{ form.advance_amount.id_for_label }}" class="form-label">{{ form.advance_amount.label }}</label>
                 {{ form.advance_amount }}
-                {% if form.advance_amount.help_text %}<small class="form-help">{{ form.advance_amount.help_text }}</small>{% endif %}
                 {% if form.advance_amount.errors %}
-                  <div class="field-errors">
-                    {% for error in form.advance_amount.errors %}
-                      <div class="error-message">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </div>
-                    {% endfor %}
-                  </div>
+                  {% for error in form.advance_amount.errors %}
+                    <small class="form-help form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </small>
+                  {% endfor %}
+                {% elif form.advance_amount.help_text %}
+                  <small class="form-help">{{ form.advance_amount.help_text }}</small>
                 {% endif %}
               </div>
             </div>
@@ -176,17 +171,17 @@
               <div class="form-group {% if form.due_date.errors %}has-error{% endif %}">
                 <label for="{{ form.due_date.id_for_label }}" class="form-label">{{ form.due_date.label }}</label>
                 {{ form.due_date }}
-                <small class="form-help">Required for credit invoices</small>
-                {% if form.due_date.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if form.due_date.errors %}has-error{% endif %}">
+                  {% if form.due_date.errors %}
                     {% for error in form.due_date.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Required for credit invoices</span>
+                </small>
               </div>
             </div>
           </div>
@@ -196,33 +191,33 @@
             <div class="col-md-6 mb-2 {% if form.payment_method.errors %}has-error{% endif %}">
               <label for="{{ form.payment_method.id_for_label }}" class="form-label">{{ form.payment_method.label }}</label>
               {{ form.payment_method }}
-              <small class="form-help">Select the payment method for the invoice</small>
-              {% if form.payment_method.errors %}
-                <div class="field-errors">
+              <small class="form-help {% if form.payment_method.errors %}has-error{% endif %}">
+                {% if form.payment_method.errors %}
                   {% for error in form.payment_method.errors %}
-                    <div class="error-message">
+                    <span class="form-error-inline">
                       <i class="fas fa-exclamation-circle"></i>
                       {{ error }}
-                    </div>
+                    </span>
                   {% endfor %}
-                </div>
-              {% endif %}
+                {% endif %}
+                <span class="form-help-text">Select the payment method for the invoice</span>
+              </small>
             </div>
             <!-- Invoice Date Field -->
             <div class="col-md-6 mb-2 {% if form.invoice_date.errors %}has-error{% endif %}">
               <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
               {{ form.invoice_date }}
-              <small class="form-help">Select the date of the invoice</small>
-              {% if form.invoice_date.errors %}
-                <div class="field-errors">
+              <small class="form-help {% if form.invoice_date.errors %}has-error{% endif %}">
+                {% if form.invoice_date.errors %}
                   {% for error in form.invoice_date.errors %}
-                    <div class="error-message">
+                    <span class="form-error-inline">
                       <i class="fas fa-exclamation-circle"></i>
                       {{ error }}
-                    </div>
+                    </span>
                   {% endfor %}
-                </div>
-              {% endif %}
+                {% endif %}
+                <span class="form-help-text">Select the date of the invoice</span>
+              </small>
             </div>
           </div>
           <!-- Notes Field -->
@@ -230,16 +225,15 @@
             <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
               <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
               {{ form.notes }}
-              {% if form.notes.help_text %}<small class="form-help">{{ form.notes.help_text }}</small>{% endif %}
               {% if form.notes.errors %}
-                <div class="field-errors">
-                  {% for error in form.notes.errors %}
-                    <div class="error-message">
-                      <i class="fas fa-exclamation-circle"></i>
-                      {{ error }}
-                    </div>
-                  {% endfor %}
-                </div>
+                {% for error in form.notes.errors %}
+                  <small class="form-help form-error-inline">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ error }}
+                  </small>
+                {% endfor %}
+              {% elif form.notes.help_text %}
+                <small class="form-help">{{ form.notes.help_text }}</small>
               {% endif %}
             </div>
           </div>
@@ -303,31 +297,76 @@
       </form>
     </div>
   </div>
-
   {% include "model_forms/customer.html" %}
-  
 {% endblock content %}
 {% block extra_js %}
-  
-   <script>
+  <script>
      $(document).ready(function() {
+      setupModal('id_customer', 'Customer', 'new_customer', '#add_new_customer', '{% url "customer:create_ajax" %}');
        $('#id_customer').select2({
          placeholder: "Type to search customers...",
          width: '100%'
        });
-    });
-   </script>
-
-   <script src="{% static 'js/modelSetup.js' %}"></script>
-   <script>
-     
-     // Wait for DOM to be fully loaded
-     $(document).ready(function() {       
-       setupModal('id_customer', 'Customer', 'new_customer', '#add_new_customer', '{% url "customer:create_ajax" %}');
+       $('#id_payment_method').select2({
+         placeholder: "Type to search payment methods...",
+         width: '100%'
        });
-   </script>
-
-   <script>
+       $('#id_sold_by').select2({
+         placeholder: "Type to search created by...",
+         width: '100%'
+       });
+       
+       // Handle walk-in customer (ID 1) - force CASH payment type
+       $('#id_customer').on('change', function() {
+         const customerId = $(this).val();
+         const paymentTypeSelect = $('#{{ form.payment_type.id_for_label }}');
+         const paymentTypeGroup = paymentTypeSelect.closest('.form-group');
+         
+         if (customerId === '1' || customerId === 1) {
+           // Set payment type to CASH for walk-in customer
+           paymentTypeSelect.val('CASH');
+           // Trigger native change event
+           const nativeSelect = paymentTypeSelect[0];
+           if (nativeSelect) {
+             nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+           }
+           // Also call toggleFields directly to ensure it runs
+           setTimeout(function() {
+             if (typeof toggleFields === 'function') {
+               toggleFields();
+             }
+           }, 10);
+           // Prevent interaction but keep field enabled for form submission
+           // Use CSS class to maintain theme colors
+           paymentTypeGroup.addClass('field-disabled');
+           paymentTypeSelect.on('mousedown', function(e) {
+             e.preventDefault();
+             return false;
+           });
+         } else {
+           // Enable payment type field for other customers
+           paymentTypeGroup.removeClass('field-disabled');
+           paymentTypeSelect.off('mousedown');
+           // Trigger toggleFields to update advance/due date fields
+           setTimeout(function() {
+             if (typeof toggleFields === 'function') {
+               toggleFields();
+             }
+           }, 10);
+         }
+       });
+       
+       // Trigger on page load if customer is already selected
+       if ($('#id_customer').val() === '1' || $('#id_customer').val() == 1) {
+         $('#id_customer').trigger('change');
+       }
+      });
+  </script>
+  <script src="{% static 'js/modelSetup.js' %}"></script>
+  <script>
+    // Make toggleFields accessible globally so jQuery can call it
+    let toggleFields, updateTotals;
+    
     document.addEventListener('DOMContentLoaded', function() {
       const PaymentTypeSelect = document.getElementById('{{ form.payment_type.id_for_label }}');
       const advanceAmountField = document.getElementById('{{ form.advance_amount.id_for_label }}');
@@ -342,7 +381,7 @@
       const advanceDisplay = document.getElementById('advanceDisplay');
       const balanceDisplay = document.getElementById('balanceDisplay');
       
-      function updateTotals() {
+      updateTotals = function() {
         const subTotal = parseFloat(amountField.value) || 0;
         const discount = parseFloat(discountAmountField.value) || 0;
         const advance = parseFloat(advanceAmountField.value) || 0;
@@ -355,13 +394,10 @@
         totalDisplay.textContent = formatCurrency(total);
         advanceDisplay.textContent = formatCurrency(advance);
         balanceDisplay.textContent = formatCurrency(balance);
-      }
+      };
       
-      function formatCurrency(value) {
-        return `₹${(parseFloat(value) || 0).toFixed(2)}`;
-      }
       
-      function toggleFields() {
+      toggleFields = function() {
         const selectedValue = PaymentTypeSelect.value;
         
         if (selectedValue === 'CASH') {
@@ -401,7 +437,7 @@
         
         // Update totals after field changes
         updateTotals();
-      }
+      };
       
       // Handle form submission to ensure empty fields are treated as zero
       document.querySelector('form').addEventListener('submit', function(e) {
@@ -452,5 +488,4 @@
       PaymentTypeSelect.addEventListener('change', toggleFields);
     });
   </script>
-
 {% endblock extra_js %}

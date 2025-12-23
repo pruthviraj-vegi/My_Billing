@@ -21,10 +21,9 @@
       <td>
         {% if invoice.invoice_type == 'GST_APPLICABLE' %}
           {% if invoice.gst_type == 'CGST_SGST' %}
-            CGST: {{ invoice.cgst_amount|currency }}<br />
-            SGST: {{ invoice.cgst_amount|currency }}
+            {{ invoice.cgst_amount|add:invoice.cgst_amount|currency }}
           {% else %}
-            IGST: {{ invoice.igst_amount|currency }}
+            {{ invoice.igst_amount|currency }}
           {% endif %}
         {% else %}
           <span class="text-muted">-</span>
@@ -48,7 +47,6 @@
       </td>
       <td>
         <div class="action-buttons">
-          <a href="#" class="btn-action btn-view" title="View Invoice"><i class="fas fa-eye"></i></a>
           <a href="{% url 'supplier:edit_invoice' supplier.pk invoice.pk %}"
              class="btn-action btn-edit"
              title="Edit Invoice"><i class="fas fa-edit"></i></a>

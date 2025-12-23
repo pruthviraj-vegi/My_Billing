@@ -118,8 +118,6 @@
     </div>
     <!-- Right Column - Tables -->
     <div class="col-md-10 d-flex flex-column gap-2 ps-1">
-      <!-- Hidden minimal forms used by AJAX table loader -->
-      <form id="dummyFormInvoices" method="get" style="display:none"></form>
       <!-- Invoices Table -->
       <div class="table-section" id="invoicesSection">
         <div class="table-header">
@@ -176,8 +174,8 @@
         invoices: '{% url "customer:fetch_invoices" customer.id %}'
       }
 
-      // Use the same helper as supplier page
-      initTableAjax('dummyFormInvoices', 'invoices_table', urls.invoices, { autoLoad: true });
+      // Initialize table without form (form is now optional)
+      initTableAjax(null, 'invoices_table', urls.invoices, { autoLoad: true });
       initTableSorting('invoices_table');
     })
   </script>

@@ -1,0 +1,323 @@
+/* Modern Dashboard Chart Styles - Reusable across all dashboards */
+
+/*
+ * CSS Variables Used (all have fallback values):
+ * 
+ * Colors:
+ * --primary          : Primary brand color (buttons, highlights)
+ * --success          : Success state color (green)
+ * --danger           : Danger/error state color (red)
+ * --text-primary     : Primary text color (dark mode)
+ * --text-secondary   : Secondary text color (dark mode)
+ * --text-dark        : Dark text color (light mode)
+ * --text-muted       : Muted text color (light mode)
+ * 
+ * Backgrounds:
+ * --bg-surface       : Surface background color
+ * --bg-surface-hover : Surface hover state
+ * --bg-dark-surface  : Dark mode surface background
+ * --bg-dark-surface-hover : Dark mode surface hover
+ * --bg-dark-card     : Dark mode card background
+ * --bg-dark-card-hover : Dark mode card hover
+ * --bg-primary       : Primary background (for gradients)
+ * --success-bg       : Success background (10% opacity)
+ * --danger-bg        : Danger background (10% opacity)
+ * 
+ * Borders & Shadows:
+ * --border-color     : Standard border color
+ * --border-color-dark : Dark mode border
+ * --border-color-dark-subtle : Dark mode subtle border
+ * --shadow-sm        : Small shadow
+ * --shadow-md        : Medium shadow
+ */
+
+/* Modern Chart Styles - Pie and Bar Graphs */
+.payment-chart-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.payment-chart-container {
+    flex: 0 0 65%;
+    position: relative;
+    height: 250px;
+    min-width: 0;
+}
+
+.custom-legend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.legend-item {
+    background-color: var(--bg-surface, #ffffff);
+    border: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: all 0.2s ease;
+    min-height: fit-content;
+    flex-shrink: 0;
+}
+
+.legend-item:hover {
+    background-color: var(--bg-surface-hover, #f8fafc);
+    border-color: var(--primary, #3b82f6);
+}
+
+.legend-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-dark, #1e293b);
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.legend-stats {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-left: 1rem;
+}
+
+.legend-count {
+    color: var(--primary, #3b82f6);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.legend-percent {
+    color: var(--text-muted, #64748b);
+    font-size: 0.75rem;
+}
+
+.legend-amount {
+    color: var(--success, #10b981);
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-left: 1rem;
+}
+
+/* Revenue Chart Container */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.revenue-chart-card {
+    background: var(--bg-surface, #ffffff);
+    border: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
+    box-shadow: var(--shadow-sm, 0 1px 3px 0 rgba(0, 0, 0, 0.1));
+}
+
+/* Dark mode specific styling */
+[data-theme="dark"] .revenue-chart-card {
+    border: 1px solid var(--border-color-dark-subtle, rgba(255, 255, 255, 0.05));
+}
+
+@media (prefers-color-scheme: dark) {
+    .revenue-chart-card {
+        border: 1px solid var(--border-color-dark-subtle, rgba(255, 255, 255, 0.05));
+    }
+}
+
+/* Chart Header - Align title left, stats right */
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 1rem;
+}
+
+.chart-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-dark, #1e293b);
+}
+
+/* Dark mode chart title */
+[data-theme="dark"] .chart-title {
+    color: var(--text-primary, #f8fafc);
+}
+
+@media (prefers-color-scheme: dark) {
+    .chart-title {
+        color: var(--text-primary, #f8fafc);
+    }
+}
+
+/* Chart Summary Stats - Top Right Corner */
+.chart-summary-stats {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-surface-hover, rgba(248, 250, 252, 0.8));
+    border: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
+    border-radius: 0.5rem;
+    min-width: 100px;
+    transition: all 0.2s ease;
+}
+
+.stat-item:hover {
+    background: var(--bg-surface-hover, rgba(241, 245, 249, 0.9));
+    border-color: var(--primary, #3b82f6);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md, 0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Dark mode stat items */
+[data-theme="dark"] .stat-item {
+    background: var(--bg-dark-card, rgba(15, 23, 42, 0.4));
+}
+
+[data-theme="dark"] .stat-item:hover {
+    background: var(--bg-dark-card-hover, rgba(15, 23, 42, 0.6));
+}
+
+@media (prefers-color-scheme: dark) {
+    .stat-item {
+        background: var(--bg-dark-card, rgba(15, 23, 42, 0.4));
+    }
+
+    .stat-item:hover {
+        background: var(--bg-dark-card-hover, rgba(15, 23, 42, 0.6));
+    }
+}
+
+.stat-label-small {
+    font-size: 0.75rem;
+    color: var(--text-muted, #64748b);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+/* Dark mode stat labels */
+[data-theme="dark"] .stat-label-small {
+    color: var(--text-secondary, #94a3b8);
+}
+
+@media (prefers-color-scheme: dark) {
+    .stat-label-small {
+        color: var(--text-secondary, #94a3b8);
+    }
+}
+
+.stat-value-small {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-dark, #1e293b);
+    white-space: nowrap;
+}
+
+/* Dark mode stat values */
+[data-theme="dark"] .stat-value-small {
+    color: var(--text-primary, #f8fafc);
+}
+
+@media (prefers-color-scheme: dark) {
+    .stat-value-small {
+        color: var(--text-primary, #f8fafc);
+    }
+}
+
+.stat-change {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+}
+
+.stat-change.text-success {
+    color: var(--success, #10b981);
+    background: var(--success-bg, rgba(16, 185, 129, 0.1));
+}
+
+.stat-change.text-danger {
+    color: var(--danger, #ef4444);
+    background: var(--danger-bg, rgba(239, 68, 68, 0.1));
+}
+
+/* Breakdown Grid - Single Row for Pie Charts */
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 1400px) {
+    .breakdown-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 1024px) {
+    .breakdown-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .breakdown-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Dark mode legend items */
+[data-theme="dark"] .legend-item {
+    border: 1px solid var(--border-color-dark, rgba(148, 163, 184, 0.1));
+}
+
+[data-theme="dark"] .legend-header {
+    color: var(--text-primary, #f8fafc);
+}
+
+[data-theme="dark"] .legend-percent {
+    color: var(--text-secondary, #94a3b8);
+}
+
+@media (prefers-color-scheme: dark) {
+    .legend-item {
+        border: 1px solid var(--border-color-dark, rgba(148, 163, 184, 0.1));
+    }
+
+    .legend-header {
+        color: var(--text-primary, #f8fafc);
+    }
+
+    .legend-percent {
+        color: var(--text-secondary, #94a3b8);
+    }
+}

@@ -7,7 +7,11 @@ urlpatterns = [
     # Dashboard
     path("dashboard/", views.inventory_dashboard, name="dashboard"),
     path("dashboard/fetch/", views.inventory_dashboard_fetch, name="dashboard_fetch"),
-    path("dashboard/supplier-shares/", views.inventory_supplier_shares_fetch, name="dashboard_supplier_shares"),
+    path(
+        "dashboard/supplier-shares/",
+        views.inventory_supplier_shares_fetch,
+        name="dashboard_supplier_shares",
+    ),
     path("low-stock/", views.low_stock_page, name="low_stock"),
     path("full-product/create/", views.CreateProduct.as_view(), name="product_create"),
     path(
@@ -101,18 +105,23 @@ urlpatterns = [
         name="supplier_invoice_tracking",
     ),
     path(
+        "supplier-invoices/fetch/",
+        views.supplier_invoice_tracking_fetch,
+        name="supplier_invoice_tracking_fetch",
+    ),
+    path(
         "supplier-invoices/<int:invoice_id>/",
         views.supplier_invoice_details,
         name="supplier_invoice_details",
     ),
-    path(
-        "variant/<int:variant_id>/invoice-analytics/",
-        views.product_invoice_analytics,
-        name="product_invoice_analytics",
-    ),
-    path(
-        "supplier/<int:supplier_id>/analytics/",
-        views.supplier_analytics,
-        name="supplier_analytics",
-    ),
+    # path(
+    #     "variant/<int:variant_id>/invoice-analytics/",
+    #     views.product_invoice_analytics,
+    #     name="product_invoice_analytics",
+    # ),
+    # path(
+    #     "supplier/<int:supplier_id>/analytics/",
+    #     views.supplier_analytics,
+    #     name="supplier_analytics",
+    # ),
 ]

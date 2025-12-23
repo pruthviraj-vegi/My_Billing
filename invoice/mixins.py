@@ -95,6 +95,22 @@ class InvoiceFinancialMixin:
         ]
 
     @property
+    def total_tax_value(self):
+        """Total tax value (sum of tax_value from all invoice items)"""
+        total = Decimal("0.00")
+        for item in self.invoice_items.all():
+            total += Decimal(str(item.tax_value))
+        return round(total, 2)
+
+    @property
+    def total_gst_amount(self):
+        """Total GST amount (sum of gst_amount from all invoice items)"""
+        total = Decimal("0.00")
+        for item in self.invoice_items.all():
+            total += Decimal(str(item.gst_amount))
+        return round(total, 2)
+
+    @property
     def tax_values_by_gst(self):
         """
         Calculate tax values grouped by GST rate
@@ -257,7 +273,9 @@ class InvoiceValidationMixin:
         if self.payment_type == "CREDIT":
             if self.advance_amount and self.advance_amount > self.total_payable:
                 raise ValidationError(
-                    "Advance amount cannot exceed total payable amount"
+                    {
+                        "advance_amount": "Advance amount cannot exceed total payable amount"
+                    }
                 )
 
         # Validate due date for credit invoices

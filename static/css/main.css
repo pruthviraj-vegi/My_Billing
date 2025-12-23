@@ -726,6 +726,12 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
+.page-header-sticky {
+    position: sticky;
+    top: var(--navbar-height);
+    z-index: 100;
+}
+
 .dashboard-page-header {
     position: sticky;
     top: var(--navbar-height);
@@ -918,7 +924,35 @@ form.submitting * {
     color: var(--text-secondary);
     position: relative;
     display: flex;
-    flex-direction: row-reverse;
+    align-items: center;
+    margin-top: 0.25rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.form-help.has-error {
+    justify-content: flex-start;
+}
+
+.form-help-text {
+    margin-left: auto;
+}
+
+.form-help.has-error .form-help-text {
+    margin-left: auto;
+}
+
+.form-error-inline {
+    color: var(--danger) !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.form-error-inline i {
+    font-size: 0.7rem;
+    flex-shrink: 0;
 }
 
 /* --- Form Error Handling --- */
@@ -2359,14 +2393,7 @@ form.submitting * {
 }
 
 
-.badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.6rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-}
+
 
 /* Text Colors */
 .text-muted {
@@ -2386,6 +2413,27 @@ form.submitting * {
 }
 
 /* Badge Styles */
+
+.badge {
+    display: inline-block;
+    border-radius: 0.375rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+
+.badge-success {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.badge-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
 .badge-secondary {
     background-color: rgba(100, 116, 139, 0.1);
     color: var(--secondary);
@@ -2407,7 +2455,6 @@ form.submitting * {
 }
 
 /* Removed duplicate - consolidated above */
-
 
 .close {
     color: var(--text-secondary);
@@ -2889,7 +2936,7 @@ form.submitting * {
 .payment-summary {
     background: var(--bg-surface-hover);
     border-radius: 8px;
-    padding: 20px;
+    padding: 1.5px;
     margin-bottom: 25px;
     border-left: 4px solid var(--primary);
 }
@@ -3004,36 +3051,7 @@ form.submitting * {
     }
 }
 
-/* Allocation Warning Alert */
-.alert-warning {
-    background-color: #fff3cd;
-    border: 1px solid #ffeaa7;
-    color: #856404;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    padding: 1rem;
-}
 
-.alert-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    font-weight: 600;
-}
-
-.alert-header i {
-    color: #f39c12;
-}
-
-.alert-body p {
-    margin: 4px 0;
-    line-height: 1.4;
-}
-
-.alert-body strong {
-    color: #e67e22;
-}
 
 /* Error Highlight for Amount Field */
 .error-highlight {
@@ -3660,7 +3678,7 @@ form.submitting * {
    FORM FIELD DISABLED & READONLY STYLES
    ======================================== */
 .field-disabled {
-    opacity: 0.6;
+    opacity: 0.8;
     pointer-events: none;
 }
 
@@ -3675,7 +3693,8 @@ form.submitting * {
 .field-disabled select[readonly],
 .field-disabled textarea[readonly] {
     background-color: var(--bg-body);
-    color: var(--text-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
     cursor: not-allowed;
 }
 
@@ -3914,9 +3933,6 @@ form.submitting * {
     font-weight: 600;
 }
 
-.payment-summary {
-    padding: 1.5rem;
-}
 
 .payment-item {
     display: flex;
@@ -3967,17 +3983,33 @@ form.submitting * {
     gap: 0.75rem;
 }
 
+
+
 .alert i {
     font-size: 1.1rem;
     margin-top: 0.1rem;
     flex-shrink: 0;
+    color: #f39c12;
 }
+
+
+.alert-body p {
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+.alert-body strong {
+    color: #e67e22;
+}
+
+
 
 .alert-info {
     background: rgba(37, 99, 235, 0.1);
     border-color: rgba(37, 99, 235, 0.2);
     color: var(--primary);
 }
+
 
 .alert-success {
     background: rgba(25, 135, 84, 0.1);
@@ -3989,6 +4021,9 @@ form.submitting * {
     background: rgba(255, 193, 7, 0.1);
     border-color: rgba(255, 193, 7, 0.2);
     color: var(--warning);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    padding: 1rem;
 }
 
 .alert-danger {
@@ -4894,33 +4929,6 @@ form.submitting * {
     align-items: center;
 }
 
-
-/* Badge Styles */
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border-radius: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-}
-
-.badge-info {
-    background-color: #dbeafe;
-    color: #1e40af;
-}
-
-.badge-success {
-    background-color: #dcfce7;
-    color: #166534;
-}
-
-.badge-warning {
-    background-color: #fef3c7;
-    color: #92400e;
-}
-
 /* Date and User Info Styles */
 .date-info {
     line-height: 1.4;
@@ -5058,6 +5066,10 @@ form.submitting * {
     padding: 0.2rem 0;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
+}
+
+.pagination-wrapper:empty {
+    display: none;
 }
 
 .pagination-row {
@@ -6004,13 +6016,6 @@ WORD SUGGESTION SYSTEM STYLES
     border-radius: 3px;
 }
 
-.badge {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border-radius: 4px;
-}
-
 .badge-paid {
     background-color: var(--success);
     color: white;
@@ -6064,6 +6069,358 @@ WORD SUGGESTION SYSTEM STYLES
 
 .page-actions .date-filter {
     margin-right: 0.5rem;
+}
+
+/* Custom Date Dropdown */
+.multipleSelection {
+    position: relative;
+    min-width: 150px;
+}
+
+.selectBox {
+    position: relative;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.selectBox:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.selectBox p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+}
+
+.select-icon {
+    color: var(--primary);
+}
+
+.down-icon {
+    position: absolute;
+    right: 0.5rem;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+}
+
+.selectBox.active .down-icon {
+    transform: rotate(180deg);
+}
+
+.date-dropdown-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.5rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+    min-width: 300px;
+    padding: 1rem;
+}
+
+.checkbox-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    margin: 0 0 0.75rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.selectBox-cont {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.date-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.date-list li {
+    margin: 0;
+}
+
+.date-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.date-btn:hover {
+    background: var(--primary);
+    color: var(--text-on-primary);
+    border-color: var(--primary);
+}
+
+.date-picker {
+    flex: 1;
+    min-width: 120px;
+}
+
+.date-picker .form-control {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.date-list li .date-picker {
+    display: inline-block;
+}
+
+.date-list li:first-child {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.student-submit {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.student-submit .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+/* ========================================
+   CUSTOM CALENDAR COMPONENT
+   ======================================== */
+.calendar {
+    font-family: var(--font-family, 'IBM Plex Sans', sans-serif);
+    position: relative;
+    max-width: 300px;
+    min-width: 280px;
+    width: 100%;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    margin: 20px auto;
+    box-sizing: border-box;
+    overflow: hidden;
+    font-weight: normal;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    font-size: 0.875rem;
+}
+
+.calendar-inner {
+    padding: 8px;
+}
+
+.calendar .calendar-inner .calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+}
+
+.calendar .calendar-inner .calendar-body div {
+    padding: 2px;
+    min-height: 28px;
+    line-height: 28px;
+    border: 1px solid transparent;
+    margin: 5px 1px 0px;
+    font-size: 0.8rem;
+}
+
+.calendar .calendar-inner .calendar-body div:nth-child(-n+7) {
+    border: 1px solid transparent;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.calendar .calendar-inner .calendar-body div:nth-child(-n+7):hover {
+    border: 1px solid transparent;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.calendar .calendar-inner .calendar-body div>a {
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+}
+
+.calendar .calendar-inner .calendar-body div:hover {
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    background: var(--bg-surface-hover);
+}
+
+.calendar .calendar-inner .calendar-body div.empty-dates:hover {
+    border: 1px solid transparent;
+    background: transparent;
+}
+
+.calendar .calendar-inner .calendar-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.calendar .calendar-inner .calendar-today-date {
+    display: grid;
+    text-align: center;
+    cursor: pointer;
+    margin: 3px 0px;
+    background: var(--bg-surface-hover);
+    padding: 6px 0px;
+    border-radius: 8px;
+    width: 85%;
+    margin: auto;
+    transition: all 0.2s ease;
+    font-size: 0.75rem;
+}
+
+.calendar .calendar-inner .calendar-today-date:hover {
+    background: var(--primary);
+    color: var(--text-on-primary, #ffffff);
+}
+
+.calendar .calendar-inner .calendar-controls .calendar-year-month {
+    display: flex;
+    min-width: 100px;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.calendar .calendar-inner .calendar-controls .calendar-next {
+    text-align: right;
+}
+
+.calendar .calendar-inner .calendar-controls .calendar-year-month .calendar-year-label,
+.calendar .calendar-inner .calendar-controls .calendar-year-month .calendar-month-label {
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.calendar .calendar-inner .calendar-body .calendar-today {
+    background: linear-gradient(to bottom, var(--primary), var(--primary-hover));
+    border-radius: 4px;
+    color: var(--text-on-primary, #ffffff);
+}
+
+.calendar .calendar-inner .calendar-body .calendar-today:hover {
+    border: 1px solid transparent;
+}
+
+.calendar .calendar-inner .calendar-body .calendar-today a {
+    color: var(--text-on-primary, #ffffff);
+    outline: 2px solid transparent;
+}
+
+.calendar .calendar-inner .calendar-controls .calendar-next a,
+.calendar .calendar-inner .calendar-controls .calendar-prev a {
+    color: var(--text-primary);
+    font-family: arial, consolas, sans-serif;
+    font-size: 20px;
+    text-decoration: none;
+    padding: 2px 8px;
+    display: inline-block;
+    background: transparent;
+    margin: 5px 0;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+}
+
+.calendar .calendar-inner .calendar-controls .calendar-next a:hover,
+.calendar .calendar-inner .calendar-controls .calendar-prev a:hover {
+    background: var(--bg-surface-hover);
+}
+
+.calendar .calendar-inner .calendar-controls .calendar-next a svg,
+.calendar .calendar-inner .calendar-controls .calendar-prev a svg {
+    height: 16px;
+    width: 16px;
+}
+
+.calendar .calendar-inner .calendar-controls .calendar-next a svg path,
+.calendar .calendar-inner .calendar-controls .calendar-prev a svg path {
+    fill: var(--text-primary);
+}
+
+.calendar .calendar-inner .calendar-body .prev-dates,
+.calendar .calendar-inner .calendar-body .next-dates {
+    color: var(--text-secondary, #64748b);
+    opacity: 0.5;
+}
+
+.calendar .calendar-inner .calendar-body .prev-dates:hover,
+.calendar .calendar-inner .calendar-body .next-dates:hover {
+    border: 1px solid transparent;
+    pointer-events: none;
+    background: transparent;
+}
+
+/* Calendar wrapper for date inputs */
+.calendar-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.calendar-wrapper .calendar {
+    position: absolute;
+    top: 100%;
+    left: auto;
+    right: 0;
+    margin-top: 0.5rem;
+    z-index: 1000;
+    display: none;
+    max-width: min(300px, calc(100vw - 2rem));
+    max-height: min(400px, calc(100vh - 200px));
+    overflow-y: auto;
+    transform-origin: top right;
+}
+
+.calendar-wrapper .calendar.show {
+    display: block;
+}
+
+/* Ensure calendar is visible even when parent dropdown is shown */
+.date-dropdown-panel .calendar-wrapper .calendar.show {
+    display: block !important;
+}
+
+/* Adjust calendar position to prevent overflow - handled by JS */
+.calendar-wrapper .calendar.align-left {
+    left: 0;
+    right: auto;
+    transform-origin: top left;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .calendar-wrapper .calendar {
+        max-width: calc(100vw - 1rem);
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%);
+    }
 }
 
 /* Analytics Grid */
@@ -6196,6 +6553,19 @@ WORD SUGGESTION SYSTEM STYLES
 .loading i {
     font-size: 2rem;
     color: var(--primary);
+}
+
+/* Table loading cell - centers content vertically */
+.data-table tbody td.loading-cell {
+    height: 400px;
+    vertical-align: middle;
+    text-align: center;
+    width: 100%;
+}
+
+.data-table tbody td.loading-cell>* {
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .error-container {
@@ -6788,4 +7158,191 @@ a:hover {
 .select2-container .select2-dropdown {
     z-index: 1056;
     /* above container */
+}
+
+/* ========================================
+   DATELITE DATEPICKER THEME COMPATIBILITY
+   ======================================== */
+/* Map theme variables to DatePicker variables */
+.datepicker-container {
+    --dp-font-family: var(--font-family, system-ui, -apple-system, sans-serif);
+    --dp-font-size-base: var(--font-size-base, 16px);
+    --dp-text-primary: var(--text-primary, #1e293b);
+    --dp-text-secondary: var(--text-secondary, #64748b);
+    --dp-bg-primary: var(--bg-surface, #ffffff);
+    --dp-bg-secondary: var(--bg-surface-hover, #f8fafc);
+    --dp-border-color: var(--border-color, #e2e8f0);
+    --dp-primary-color: var(--primary, #2563eb);
+    --dp-primary-hover: var(--primary-hover, #1d4ed8);
+    --dp-border-radius-md: 8px;
+    --dp-border-radius-lg: 12px;
+    --dp-shadow-md: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
+    --dp-z-index-dropdown: 1050;
+    --dp-z-index-popup: 1060;
+    --dp-container-min-width: 280px;
+    --dp-day-size: 36px;
+    --dp-button-height: 36px;
+    --dp-spacing-sm: 8px;
+    --dp-spacing-md: 12px;
+    --dp-spacing-lg: 16px;
+}
+
+/* Dark theme compatibility */
+[data-theme="dark"] .datepicker-container {
+    --dp-text-primary: var(--text-primary, #f1f5f9);
+    --dp-text-secondary: var(--text-secondary, #94a3b8);
+    --dp-bg-primary: var(--bg-surface, #1e293b);
+    --dp-bg-secondary: var(--bg-surface-hover, #334155);
+    --dp-border-color: var(--border-color, #334155);
+    --dp-primary-color: var(--primary, #3b82f6);
+    --dp-primary-hover: var(--primary-hover, #60a5fa);
+    --dp-shadow-md: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+/* Ensure datepicker popup is above other elements */
+.datepicker-popup {
+    z-index: 1060 !important;
+}
+
+/* Style datepicker input to match theme */
+.datepicker-input {
+    background: var(--bg-surface, #ffffff);
+    color: var(--text-primary, #1e293b);
+    border-color: var(--border-color, #e2e8f0);
+}
+
+.datepicker-input:focus {
+    border-color: var(--border-color-focus, var(--primary, #2563eb));
+    box-shadow: 0 0 0 3px var(--focus-ring, rgba(59, 130, 246, 0.35));
+}
+
+[data-theme="dark"] .datepicker-input {
+    background: var(--bg-surface, #1e293b);
+    color: var(--text-primary, #f1f5f9);
+    border-color: var(--border-color, #334155);
+}
+
+/* Style calendar day buttons */
+.datepicker-day {
+    color: var(--text-primary, #1e293b) !important;
+    transition: all 120ms ease;
+}
+
+.datepicker-day:hover:not(:disabled) {
+    background: var(--bg-surface-hover, #f8fafc) !important;
+    border-color: var(--border-color, #e2e8f0) !important;
+}
+
+.datepicker-day.selected {
+    background: var(--primary, #2563eb) !important;
+    color: var(--text-on-primary, #ffffff) !important;
+    border-color: var(--primary, #2563eb) !important;
+}
+
+.datepicker-day.selected:hover {
+    background: var(--primary-hover, #1d4ed8) !important;
+    border-color: var(--primary-hover, #1d4ed8) !important;
+}
+
+.datepicker-day.today {
+    border-color: var(--primary, #2563eb) !important;
+    font-weight: 600;
+}
+
+.datepicker-day:disabled,
+.datepicker-day.disabled {
+    color: var(--text-secondary, #64748b) !important;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+[data-theme="dark"] .datepicker-day {
+    color: var(--text-primary, #f1f5f9) !important;
+}
+
+[data-theme="dark"] .datepicker-day:hover:not(:disabled) {
+    background: var(--bg-surface-hover, #334155) !important;
+    border-color: var(--border-color, #334155) !important;
+}
+
+[data-theme="dark"] .datepicker-day.selected {
+    background: var(--primary, #3b82f6) !important;
+    color: var(--text-on-primary, #ffffff) !important;
+}
+
+[data-theme="dark"] .datepicker-day.selected:hover {
+    background: var(--primary-hover, #60a5fa) !important;
+}
+
+/* Style navigation buttons */
+.datepicker-prev-btn,
+.datepicker-next-btn {
+    color: var(--text-primary, #1e293b) !important;
+    transition: all 120ms ease;
+}
+
+.datepicker-prev-btn:hover,
+.datepicker-next-btn:hover {
+    background: var(--bg-surface-hover, #f8fafc) !important;
+    color: var(--primary, #2563eb) !important;
+}
+
+[data-theme="dark"] .datepicker-prev-btn,
+[data-theme="dark"] .datepicker-next-btn {
+    color: var(--text-primary, #f1f5f9) !important;
+}
+
+[data-theme="dark"] .datepicker-prev-btn:hover,
+[data-theme="dark"] .datepicker-next-btn:hover {
+    background: var(--bg-surface-hover, #334155) !important;
+    color: var(--primary, #3b82f6) !important;
+}
+
+/* Style month/year buttons */
+.datepicker-month-btn,
+.datepicker-year-btn {
+    color: var(--text-primary, #1e293b) !important;
+}
+
+.datepicker-month-btn:hover,
+.datepicker-year-btn:hover {
+    background: var(--bg-surface-hover, #f8fafc) !important;
+    color: var(--primary, #2563eb) !important;
+}
+
+[data-theme="dark"] .datepicker-month-btn,
+[data-theme="dark"] .datepicker-year-btn {
+    color: var(--text-primary, #f1f5f9) !important;
+}
+
+[data-theme="dark"] .datepicker-month-btn:hover,
+[data-theme="dark"] .datepicker-year-btn:hover {
+    background: var(--bg-surface-hover, #334155) !important;
+    color: var(--primary, #3b82f6) !important;
+}
+
+/* Style month/year dropdowns */
+.datepicker-month-dropdown,
+.datepicker-year-dropdown {
+    background: var(--bg-surface, #ffffff) !important;
+    color: var(--text-primary, #1e293b) !important;
+    border-color: var(--border-color, #e2e8f0) !important;
+}
+
+.datepicker-month-dropdown:focus,
+.datepicker-year-dropdown:focus {
+    border-color: var(--border-color-focus, var(--primary, #2563eb)) !important;
+    box-shadow: 0 0 0 3px var(--focus-ring, rgba(59, 130, 246, 0.35)) !important;
+}
+
+.datepicker-month-dropdown:hover,
+.datepicker-year-dropdown:hover {
+    border-color: var(--border-color-focus, var(--primary, #2563eb)) !important;
+}
+
+[data-theme="dark"] .datepicker-month-dropdown,
+[data-theme="dark"] .datepicker-year-dropdown {
+    background: var(--bg-surface, #1e293b) !important;
+    color: var(--text-primary, #f1f5f9) !important;
+    border-color: var(--border-color, #334155) !important;
 }

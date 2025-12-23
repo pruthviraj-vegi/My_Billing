@@ -1,15 +1,12 @@
 from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
 from django.db.models import Sum, F, Q
 from django.contrib import messages
 from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
-from django.core.paginator import Paginator
-from django.template.loader import render_to_string
 from .models import Product, ProductVariant, InventoryLog
 from .forms import ProductForm, CategoryForm, ClothTypeForm, UOMForm, GSTHsnCodeForm
 import logging
+from base.utility import render_paginated_response
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +34,7 @@ VALID_SORT_FIELDS = {
     "-updated_at",
 }
 
-PRODUCTS_PER_PAGE = 20
 
-
-@login_required
 def product_home(request):
     """Product management main page - initial load only."""
     # Get filter options for the template
@@ -55,7 +49,6 @@ def product_home(request):
     return render(request, "inventory/product/home.html", context)
 
 
-@login_required
 def fetch_products(request):
     """AJAX endpoint to fetch products with search, filter, and pagination."""
     # Get search and filter parameters
@@ -95,32 +88,10 @@ def fetch_products(request):
         sort_by = "-id"
     products = products.order_by(sort_by)
 
-    # Pagination
-    paginator = Paginator(products, PRODUCTS_PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    # Render the HTML template
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-        "search_query": search_query,
-    }
-
-    # Render the table content (without pagination)
-    table_html = render_to_string(
-        "inventory/product/fetch.html", context, request=request
-    )
-
-    # Render pagination separately
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        products,
+        "inventory/product/fetch.html",
     )
 
 
@@ -249,63 +220,3 @@ class EditProduct(UpdateView):
         return reverse(
             "inventory_products:details", kwargs={"product_id": self.object.id}
         )
-
-
-@login_required
-def download_products(request):
-    """Download products data as JSON."""
-    products = Product.objects.select_related(
-        "category", "cloth_type", "hsn_code", "uom"
-    ).all()
-    data = []
-
-    for product in products:
-        data.append(
-            {
-                "id": product.id,
-                "brand": product.brand,
-                "name": product.name,
-                "category": product.category.name if product.category else None,
-                "cloth_type": product.cloth_type.name if product.cloth_type else None,
-                "hsn_code": product.hsn_code.code if product.hsn_code else None,
-                "gst_percentage": str(product.hsn_code.gst_percentage),
-                "status": product.status,
-                "variants_count": product.product_variants.count(),
-                "created_at": product.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            }
-        )
-
-    response = JsonResponse(data, safe=False)
-    response["Content-Disposition"] = 'attachment; filename="products.json"'
-    return response
-
-
-@login_required
-def search_products_ajax(request):
-    """AJAX endpoint for real-time product search."""
-    search_query = request.GET.get("q", "")
-
-    if len(search_query) < 2:
-        return JsonResponse({"products": []})
-
-    products = Product.objects.select_related("category").filter(
-        Q(brand__icontains=search_query)
-        | Q(name__icontains=search_query)
-        | Q(description__icontains=search_query)
-    )[
-        :10
-    ]  # Limit to 10 results
-
-    data = []
-    for product in products:
-        data.append(
-            {
-                "id": product.id,
-                "brand": product.brand,
-                "name": product.name,
-                "category": product.category.name if product.category else None,
-                "status": product.status,
-            }
-        )
-
-    return JsonResponse({"products": data})

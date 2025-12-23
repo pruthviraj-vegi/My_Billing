@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{{ page_title }}</h1>
+    <div class="page-actions">
+        <a href="{% url 'setting:barcode_config_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+        <a href="{% url 'setting:barcode_config_edit' config.pk %}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Edit Configuration
+        </a>
+    </div>
+</div>
+
+<div class="detail-container">
+    <div class="detail-card">
+        <div class="detail-header">
+            <div class="detail-title-group">
+                <h2>{{ config.config_name }}</h2>
+                {% if config.is_default %}
+                    <span class="badge badge-success">Default</span>
+                {% endif %}
+                {% if not config.is_active %}
+                    <span class="badge badge-danger">Inactive</span>
+                {% endif %}
+            </div>
+            <div class="detail-meta">
+                <span>Created: {{ config.created_at|date:"M d, Y" }}</span>
+                <span>Shop: {{ config.shop.shop_name }}</span>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <!-- Basic Info -->
+            <div class="detail-section">
+                <h3>Basic Information</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Barcode Type:</span>
+                    <span class="detail-value">{{ config.get_barcode_type_display }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Label Size:</span>
+                    <span class="detail-value">{{ config.get_label_size_display }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Paper Size:</span>
+                    <span class="detail-value">{{ config.get_paper_size_display }}</span>
+                </div>
+                {% if config.label_size == 'CUSTOM' %}
+                    <div class="detail-row">
+                        <span class="detail-label">Custom Dimensions:</span>
+                        <span class="detail-value">{{ config.custom_label_width }}mm x {{ config.custom_label_height }}mm</span>
+                    </div>
+                {% endif %}
+                <div class="detail-row">
+                    <span class="detail-label">Heading:</span>
+                    <span class="detail-value">
+                        {% if config.show_heading %}
+                            {{ config.heading_text|default:"(Shop Name)" }}
+                        {% else %}
+                            <span class="text-muted">Hidden</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Layout -->
+            <div class="detail-section">
+                <h3>Layout Settings</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Grid:</span>
+                    <span class="detail-value">{{ config.labels_per_row }} rows x {{ config.labels_per_column }} cols</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Margins:</span>
+                    <span class="detail-value">Top: {{ config.margin_top }}mm, Left: {{ config.margin_left }}mm</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Spacing:</span>
+                    <span class="detail-value">H: {{ config.spacing_horizontal }}mm, V: {{ config.spacing_vertical }}mm</span>
+                </div>
+            </div>
+
+            <!-- Display Options -->
+            <div class="detail-section">
+                <h3>Display Options</h3>
+                <div class="feature-list">
+                    <div class="feature-item {% if config.show_product_name %}active{% else %}inactive{% endif %}">
+                        <i class="fas {% if config.show_product_name %}fa-check{% else %}fa-times{% endif %}"></i>
+                        Product Name
+                    </div>
+                    <div class="feature-item {% if config.show_product_code %}active{% else %}inactive{% endif %}">
+                        <i class="fas {% if config.show_product_code %}fa-check{% else %}fa-times{% endif %}"></i>
+                        Product Code
+                    </div>
+                    <div class="feature-item {% if config.show_price %}active{% else %}inactive{% endif %}">
+                        <i class="fas {% if config.show_price %}fa-check{% else %}fa-times{% endif %}"></i>
+                        Price
+                    </div>
+                    <div class="feature-item {% if config.show_barcode %}active{% else %}inactive{% endif %}">
+                        <i class="fas {% if config.show_barcode %}fa-check{% else %}fa-times{% endif %}"></i>
+                        Barcode
+                    </div>
+                    <div class="feature-item {% if config.show_shop_logo %}active{% else %}inactive{% endif %}">
+                        <i class="fas {% if config.show_shop_logo %}fa-check{% else %}fa-times{% endif %}"></i>
+                        Shop Logo
+                    </div>
+                </div>
+            </div>
+
+            <!-- Style -->
+            <div class="detail-section">
+                <h3>Style Settings</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Font Size:</span>
+                    <span class="detail-value">{{ config.font_size }}px</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Barcode Height:</span>
+                    <span class="detail-value">{{ config.barcode_height }}px</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Border:</span>
+                    <span class="detail-value">
+                        {% if config.show_border %}
+                            {{ config.get_border_style_display }}
+                        {% else %}
+                            None
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .detail-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .detail-card {
+        background: var(--card-bg);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-sm);
+        padding: 2rem;
+    }
+    .detail-header {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .detail-title-group {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .detail-title-group h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--text-primary);
+    }
+    .detail-meta {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        display: flex;
+        gap: 1.5rem;
+    }
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+    }
+    .detail-section h3 {
+        font-size: 1.1rem;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-light);
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed var(--border-color);
+    }
+    .detail-label {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    .detail-value {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+    .feature-list {
+        display: grid;
+        gap: 0.5rem;
+    }
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.95rem;
+    }
+    .feature-item.active {
+        color: var(--success-color);
+    }
+    .feature-item.inactive {
+        color: var(--text-muted);
+    }
+</style>
+{% endblock %}

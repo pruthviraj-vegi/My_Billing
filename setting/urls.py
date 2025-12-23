@@ -25,4 +25,18 @@ urlpatterns = [
     
     # Dashboard
     path('shop-settings/', views.shop_settings_dashboard, name='shop_settings_dashboard'),
+
+    # Payment Details URLs
+    path('payment-details/', views.payment_details_list, name='payment_details_list'),
+    path('payment-details/create/', views.payment_details_create, name='payment_details_create'),
+    path('payment-details/<int:pk>/', views.payment_details_detail, name='payment_details_detail'),
+    path('payment-details/<int:pk>/edit/', views.payment_details_edit, name='payment_details_edit'),
+    path('payment-details/<int:pk>/delete/', views.payment_details_delete, name='payment_details_delete'),
+
+    # Barcode Configuration URLs
+    path('barcode-configs/', views.barcode_config_list, name='barcode_config_list'),
+    path('barcode-configs/create/', views.barcode_config_create, name='barcode_config_create'),
+    path('barcode-configs/<int:pk>/', views.barcode_config_detail, name='barcode_config_detail'),
+    path('barcode-configs/<int:pk>/edit/', views.barcode_config_edit, name='barcode_config_edit'),
+    path('barcode-configs/<int:pk>/delete/', views.barcode_config_delete, name='barcode_config_delete'),
 ]

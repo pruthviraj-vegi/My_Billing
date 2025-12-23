@@ -292,52 +292,21 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def auto_reallocate_payments(self, request, queryset):
         """Auto reallocate payments using FIFO method for selected customers."""
-        from .views_credit import _auto_allocate_payment
-        from invoice.models import Invoice, PaymentAllocation
-        from django.db.models import Sum
+        from customer.signals import reallocate_customer_payments
 
         total_customers = 0
-        total_allocations = 0
 
         for customer in queryset:
-            # Get all credit invoices and payments for this customer
-            invoices = Invoice.objects.filter(
-                customer=customer, payment_type=Invoice.PaymentType.CREDIT
-            ).order_by("invoice_date")
-
-            payments = Payment.objects.filter(
-                customer=customer,
-                payment_type=Payment.PaymentType.Paid,
-                is_deleted=False,
-            ).order_by("payment_date")
-
-            if payments.exists():
-                # Delete all existing allocations for this customer
-                deleted_count = PaymentAllocation.objects.filter(
-                    payment__customer=customer, payment__is_deleted=False
-                ).count()
-
-                PaymentAllocation.objects.filter(
-                    payment__customer=customer, payment__is_deleted=False
-                ).delete()
-
-                # Reset all invoice paid amounts and status
-                for invoice in invoices:
-                    invoice.paid_amount = 0
-                    invoice.payment_status = Invoice.PaymentStatus.UNPAID
-                    invoice.save()
-
-                # Reset all payment unallocated amounts
-                for payment in payments:
-                    payment.unallocated_amount = payment.amount
-                    payment.save()
-
-                # Implement FIFO allocation
-                for payment in payments:
-                    _auto_allocate_payment(payment, request.user)
-
+            try:
+                # Use signal-based reallocation (skips signals to avoid recursion)
+                reallocate_customer_payments(customer, skip_signals=True)
                 total_customers += 1
-                total_allocations += deleted_count
+            except Exception as e:
+                self.message_user(
+                    request,
+                    f"Error reallocating for {customer.name}: {str(e)}",
+                    level="ERROR",
+                )
 
         if total_customers > 0:
             self.message_user(
@@ -486,52 +455,33 @@ class PaymentAdmin(admin.ModelAdmin):
 
     def auto_reallocate_selected_payments(self, request, queryset):
         """Auto reallocate selected payments using FIFO method."""
-        from .views_credit import _auto_allocate_payment
-        from invoice.models import Invoice, PaymentAllocation
+        from customer.signals import reallocate_customer_payments
 
         # Group payments by customer
-        customers = {}
+        customers = set()
         for payment in queryset.filter(payment_type=Payment.PaymentType.Paid):
-            if payment.customer not in customers:
-                customers[payment.customer] = []
-            customers[payment.customer].append(payment)
+            customers.add(payment.customer)
 
         total_customers = 0
-        total_payments = 0
 
-        for customer, payments in customers.items():
-            # Get all credit invoices for this customer
-            invoices = Invoice.objects.filter(
-                customer=customer, payment_type=Invoice.PaymentType.CREDIT
-            ).order_by("invoice_date")
-
-            # Delete existing allocations for these payments
-            PaymentAllocation.objects.filter(
-                payment__in=payments, payment__is_deleted=False
-            ).delete()
-
-            # Reset invoice paid amounts and status
-            for invoice in invoices:
-                invoice.paid_amount = 0
-                invoice.payment_status = Invoice.PaymentStatus.UNPAID
-                invoice.save()
-
-            # Reset payment unallocated amounts
-            for payment in payments:
-                payment.unallocated_amount = payment.amount
-                payment.save()
-
-            # Implement FIFO allocation
-            for payment in payments:
-                _auto_allocate_payment(payment, request.user)
-
-            total_customers += 1
-            total_payments += len(payments)
+        for customer in customers:
+            try:
+                # Use signal-based reallocation (skips signals to avoid recursion)
+                # This will reallocate ALL payments for the customer, not just selected ones
+                # This ensures proper FIFO ordering across all payments
+                reallocate_customer_payments(customer, skip_signals=True)
+                total_customers += 1
+            except Exception as e:
+                self.message_user(
+                    request,
+                    f"Error reallocating for {customer.name}: {str(e)}",
+                    level="ERROR",
+                )
 
         if total_customers > 0:
             self.message_user(
                 request,
-                f"Successfully auto-allocated {total_payments} payment(s) for {total_customers} customer(s) using FIFO method.",
+                f"Successfully auto-allocated payments for {total_customers} customer(s) using FIFO method.",
                 level="SUCCESS",
             )
         else:

@@ -113,7 +113,7 @@
                 {% endif %}
               </div>
             </div>
-            {% comment %} <div class="col-md-6">
+             <div class="col-md-6">
               <!-- Cloth Type Field -->
               <div class="form-group {% if form.cloth_type.errors %}has-error{% endif %}">
                 <label for="{{ form.cloth_type.id_for_label }}" class="form-label">{{ form.cloth_type.label }}</label>
@@ -130,7 +130,7 @@
                   </div>
                 {% endif %}
               </div>
-            </div> {% endcomment %}
+            </div> 
           </div>
           <!-- Row 3: UOM and GST Percentage -->
           <div class="row">
@@ -211,6 +211,7 @@
   </div>
 
   {% include "model_forms/category.html" %}
+  {% include "model_forms/cloth.html" %}
   {% include "model_forms/uom.html" %}
   {% include "model_forms/hsncode.html" %}
 
@@ -224,15 +225,15 @@
       suggestions: '{% url "suggestions:product_all" %}'
     }
 
-
     $(document).ready(function() {
 
       setupModal('id_category', 'Category', 'new_category', '#add_new_category', '{% url "inventory:category_create_ajax" %}');
+      setupModal('id_cloth_type', 'Cloth Type', 'new_cloth_type', '#add_new_cloth_type', '{% url "inventory:cloth_create_ajax" %}');
       setupModal('id_uom', 'UOM', 'new_uom', '#add_new_uom', '{% url "inventory:uom_create_ajax" %}');
       setupModal('id_hsn_code', 'HSN Code', 'new_hsn_code', '#add_new_hsn_code', '{% url "inventory:gst_hsn_create_ajax" %}');
      
       // Intentionally minimal JS to mirror customer form behavior
-      Select2Helper.init('#id_uom, #id_hsn_code');
+      Select2Helper.init('#id_cloth_type, #id_uom, #id_hsn_code');
 
       setTimeout(function() {
         Select2Helper.init('#id_category');

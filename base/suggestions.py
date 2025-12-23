@@ -1,12 +1,10 @@
-import re, json, os
+import re
 from django.core.cache import cache
-from django.conf import settings
-from fuzzywuzzy import process
 from django.http import JsonResponse
 from customer.models import Customer
 from invoice.models import Invoice
 from inventory.models import Product, ProductVariant
-from rapidfuzz import process
+from rapidfuzz import process, fuzz
 from supplier.models import Supplier
 
 
@@ -27,7 +25,7 @@ def get_related_words(query, list_of_words, limit=10, score_cutoff=60):
 
     # rapidfuzz can handle iterables directly (no need to force list)
     matches = process.extract(
-        query.lower(), list_of_words, limit=limit, score_cutoff=score_cutoff
+        query.lower(), list_of_words, scorer=fuzz.WRatio, limit=limit, score_cutoff=score_cutoff
     )
 
     # Extract only words (discard scores)

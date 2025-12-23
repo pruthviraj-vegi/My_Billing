@@ -5,9 +5,10 @@ from django.contrib.auth.models import BaseUserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.utils.translation import gettext_lazy as _
+from base.manager import SoftDeleteManager
 
 
-class CustomUserManager(BaseUserManager):
+class CustomUserManager(SoftDeleteManager, BaseUserManager):
     def email_validator(self, email):
         try:
             validate_email(email)
@@ -15,10 +16,16 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(_("Please provide a valid email address"))
 
     def create_user(
-        self, full_name, phone_number, password, email=None, **extra_fields
+        self,
+        first_name,
+        phone_number,
+        password,
+        last_name=None,
+        email=None,
+        **extra_fields
     ):
-        if not full_name:
-            raise ValueError(_("Users must submit a full name"))
+        if not first_name:
+            raise ValueError(_("Users must submit a first name"))
         if not phone_number:
             raise ValueError(_("Users must submit a phone number"))
 
@@ -27,14 +34,24 @@ class CustomUserManager(BaseUserManager):
             self.email_validator(email)
 
         user = self.model(
-            full_name=full_name, phone_number=phone_number, email=email, **extra_fields
+            first_name=first_name,
+            last_name=last_name or "",
+            phone_number=phone_number,
+            email=email,
+            **extra_fields
         )
         user.set_password(password)
         user.save(using=self._db)
         return user
 
     def create_superuser(
-        self, full_name, phone_number, password, email=None, **extra_fields
+        self,
+        first_name,
+        phone_number,
+        password,
+        last_name=None,
+        email=None,
+        **extra_fields
     ):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
@@ -47,5 +64,10 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(_("Superusers must have is_superuser=True"))
 
         return self.create_user(
-            full_name, phone_number, password, email, **extra_fields
+            first_name=first_name,
+            phone_number=phone_number,
+            password=password,
+            last_name=last_name,
+            email=email,
+            **extra_fields
         )

@@ -3,11 +3,12 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Sum
-from django.template.loader import render_to_string
 from django.contrib import messages
 import json
-from django.core.paginator import Paginator
+import logging
 from django.db.models import Q
+
+logger = logging.getLogger(__name__)
 from invoice.models import (
     AuditTable,
     Invoice,
@@ -19,6 +20,27 @@ from invoice.form import AuditTableForm
 from django.views.generic.edit import CreateView, DeleteView, View
 from django.urls import reverse_lazy
 from datetime import datetime, time
+
+from base.utility import render_paginated_response
+
+VALID_SORT_FIELDS = {
+    "id",
+    "-id",
+    "title",
+    "-title",
+    "audit_type",
+    "-audit_type",
+    "status",
+    "-status",
+    "financial_year",
+    "-financial_year",
+    "created_at",
+    "-created_at",
+    "start_date",
+    "-start_date",
+    "end_date",
+    "-end_date",
+}
 
 
 @transaction.atomic
@@ -184,68 +206,60 @@ def audit_home(request):
     return render(request, "invoice_audit/home.html", context)
 
 
-def fetch_audit_tables(request):
-    """
-    AJAX endpoint to fetch audit tables with filtering, sorting, and pagination
-    """
-
-    # Get query parameters
-    search = request.GET.get("search", "").strip()
+def get_data(request):
+    # Get search and filter parameters
+    search_query = request.GET.get("search", "").strip()
     audit_type = request.GET.get("audit_type", "")
     status = request.GET.get("status", "")
     financial_year = request.GET.get("financial_year", "")
     sort_by = request.GET.get("sort", "-created_at")
-    page = int(request.GET.get("page", 1))
-    per_page = int(request.GET.get("per_page", 25))
 
     # Build queryset
     queryset = AuditTable.objects.select_related("created_by").all()
 
-    # Apply filters
-    if search:
-        queryset = queryset.filter(
-            Q(title__icontains=search)
-            | Q(description__icontains=search)
-            | Q(audit_type__icontains=search)
+    # Apply search filter
+    filters = Q()
+    if search_query:
+        filters &= (
+            Q(title__icontains=search_query)
+            | Q(description__icontains=search_query)
+            | Q(audit_type__icontains=search_query)
         )
 
+    # Apply audit_type filter
     if audit_type:
-        queryset = queryset.filter(audit_type=audit_type)
+        filters &= Q(audit_type=audit_type)
 
+    # Apply status filter
     if status:
-        queryset = queryset.filter(status=status)
+        filters &= Q(status=status)
 
+    # Apply financial_year filter
     if financial_year:
-        queryset = queryset.filter(financial_year=financial_year)
+        filters &= Q(financial_year=financial_year)
+
+    queryset = queryset.filter(filters)
 
     # Apply sorting
-    if sort_by:
-        queryset = queryset.order_by(sort_by)
+    if sort_by not in VALID_SORT_FIELDS:
+        sort_by = "-created_at"
+    queryset = queryset.order_by(sort_by)
 
-    # Pagination
-    paginator = Paginator(queryset, 25)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    return queryset
 
-    # Render the HTML template
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-        "search_query": search,
-    }
 
-    # Render HTML template
-    table_html = render_to_string("invoice_audit/fetch.html", context, request=request)
+def fetch_audit_tables(request):
+    """
+    AJAX endpoint to fetch audit tables with filtering, sorting, and pagination
+    """
+    audit_tables = get_data(request)
+    search_query = request.GET.get("search", "").strip()
 
-    # Render pagination separately
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        audit_tables,
+        "invoice_audit/fetch.html",
+        search_query=search_query,
     )
 
 
@@ -534,15 +548,44 @@ class InvoiceManager(View):
 def audit_detail(request, pk):
     """View audit table details"""
     audit_table = get_object_or_404(AuditTable, pk=pk)
+
+    context = {"audit_table": audit_table}
+    return render(request, "invoice_audit/detail.html", context)
+
+
+def fetch_audit_details(request, pk):
+    audit_table = get_object_or_404(AuditTable, pk=pk)
+
+    sort_by = request.GET.get("sort", "-created_at")
+
+    sort_fields = [
+        "id",
+        "-id",
+        "invoice__invoice_number",
+        "-invoice__invoice_number",
+        "created_at",
+        "-created_at",
+        "old_invoice_no",
+        "-old_invoice_no",
+        "new_invoice_no",
+        "-new_invoice_no",
+        "change_type",
+        "-change_type",
+    ]
+
+    # Apply sorting
+    if sort_by not in sort_fields:
+        sort_by = "-id"
+
     invoice_audits = audit_table.invoice_audits.select_related(
         "invoice", "changed_by"
-    ).order_by("-created_at")
+    ).order_by(sort_by)
 
-    context = {
-        "audit_table": audit_table,
-        "invoice_audits": invoice_audits,
-    }
-    return render(request, "invoice_audit/detail.html", context)
+    return render_paginated_response(
+        request,
+        invoice_audits,
+        "invoice_audit/fetch_details.html",
+    )
 
 
 def audit_delete(request, pk):

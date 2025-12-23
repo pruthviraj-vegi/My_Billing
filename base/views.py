@@ -2,8 +2,7 @@ from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
 from django.contrib import messages
 from django.views.generic import TemplateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 from .forms import CustomLoginForm
 from django.contrib.auth import logout
 
@@ -39,7 +38,7 @@ class CustomLoginView(LoginView):
         return super().form_invalid(form)
 
 
-class HomeView(LoginRequiredMixin, TemplateView):
+class HomeView(TemplateView):
     template_name = "base/home.html"
     login_url = "base:login"
 

@@ -1,16 +1,21 @@
-from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect, reverse
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView
-from django.core.paginator import Paginator
-from django.template.loader import render_to_string
-from django.db import IntegrityError, transaction
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import redirect
+from django.db import transaction
+from django.db.utils import IntegrityError
 from django.db.models import Q, F
-from .models import ProductVariant, InventoryLog, Product, Category, Color, Size
+from decimal import Decimal
+from typing import Optional, Union
+from .models import (
+    ProductVariant,
+    InventoryLog,
+    Product,
+    Category,
+    Color,
+    Size,
+    FavoriteVariant,
+)
 from .forms import (
     VariantForm,
     StockInForm,
@@ -20,8 +25,12 @@ from .forms import (
     SizeForm,
     ColorForm,
 )
+from base.utility import render_paginated_response
 from .services import InventoryService
 import logging
+from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +64,6 @@ VALID_SORT_FIELDS = {
 VARIANTS_PER_PAGE = 20
 
 
-@login_required
 def variant_home(request):
     """Product variant management main page - initial load only."""
     # Get filter options for the template
@@ -84,9 +92,13 @@ def get_variants_data(request):
     sort_by = request.GET.get("sort", "")
 
     # Start with all variants
-    variants = ProductVariant.objects.select_related(
-        "product", "product__category", "size", "color"
-    ).all()
+    variants = (
+        ProductVariant.objects.select_related(
+            "product", "product__category", "size", "color"
+        )
+        .prefetch_related("favorite_variants")
+        .all()
+    )
 
     # Apply search filter
     filters = Q()
@@ -99,17 +111,35 @@ def get_variants_data(request):
             | Q(product__category__name__icontains=search_query)
         )
 
-    # Apply category filter
+    # Apply category filter (supports both ID and name search)
     if category_filter:
-        filters &= Q(product__category_id=category_filter)
+        try:
+            # Try as ID first
+            category_id = int(category_filter)
+            filters &= Q(product__category_id=category_id)
+        except ValueError:
+            # If not a number, search by name
+            filters &= Q(product__category__name__icontains=category_filter)
 
-    # Apply color filter
+    # Apply color filter (supports both ID and name search)
     if color_filter:
-        filters &= Q(color_id=color_filter)
+        try:
+            # Try as ID first
+            color_id = int(color_filter)
+            filters &= Q(color_id=color_id)
+        except ValueError:
+            # If not a number, search by name
+            filters &= Q(color__name__icontains=color_filter)
 
-    # Apply size filter
+    # Apply size filter (supports both ID and name search)
     if size_filter:
-        filters &= Q(size_id=size_filter)
+        try:
+            # Try as ID first
+            size_id = int(size_filter)
+            filters &= Q(size_id=size_id)
+        except ValueError:
+            # If not a number, search by name
+            filters &= Q(size__name__icontains=size_filter)
 
     # Apply status filter
     if status_filter:
@@ -133,36 +163,14 @@ def get_variants_data(request):
     return variants
 
 
-@login_required
 def fetch_variants(request):
     """AJAX endpoint to fetch variants with search, filter, and pagination."""
     variants = get_variants_data(request)
 
-    # Pagination
-    paginator = Paginator(variants, VARIANTS_PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    # Render the HTML template
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-    }
-
-    # Render the table content (without pagination)
-    table_html = render_to_string(
-        "inventory/product_variant/fetch.html", context, request=request
-    )
-
-    # Render pagination separately
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        variants,
+        "inventory/product_variant/fetch.html",
     )
 
 
@@ -203,6 +211,9 @@ class CreateProductVariant(CreateView):
     form_class = VariantForm
     model = ProductVariant
     title = "Create Product Variant"
+    session_initial_key = "create_variant_initial"
+    session_barcode_key = "redirect_url"
+    ACTION_CREATE_ADD = "create_add"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -226,11 +237,22 @@ class CreateProductVariant(CreateView):
                 "created_at"
             )  # Assuming you have a created_at field
 
+        # Add barcode URL to context and clear it from session
+        redirect_url = self.request.session.pop(self.session_barcode_key, None)
+        if redirect_url:
+            context["redirect_url"] = redirect_url
+
         return context
 
     def get_initial(self):
         """Set initial values for the form"""
         initial = super().get_initial()
+
+        # Check session for persisted fields first
+        stored = self.request.session.pop(self.session_initial_key, None)
+        if stored:
+            initial.update(stored)
+            return initial
 
         # Get the product
         product = Product.objects.get(id=self.kwargs["product_id"])
@@ -258,22 +280,33 @@ class CreateProductVariant(CreateView):
     def form_valid(self, form):
         # Get the product
         product = Product.objects.get(id=self.kwargs["product_id"])
+        action = self.request.POST.get("action")
 
-        # Save the variant
-        variant = form.save(commit=False)
-        variant.product = product
-        variant.created_by = self.request.user
-
+        # Save the variant inside atomic block
         try:
-            variant.save()
+            with transaction.atomic():
+                variant = form.save(commit=False)
+                variant.product = product
+                variant.created_by = self.request.user
+                variant.save()
+
+                # Create inventory log for initial stock
+                InventoryService.create_initial_log(
+                    variant,
+                    self.request.user,
+                    "Initial stock",
+                    form.cleaned_data.get("supplier_invoice"),
+                )
         except IntegrityError as e:
             # Check if it's a unique constraint violation
-            if "unique_product" in str(e):
+            if "unique_product" in str(e) or "barcode" in str(e).lower():
                 # Determine which fields are causing the conflict
                 size = form.cleaned_data.get("size")
                 color = form.cleaned_data.get("color")
 
-                if size and color:
+                if "barcode" in str(e).lower():
+                    error_msg = "A variant with this barcode already exists."
+                elif size and color:
                     error_msg = f"A variant with size '{size}' and color '{color}' already exists for this product."
                 elif size:
                     error_msg = (
@@ -287,30 +320,90 @@ class CreateProductVariant(CreateView):
                 form.add_error(None, error_msg)
                 return self.form_invalid(form)
             else:
-                # Re-raise if it's a different integrity error
-                raise
+                logger.exception(
+                    "Database integrity error during variant creation",
+                    extra={"user_id": self.request.user.id, "error": str(e)},
+                )
+                messages.error(
+                    self.request, "A variant with similar details already exists."
+                )
+                return self.form_invalid(form)
+        except Exception as e:
+            logger.exception(
+                "Variant creation failed unexpectedly",
+                extra={"user_id": self.request.user.id, "error": str(e)},
+            )
+            messages.error(
+                self.request, "An unexpected error occurred. Please try again."
+            )
+            return self.form_invalid(form)
 
-        # Create inventory log for initial stock
-        InventoryService.create_initial_log(
-            variant,
-            self.request.user,
-            "Initial stock",
-            form.cleaned_data.get("supplier_invoice"),
-        )
+        messages.success(self.request, "Product variant created successfully")
 
-        messages.success(self.request, f"Product variant created successfully")
+        # Handle "create and add another" action
+        if action == self.ACTION_CREATE_ADD:
+            self._persist_initial_fields(self.request, form)
+            # Store barcode URL in session for JavaScript to open
+            barcode_url = reverse("report:barcode", kwargs={"pk": variant.id})
+            self.request.session[self.session_barcode_key] = barcode_url
+            self.request.session.modified = True
+            return redirect(self.request.path)
 
-        return super().form_valid(form)
+        self._clear_initial_fields(self.request)
+        return redirect("inventory_products:details", product_id=product.id)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
-        messages.error(self.request, "Please correct the errors below.")
+        logger.error(f"Form invalid: {form.errors.as_text()}")
+        if form.non_field_errors():
+            for error in form.non_field_errors():
+                messages.error(self.request, error)
+        else:
+            messages.error(self.request, "Error in submitting the form")
         return super().form_invalid(form)
 
     def get_success_url(self):
+        # This method is only called if form_valid doesn't return a redirect
+        # The actual redirect is handled in form_valid based on action
         return reverse_lazy(
             "inventory_products:details", kwargs={"product_id": self.object.product.id}
         )
+
+    # ------------------ Helpers ------------------
+
+    def _get_fields_to_persist(self):
+        """Define which fields should persist in 'create and add another' workflow"""
+        return [
+            "supplier_invoice",
+            "commission_percentage",
+            "discount_percentage",
+            "purchase_price",
+            "mrp",
+        ]
+
+    def _persist_initial_fields(self, request, form):
+        """Persist form fields to session for 'create and add another' workflow"""
+        serialize = self._serialize_value
+        fields_to_persist = self._get_fields_to_persist()
+        persisted_data = {
+            field: serialize(form.cleaned_data.get(field))
+            for field in fields_to_persist
+        }
+
+        request.session[self.session_initial_key] = persisted_data
+        request.session.modified = True
+
+    def _clear_initial_fields(self, request):
+        """Clear persisted fields from session"""
+        request.session.pop(self.session_initial_key, None)
+
+    @staticmethod
+    def _serialize_value(value) -> Optional[Union[int, str]]:
+        """Serialize form field values for session storage"""
+        if hasattr(value, "pk"):
+            return value.pk
+        if isinstance(value, Decimal):
+            return str(value)
+        return value
 
 
 class EditProductVariant(UpdateView):
@@ -368,7 +461,11 @@ class EditProductVariant(UpdateView):
                 raise
 
     def form_invalid(self, form):
-        messages.error(self.request, "Please correct the errors below.")
+        if form.non_field_errors():
+            for error in form.non_field_errors():
+                messages.error(self.request, error)
+        else:
+            messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
     def get_success_url(self):
@@ -377,7 +474,7 @@ class EditProductVariant(UpdateView):
         )
 
 
-class StockInCreate(LoginRequiredMixin, CreateView):
+class StockInCreate(CreateView):
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = StockInForm
     model = InventoryLog
@@ -483,7 +580,7 @@ class StockInCreate(LoginRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
-class AdjustmentInCreate(LoginRequiredMixin, CreateView):
+class AdjustmentInCreate(CreateView):
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = AdjustmentInForm
     model = InventoryLog
@@ -567,7 +664,7 @@ class AdjustmentInCreate(LoginRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
-class AdjustmentOutCreate(LoginRequiredMixin, CreateView):
+class AdjustmentOutCreate(CreateView):
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = AdjustmentOutForm
     model = InventoryLog
@@ -650,77 +747,7 @@ class AdjustmentOutCreate(LoginRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
-@login_required
-def download_variants(request):
-    """Download variants data as JSON."""
-    variants = ProductVariant.objects.select_related(
-        "product", "product__category", "size", "color"
-    ).all()
-    data = []
-
-    for variant in variants:
-        data.append(
-            {
-                "id": variant.id,
-                "barcode": variant.barcode,
-                "brand": variant.product.brand,
-                "product_name": variant.product.name,
-                "category": (
-                    variant.product.category.name if variant.product.category else None
-                ),
-                "size": variant.size.name if variant.size else None,
-                "color": variant.color.name if variant.color else None,
-                "quantity": str(variant.quantity),
-                "mrp": str(variant.mrp),
-                "discount_percentage": str(variant.discount_percentage),
-                "final_price": str(variant.final_price),
-                "status": variant.status,
-                "created_at": variant.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            }
-        )
-
-    response = JsonResponse(data, safe=False)
-    response["Content-Disposition"] = 'attachment; filename="variants.json"'
-    return response
-
-
-@login_required
-def search_variants_ajax(request):
-    """AJAX endpoint for real-time variant search."""
-    search_query = request.GET.get("q", "")
-
-    if len(search_query) < 2:
-        return JsonResponse({"variants": []})
-
-    variants = ProductVariant.objects.select_related(
-        "product", "product__category"
-    ).filter(
-        Q(product__brand__icontains=search_query)
-        | Q(product__name__icontains=search_query)
-        | Q(barcode__icontains=search_query)
-    )[
-        :10
-    ]  # Limit to 10 results
-
-    data = []
-    for variant in variants:
-        data.append(
-            {
-                "id": variant.id,
-                "barcode": variant.barcode,
-                "brand": variant.product.brand,
-                "product_name": variant.product.name,
-                "category": (
-                    variant.product.category.name if variant.product.category else None
-                ),
-                "status": variant.status,
-            }
-        )
-
-    return JsonResponse({"variants": data})
-
-
-class DamageCreate(LoginRequiredMixin, CreateView):
+class DamageCreate(CreateView):
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = DamageForm
     model = InventoryLog
@@ -801,3 +828,277 @@ class DamageCreate(LoginRequiredMixin, CreateView):
         logger.error(f"Form invalid: {form.errors}")
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
+
+
+# Favorite Variant Views
+def favorites_home(request):
+    """HTML page to display all favorite variants for the current user"""
+    if not request.user.is_authenticated:
+        messages.error(request, "Please login to view your favorites")
+        return redirect("login")  # Adjust to your login URL
+
+    context = {}
+    return render(request, "inventory/product_variant/favorites.html", context)
+
+
+def fetch_favorites(request):
+    """AJAX endpoint to fetch favorite variants with search, filter, and pagination"""
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required"}, status=401
+        )
+
+    try:
+        # Get search and filter parameters
+        search_query = request.GET.get("search", "")
+        status_filter = request.GET.get("status", "")
+        stock_filter = request.GET.get("stock", "")
+        sort_by = request.GET.get("sort", "-created_at")
+
+        # Start with user's favorites
+        favorites = FavoriteVariant.objects.filter(user=request.user).select_related(
+            "variant",
+            "variant__product",
+            "variant__product__category",
+            "variant__size",
+            "variant__color",
+        )
+
+        # Apply search filter
+        filters = Q()
+        if search_query:
+            filters &= (
+                Q(variant__product__brand__icontains=search_query)
+                | Q(variant__product__name__icontains=search_query)
+                | Q(variant__barcode__icontains=search_query)
+                | Q(variant__product__description__icontains=search_query)
+            )
+
+        # Apply status filter
+        if status_filter:
+            filters &= Q(variant__status=status_filter)
+
+        # Apply stock filter
+        if stock_filter == "in_stock":
+            filters &= Q(variant__quantity__gt=0)
+        elif stock_filter == "out_of_stock":
+            filters &= Q(variant__quantity=0)
+        elif stock_filter == "low_stock":
+            filters &= Q(
+                variant__quantity__lte=F("variant__minimum_quantity"),
+                variant__quantity__gt=0,
+            )
+
+        favorites = favorites.filter(filters)
+
+        # Convert to list to preserve favorite objects for sorting
+        favorites_list = list(favorites)
+
+        # Get variants from favorites
+        variants = [fav.variant for fav in favorites_list]
+
+        # Apply sorting
+        valid_sort_fields = {
+            "id",
+            "-id",
+            "barcode",
+            "-barcode",
+            "product__brand",
+            "-product__brand",
+            "product__name",
+            "-product__name",
+            "quantity",
+            "-quantity",
+            "mrp",
+            "-mrp",
+            "status",
+            "-status",
+            "created_at",
+            "-created_at",
+        }
+
+        if sort_by not in valid_sort_fields:
+            sort_by = "-created_at"
+
+        # Sort variants
+        if sort_by.startswith("-"):
+            reverse = True
+            field = sort_by[1:]
+        else:
+            reverse = False
+            field = sort_by
+
+        # Create a mapping for favorite created_at dates
+        favorite_dates = {fav.variant_id: fav.created_at for fav in favorites_list}
+
+        def get_sort_key(variant):
+            if field == "created_at":
+                # Get the favorite's created_at
+                return favorite_dates.get(variant.id, variant.created_at)
+            try:
+                value = variant
+                for attr in field.split("__"):
+                    value = getattr(value, attr, None)
+                    if value is None:
+                        return ""
+                return value
+            except:
+                return ""
+
+        variants.sort(key=get_sort_key, reverse=reverse)
+
+        # Paginate
+        from django.core.paginator import Paginator
+        from django.template.loader import render_to_string
+
+        paginator = Paginator(variants, VARIANTS_PER_PAGE)
+        page_number = request.GET.get("page")
+        page_obj = paginator.get_page(page_number)
+
+        # Mark all as favorites (since they're from favorites)
+        for variant in page_obj:
+            variant.is_favorite = True
+
+        context = {
+            "page_obj": page_obj,
+            "total_count": paginator.count,
+        }
+
+        # Render table
+        table_html = render_to_string(
+            "inventory/product_variant/favorites_fetch.html", context, request=request
+        )
+
+        # Render pagination if needed
+        pagination_html = ""
+        if page_obj and page_obj.paginator.num_pages > 1:
+            pagination_html = render_to_string(
+                "common/_pagination.html", context, request=request
+            )
+
+        return JsonResponse(
+            {
+                "html": table_html,
+                "pagination": pagination_html,
+                "success": True,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error fetching favorites: {str(e)}")
+        return JsonResponse(
+            {"status": "error", "message": "Failed to fetch favorites"}, status=500
+        )
+
+
+@require_http_methods(["GET"])
+def get_variants_for_favorites(request):
+    """Get variants for adding to favorites (excludes already favorited ones)"""
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required"}, status=401
+        )
+
+    try:
+        # Get search query
+        search_query = request.GET.get("search", "")
+
+        # Get already favorited variant IDs
+        favorite_variant_ids = set(
+            FavoriteVariant.objects.filter(user=request.user).values_list(
+                "variant_id", flat=True
+            )
+        )
+
+        # Get variants excluding already favorited ones
+        variants = (
+            ProductVariant.objects.filter(status="ACTIVE")
+            .select_related("product", "product__category", "size", "color")
+            .exclude(id__in=favorite_variant_ids)
+        )
+
+        # Apply search filter
+        if search_query:
+            variants = variants.filter(
+                Q(product__brand__icontains=search_query)
+                | Q(product__name__icontains=search_query)
+                | Q(barcode__icontains=search_query)
+                | Q(product__description__icontains=search_query)
+            )
+
+        # Limit results
+        variants = variants[:50]  # Limit to 50 results for performance
+
+        variants_data = []
+        for variant in variants:
+            variants_data.append(
+                {
+                    "id": variant.id,
+                    "barcode": variant.barcode,
+                    "product_brand": variant.product.brand,
+                    "product_name": variant.product.name,
+                    "variant_name": variant.simple_name,
+                    "mrp": str(variant.mrp),
+                    "final_price": str(variant.final_price),
+                    "quantity": str(variant.quantity),
+                    "status": variant.status,
+                }
+            )
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "variants": variants_data,
+                "count": len(variants_data),
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error getting variants for favorites: {str(e)}")
+        return JsonResponse(
+            {"status": "error", "message": "Failed to get variants"}, status=500
+        )
+
+
+@require_http_methods(["POST"])
+def add_favorites_bulk(request):
+    """Add multiple variants to favorites at once"""
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required"}, status=401
+        )
+
+    try:
+        data = json.loads(request.body)
+        variant_ids = data.get("variant_ids", [])
+
+        if not variant_ids:
+            return JsonResponse(
+                {"status": "error", "message": "No variants selected"}, status=400
+            )
+
+        # Get valid variants
+        variants = ProductVariant.objects.filter(id__in=variant_ids)
+        added_count = 0
+
+        for variant in variants:
+            favorite, created = FavoriteVariant.objects.get_or_create(
+                user=request.user, variant=variant
+            )
+            if created:
+                added_count += 1
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "message": f"{added_count} variant(s) added to favorites",
+                "added_count": added_count,
+            }
+        )
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"status": "error", "message": "Invalid JSON data"}, status=400
+        )
+    except Exception as e:
+        logger.error(f"Error adding favorites bulk: {str(e)}")
+        return JsonResponse(
+            {"status": "error", "message": "Failed to add favorites"}, status=500
+        )

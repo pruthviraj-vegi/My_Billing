@@ -1,4 +1,3 @@
-from email.policy import default
 from django.db import models
 from django.conf import settings
 from base.utility import StringProcessor
@@ -7,11 +6,12 @@ from decimal import Decimal
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django.db.models import Q, Sum, F, ExpressionWrapper, DecimalField, Value
+from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Value
 from django.db.models.functions import Coalesce
 from django.utils.functional import cached_property
 
 User = settings.AUTH_USER_MODEL
+
 
 class Customer(SoftDeleteModel):
     """Customer model for storing customer information."""
@@ -132,7 +132,7 @@ class Customer(SoftDeleteModel):
         credit_qs = self.invoices.filter(
             payment_type=Invoice.PaymentType.CREDIT
         ).order_by("invoice_date")
-        if credit_qs.exists():
+        if credit_qs.exists() and self.balance_amount > 500:
             for invoice in credit_qs:
                 if not invoice.amount_cleared:
                     return invoice.invoice_date if not None else invoice.invoice_date
@@ -245,7 +245,11 @@ class Payment(SoftDeleteModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
+        self.notes = StringProcessor(self.notes).toTitle()
         if not self.pk:
+            # For both Paid and Purchased payments, initialize unallocated_amount
+            # For Paid: amount not allocated to invoices or used to cover purchased payments
+            # For Purchased: amount not yet covered by paid payments
             self.unallocated_amount = self.amount
         super().save(*args, **kwargs)
 

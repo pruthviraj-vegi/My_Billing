@@ -228,6 +228,9 @@
                                                 <a href="{% url 'inventory_variant:details' variant.id %}"
                                                    class="btn-action btn-view"
                                                    title="View Details"><i class="fas fa-eye"></i></a>
+                                                <a href="{% url 'report:barcode' variant.id %}" class="btn-action btn-barcode" target="_blank" title="Generate Barcode">
+                                                    <i class="fas fa-barcode"></i>
+                                                </a>
                                                 <a href="{% url 'inventory_variant:edit' variant.id %}"
                                                    class="btn-action btn-edit"
                                                    title="Edit Variant"><i class="fas fa-edit"></i></a>

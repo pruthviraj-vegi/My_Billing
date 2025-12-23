@@ -7,7 +7,7 @@
 <div class="page-header">
     <h1 class="page-title">{{ page_title }}</h1>
     <div class="page-actions">
-        <a href="{% url 'setting:shop_details_list' %}" class="btn">
+        <a href="{% url 'setting:shop_details_list' %}" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> Back to List
         </a>
     </div>
@@ -15,7 +15,7 @@
 
 <div class="form-container">
     <div class="form-card">
-        <form method="post" enctype="multipart/form-data" class="details-form">
+        <form method="post" enctype="multipart/form-data" class="details-form" novalidate autocomplete="off">
             {% csrf_token %}
             
             {% if form.non_field_errors %}
@@ -32,47 +32,51 @@
             <!-- Basic Information Section -->
             <div class="form-section">
                 <h3 class="section-title">Basic Information</h3>
-                <div class="form-row">
-                    <div class="form-group {% if form.shop_name.errors %}has-error{% endif %}">
-                        <label for="{{ form.shop_name.id_for_label }}" class="form-label">
-                            {{ form.shop_name.label }}
-                            {% if form.shop_name.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                        {{ form.shop_name }}
-                        {% if form.shop_name.help_text %}
-                            <div class="form-help">{{ form.shop_name.help_text }}</div>
-                        {% endif %}
-                        {% if form.shop_name.errors %}
-                            <div class="field-errors">
-                                {% for error in form.shop_name.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group {% if form.is_active.errors %}has-error{% endif %}">
-                        <label for="{{ form.is_active.id_for_label }}" class="form-label">
-                            {{ form.is_active.label }}
-                        </label>
-                        <div style="margin-top: 0.5rem;">
-                            {{ form.is_active }}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.shop_name.errors %}has-error{% endif %}">
+                            <label for="{{ form.shop_name.id_for_label }}" class="form-label">
+                                {{ form.shop_name.label }}
+                                {% if form.shop_name.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ form.shop_name }}
+                            <small class="form-help">
+                                {% if form.shop_name.errors %}
+                                    {% for error in form.shop_name.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.shop_name.help_text %}
+                                    <span class="form-help-text">{{ form.shop_name.help_text }}</span>
+                                {% endif %}
+                            </small>
                         </div>
-                        {% if form.is_active.help_text %}
-                            <div class="form-help">{{ form.is_active.help_text }}</div>
-                        {% endif %}
-                        {% if form.is_active.errors %}
-                            <div class="field-errors">
-                                {% for error in form.is_active.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.is_active.errors %}has-error{% endif %}">
+                            <label for="{{ form.is_active.id_for_label }}" class="form-label">
+                                {{ form.is_active.label }}
+                            </label>
+                            <div style="margin-top: 0.5rem;">
+                                {{ form.is_active }}
                             </div>
-                        {% endif %}
+                            <small class="form-help">
+                                {% if form.is_active.errors %}
+                                    {% for error in form.is_active.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.is_active.help_text %}
+                                    <span class="form-help-text">{{ form.is_active.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -80,129 +84,141 @@
             <!-- Address Section -->
             <div class="form-section">
                 <h3 class="section-title">Address Information</h3>
-                <div class="form-row">
-                    <div class="form-group {% if form.first_line.errors %}has-error{% endif %}">
-                        <label for="{{ form.first_line.id_for_label }}" class="form-label">
-                            {{ form.first_line.label }}
-                            {% if form.first_line.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                        {{ form.first_line }}
-                        {% if form.first_line.help_text %}
-                            <div class="form-help">{{ form.first_line.help_text }}</div>
-                        {% endif %}
-                        {% if form.first_line.errors %}
-                            <div class="field-errors">
-                                {% for error in form.first_line.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.first_line.errors %}has-error{% endif %}">
+                            <label for="{{ form.first_line.id_for_label }}" class="form-label">
+                                {{ form.first_line.label }}
+                                {% if form.first_line.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ form.first_line }}
+                            <small class="form-help">
+                                {% if form.first_line.errors %}
+                                    {% for error in form.first_line.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.first_line.help_text %}
+                                    <span class="form-help-text">{{ form.first_line.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
-                    <div class="form-group {% if form.second_line.errors %}has-error{% endif %}">
-                        <label for="{{ form.second_line.id_for_label }}" class="form-label">
-                            {{ form.second_line.label }}
-                        </label>
-                        {{ form.second_line }}
-                        {% if form.second_line.help_text %}
-                            <div class="form-help">{{ form.second_line.help_text }}</div>
-                        {% endif %}
-                        {% if form.second_line.errors %}
-                            <div class="field-errors">
-                                {% for error in form.second_line.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group {% if form.city.errors %}has-error{% endif %}">
-                        <label for="{{ form.city.id_for_label }}" class="form-label">
-                            {{ form.city.label }}
-                            {% if form.city.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                        {{ form.city }}
-                        {% if form.city.help_text %}
-                            <div class="form-help">{{ form.city.help_text }}</div>
-                        {% endif %}
-                        {% if form.city.errors %}
-                            <div class="field-errors">
-                                {% for error in form.city.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group {% if form.state.errors %}has-error{% endif %}">
-                        <label for="{{ form.state.id_for_label }}" class="form-label">
-                            {{ form.state.label }}
-                            {% if form.state.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                        {{ form.state }}
-                        {% if form.state.help_text %}
-                            <div class="form-help">{{ form.state.help_text }}</div>
-                        {% endif %}
-                        {% if form.state.errors %}
-                            <div class="field-errors">
-                                {% for error in form.state.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.second_line.errors %}has-error{% endif %}">
+                            <label for="{{ form.second_line.id_for_label }}" class="form-label">
+                                {{ form.second_line.label }}
+                            </label>
+                            {{ form.second_line }}
+                            <small class="form-help">
+                                {% if form.second_line.errors %}
+                                    {% for error in form.second_line.errors %}
+                                        <span classform-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.second_line.help_text %}
+                                    <span class="form-help-text">{{ form.second_line.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group {% if form.pincode.errors %}has-error{% endif %}">
-                        <label for="{{ form.pincode.id_for_label }}" class="form-label">
-                            {{ form.pincode.label }}
-                            {% if form.pincode.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                        {{ form.pincode }}
-                        {% if form.pincode.help_text %}
-                            <div class="form-help">{{ form.pincode.help_text }}</div>
-                        {% endif %}
-                        {% if form.pincode.errors %}
-                            <div class="field-errors">
-                                {% for error in form.pincode.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.city.errors %}has-error{% endif %}">
+                            <label for="{{ form.city.id_for_label }}" class="form-label">
+                                {{ form.city.label }}
+                                {% if form.city.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ form.city }}
+                            <small class="form-help">
+                                {% if form.city.errors %}
+                                    {% for error in form.city.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.city.help_text %}
+                                    <span class="form-help-text">{{ form.city.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
-                    <div class="form-group {% if form.country.errors %}has-error{% endif %}">
-                        <label for="{{ form.country.id_for_label }}" class="form-label">
-                            {{ form.country.label }}
-                            {% if form.country.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                        {{ form.country }}
-                        {% if form.country.help_text %}
-                            <div class="form-help">{{ form.country.help_text }}</div>
-                        {% endif %}
-                        {% if form.country.errors %}
-                            <div class="field-errors">
-                                {% for error in form.country.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.state.errors %}has-error{% endif %}">
+                            <label for="{{ form.state.id_for_label }}" class="form-label">
+                                {{ form.state.label }}
+                                {% if form.state.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ form.state }}
+                            <small class="form-help">
+                                {% if form.state.errors %}
+                                    {% for error in form.state.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.state.help_text %}
+                                    <span class="form-help-text">{{ form.state.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.pincode.errors %}has-error{% endif %}">
+                            <label for="{{ form.pincode.id_for_label }}" class="form-label">
+                                {{ form.pincode.label }}
+                                {% if form.pincode.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ form.pincode }}
+                            <small class="form-help">
+                                {% if form.pincode.errors %}
+                                    {% for error in form.pincode.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.pincode.help_text %}
+                                    <span class="form-help-text">{{ form.pincode.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.country.errors %}has-error{% endif %}">
+                            <label for="{{ form.country.id_for_label }}" class="form-label">
+                                {{ form.country.label }}
+                                {% if form.country.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ form.country }}
+                            <small class="form-help">
+                                {% if form.country.errors %}
+                                    {% for error in form.country.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.country.help_text %}
+                                    <span class="form-help-text">{{ form.country.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -210,85 +226,93 @@
             <!-- Contact Information Section -->
             <div class="form-section">
                 <h3 class="section-title">Contact Information</h3>
-                <div class="form-row">
-                    <div class="form-group {% if form.phone_number.errors %}has-error{% endif %}">
-                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">
-                            {{ form.phone_number.label }}
-                            {% if form.phone_number.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                        {{ form.phone_number }}
-                        {% if form.phone_number.help_text %}
-                            <div class="form-help">{{ form.phone_number.help_text }}</div>
-                        {% endif %}
-                        {% if form.phone_number.errors %}
-                            <div class="field-errors">
-                                {% for error in form.phone_number.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.phone_number.errors %}has-error{% endif %}">
+                            <label for="{{ form.phone_number.id_for_label }}" class="form-label">
+                                {{ form.phone_number.label }}
+                                {% if form.phone_number.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ form.phone_number }}
+                            <small class="form-help">
+                                {% if form.phone_number.errors %}
+                                    {% for error in form.phone_number.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.phone_number.help_text %}
+                                    <span class="form-help-text">{{ form.phone_number.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
-                    <div class="form-group {% if form.phone_two.errors %}has-error{% endif %}">
-                        <label for="{{ form.phone_two.id_for_label }}" class="form-label">
-                            {{ form.phone_two.label }}
-                        </label>
-                        {{ form.phone_two }}
-                        {% if form.phone_two.help_text %}
-                            <div class="form-help">{{ form.phone_two.help_text }}</div>
-                        {% endif %}
-                        {% if form.phone_two.errors %}
-                            <div class="field-errors">
-                                {% for error in form.phone_two.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.phone_two.errors %}has-error{% endif %}">
+                            <label for="{{ form.phone_two.id_for_label }}" class="form-label">
+                                {{ form.phone_two.label }}
+                            </label>
+                            {{ form.phone_two }}
+                            <small class="form-help">
+                                {% if form.phone_two.errors %}
+                                    {% for error in form.phone_two.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.phone_two.help_text %}
+                                    <span class="form-help-text">{{ form.phone_two.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group {% if form.email.errors %}has-error{% endif %}">
-                        <label for="{{ form.email.id_for_label }}" class="form-label">
-                            {{ form.email.label }}
-                        </label>
-                        {{ form.email }}
-                        {% if form.email.help_text %}
-                            <div class="form-help">{{ form.email.help_text }}</div>
-                        {% endif %}
-                        {% if form.email.errors %}
-                            <div class="field-errors">
-                                {% for error in form.email.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.email.errors %}has-error{% endif %}">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                {{ form.email.label }}
+                            </label>
+                            {{ form.email }}
+                            <small class="form-help">
+                                {% if form.email.errors %}
+                                    {% for error in form.email.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.email.help_text %}
+                                    <span class="form-help-text">{{ form.email.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
-                    <div class="form-group {% if form.website.errors %}has-error{% endif %}">
-                        <label for="{{ form.website.id_for_label }}" class="form-label">
-                            {{ form.website.label }}
-                        </label>
-                        {{ form.website }}
-                        {% if form.website.help_text %}
-                            <div class="form-help">{{ form.website.help_text }}</div>
-                        {% endif %}
-                        {% if form.website.errors %}
-                            <div class="field-errors">
-                                {% for error in form.website.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.website.errors %}has-error{% endif %}">
+                            <label for="{{ form.website.id_for_label }}" class="form-label">
+                                {{ form.website.label }}
+                            </label>
+                            {{ form.website }}
+                            <small class="form-help">
+                                {% if form.website.errors %}
+                                    {% for error in form.website.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.website.help_text %}
+                                    <span class="form-help-text">{{ form.website.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -296,51 +320,55 @@
             <!-- Business Details Section -->
             <div class="form-section">
                 <h3 class="section-title">Business Details</h3>
-                <div class="form-row">
-                    <div class="form-group {% if form.gst_no.errors %}has-error{% endif %}">
-                        <label for="{{ form.gst_no.id_for_label }}" class="form-label">
-                            {{ form.gst_no.label }}
-                        </label>
-                        {{ form.gst_no }}
-                        {% if form.gst_no.help_text %}
-                            <div class="form-help">{{ form.gst_no.help_text }}</div>
-                        {% endif %}
-                        {% if form.gst_no.errors %}
-                            <div class="field-errors">
-                                {% for error in form.gst_no.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.gst_no.errors %}has-error{% endif %}">
+                            <label for="{{ form.gst_no.id_for_label }}" class="form-label">
+                                {{ form.gst_no.label }}
+                            </label>
+                            {{ form.gst_no }}
+                            <small class="form-help">
+                                {% if form.gst_no.errors %}
+                                    {% for error in form.gst_no.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.gst_no.help_text %}
+                                    <span class="form-help-text">{{ form.gst_no.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
-                    <div class="form-group {% if form.logo.errors %}has-error{% endif %}">
-                        <label for="{{ form.logo.id_for_label }}" class="form-label">
-                            {{ form.logo.label }}
-                        </label>
-                        {{ form.logo }}
-                        {% if form.logo.help_text %}
-                            <div class="form-help">{{ form.logo.help_text }}</div>
-                        {% endif %}
-                        {% if form.logo.errors %}
-                            <div class="field-errors">
-                                {% for error in form.logo.errors %}
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ error }}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                    <div class="col-md-6">
+                        <div class="form-group {% if form.logo.errors %}has-error{% endif %}">
+                            <label for="{{ form.logo.id_for_label }}" class="form-label">
+                                {{ form.logo.label }}
+                            </label>
+                            {{ form.logo }}
+                            <small class="form-help">
+                                {% if form.logo.errors %}
+                                    {% for error in form.logo.errors %}
+                                        <span class="form-error-inline">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ error }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.logo.help_text %}
+                                    <span class="form-help-text">{{ form.logo.help_text }}</span>
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Form Actions -->
             <div class="form-actions">
-                <a href="{% url 'setting:shop_details_list' %}" class="btn">
+                <a href="{% url 'setting:shop_details_list' %}" class="btn btn-secondary">
                     <i class="fas fa-times"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-primary">

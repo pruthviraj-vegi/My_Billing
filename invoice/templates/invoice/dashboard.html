@@ -1,12 +1,18 @@
 {% extends "base.html" %}
+
 {% load static %}
 {% load custom_filters %}
 
 {% block title %}Invoice Dashboard{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
+{% endblock extra_css %}
+
 {% block content %}
+
 <!-- Page Header -->
-<div class="page-header dashboard-page-header">
+<div class="page-header page-header-sticky">
     <h2 class="page-title">Invoice Dashboard</h2>
     <div class="page-actions">
         <!-- Date Filter Dropdown -->
@@ -54,7 +60,7 @@
                 <i class="fas fa-file-invoice"></i>
             </div>
             <div class="stat-content">
-                <h3 class="stat-number" id="totalInvoices">0</h3>
+                <h3 class="stat-number counting-number" id="totalInvoices" data-count="0">0</h3>
                 <p class="stat-label">Total Invoices</p>
             </div>
         </div>
@@ -64,7 +70,7 @@
                 <i class="fas fa-rupee-sign"></i>
             </div>
             <div class="stat-content">
-                <h3 class="stat-number" id="totalAmount">₹0</h3>
+                <h3 class="stat-number counting-number" id="totalAmount" data-count="0">0</h3>
                 <p class="stat-label">Total Amount</p>
             </div>
         </div>
@@ -74,7 +80,7 @@
                 <i class="fas fa-calculator"></i>
             </div>
             <div class="stat-content">
-                <h3 class="stat-number" id="netAmount">₹0</h3>
+                <h3 class="stat-number counting-number" id="netAmount" data-count="0">0</h3>
                 <p class="stat-label">Net Amount</p>
             </div>
         </div>
@@ -84,7 +90,7 @@
                 <i class="fas fa-chart-line"></i>
             </div>
             <div class="stat-content">
-                <h3 class="stat-number" id="totalProfit">₹0</h3>
+                <h3 class="stat-number counting-number" id="totalProfit" data-count="0">0</h3>
                 <p class="stat-label">Amount</p>
             </div>
         </div>
@@ -94,7 +100,7 @@
                 <i class="fas fa-percentage"></i>
             </div>
             <div class="stat-content">
-                <h3 class="stat-number" id="totalDiscount">₹0</h3>
+                <h3 class="stat-number counting-number" id="totalDiscount" data-count="0">0</h3>
                 <p class="stat-label">Total Discount</p>
             </div>
         </div>
@@ -105,64 +111,75 @@
         <h2 class="section-title">Payment Analytics</h2>
         
         <!-- Payment Status Breakdown -->
-        <div class="analytics-grid">
-            <div class="analytics-card">
-                <h3 class="analytics-title">Payment Status</h3>
-                <div class="analytics-content" id ="payment_status">
-                    <div class="chart-container">
-                        <canvas id="paymentStatusChart" width="280" height="180"></canvas>
+        <div class="breakdown-grid">
+            <!-- Payment Status -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Payment Status</h3>
+                </div>
+                <div class="payment-chart-wrapper">
+                    <div class="payment-chart-container">
+                        <canvas id="paymentStatusChart"></canvas>
                     </div>
-                    <div class="chart-legend" id="paymentStatusLegend">
-                        <!-- Legend will be populated here -->
-                    </div>
+                    <div id="paymentLegend" class="custom-legend"></div>
                 </div>
             </div>
 
-            <div class="analytics-card">
-                <h3 class="analytics-title">Payment Type</h3>
-                <div class="analytics-content" id="payment_type">
-                    <div class="chart-container">
-                        <canvas id="paymentTypeChart" width="280" height="180"></canvas>
+            <!-- Payment Type -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Payment Type</h3>
+                </div>
+                <div class="payment-chart-wrapper">
+                    <div class="payment-chart-container">
+                        <canvas id="paymentTypeChart"></canvas>
                     </div>
-                    <div class="chart-legend" id="paymentTypeLegend">
-                        <!-- Legend will be populated here -->
-                    </div>
+                    <div id="paymentTypeLegend" class="custom-legend"></div>
                 </div>
             </div>
 
-            <div class="analytics-card">
-                <h3 class="analytics-title">Product Categories</h3>
-                <div class="analytics-content" id="category">
-                    <div class="chart-container">
-                        <canvas id="categoryChart" width="280" height="180"></canvas>
+            <!-- Product Categories -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Top Categories</h3>
+                </div>
+                <div class="payment-chart-wrapper">
+                    <div class="payment-chart-container">
+                        <canvas id="categoryChart"></canvas>
                     </div>
-                    <div class="chart-legend" id="categoryLegend">
-                        <!-- Legend will be populated here -->
-                    </div>
+                    <div id="categoryLegend" class="custom-legend"></div>
                 </div>
             </div>
         </div>
+
     </div>
 
     <!-- Revenue Comparison Chart -->
     <div class="activity-section">
         <h2 class="section-title">Revenue Comparison</h2>
-        <div class="comparison-chart-container" id="comparison_chart">
-            <div class="comparison-chart-header">
-                
-                <div class="chart-info">
-                    <div class="period-info" id="periodInfo">
-                        <!-- Period information will be populated here -->
+        <div class="chart-card revenue-chart-card">
+            <div class="chart-header">
+                <h3 class="chart-title">Revenue Analytics</h3>
+                <div class="chart-summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-label-small"><span class="legend-dot" style="background: var(--primary);"></span>Present</span>
+                        <span class="stat-value-small" id="revCurrentTotal">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label-small"><span class="legend-dot" style="background: var(--secondary);"></span>Past</span>
+                        <span class="stat-value-small" id="revPreviousTotal">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label-small">Change</span>
+                        <span class="stat-change" id="revChange">--</span>
                     </div>
                 </div>
             </div>
-            <div class="comparison-chart-wrapper">
-                <canvas id="comparisonChart" width="800" height="400"></canvas>
-            </div>
-            <div class="chart-summary" id="chartSummary">
-                <!-- Summary statistics will be populated here -->
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
             </div>
         </div>
+
     </div>
 
 
@@ -196,7 +213,7 @@
         <i class="fas fa-exclamation-triangle"></i>
         <h3>Failed to load dashboard data</h3>
         <p>Please try again or contact support if the problem persists.</p>
-        <button type="button" class="btn btn-primary" onclick="loadDashboardData()">
+        <button type="button" class="btn btn-primary" id="retryDashboardBtn">
             <i class="fas fa-refresh"></i>
             Retry
         </button>
@@ -205,167 +222,116 @@
 {% endblock content %}
 
 {% block extra_js %}
-<!-- Chart.js Library -->
+{% load static %}
 <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
-<!-- Chart Utilities - All chart functions in one file -->
-<script src="{% static 'js/chart-utils.js' %}"></script>
-
+<script src="{% static 'js/modern-charts.js' %}"></script>
+<script src="{% static 'js/counting.js' %}"></script>
 <script>
-    // Invoice Dashboard - Page Specific Code
-    (function() {
-        const fetchUrl = '{% url "invoice:dashboard_fetch" %}';
-        const currentFilter = '{{ date_filter|default:"today" }}';
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Charts
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const paymentCtx = document.getElementById('paymentStatusChart').getContext('2d');
+    const paymentTypeCtx = document.getElementById('paymentTypeChart').getContext('2d');
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    
+    let revenueChart = ModernCharts.initRevenueChart(revenueCtx);
+    let paymentChart = ModernCharts.initDoughnut(paymentCtx);
+    let paymentTypeChart = ModernCharts.initDoughnut(paymentTypeCtx);
+    let categoryChart = ModernCharts.initDoughnut(categoryCtx);
 
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('en-IN', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(amount);
+    // Fetch Data Function
+    async function fetchDashboardData(filter) {
+        try {
+            // Don't block the UI
+            // document.getElementById('dashboardLoading').style.display = 'flex';
+            // document.getElementById('dashboardContent').style.display = 'none';
+            document.getElementById('dashboardError').style.display = 'none';
+            
+            // Subtle loading indication
+            document.getElementById('dashboardContent').style.opacity = '0.6';
+
+            const response = await fetch(`{% url "invoice:dashboard_fetch" %}?date_filter=${filter}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                updateDashboard(data);
+                document.getElementById('dashboardContent').style.opacity = '1';
+            } else {
+                throw new Error(data.message || 'Failed to fetch data');
+            }
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            document.getElementById('dashboardContent').style.opacity = '1';
+            document.getElementById('dashboardError').style.display = 'flex';
+        } finally {
+            // document.getElementById('dashboardLoading').style.display = 'none';
+        }
+    }
+
+    function updateDashboard(data) {
+        // Update Stats with counting animation
+        updateCount('totalInvoices', data.stats.total_invoices);
+        updateCount('totalAmount', data.stats.total_amount);
+        updateCount('netAmount', data.stats.net_amount);
+        updateCount('totalProfit', data.stats.total_profit);
+        updateCount('totalDiscount', data.stats.total_discount);
+
+        // Update Revenue Chart
+        if (data.comparison_data) {
+            const { currentData, previousData } = ModernCharts.updateRevenueChart(revenueChart, data.comparison_data);
+            
+            // Update Summary Totals
+            ModernCharts.updateSummaryStats(currentData, previousData, {
+                current: 'revCurrentTotal',
+                previous: 'revPreviousTotal',
+                change: 'revChange'
+            });
         }
 
-        function updateStats(stats) {
-            const el = document.getElementById('totalInvoices');
-            if (el) el.textContent = stats.total_invoices || 0;
-            
-            const el2 = document.getElementById('totalAmount');
-            if (el2) el2.textContent = '₹' + formatCurrency(stats.total_amount || 0);
-            
-            const el3 = document.getElementById('netAmount');
-            if (el3) el3.textContent = '₹' + formatCurrency(stats.net_amount || 0);
-            
-            const el4 = document.getElementById('totalProfit');
-            if (el4) el4.textContent = '₹' + formatCurrency(stats.total_profit || 0);
-            
-            const el5 = document.getElementById('totalDiscount');
-            if (el5) el5.textContent = '₹' + formatCurrency(stats.total_discount || 0);
-        }
+        // Update Payment Status Chart - Using backend-calculated percentages
+        ModernCharts.updateDoughnut(
+            paymentChart, 
+            'paymentLegend', 
+            data.payment_status_breakdown, 
+            { label: 'payment_status', count: 'count', amount: 'amount', percentage: 'percentage' }
+        );
 
-        async function loadDashboardData() {
-            const dateFilter = document.getElementById('dateFilter');
-            const loadingEl = document.getElementById('dashboardLoading');
-            const errorEl = document.getElementById('dashboardError');
-            
-            if (errorEl) errorEl.style.display = 'none';
-            if (dateFilter) {
-                dateFilter.style.opacity = '0.7';
-                dateFilter.disabled = true;
-            }
+        // Update Payment Type Chart - Using backend-calculated percentages
+        ModernCharts.updateDoughnut(
+            paymentTypeChart, 
+            'paymentTypeLegend', 
+            data.payment_type_breakdown, 
+            { label: 'payment_type', count: 'count', amount: 'amount', percentage: 'percentage' }
+        );
 
-            try {
-                const dateFilterValue = dateFilter ? dateFilter.value : currentFilter;
-                const params = new URLSearchParams({ date_filter: dateFilterValue });
-                const response = await fetch(fetchUrl + '?' + params.toString());
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                const data = await response.json();
-                if (!data.success) throw new Error(data.error || 'Failed to load');
+        // Update Category Chart - Using backend-calculated percentages
+        ModernCharts.updateDoughnut(
+            categoryChart, 
+            'categoryLegend', 
+            data.category_breakdown, 
+            { label: 'category_name', count: 'count', amount: 'amount', percentage: 'percentage' }
+        );
+    }
 
-                // Update stats
-                updateStats(data.stats);
-
-                // Update charts - just pass data, config is already stored
-                if (data.payment_status_breakdown && data.payment_status_breakdown.length) {
-                    payment_status.update({
-                        data: data.payment_status_breakdown.map(item => ({
-                            label: item.payment_status,
-                            value: item.count,
-                            amount: item.amount
-                        }))
-                    });
-                }
-
-                if (data.payment_type_breakdown && data.payment_type_breakdown.length) {
-                    payment_type.update({
-                        data: data.payment_type_breakdown.map(item => ({
-                            label: item.payment_type,
-                            value: item.count,
-                            amount: item.amount
-                        }))
-                    });
-                }
-
-                if (data.category_breakdown && data.category_breakdown.length) {
-                    category.update({
-                        data: data.category_breakdown.map(item => ({
-                            label: item.category_name,
-                            value: item.count,
-                            amount: item.amount
-                        }))
-                    });
-                }
-
-                // Update comparison chart - just pass comparison data, everything handled automatically
-                if (data.comparison_data) {
-                    const metricSelect = document.getElementById('comparisonMetric');
-                    const metric = metricSelect ? metricSelect.value : 'amount';
-                    
-                    comparison_chart.update({
-                        comparison_data: data.comparison_data,
-                        metric: metric
-                    });
-                    
-                    // Handle metric change
-                    if (metricSelect) {
-                        metricSelect.onchange = null; // Remove old handler
-                        metricSelect.addEventListener('change', loadDashboardData);
-                    }
-                }
-
-            } catch (err) {
-                console.error('Dashboard loading error:', err);
-                if (errorEl) errorEl.style.display = 'block';
-            } finally {
-                if (dateFilter) {
-                    dateFilter.style.opacity = '1';
-                    dateFilter.disabled = false;
-                }
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', function() {
-            // Bind charts to containers - auto-detects canvas and legend, stores config
-            Charts.bindChart('payment_status', {
-                key: 'invoice_payment_status',
-                colors: Charts.getColors('blue').colors,
-                colorsHover: Charts.getColors('blue').colorsHover
-            });
-            
-            Charts.bindChart('payment_type', {
-                key: 'invoice_payment_type',
-                colors: Charts.getColors('cyan').colors,
-                colorsHover: Charts.getColors('cyan').colorsHover
-            });
-            
-            Charts.bindChart('category', {
-                key: 'invoice_category',
-                colors: Charts.getColors('green').colors,
-                colorsHover: Charts.getColors('green').colorsHover
-            });
-            
-            // Bind comparison chart (line chart)
-            Charts.bindChart('comparison_chart', {
-                key: 'invoice_comparison',
-                type: 'line',
-                options: {
-                    formatYAxis: 'amount',
-                    gridColor: 'rgba(148, 163, 184, 0.1)',
-                    showLegend: false
-                }
-            });
-            
-            // Set initial date filter
-            const dateFilter = document.getElementById('dateFilter');
-            if (dateFilter && currentFilter) {
-                dateFilter.value = currentFilter;
-            }
-            
-            // Load initial data
-            loadDashboardData();
-            
-            // Handle date filter change
-            if (dateFilter) {
-                dateFilter.addEventListener('change', loadDashboardData);
-            }
+    // Event Listeners
+    const dateFilter = document.getElementById('dateFilter');
+    if (dateFilter) {
+        dateFilter.addEventListener('change', (e) => {
+            fetchDashboardData(e.target.value);
         });
-    })();
+    }
+
+    const retryBtn = document.getElementById('retryDashboardBtn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+            document.getElementById('dashboardError').style.display = 'none';
+            document.getElementById('dashboardContent').style.display = 'block';
+            fetchDashboardData(dateFilter ? dateFilter.value : 'this_month');
+        });
+    }
+
+    // Initial Load
+    fetchDashboardData('this_month');
+});
 </script>
 {% endblock extra_js %}

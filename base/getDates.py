@@ -14,11 +14,19 @@ def end_of_day(dt):
 
 
 def parse_date(date_str, fallback=None):
-    try:
-        return datetime.strptime(date_str, "%d-%m-%Y")
-    except (ValueError, TypeError) as e:
-        logger.error(e)
+    """Parse date string in multiple formats: dd-mm-yyyy or yyyy-mm-dd"""
+    if not date_str:
         return fallback
+    try:
+        # Try dd-mm-yyyy format first (original format)
+        return datetime.strptime(date_str, "%d-%m-%Y")
+    except (ValueError, TypeError):
+        try:
+            # Try yyyy-mm-dd format (ISO format)
+            return datetime.strptime(date_str, "%Y-%m-%d")
+        except (ValueError, TypeError) as e:
+            logger.error(f"Failed to parse date '{date_str}': {e}")
+            return fallback
 
 
 # ---------- Dates Logic ----------
@@ -108,12 +116,25 @@ class DatesRange:
 
 # ---------- Public Function ----------
 def getDates(request):
+    """
+    Get date range from request. Accepts multiple parameter formats:
+    - date_filter or date_range: "this_month", "last_month", "custom", etc.
+    - For custom dates: from_date/to_date (dd-mm-yyyy) or start_date/end_date (yyyy-mm-dd)
+    """
     today = datetime.now()
-    type_of = request.GET.get("date_filter", "this_month")
+
+    # Accept both 'date_filter' and 'date_range' parameter names
+    type_of = (
+        request.GET.get("date_filter") or request.GET.get("date_range") or "this_month"
+    )
 
     if type_of == "custom":
-        from_date = parse_date(request.GET.get("from_date"), today)
-        to_date = parse_date(request.GET.get("to_date"), today)
+        # Accept both 'from_date'/'to_date' and 'start_date'/'end_date' parameter names
+        from_date_str = request.GET.get("from_date") or request.GET.get("start_date")
+        to_date_str = request.GET.get("to_date") or request.GET.get("end_date")
+
+        from_date = parse_date(from_date_str, today)
+        to_date = parse_date(to_date_str, today)
         return start_of_day(from_date), end_of_day(to_date)
 
     date_range = DatesRange(type_of)

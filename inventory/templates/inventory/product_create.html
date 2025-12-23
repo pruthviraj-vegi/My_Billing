@@ -23,7 +23,7 @@
   <!-- Product Creation Form -->
   <div class="form-container">
     <div class="form-card">
-      <form method="post" class="details-form row" novalidate autocomplete="off">
+      <form method="post" class="details-form row" novalidate autocomplete="off" data-prevent-double-submit>
         {% csrf_token %}
         <!-- Form Errors -->
         {% if form.non_field_errors %}
@@ -45,17 +45,17 @@
                 <label for="{{ variant_form.supplier_invoice.id_for_label }}"
                        class="form-label">{{ variant_form.supplier_invoice.label }}</label>
                 {{ variant_form.supplier_invoice }}
-                <small class="form-help">Select the supplier invoice for this product</small>
-                {% if variant_form.supplier_invoice.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if variant_form.supplier_invoice.errors %}has-error{% endif %}">
+                  {% if variant_form.supplier_invoice.errors %}
                     {% for error in variant_form.supplier_invoice.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Select the supplier invoice for this product</span>
+                </small>
               </div>
             </div>
           </div>
@@ -69,34 +69,34 @@
               <div class="form-group {% if product_form.brand.errors %}has-error{% endif %}">
                 <label for="{{ product_form.brand.id_for_label }}" class="form-label">{{ product_form.brand.label }}</label>
                 {{ product_form.brand }}
-                <small class="form-help">e.g., Nike, Adidas, Levi's, Zara</small>
-                {% if product_form.brand.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if product_form.brand.errors %}has-error{% endif %}">
+                  {% if product_form.brand.errors %}
                     {% for error in product_form.brand.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">e.g., Nike, Adidas, Levi's, Zara</span>
+                </small>
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group {% if product_form.name.errors %}has-error{% endif %}">
                 <label for="{{ product_form.name.id_for_label }}" class="form-label">{{ product_form.name.label }}</label>
                 {{ product_form.name }}
-                <small class="form-help">e.g., Cotton T-Shirt, Denim Jeans, Silk Dress</small>
-                {% if product_form.name.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if product_form.name.errors %}has-error{% endif %}">
+                  {% if product_form.name.errors %}
                     {% for error in product_form.name.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">e.g., Cotton T-Shirt, Denim Jeans, Silk Dress</span>
+                </small>
               </div>
             </div>
             <!-- Row 2: Category and Cloth Type -->
@@ -107,54 +107,54 @@
                 <div class="input-group">
                   {{ product_form.category }}
                 </div>
-                <small class="form-help">Select the appropriate category for this product</small>
-                {% if product_form.category.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if product_form.category.errors %}has-error{% endif %}">
+                  {% if product_form.category.errors %}
                     {% for error in product_form.category.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">Select the appropriate category for this product</span>
+                </small>
               </div>
             </div>
-            {% comment %} <div class="col-md-4">
+             <div class="col-md-4">
               <div class="form-group {% if product_form.cloth_type.errors %}has-error{% endif %}">
                 <label for="{{ product_form.cloth_type.id_for_label }}" class="form-label">{{ product_form.cloth_type.label }}</label>
                 <div class="input-group">
                   {{ product_form.cloth_type }}
                 </div>
-                <small class="form-help">e.g., Cotton, Silk, Polyester, Denim</small>
-                {% if product_form.cloth_type.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if product_form.cloth_type.errors %}has-error{% endif %}">
+                  {% if product_form.cloth_type.errors %}
                     {% for error in product_form.cloth_type.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">e.g., Cotton, Silk, Polyester, Denim</span>
+                </small>
               </div>
-            </div> {% endcomment %}
+            </div> 
             <!-- Row 3: HSN Code and GST Percentage -->
             <div class="col-md-4">
               <div class="form-group {% if product_form.hsn_code.errors %}has-error{% endif %}">
                 <label for="{{ product_form.hsn_code.id_for_label }}" class="form-label">{{ product_form.hsn_code.label }}</label>
                 {{ product_form.hsn_code }}
-                <small class="form-help">e.g., 5208, 6104 (4-8 digits)</small>
-                {% if product_form.hsn_code.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if product_form.hsn_code.errors %}has-error{% endif %}">
+                  {% if product_form.hsn_code.errors %}
                     {% for error in product_form.hsn_code.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">e.g., 5208, 6104 (4-8 digits)</span>
+                </small>
               </div>
             </div>
             <div class="col-md-4">
@@ -162,17 +162,17 @@
                 <label for="{{ product_form.uom.id_for_label }}"
                         class="form-label">{{ product_form.uom.label }}</label>
                 {{ product_form.uom }}
-                <small class="form-help">e.g., Weight, Quantity, Length, Area, Volume, etc.</small>
-                {% if product_form.uom.errors %}
-                  <div class="field-errors">
+                <small class="form-help {% if product_form.uom.errors %}has-error{% endif %}">
+                  {% if product_form.uom.errors %}
                     {% for error in product_form.uom.errors %}
-                      <div class="error-message">
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
+                      </span>
                     {% endfor %}
-                  </div>
-                {% endif %}
+                  {% endif %}
+                  <span class="form-help-text">e.g., Weight, Quantity, Length, Area, Volume, etc.</span>
+                </small>
               </div>
             </div>
           </div>
@@ -181,136 +181,157 @@
             <h5 class="section-title">Variant Details</h5>
             <!-- Row 1: Size and Color -->
             <div class="row">
-              <div class="col-md-4">
+              
+             
+              <div class="col-md-3">
+                <div class="form-group {% if variant_form.quantity.errors %}has-error{% endif %}">
+                  <label for="{{ variant_form.quantity.id_for_label }}" class="form-label">{{ variant_form.quantity.label }}</label>
+                  {{ variant_form.quantity }}
+                  <small class="form-help {% if variant_form.quantity.errors %}has-error{% endif %}">
+                    {% if variant_form.quantity.errors %}
+                      {% for error in variant_form.quantity.errors %}
+                        <span class="form-error-inline">
+                          <i class="fas fa-exclamation-circle"></i>
+                          {{ error }}
+                        </span>
+                      {% endfor %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., 10, 25, 50 (initial stock quantity)</span>
+                  </small>
+                </div>
+              </div>
+              
+            
+              <div class="col-md-3">
+                <div class="form-group {% if variant_form.purchase_price.errors %}has-error{% endif %}">
+                  <label for="{{ variant_form.purchase_price.id_for_label }}"
+                          class="form-label">{{ variant_form.purchase_price.label }}</label>
+                  {{ variant_form.purchase_price }}
+                  <small class="form-help {% if variant_form.purchase_price.errors %}has-error{% endif %}">
+                    {% if variant_form.purchase_price.errors %}
+                      {% for error in variant_form.purchase_price.errors %}
+                        <span class="form-error-inline">
+                          <i class="fas fa-exclamation-circle"></i>
+                          {{ error }}
+                        </span>
+                      {% endfor %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., 500.00, 750.50 (cost price per unit)</span>
+                  </small>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-group {% if variant_form.mrp.errors %}has-error{% endif %}">
+                  <label for="{{ variant_form.mrp.id_for_label }}" class="form-label">{{ variant_form.mrp.label }}</label>
+                  {{ variant_form.mrp }}
+                  <small class="form-help {% if variant_form.mrp.errors %}has-error{% endif %}">
+                    {% if variant_form.mrp.errors %}
+                      {% for error in variant_form.mrp.errors %}
+                        <span class="form-error-inline">
+                          <i class="fas fa-exclamation-circle"></i>
+                          {{ error }}
+                        </span>
+                      {% endfor %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., 800.00, 1200.00 (selling price per unit)</span>
+                  </small>
+                </div>
+              </div>
+            <!-- Row 4: Discount Percentage -->
+            
+              <div class="col-md-3">
+                <div class="form-group {% if variant_form.discount_percentage.errors %}has-error{% endif %}">
+                  <label for="{{ variant_form.discount_percentage.id_for_label }}"
+                          class="form-label">{{ variant_form.discount_percentage.label }}</label>
+                  {{ variant_form.discount_percentage }}
+                  <small class="form-help {% if variant_form.discount_percentage.errors %}has-error{% endif %}">
+                    {% if variant_form.discount_percentage.errors %}
+                      {% for error in variant_form.discount_percentage.errors %}
+                        <span class="form-error-inline">
+                          <i class="fas fa-exclamation-circle"></i>
+                          {{ error }}
+                        </span>
+                      {% endfor %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., 10.00, 15.50 (discount percentage)</span>
+                  </small>
+                </div>
+              </div>
+              <div class="col-md-3">
                 <div class="form-group {% if variant_form.size.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.size.id_for_label }}" class="form-label">{{ variant_form.size.label }}</label>
                   <div class="input-group">
                     {{ variant_form.size }}
                   </div>
-                  <small class="form-help">e.g., S, M, L, XL, XXL</small>
-                  {% if variant_form.size.errors %}
-                    <div class="field-errors">
+                  <small class="form-help {% if variant_form.size.errors %}has-error{% endif %}">
+                    {% if variant_form.size.errors %}
                       {% for error in variant_form.size.errors %}
-                        <div class="error-message">
+                        <span class="form-error-inline">
                           <i class="fas fa-exclamation-circle"></i>
                           {{ error }}
-                        </div>
+                        </span>
                       {% endfor %}
-                    </div>
-                  {% endif %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., S, M, L, XL, XXL</span>
+                  </small>
                 </div>
               </div>
-              {% comment %} <div class="col-md-4">
+               <div class="col-md-3">
                 <div class="form-group {% if variant_form.color.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.color.id_for_label }}" class="form-label">{{ variant_form.color.label }}</label>
                   <div class="input-group">
                     {{ variant_form.color }}
                   </div>
-                  <small class="form-help">e.g., Red, Blue, Black, White</small>
-                  {% if variant_form.color.errors %}
-                    <div class="field-errors">
+                  <small class="form-help {% if variant_form.color.errors %}has-error{% endif %}">
+                    {% if variant_form.color.errors %}
                       {% for error in variant_form.color.errors %}
-                        <div class="error-message">
+                        <span class="form-error-inline">
                           <i class="fas fa-exclamation-circle"></i>
                           {{ error }}
-                        </div>
+                        </span>
                       {% endfor %}
-                    </div>
-                  {% endif %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., Red, Blue, Black, White</span>
+                  </small>
                 </div>
-              </div> {% endcomment %}
-            <!-- Row 2: Quantity and Minimum Quantity -->
+              </div> 
             
-              <div class="col-md-4">
-                <div class="form-group {% if variant_form.quantity.errors %}has-error{% endif %}">
-                  <label for="{{ variant_form.quantity.id_for_label }}" class="form-label">{{ variant_form.quantity.label }}</label>
-                  {{ variant_form.quantity }}
-                  <small class="form-help">e.g., 10, 25, 50 (initial stock quantity)</small>
-                  {% if variant_form.quantity.errors %}
-                    <div class="field-errors">
-                      {% for error in variant_form.quantity.errors %}
-                        <div class="error-message">
+
+              <div class="col-md-3">
+                <div class="form-group {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
+                  <label for="{{ variant_form.commission_percentage.id_for_label }}"
+                        class="form-label">{{ variant_form.commission_percentage.label }}</label>
+                  {{ variant_form.commission_percentage }}
+                  <small class="form-help {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
+                    {% if variant_form.commission_percentage.errors %}
+                      {% for error in variant_form.commission_percentage.errors %}
+                        <span class="form-error-inline">
                           <i class="fas fa-exclamation-circle"></i>
                           {{ error }}
-                        </div>
+                        </span>
                       {% endfor %}
-                    </div>
-                  {% endif %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., 10.00, 15.50 (commission percentage)</span>
+                  </small>
                 </div>
               </div>
-              <div class="col-md-4">
+              
+              <div class="col-md-3">
                 <div class="form-group {% if variant_form.minimum_quantity.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.minimum_quantity.id_for_label }}"
                           class="form-label">{{ variant_form.minimum_quantity.label }}</label>
                   {{ variant_form.minimum_quantity }}
-                  <small class="form-help">e.g., 5, 10, 15 (minimum stock quantity)</small>
-                  {% if variant_form.minimum_quantity.errors %}
-                    <div class="field-errors">
+                  <small class="form-help {% if variant_form.minimum_quantity.errors %}has-error{% endif %}">
+                    {% if variant_form.minimum_quantity.errors %}
                       {% for error in variant_form.minimum_quantity.errors %}
-                        <div class="error-message">
+                        <span class="form-error-inline">
                           <i class="fas fa-exclamation-circle"></i>
                           {{ error }}
-                        </div>
+                        </span>
                       {% endfor %}
-                    </div>
-                  {% endif %}
-                </div>
-              </div>
-            <!-- Row 3: Purchase Price and Selling Price -->
-            
-              <div class="col-md-4">
-                <div class="form-group {% if variant_form.purchase_price.errors %}has-error{% endif %}">
-                  <label for="{{ variant_form.purchase_price.id_for_label }}"
-                          class="form-label">{{ variant_form.purchase_price.label }}</label>
-                  {{ variant_form.purchase_price }}
-                  <small class="form-help">e.g., 500.00, 750.50 (cost price per unit)</small>
-                  {% if variant_form.purchase_price.errors %}
-                    <div class="field-errors">
-                      {% for error in variant_form.purchase_price.errors %}
-                        <div class="error-message">
-                          <i class="fas fa-exclamation-circle"></i>
-                          {{ error }}
-                        </div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="form-group {% if variant_form.mrp.errors %}has-error{% endif %}">
-                  <label for="{{ variant_form.mrp.id_for_label }}" class="form-label">{{ variant_form.mrp.label }}</label>
-                  {{ variant_form.mrp }}
-                  <small class="form-help">e.g., 800.00, 1200.00 (selling price per unit)</small>
-                  {% if variant_form.mrp.errors %}
-                    <div class="field-errors">
-                      {% for error in variant_form.mrp.errors %}
-                        <div class="error-message">
-                          <i class="fas fa-exclamation-circle"></i>
-                          {{ error }}
-                        </div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-                </div>
-              </div>
-            <!-- Row 4: Discount Percentage -->
-            
-              <div class="col-md-4">
-                <div class="form-group {% if variant_form.discount_percentage.errors %}has-error{% endif %}">
-                  <label for="{{ variant_form.discount_percentage.id_for_label }}"
-                          class="form-label">{{ variant_form.discount_percentage.label }}</label>
-                  {{ variant_form.discount_percentage }}
-                  <small class="form-help">e.g., 10.00, 15.50 (discount percentage)</small>
-                  {% if variant_form.discount_percentage.errors %}
-                    <div class="field-errors">
-                      {% for error in variant_form.discount_percentage.errors %}
-                        <div class="error-message">
-                          <i class="fas fa-exclamation-circle"></i>
-                          {{ error }}
-                        </div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., 5, 10, 15 (minimum stock quantity)</span>
+                  </small>
                 </div>
               </div>
             </div>
@@ -350,6 +371,10 @@
         
         <!-- Form Actions -->
         <div class="form-actions">
+          <button type="submit" name="action" value="create_add" class="btn btn-outline-primary">
+            <i class="fas fa-plus-circle"></i>
+            Create & Add Another
+          </button>
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-save"></i>
             Create Product & Variant
@@ -384,14 +409,14 @@
     $(document).ready(function() {
       
       setupModal('id_category', 'Category', 'new_category', '#add_new_category', '{% url "inventory:category_create_ajax" %}');
-      {% comment %} setupModal('id_cloth_type', 'Cloth Type', 'new_cloth_type', '#add_new_cloth_type', '{% url "inventory:cloth_create_ajax" %}'); {% endcomment %}
+      setupModal('id_cloth_type', 'Cloth Type', 'new_cloth_type', '#add_new_cloth_type', '{% url "inventory:cloth_create_ajax" %}');
       setupModal('id_uom', 'UOM', 'new_uom', '#add_new_uom', '{% url "inventory:uom_create_ajax" %}');
       setupModal('id_hsn_code', 'HSN Code', 'new_hsn_code', '#add_new_hsn_code', '{% url "inventory:gst_hsn_create_ajax" %}');
       setupModal('id_size', 'Size', 'new_size', '#add_new_size', '{% url "inventory:size_create_ajax" %}');
-      {% comment %} setupModal('id_color', 'Color', 'new_color', '#add_new_color', '{% url "inventory:color_create_ajax" %}'); {% endcomment %}
+      setupModal('id_color', 'Color', 'new_color', '#add_new_color', '{% url "inventory:color_create_ajax" %}');
 
 
-      Select2Helper.init('#id_size,  #id_supplier_invoice,  #id_uom, #id_hsn_code');
+      Select2Helper.init('#id_size,  #id_supplier_invoice,  #id_uom, #id_hsn_code, #id_color, #id_cloth_type');
 
       // Initialize category separately (sometimes needs different timing)
       setTimeout(function() {
@@ -460,6 +485,8 @@
     
       // Initial calculation
       updateCalculations()
+
     })
   </script>
+  
 {% endblock extra_js %}

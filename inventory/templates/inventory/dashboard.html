@@ -1,310 +1,309 @@
 {% extends "base.html" %}
+
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}
-  Inventory Dashboard
-{% endblock title %}
+{% block title %}Inventory Dashboard{% endblock %}
 
 {% block extra_css %}
-<style>
-    .page-header {
-        position: sticky;
-        top: var(--navbar-height);
-        z-index: 100;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
 {% endblock extra_css %}
 
 {% block content %}
-  <!-- Page Header -->
-  <div class="page-header">
+
+<!-- Page Header -->
+<div class="page-header page-header-sticky">
     <h2 class="page-title">Inventory Dashboard</h2>
     <div class="page-actions">
-      <!-- Date Filter Dropdown -->
-      <form method="get" class="d-inline" id="dateFilterForm">
-        <select name="date_filter" class="form-select" id="dateFilter">
-          <option value="today">Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="this_month">This Month</option>
-          <option value="last_month">Last Month</option>
-          <option value="this_finance">This Finance</option>
-          <option value="last_finance">Last Finance</option>
-          <option value="this_quarter">This Quarter</option>
-          <option value="last_quarter">Last Quarter</option>
-          <option value="full_date">Full Date</option>
-        </select>
-      </form>
-      <a href="{% url 'inventory:product_create' %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i>
-        Add Product
-      </a>
+        <!-- Date Filter Dropdown -->
+        <form method="get" class="d-inline" id="dateFilterForm">
+            <select name="date_filter" class="form-select" id="dateFilter">
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="this_month">This Month</option>
+                <option value="last_month">Last Month</option>
+                <option value="this_finance">This Finance</option>
+                <option value="last_finance">Last Finance</option>
+                <option value="this_quarter">This Quarter</option>
+                <option value="last_quarter">Last Quarter</option>
+                <option value="full_date">Full Date</option>
+            </select>
+        </form>
+        <a href="{% url 'inventory:product_create' %}" class="btn">
+            <i class="fas fa-plus"></i>
+            Add Full Product
+        </a>
     </div>
-  </div>
+</div>
 
-  <!-- Breadcrumb Navigation -->
-  <nav class="breadcrumb breadcrumb-right">
+<!-- Breadcrumb Navigation -->
+<nav class="breadcrumb breadcrumb-right">
     <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">Inventory Dashboard</span>
-  </nav>
+</nav>
 
-  <!-- Loading State -->
-  <div id="dashboardLoading" class="loading-container" style="display: none;">
+<!-- Loading State - Hidden for seamless updates -->
+<div id="dashboardLoading" class="loading-container" style="display: none;">
     <div class="loading">
-      <i class="fas fa-spinner fa-spin"></i>
-      Loading dashboard data...
+        <i class="fas fa-spinner fa-spin"></i>
+        Loading dashboard data...
     </div>
-  </div>
+</div>
 
-  <!-- Dashboard Content -->
-  <div id="dashboardContent" class="dashboardContent">
-    <!-- Key Metrics Cards -->
-    <div class="stats-grid">
-      <!-- Total Stock Valuation (Fixed) -->
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-rupee-sign"></i>
+<!-- Dashboard Content -->
+<div id="dashboardContent" class="dashboardContent">
+    <!-- Quick Stats -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-rupee-sign"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number counting-number" id="totalInventoryValue" data-count="0">0</h3>
+                <p class="stat-label">Total Stock Valuation</p>
+            </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number">{{ total_inventory_value|currency }}</h3>
-          <p class="stat-label">Total Stock Valuation</p>
-        </div>
-      </div>
 
-      <!-- Total Variants (Fixed) -->
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-cubes"></i>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-cubes"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number counting-number" id="totalVariants" data-count="0">0</h3>
+                <p class="stat-label">Total Variants</p>
+            </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number">{{ total_variants|currency_nonDecimal }}</h3>
-          <p class="stat-label">Total Variants</p>
-        </div>
-      </div>
 
-      <!-- Number of Products (Fixed) -->
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-box"></i>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-box"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number counting-number" id="totalProducts" data-count="0">0</h3>
+                <p class="stat-label">Number of Products</p>
+            </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number">{{ total_products|currency_nonDecimal }}</h3>
-          <p class="stat-label">Number of Products</p>
-        </div>
-      </div>
 
-      <!-- Stock In (Dynamic) -->
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-arrow-down"></i>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-arrow-down"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number counting-number" id="stockIn" data-count="0">0</h3>
+                <p class="stat-label">Stock In</p>
+            </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number" id="stockIn">0</h3>
-          <p class="stat-label">Stock In</p>
-        </div>
-      </div>
 
-      <!-- Stock Out (Dynamic) -->
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-arrow-up"></i>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-arrow-up"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number counting-number" id="stockOut" data-count="0">0</h3>
+                <p class="stat-label">Stock Out</p>
+            </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number" id="stockOut">0</h3>
-          <p class="stat-label">Stock Out</p>
-        </div>
-      </div>
     </div>
 
-    <!-- Supplier Shares -->
+    <!-- Supplier Analytics -->
     <div class="activity-section">
-      <h2 class="section-title">Supplier Shares</h2>
-      <div class="analytics-grid">
-        <div class="analytics-card">
-          <h3 class="analytics-title">Total Stock Share</h3>
-          <div class="analytics-content" id="supplier_total">
-            <div class="chart-container">
-              <canvas id="supplierTotalChart" width="280" height="180"></canvas>
-            </div>
-            <div class="chart-legend" id="supplierTotalLegend">
-              <!-- Legend will be populated here -->
-            </div>
-          </div>
-        </div>
-        <div class="analytics-card">
-          <h3 class="analytics-title">Stock In Share</h3>
-          <div class="analytics-content" id="supplier_in">
-            <div class="chart-container">
-              <canvas id="supplierInChart" width="280" height="180"></canvas>
-            </div>
-            <div class="chart-legend" id="supplierInLegend">
-              <!-- Legend will be populated here -->
-            </div>
-          </div>
-        </div>
-        <div class="analytics-card">
-          <h3 class="analytics-title">Stock Out Share</h3>
-          <div class="analytics-content" id="supplier_out">
-            <div class="chart-container">
-              <canvas id="supplierOutChart" width="280" height="180"></canvas>
-            </div>
-            <div class="chart-legend" id="supplierOutLegend">
-              <!-- Legend will be populated here -->
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Error State -->
-  <div id="dashboardError" class="error-container" style="display: none;">
-    <div class="error-message">
-      <i class="fas fa-exclamation-triangle"></i>
-      <h3>Failed to load dashboard data</h3>
-      <p>Please try again or contact support if the problem persists.</p>
-      <button type="button" class="btn btn-primary" onclick="loadDashboardData()">
-        <i class="fas fa-refresh"></i>
-        Retry
-      </button>
-    </div>
-  </div>
-{% endblock content %}
-
-{% block extra_js %}
-<!-- Chart.js Library -->
-<script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
-<!-- Chart Utilities - All chart functions in one file -->
-<script src="{% static 'js/chart-utils.js' %}"></script>
-
-<script>
-    // Inventory Dashboard - Page Specific Code
-    (function() {
-        const fetchUrl = '{% url "inventory:dashboard_fetch" %}';
-        const currentFilter = '{{ date_filter|default:"this_month" }}';
+        <h2 class="section-title">Supplier Analytics</h2>
         
-        // Total stock data from initial page load (cached, date-independent)
-        const initialTotalStockData = {{ total_stock_data_json|safe }};
+        <!-- Supplier Breakdown -->
+        <div class="breakdown-grid">
+            <!-- Total Stock Share -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Total Stock Share</h3>
+                </div>
+                <div class="payment-chart-wrapper">
+                    <div class="payment-chart-container">
+                        <canvas id="supplierTotalChart"></canvas>
+                    </div>
+                    <div id="supplierTotalLegend" class="custom-legend"></div>
+                </div>
+            </div>
 
-        function formatNumber(value) {
-            return new Intl.NumberFormat('en-IN', {
-                maximumFractionDigits: 0
-            }).format(value || 0);
+            <!-- Stock In Share -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Stock In Share</h3>
+                </div>
+                <div class="payment-chart-wrapper">
+                    <div class="payment-chart-container">
+                        <canvas id="supplierInChart"></canvas>
+                    </div>
+                    <div id="supplierInLegend" class="custom-legend"></div>
+                </div>
+            </div>
+
+            <!-- Stock Out Share -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Stock Out Share</h3>
+                </div>
+                <div class="payment-chart-wrapper">
+                    <div class="payment-chart-container">
+                        <canvas id="supplierOutChart"></canvas>
+                    </div>
+                    <div id="supplierOutLegend" class="custom-legend"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h2 class="section-title">Quick Actions</h2>
+        <div class="actions-grid">
+            <a href="{% url 'inventory_products:home' %}" class="action-card">
+                <i class="fas fa-list"></i>
+                <span>View All Products</span>
+            </a>
+            <a href="{% url 'inventory:product_create' %}" class="action-card">
+                <i class="fas fa-plus"></i>
+                <span>Add Product</span>
+            </a>
+            <a href="{% url 'inventory:low_stock' %}" class="action-card">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Low Stock Alert</span>
+            </a>
+            <a href="{% url 'inventory:dashboard' %}" class="action-card">
+                <i class="fas fa-chart-bar"></i>
+                <span>Generate Report</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Error State -->
+<div id="dashboardError" class="error-container" style="display: none;">
+    <div class="error-message">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h3>Failed to load dashboard data</h3>
+        <p>Please try again or contact support if the problem persists.</p>
+        <button type="button" class="btn btn-primary" id="retryDashboardBtn">
+            <i class="fas fa-refresh"></i>
+            Retry
+        </button>
+    </div>
+</div>
+{% endblock content %}
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
+<script src="{% static 'js/modern-charts.js' %}"></script>
+<script src="{% static 'js/dropdown_style.js' %}"></script>
+<script src="{% static 'js/counting.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Charts
+    const supplierTotalCtx = document.getElementById('supplierTotalChart').getContext('2d');
+    const supplierInCtx = document.getElementById('supplierInChart').getContext('2d');
+    const supplierOutCtx = document.getElementById('supplierOutChart').getContext('2d');
+    
+    let supplierTotalChart = ModernCharts.initDoughnut(supplierTotalCtx);
+    let supplierInChart = ModernCharts.initDoughnut(supplierInCtx);
+    let supplierOutChart = ModernCharts.initDoughnut(supplierOutCtx);
+
+    // Total stock data from initial page load (cached, date-independent)
+    const initialTotalStockData = {{ total_stock_data_json|safe }};
+
+    updateCount('totalInventoryValue', {{total_inventory_value}});
+    updateCount('totalVariants', {{total_variants}});
+    updateCount('totalProducts', {{total_products}});
+
+    // Fetch Data Function
+    async function fetchDashboardData(filter) {
+        try {
+            // Don't block the UI
+            // document.getElementById('dashboardLoading').style.display = 'flex';
+            // document.getElementById('dashboardContent').style.display = 'none';
+            document.getElementById('dashboardError').style.display = 'none';
+            
+            // Subtle loading indication
+            document.getElementById('dashboardContent').style.opacity = '0.6';
+
+            const response = await fetch(`{% url "inventory:dashboard_fetch" %}?date_filter=${filter}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                updateDashboard(data);
+                document.getElementById('dashboardContent').style.opacity = '1';
+            } else {
+                throw new Error(data.message || 'Failed to fetch data');
+            }
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            document.getElementById('dashboardContent').style.opacity = '1';
+            document.getElementById('dashboardError').style.display = 'flex';
+        } finally {
+            // document.getElementById('dashboardLoading').style.display = 'none';
         }
+    }
 
-        function updateStats(stats) {
-            const el = document.getElementById('stockIn');
-            if (el) el.textContent = formatNumber(stats.stock_in || 0);
-            
-            const el2 = document.getElementById('stockOut');
-            if (el2) el2.textContent = formatNumber(stats.stock_out || 0);
-        }
+    function updateDashboard(data) {
+        // Update Stats
+        updateCount('stockIn', data.stats.stock_in || 0);
+        updateCount('stockOut', data.stats.stock_out || 0);
 
-        async function loadDashboardData() {
-            const dateFilter = document.getElementById('dateFilter');
-            const loadingEl = document.getElementById('dashboardLoading');
-            const errorEl = document.getElementById('dashboardError');
-            const dashboardContent = document.getElementById('dashboardContent');
-            
-            if (errorEl) errorEl.style.display = 'none';
-            if (dateFilter) {
-                dateFilter.style.opacity = '0.7';
-                dateFilter.disabled = true;
-            }
+        // Update Supplier In Chart - Using backend-calculated percentages
+        ModernCharts.updateDoughnut(
+            supplierInChart, 
+            'supplierInLegend', 
+            data.stock_in_breakdown, 
+            { label: 'supplier_name', count: 'count', amount: 'amount', percentage: 'percentage' }
+        );
 
-            try {
-                const dateFilterValue = dateFilter ? dateFilter.value : currentFilter;
-                const params = new URLSearchParams({ date_filter: dateFilterValue });
-                const response = await fetch(fetchUrl + '?' + params.toString());
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                const data = await response.json();
-                if (!data.success) throw new Error(data.error || 'Failed to load');
+        // Update Supplier Out Chart - Using backend-calculated percentages
+        ModernCharts.updateDoughnut(
+            supplierOutChart, 
+            'supplierOutLegend', 
+            data.stock_out_breakdown, 
+            { label: 'supplier_name', count: 'count', amount: 'amount', percentage: 'percentage' }
+        );
+    }
 
-                // Update stats
-                updateStats(data.stats);
-
-                // Update charts - just pass data, config is already stored
-                if (data.stock_in_breakdown && data.stock_in_breakdown.length) {
-                    supplier_in.update({
-                        data: data.stock_in_breakdown.map(item => ({
-                            label: item.supplier_name,
-                            value: item.amount,
-                            amount: item.amount
-                        }))
-                    });
-                }
-
-                if (data.stock_out_breakdown && data.stock_out_breakdown.length) {
-                    supplier_out.update({
-                        data: data.stock_out_breakdown.map(item => ({
-                            label: item.supplier_name,
-                            value: item.amount,
-                            amount: item.amount
-                        }))
-                    });
-                }
-
-                // Hide loading, show content
-                if (loadingEl) loadingEl.style.display = 'none';
-
-            } catch (err) {
-                console.error('Dashboard loading error:', err);
-                if (errorEl) errorEl.style.display = 'block';
-                if (loadingEl) loadingEl.style.display = 'none';
-            } finally {
-                if (dateFilter) {
-                    dateFilter.style.opacity = '1';
-                    dateFilter.disabled = false;
-                }
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', function() {
-            // Bind charts to containers - auto-detects canvas and legend, stores config
-            Charts.bindChart('supplier_total', {
-                key: 'inventory_total_stock',
-                colors: Charts.getColors('blue').colors,
-                colorsHover: Charts.getColors('blue').colorsHover
-            });
-            
-            Charts.bindChart('supplier_in', {
-                key: 'inventory_stock_in',
-                colors: Charts.getColors('cyan').colors,
-                colorsHover: Charts.getColors('cyan').colorsHover
-            });
-            
-            Charts.bindChart('supplier_out', {
-                key: 'inventory_stock_out',
-                colors: Charts.getColors('green').colors,
-                colorsHover: Charts.getColors('green').colorsHover
-            });
-            
-            // Set initial date filter
-            const dateFilter = document.getElementById('dateFilter');
-            if (dateFilter && currentFilter) {
-                dateFilter.value = currentFilter;
-            }
-            
-            // Render total stock chart immediately from initial data (no API call needed)
-            if (initialTotalStockData && initialTotalStockData.labels && initialTotalStockData.values) {
-                supplier_total.update({
-                    data: initialTotalStockData.labels.map((label, idx) => ({
-                        label: label,
-                        value: initialTotalStockData.values[idx],
-                        amount: initialTotalStockData.values[idx]
-                    }))
-                });
-            }
-            
-            // Load initial data
-            loadDashboardData();
-            
-            // Handle date filter change
-            if (dateFilter) {
-                dateFilter.addEventListener('change', loadDashboardData);
-            }
+    // Event Listeners
+    const dateFilter = document.getElementById('dateFilter');
+    if (dateFilter) {
+        dateFilter.addEventListener('change', (e) => {
+            fetchDashboardData(e.target.value);
         });
-    })();
+    }
+
+    const retryBtn = document.getElementById('retryDashboardBtn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+            document.getElementById('dashboardError').style.display = 'none';
+            document.getElementById('dashboardContent').style.display = 'block';
+            fetchDashboardData(dateFilter ? dateFilter.value : 'this_month');
+        });
+    }
+
+    // Initialize total stock chart with cached data
+    if (initialTotalStockData && initialTotalStockData.labels && initialTotalStockData.values) {
+        const totalStockData = initialTotalStockData.labels.map((label, idx) => ({
+            label: label,
+            value: initialTotalStockData.values[idx],
+            amount: initialTotalStockData.values[idx],
+            count: 1,
+            percentage: initialTotalStockData.percentages ? initialTotalStockData.percentages[idx] : 0
+        }));
+        
+        ModernCharts.updateDoughnut(
+            supplierTotalChart, 
+            'supplierTotalLegend', 
+            totalStockData, 
+            { label: 'label', count: 'count', amount: 'amount', percentage: 'percentage' }
+        );
+    }
+
+    // Initial Load
+    fetchDashboardData('this_month');
+});
 </script>
 {% endblock extra_js %}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% block title %}
   {{ title }} - {{ supplier.name }}
 {% endblock title %}
@@ -38,119 +39,93 @@
           {% if supplier.email %}• {{ supplier.email }}{% endif %}
         </p>
       </div>
-      <!-- Allocation Warning -->
-      {% if has_allocations %}
-        <div class="alert alert-warning">
-          <div class="alert-header">
-            <i class="fas fa-exclamation-triangle"></i>
-            <strong>Payment Has Allocations</strong>
-          </div>
-          <div class="alert-body">
-            <p>
-              This payment has ₹{{ total_allocated|floatformat:2 }} allocated to invoices. You cannot reduce the payment amount below this allocated amount.
-            </p>
-            <p>
-              <strong>Minimum allowed amount: ₹{{ total_allocated|floatformat:2 }}</strong>
-            </p>
-          </div>
-        </div>
-      {% endif %}
+      
       <!-- Payment Form -->
-      <form method="post" class="details-form">
+      <form method="post" class="details-form" novalidate autocomplete="off" id="paymentForm">
         {% csrf_token %}
         <!-- Payment Details Section -->
         <div class="form-section">
-          <h5 class="section-title">Payment Details</h5>
+          <h5 class="section-title">Payment Details : {{supplier.balance_due|currency}}</h5>
           <div class="row">
-            <div class="form-group">
-              <label for="{{ form.amount.id_for_label }}" class="form-label">Amount *</label>
-              {{ form.amount }} <small class="form-help">Enter the amount of the payment</small>
-              {% if form.amount.errors %}
-                {% for error in form.amount.errors %}
-                  {% if 'Cannot reduce payment amount below total allocated amount' in error %}
-                    <div class="amount-error-message">
-                      <div class="error-header">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>Payment Amount Error</span>
+            <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
+              <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
+              {{ form.amount }}
+              <small class="form-help">
+                {% if form.amount.errors %}
+                  {% for error in form.amount.errors %}
+                    {% if 'Cannot reduce payment amount below total allocated amount' in error %}
+                      <div class="amount-error-message">
+                        <div class="error-header">
+                          <i class="fas fa-exclamation-triangle"></i>
+                          <span>Payment Amount Error</span>
+                        </div>
+                        <div class="error-body">{{ error }}</div>
+                        <div class="error-solution">
+                          <strong>Solution:</strong> First delete or reduce the allocations for this payment, then you can reduce the payment amount.
+                        </div>
                       </div>
-                      <div class="error-body">{{ error }}</div>
-                      <div class="error-solution">
-                        <strong>Solution:</strong> First delete or reduce the allocations for this payment, then you can reduce the payment amount.
-                      </div>
-                    </div>
-                  {% else %}
-                    <div class="field-errors">
-                      <div class="error-message">
+                    {% else %}
+                      <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </div>
-                    </div>
-                  {% endif %}
-                {% endfor %}
-              {% endif %}
+                      </span>
+                    {% endif %}
+                  {% endfor %}
+                {% endif %}
+                <span class="form-help-text">Enter the amount of the payment</span>
+              </small>
             </div>
           </div>
           <div class="row">
-            <div class="form-group">
-              <label for="{{ form.method.id_for_label }}" class="form-label">Payment Method *</label>
-              {{ form.method }} <small class="form-help">Select the method of the payment</small>
-              {% if form.method.errors %}
-                <div class="field-errors">
+            <div class="form-group {% if form.method.errors %}has-error{% endif %}">
+              <label for="{{ form.method.id_for_label }}" class="form-label">{{ form.method.label }}</label>
+              {{ form.method }}
+              <small class="form-help">
+                {% if form.method.errors %}
                   {% for error in form.method.errors %}
-                    <div class="error-message">
+                    <span class="form-error-inline">
                       <i class="fas fa-exclamation-circle"></i>
                       {{ error }}
-                    </div>
+                    </span>
                   {% endfor %}
-                </div>
-              {% endif %}
+                {% endif %}
+                <span class="form-help-text">Select the method of the payment</span>
+              </small>
             </div>
           </div>
           <div class="row">
-            <div class="form-group">
-              <label for="{{ form.payment_date.id_for_label }}" class="form-label">Payment Date *</label>
-              {{ form.payment_date }} <small class="form-help">Select the date of the payment</small>
-              {% if form.payment_date.errors %}
-                <div class="field-errors">
+            <div class="form-group {% if form.payment_date.errors %}has-error{% endif %}">
+              <label for="{{ form.payment_date.id_for_label }}" class="form-label">{{ form.payment_date.label }}</label>
+              {{ form.payment_date }}
+              <small class="form-help">
+                {% if form.payment_date.errors %}
                   {% for error in form.payment_date.errors %}
-                    <div class="error-message">
+                    <span class="form-error-inline">
                       <i class="fas fa-exclamation-circle"></i>
                       {{ error }}
-                    </div>
+                    </span>
                   {% endfor %}
-                </div>
-              {% endif %}
+                {% endif %}
+                <span class="form-help-text">Select the date of the payment</span>
+              </small>
             </div>
           </div>
           <div class="row">
-            <div class="form-group">
-              <label for="{{ form.transaction_id.id_for_label }}" class="form-label">Transaction ID</label>
-              {{ form.transaction_id }} <small class="form-help">Required for Bank Transfer and UPI payments</small>
-              {% if form.transaction_id.errors %}
-                <div class="field-errors">
+            <div class="form-group {% if form.transaction_id.errors %}has-error{% endif %}">
+              <label for="{{ form.transaction_id.id_for_label }}" class="form-label">{{ form.transaction_id.label }}</label>
+              {{ form.transaction_id }}
+              <small class="form-help">
+                {% if form.transaction_id.errors %}
                   {% for error in form.transaction_id.errors %}
-                    <div class="error-message">
+                    <span class="form-error-inline">
                       <i class="fas fa-exclamation-circle"></i>
                       {{ error }}
-                    </div>
+                    </span>
                   {% endfor %}
-                </div>
-              {% endif %}
+                {% endif %}
+                <span class="form-help-text">Required for Bank Transfer and UPI payments</span>
+              </small>
             </div>
-          </div>
-          <div class="form-group">
-            <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
-            {{ form.notes }} <small class="form-help">Enter the notes of the payment</small>
-            {% if form.notes.errors %}
-              <div class="field-errors">
-                {% for error in form.notes.errors %}
-                  <div class="error-message">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ error }}
-                  </div>
-                {% endfor %}
-              </div>
-            {% endif %}
           </div>
         </div>
         <!-- Form Actions -->
@@ -178,19 +153,26 @@
     document.addEventListener('DOMContentLoaded', function () {
       const methodSelect = document.getElementById('{{ form.method.id_for_label }}')
       const transactionIdField = document.getElementById('{{ form.transaction_id.id_for_label }}')
-      const transactionIdLabel = transactionIdField.previousElementSibling
+      const transactionIdLabel = transactionIdField ? document.querySelector(`label[for="{{ form.transaction_id.id_for_label }}"]`) : null
       const amountField = document.getElementById('{{ form.amount.id_for_label }}')
     
       function toggleTransactionIdRequired() {
         const selectedMethod = methodSelect.value
+        const formGroup = transactionIdField ? transactionIdField.closest('.form-group') : null
+        const helpText = formGroup ? formGroup.querySelector('.form-help-text') : null
+        
         if (selectedMethod === 'BANK_TRANSFER' || selectedMethod === 'UPI') {
-          transactionIdField.required = true
-          transactionIdLabel.innerHTML = 'Transaction ID *'
-          transactionIdField.parentElement.querySelector('.form-help').style.display = 'block'
+          if (transactionIdField) transactionIdField.required = true
+          if (transactionIdLabel && !transactionIdLabel.textContent.includes('*')) {
+            transactionIdLabel.textContent = transactionIdLabel.textContent + ' *'
+          }
+          if (helpText) helpText.style.display = 'block'
         } else {
-          transactionIdField.required = false
-          transactionIdLabel.innerHTML = 'Transaction ID'
-          transactionIdField.parentElement.querySelector('.form-help').style.display = 'none'
+          if (transactionIdField) transactionIdField.required = false
+          if (transactionIdLabel) {
+            transactionIdLabel.textContent = transactionIdLabel.textContent.replace(' *', '').trim()
+          }
+          if (helpText) helpText.style.display = 'none'
         }
       }
     

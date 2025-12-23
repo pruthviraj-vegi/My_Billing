@@ -19,54 +19,35 @@ class InvoiceForm(forms.ModelForm):
             "invoice_date",
             "due_date",
             "notes",
+            "sold_by",
         ]
         widgets = {
-            "customer": forms.Select(
-                attrs={"class": "form-select", "placeholder": "Select customer"}
-            ),
-            "payment_type": forms.Select(attrs={"class": "form-select"}),
-            "amount": forms.NumberInput(
-                attrs={
-                    "class": "form-input",
-                    "readonly": True,
-                }
-            ),
+            "customer": forms.Select(attrs={"placeholder": "Select customer"}),
+            "payment_type": forms.Select(),
+            "amount": forms.NumberInput(attrs={"readonly": True}),
             "discount_amount": forms.NumberInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "0.00",
-                    "step": "0.01",
-                    "min": "0",
-                    "required": False,
                     "autofocus": True,
                 }
             ),
+            "sold_by": forms.Select(),
             "advance_amount": forms.NumberInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "0.00",
-                    "step": "0.01",
-                    "min": "0",
                     "readonly": True,
-                    "required": False,
                 }
             ),
-            "payment_method": forms.Select(attrs={"class": "form-select"}),
-            "invoice_date": forms.DateTimeInput(
-                attrs={"class": "form-input", "type": "datetime-local"}
-            ),
+            "payment_method": forms.Select(),
+            "invoice_date": forms.DateTimeInput(attrs={"type": "datetime-local"}),
             "due_date": forms.DateTimeInput(
                 attrs={
-                    "class": "form-input",
                     "type": "datetime-local",
-                    "default": timezone.now(),
                     "readonly": True,
-                    "required": False,
                 }
             ),
             "notes": forms.Textarea(
                 attrs={
-                    "class": "form-textarea",
                     "placeholder": "Enter any additional notes",
                     "rows": "3",
                 }
@@ -74,38 +55,87 @@ class InvoiceForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        self.instance = kwargs.get("instance")
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for field in self.fields.values():
             if field.required:
                 field.label = f"{field.label} *"
+
+        # Add appropriate classes based on widget type
+        for field_name, field in self.fields.items():
+            widget = field.widget
+            if isinstance(widget, forms.Select):
+                widget.attrs["class"] = "form-select"
+            elif isinstance(widget, forms.Textarea):
+                widget.attrs["class"] = "form-textarea"
+            else:
+                widget.attrs["class"] = "form-input"
 
         # Make due_date not required by default (will be handled in clean method)
         self.fields["due_date"].required = False
 
-        # Set initial HSN code - first active one if exists, else None
-        if not self.instance.pk:  # Only for new products (not editing)
-            customer = Customer.objects.first()
-            if customer:
-                self.fields["customer"].initial = customer
+        # Set initial customer for new invoices
+        try:
+            if not self.instance.pk:
+                customer = Customer.objects.order_by("id").first()
+                if customer:
+                    self.fields["customer"].initial = customer
+        except Exception as e:
+            print(e)
+
+    def clean_amount(self):
+        """Validate amount is not negative"""
+        amount = self.cleaned_data.get("amount")
+        if amount and amount < 0:
+            raise forms.ValidationError({"amount": "Amount cannot be negative"})
+        return amount
+
+    def clean_discount_amount(self):
+        """Validate discount amount and default to 0 if empty"""
+        discount_amount = self.cleaned_data.get("discount_amount")
+        if discount_amount is None or discount_amount == "":
+            return 0
+        if discount_amount < 0:
+            raise forms.ValidationError(
+                {"discount_amount": "Discount amount cannot be negative"}
+            )
+        return discount_amount
+
+    def clean_advance_amount(self):
+        """Validate advance amount and default to 0 if empty"""
+        advance_amount = self.cleaned_data.get("advance_amount")
+        if advance_amount is None or advance_amount == "":
+            return 0
+        if advance_amount < 0:
+            raise forms.ValidationError(
+                {"advance_amount": "Advance amount cannot be negative"}
+            )
+        return advance_amount
+
+    def clean_due_date(self):
+        """Set default due date if not provided"""
+        due_date = self.cleaned_data.get("due_date")
+        if due_date is None or due_date == "":
+            return timezone.now() + timedelta(days=30)
+        return due_date
 
     def clean(self):
+        """Cross-field validation and business logic"""
         cleaned_data = super().clean()
         amount = cleaned_data.get("amount")
-        discount_amount = cleaned_data.get("discount_amount")
-        advance_amount = cleaned_data.get("advance_amount")
+        discount_amount = cleaned_data.get("discount_amount", 0)
+        advance_amount = cleaned_data.get("advance_amount", 0)
         payment_type = cleaned_data.get("payment_type")
         due_date = cleaned_data.get("due_date")
+        customer = cleaned_data.get("customer")
 
-        # Handle empty fields by setting them to 0
-        if discount_amount is None or discount_amount == "":
-            cleaned_data["discount_amount"] = 0
-        if advance_amount is None or advance_amount == "":
-            cleaned_data["advance_amount"] = 0
+        # Walk-in customer (ID 1) must use CASH payment type
+        if customer and customer.id == 1 and payment_type == Invoice.PaymentType.CREDIT:
+            cleaned_data["payment_type"] = Invoice.PaymentType.CASH
+            payment_type = Invoice.PaymentType.CASH
 
-        # For cash invoices, set due_date to None, advance_amount to 0, and payment_status to PAID
+        # For cash invoices, set due_date to None and advance_amount to 0
         if payment_type == Invoice.PaymentType.CASH:
             cleaned_data["due_date"] = None
             cleaned_data["advance_amount"] = 0
@@ -115,42 +145,12 @@ class InvoiceForm(forms.ModelForm):
             raise forms.ValidationError("Due date is required for credit invoices")
 
         # Validate discount doesn't exceed amount
-        if (
-            amount
-            and cleaned_data["discount_amount"]
-            and cleaned_data["discount_amount"] > amount
-        ):
-            raise forms.ValidationError("Discount amount cannot exceed invoice amount")
+        if amount and discount_amount and discount_amount > amount:
+            raise forms.ValidationError(
+                {"discount_amount": "Discount amount cannot exceed invoice amount"}
+            )
 
         return cleaned_data
-
-    def clean_amount(self):
-        amount = self.cleaned_data.get("amount")
-        if amount and amount < 0:
-            raise forms.ValidationError("Amount cannot be negative")
-        return amount
-
-    def clean_discount_amount(self):
-        discount_amount = self.cleaned_data.get("discount_amount")
-        if discount_amount is None or discount_amount == "":
-            return 0
-        if discount_amount < 0:
-            raise forms.ValidationError("Discount amount cannot be negative")
-        return discount_amount
-
-    def clean_advance_amount(self):
-        advance_amount = self.cleaned_data.get("advance_amount")
-        if advance_amount is None or advance_amount == "":
-            return 0
-        if advance_amount < 0:
-            raise forms.ValidationError("Advance amount cannot be negative")
-        return advance_amount
-
-    def clean_due_date(self):
-        due_date = self.cleaned_data.get("due_date")
-        if due_date is None or due_date == "":
-            return timezone.now() + timedelta(days=30)
-        return due_date
 
 
 class AuditTableForm(forms.ModelForm):

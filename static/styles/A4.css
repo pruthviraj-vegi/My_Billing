@@ -123,7 +123,8 @@ body {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
-    font-size: 10px;
+    font-size: 8px;
+    table-layout: fixed;
 }
 
 .data-table thead {
@@ -132,39 +133,68 @@ body {
 }
 
 .data-table th {
-    padding: 10px 8px;
+    padding: 6px 3px;
     text-align: left;
     font-weight: 600;
-    font-size: 10px;
+    font-size: 8px;
     border: 1px solid #334155;
+    white-space: nowrap;
+    line-height: 1.2;
 }
 
+.data-table th.text-center {
+    text-align: center;
+}
+
+/* Column widths for purchase orders table - optimized for A4 page */
 .data-table th:first-child {
-    width: 50px;
+    width: 30px;
+    min-width: 30px;
 }
 
 .data-table th:nth-child(2) {
-    width: 150px;
+    width: 70px;
+    min-width: 70px;
 }
 
 .data-table th:nth-child(3) {
-    width: 120px;
+    width: 60px;
+    min-width: 60px;
 }
 
 .data-table th:nth-child(4) {
-    width: 120px;
+    width: 75px;
+    min-width: 75px;
 }
 
 .data-table th:nth-child(5) {
-    width: auto;
+    width: 85px;
+    min-width: 85px;
 }
 
 .data-table th:nth-child(6) {
-    width: 80px;
+    width: 65px;
+    min-width: 65px;
 }
 
 .data-table th:nth-child(7) {
-    width: 100px;
+    width: 70px;
+    min-width: 70px;
+}
+
+.data-table th:nth-child(8) {
+    width: 55px;
+    min-width: 55px;
+}
+
+.data-table th:nth-child(9) {
+    width: 50px;
+    min-width: 50px;
+}
+
+.data-table th:nth-child(10) {
+    width: 65px;
+    min-width: 65px;
 }
 
 .data-table tbody tr {
@@ -180,10 +210,18 @@ body {
 }
 
 .data-table td {
-    padding: 8px;
-    font-size: 10px;
+    padding: 5px 3px;
+    font-size: 8px;
     color: #1e293b;
-    vertical-align: top;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.data-table td.date-cell {
+    white-space: nowrap;
+    font-size: 8px;
 }
 
 .data-table td.text-center {
@@ -232,6 +270,65 @@ body {
     font-size: 11px;
     font-weight: 600;
     color: #1e293b;
+}
+
+/* ========================================
+   DATE PERIOD SECTION
+   ======================================== */
+.date-period-section {
+    margin: 12px 0 18px 0;
+    padding: 10px 15px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #1e293b;
+    border-radius: 0 4px 4px 0;
+}
+
+.date-period-content {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.date-period-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.date-period-value {
+
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e293b;
+    padding: 5px 12px;
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    display: inline-block;
+    margin-left: 5px;
+    white-space: nowrap;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ========================================
+   TOTAL ROW STYLING
+   ======================================== */
+.data-table .total-row {
+    background-color: #f1f5f9 !important;
+    border-top: 2px solid #334155;
+    border-bottom: 2px solid #334155;
+}
+
+.data-table .total-row td {
+    padding: 10px 8px;
+    font-size: 11px;
+    font-weight: 600;
 }
 
 /* ========================================

@@ -6,16 +6,15 @@ app_name = "invoice"
 urlpatterns = [
     path("", views.invoiceHome, name="home"),
     path("dashboard/", views.invoice_dashboard, name="dashboard"),
+    path("dashboard-modern/", views.invoice_dashboard_modern, name="dashboard_modern"),
     path("dashboard/fetch/", views.invoice_dashboard_fetch, name="dashboard_fetch"),
     path("fetch/", views.fetch_invoices, name="fetch"),
-    path("download-data/", views.download_invoices, name="download_data"),
     path(
         "create-invoice/<int:pk>/", views.CreateInvoice.as_view(), name="create_invoice"
     ),
     path("detail/<int:pk>/", views.InvoiceDetail.as_view(), name="detail"),
     path("edit/<int:pk>/", views.InvoiceEdit.as_view(), name="edit"),
     path("delete/<int:pk>/", views.InvoiceDelete.as_view(), name="delete"),
-    path("download/", views.InvoiceDownload.as_view(), name="download"),
     # invoice audit
     path("audits/", views_.audit_home, name="audit_home"),
     path("audit-fetch/", views_.fetch_audit_tables, name="audit_fetch"),
@@ -26,6 +25,11 @@ urlpatterns = [
         name="invoice_manager",
     ),
     path("audits/detail/<int:pk>/", views_.audit_detail, name="audit_detail"),
+    path(
+        "audits/fetch-details/<int:pk>/",
+        views_.fetch_audit_details,
+        name="fetch_audit_details",
+    ),
     path(
         "audits/delete/<int:pk>/",
         views_.AuditTableDeleteView.as_view(),

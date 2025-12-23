@@ -157,17 +157,22 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
     financial_year = models.CharField(max_length=10, null=True, blank=True)
     due_date = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
+    sold_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="invoices_sold_by",
+    )
     created_by = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
-        related_name="created_invoices",
+        related_name="invoices_created_by",
     )
     modified_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="modified_invoices",
+        related_name="invoices_modified_by",
     )
     gst_type = models.CharField(
         max_length=20, choices=GstTypeChoices.choices, default=GstTypeChoices.CGST_SGST

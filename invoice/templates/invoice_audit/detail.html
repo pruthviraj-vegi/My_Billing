@@ -28,7 +28,7 @@
         <span class="breadcrumb-active">{{ audit_table.title }}</span>
     </nav>
     <!-- Main Layout -->
-    <div class="col d-flex flex-row gap-2">
+    <div class="col d-flex flex-row">
         <!-- Left Column - Audit Details -->
         <div class="col-md-2 d-flex flex-column gap-2">
             <!-- Audit Details Column -->
@@ -120,65 +120,51 @@
             </div>
         </div>
         <!-- Right Column - Tables -->
-        <div class="col-md-10">
+        <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+
             <!-- Invoice Audits Table -->
             <div class="table-section" id="auditsSection">
                 <div class="table-header">
                     <h3>
-                        <i class="fas fa-history"></i> Invoice Changes ({{ invoice_audits|length }})
+                        <i class="fas fa-history"></i> Invoice Changes ({{ audit_table.total_changes }})
                     </h3>
                 </div>
-                {% if invoice_audits %}
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Invoice</th>
-                                    <th>Old Invoice No</th>
-                                    <th>New Invoice No</th>
-                                    <th>Change Type</th>
-                                    <th>Reason</th>
-                                    <th>Changed By</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for audit in invoice_audits %}
-                                <tr>
-                                    <td>
-                                        <a href="{% url 'invoice:detail' audit.invoice.id %}" target="_blank" style=" text-decoration: none;">
-                                            {{ audit.invoice.invoice_number }}
-                                        </a>
-                                    </td>
-                                    <td>{{ audit.old_invoice_no|default:"-" }}</td>
-                                    <td>{{ audit.new_invoice_no }}</td>
-                                    <td>
-                                        <span class="badge badge-info">{{ audit.get_change_type_display }}</span>
-                                    </td>
-                                    <td>{{ audit.reason }}</td>
-                                    <td>{{ audit.changed_by.full_name|default:"System" }}</td>
-                                    <td>{{ audit.created_at|date:"M d, Y H:i" }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-info-circle"></i>
-                        <h4>No Changes Recorded</h4>
-                        <p>This audit session doesn't have any invoice changes recorded yet.</p>
-                        <a href="{% url 'invoice:invoice_manager' audit_table.id %}" class="btn btn-primary">
-                            <i class="fas fa-exchange-alt"></i>
-                            Start Conversions
-                        </a>
-                    </div>
-                {% endif %}
+                <div class="table-container">
+                    <table class="data-table" id="audits_table" data-sort="-created_at">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="invoice__invoice_number">Invoice</th>
+                                <th class="sortable" data-sort="old_invoice_no">Old Invoice No</th>
+                                <th class="sortable" data-sort="new_invoice_no">New Invoice No</th>
+                                <th class="sortable" data-sort="change_type">Change Type</th>
+                                <th class="sortable" data-sort="reason">Reason</th>
+                                <th class="sortable" data-sort="changed_by__full_name">Changed By</th>
+                                <th class="sortable" data-sort="created_at">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audits_table_body">
+                            <tr>
+                                <td colspan="6" class="text-center" style="padding: 2rem;">
+                                    <div class="loading">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        Loading audit details...
+                                    </div>
+                                    <br><br>
+                                    <button type="button" class="btn btn-sm" onclick="window.retryTableLoad()">
+                                        <i class="fas fa-refresh"></i>
+                                        Retry
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 {% endblock content %}
 {% block extra_js %}
+    <script src="{% static 'js/fetchData.js' %}"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
       // Summary card click handlers
@@ -193,6 +179,14 @@
       statusSummaryCard.addEventListener('click', function () {
         auditsSection.scrollIntoView({ behavior: 'smooth' })
       })
+      // Initialize AJAX tables
+      const urls = {
+        details: '{% url "invoice:fetch_audit_details" audit_table.id %}'
+      }
+      initTableAjax(null, 'audits_table', urls.details, { autoLoad: true });
+      initTableSorting('audits_table');
     })
     </script>
+
+
 {% endblock extra_js %}

@@ -14,6 +14,7 @@ from datetime import datetime
 from django.db.models import Sum, DecimalField, Value
 from django.db.models.functions import Coalesce
 from decimal import Decimal
+from model_utils import FieldTracker
 
 User = settings.AUTH_USER_MODEL
 
@@ -83,6 +84,21 @@ class Supplier(SoftDeleteModel):
             )
         )["total"]
         return (total_invoiced - total_paid_on_invoices).quantize(Decimal("0.01"))
+
+    @property
+    def last_invoice(self):
+        invoice = (
+            self.invoices.filter(
+                is_deleted=False,
+                status__in=[
+                    SupplierInvoice.InvoiceStatus.UNPAID,
+                    SupplierInvoice.InvoiceStatus.PARTIALLY_PAID,
+                ],
+            )
+            .order_by("invoice_date")
+            .first()
+        )
+        return invoice.invoice_date if invoice else None
 
 
 class SupplierInvoice(SoftDeleteModel):
@@ -167,6 +183,8 @@ class SupplierInvoice(SoftDeleteModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    tracker = FieldTracker(fields=["total_amount"])
+
     class Meta:
         unique_together = ("supplier", "invoice_number", "invoice_date")
         ordering = ["-invoice_date"]
@@ -215,6 +233,8 @@ class SupplierPayment(SoftDeleteModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    tracker = FieldTracker(fields=["amount"])
 
     def save(self, *args, **kwargs):
         if not self.pk:
@@ -271,7 +291,7 @@ class MediaFile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.file.name
+        return self.media_file.name
 
     def save(self, *args, **kwargs):
         if self.media_file:

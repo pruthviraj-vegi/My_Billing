@@ -5,7 +5,7 @@ app_name = "user"
 
 urlpatterns = [
     path("", views.home, name="home"),
-    path("download/", views.download_users, name="download"),
+    path("fetch/", views.fetch_users, name="fetch"),
     path("create/", views.CreateUser.as_view(), name="create"),
     path("sessions/", views.sessions_overview, name="sessions"),
     path(
@@ -19,7 +19,6 @@ urlpatterns = [
         name="invalidate_session",
     ),
     path("logins/", views.logins_overview, name="logins"),
-    path("logins/download/", views.download_logins, name="logins_download"),
     path("<int:pk>/", views.user_detail, name="detail"),
     path("<int:pk>/edit/", views.EditUser.as_view(), name="edit"),
     path("<int:pk>/delete/", views.DeleteUser.as_view(), name="delete"),
@@ -28,5 +27,53 @@ urlpatterns = [
         "<int:user_id>/reset-password/",
         views.reset_user_password,
         name="reset_password",
+    ),
+    # Salary CRUD
+    path(
+        "<int:user_id>/salary/create/",
+        views.salary_create,
+        name="salary_create",
+    ),
+    path(
+        "<int:user_id>/salary/<int:salary_id>/edit/",
+        views.salary_edit,
+        name="salary_edit",
+    ),
+    path(
+        "<int:user_id>/salary/<int:salary_id>/delete/",
+        views.salary_delete,
+        name="salary_delete",
+    ),
+    # Transaction CRUD
+    path(
+        "<int:user_id>/transaction/create/",
+        views.transaction_create,
+        name="transaction_create",
+    ),
+    path(
+        "<int:user_id>/transaction/<int:transaction_id>/edit/",
+        views.transaction_edit,
+        name="transaction_edit",
+    ),
+    path(
+        "<int:user_id>/transaction/<int:transaction_id>/delete/",
+        views.transaction_delete,
+        name="transaction_delete",
+    ),
+    # Commission
+    path(
+        "<int:user_id>/commission/",
+        views.user_commission,
+        name="commission",
+    ),
+    path(
+        "<int:user_id>/commission/fetch/",
+        views.fetch_user_commission,
+        name="commission_fetch",
+    ),
+    path(
+        "<int:user_id>/commission/summary/",
+        views.fetch_commission_summary,
+        name="commission_summary",
     ),
 ]

@@ -1,25 +1,18 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.db.models import Q, Sum, Count, Case, When, DecimalField, Value, F
 from django.db.models.functions import Coalesce
 from django.contrib import messages
 from .models import Customer, Payment
 from invoice.models import Invoice
-import json
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from .forms import CustomerForm
 from django.urls import reverse_lazy
-from django.core.paginator import Paginator
-from django.template.loader import render_to_string, get_template
-from django.utils import timezone
-from datetime import timedelta, datetime
+from datetime import timedelta
 from decimal import Decimal
 from base.getDates import getDates
 import logging
-from weasyprint import HTML
-from setting.models import ShopDetails, ReportConfiguration
+from base.utility import get_periodic_data, get_period_label, render_paginated_response
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +34,6 @@ VALID_SORT_FIELDS = {
 CUSTOMERS_PER_PAGE = 20
 
 
-@login_required
 def home(request):
     """Customer management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -80,38 +72,18 @@ def get_data(request):
     return customers
 
 
-@login_required
 def fetch_customers(request):
     """AJAX endpoint to fetch customers with search, filter, and pagination."""
     customers = get_data(request)
 
-    # Pagination
-    paginator = Paginator(customers, CUSTOMERS_PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    # Render the HTML template
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-    }
-
-    # Render the table content (without pagination)
-    table_html = render_to_string("customer/fetch.html", context, request=request)
-
-    # Render pagination via template (clean and maintainable)
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        customers,
+        "customer/fetch.html",
     )
 
 
-class CreateCustomer(LoginRequiredMixin, CreateView):
+class CreateCustomer(CreateView):
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
@@ -137,7 +109,7 @@ class CreateCustomer(LoginRequiredMixin, CreateView):
         return reverse_lazy("customer:home")
 
 
-class EditCustomer(LoginRequiredMixin, UpdateView):
+class EditCustomer(UpdateView):
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
@@ -161,7 +133,7 @@ class EditCustomer(LoginRequiredMixin, UpdateView):
         return super().form_invalid(form)
 
 
-class DeleteCustomer(LoginRequiredMixin, DeleteView):
+class DeleteCustomer(DeleteView):
     model = Customer
     template_name = "customer/delete.html"
 
@@ -188,22 +160,16 @@ class DeleteCustomer(LoginRequiredMixin, DeleteView):
         return super().form_invalid(form)
 
 
-@login_required
 def customer_detail(request, pk):
     """View customer details."""
     customer = get_object_or_404(Customer, id=pk)
-    invoices = Invoice.objects.filter(customer=customer)
 
     # Get customer payments (FIFO system)
-    context = {
-        "customer": customer,
-        "invoices": invoices,
-    }
+    context = {"customer": customer}
     context.update(get_calculations(pk))
     return render(request, "customer/detail.html", context)
 
 
-@login_required
 def fetch_customer_invoices(request, pk):
     """AJAX: fetch invoices for a customer with pagination and optional sorting."""
     customer = get_object_or_404(Customer, id=pk)
@@ -224,28 +190,10 @@ def fetch_customer_invoices(request, pk):
 
     queryset = Invoice.objects.filter(customer=customer).order_by(sort_by)
 
-    paginator = Paginator(queryset, 15)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        "customer": customer,
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-    }
-
-    table_html = render_to_string(
-        "customer/invoice/fetch.html", context, request=request
-    )
-
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        queryset,
+        "customer/invoice/fetch.html",
     )
 
 
@@ -280,7 +228,6 @@ def get_calculations(pk):
     }
 
 
-@login_required
 def customer_delete(request, customer_id):
     """Delete customer (soft delete)."""
     if request.method == "POST":
@@ -292,46 +239,6 @@ def customer_delete(request, customer_id):
     return redirect("customer:home")
 
 
-@login_required
-def customer_search_api(request):
-    """API endpoint for searching customers (for autocomplete)."""
-    if request.method != "GET":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-
-    query = request.GET.get("q", "").strip()
-
-    if len(query) < 2:
-        return JsonResponse({"customers": []})
-
-    # Search customers by name or phone number
-    customers = (
-        Customer.objects.filter(
-            Q(name__icontains=query) | Q(phone_number__icontains=query),
-            is_deleted=False,
-        )
-        .exclude(
-            # Exclude current customer if editing
-            id=request.GET.get("exclude", -1)
-        )
-        .order_by("name")[:10]
-    )  # Limit to 10 results
-
-    # Format response
-    customers_data = []
-    for customer in customers:
-        customers_data.append(
-            {
-                "id": customer.id,
-                "name": customer.name or "",
-                "phone_number": customer.phone_number or "",
-                "email": customer.email or "",
-            }
-        )
-
-    return JsonResponse({"customers": customers_data})
-
-
-@login_required
 def create_customer_ajax(request):
     """AJAX endpoint for creating customers via modal"""
     try:
@@ -349,7 +256,6 @@ def create_customer_ajax(request):
         return JsonResponse({"success": False, "message": str(e)})
 
 
-@login_required
 def dashboard(request):
     """Customer management dashboard with analytics and insights."""
     date_filter = request.GET.get("date_filter", "this_month")
@@ -378,64 +284,9 @@ def dashboard(request):
 
 def get_comparison_data(date_filter, current_start, current_end):
     """Generate comparison data for line chart based on date filter"""
-    if date_filter in ["today", "yesterday"]:
-        previous_start = current_start - timedelta(days=1)
-        previous_end = current_end - timedelta(days=1)
-        period_type = "daily"
-    elif date_filter in ["this_month", "last_month"]:
-        if current_start.month == 1:
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=12
-            )
-        else:
-            previous_start = current_start.replace(month=current_start.month - 1)
-        if previous_start.month == 12:
-            next_month = previous_start.replace(year=previous_start.year + 1, month=1)
-        else:
-            next_month = previous_start.replace(month=previous_start.month + 1)
-        previous_end = next_month - timedelta(days=1)
-        period_type = "monthly"
-    elif date_filter in ["this_quarter", "last_quarter"]:
-        quarter = (current_start.month - 1) // 3
-        quarter_start_month = quarter * 3 + 1
-        previous_quarter_start = current_start.replace(
-            month=quarter_start_month - 3 if quarter_start_month > 3 else 9, day=1
-        )
-        if previous_quarter_start.month == 10:
-            previous_quarter_start = previous_quarter_start.replace(
-                year=previous_quarter_start.year - 1
-            )
-        previous_start = previous_quarter_start
-        period_type = "quarterly"
-    elif date_filter in ["this_finance", "last_finance"]:
-        if current_start.month >= 4:
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=4, day=1
-            )
-            previous_end = current_start.replace(
-                year=current_start.year, month=3, day=31
-            )
-        else:
-            previous_start = current_start.replace(
-                year=current_start.year - 2, month=4, day=1
-            )
-            previous_end = current_start.replace(
-                year=current_start.year - 1, month=3, day=31
-            )
-        period_type = "yearly"
-    else:
-        if current_start.month == 1:
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=12
-            )
-        else:
-            previous_start = current_start.replace(month=current_start.month - 1)
-        if previous_start.month == 12:
-            next_month = previous_start.replace(year=previous_start.year + 1, month=1)
-        else:
-            next_month = previous_start.replace(month=previous_start.month + 1)
-        previous_end = next_month - timedelta(days=1)
-        period_type = "monthly"
+    previous_start, previous_end, period_type = get_periodic_data(
+        date_filter, current_start, current_end
+    )
 
     current_invoices = Invoice.objects.filter(
         invoice_date__date__range=[current_start, current_end]
@@ -453,11 +304,11 @@ def get_comparison_data(date_filter, current_start, current_end):
 
     return {
         "current_period": {
-            "label": f"{current_start.strftime('%b %d, %Y')} - {current_end.strftime('%b %d, %Y')}",
+            "label": get_period_label(current_start, current_end, period_type),
             "data": current_data,
         },
         "previous_period": {
-            "label": f"{previous_start.strftime('%b %d, %Y')} - {previous_end.strftime('%b %d, %Y')}",
+            "label": get_period_label(previous_start, previous_end, period_type),
             "data": previous_data,
         },
         "period_type": period_type,
@@ -564,7 +415,6 @@ def get_period_data(invoices, start_date, end_date, period_type):
         return monthly_data
 
 
-@login_required
 def dashboard_fetch(request):
     """AJAX endpoint to fetch customer dashboard data"""
     date_filter = request.GET.get("date_filter", "this_month")
@@ -668,14 +518,15 @@ def dashboard_fetch(request):
     # Payment status data processing
     payment_status_data = []
     for status in payment_status_breakdown:
+        status_amount = float(status["amount"] or 0)
         percentage = (
-            (status["count"] / total_invoices * 100) if total_invoices > 0 else 0
+            (status_amount / float(total_sales) * 100) if total_sales > 0 else 0
         )
         payment_status_data.append(
             {
                 "payment_status": status["payment_status"].replace("_", " ").title(),
                 "count": status["count"],
-                "amount": float(status["amount"] or 0),
+                "amount": status_amount,
                 "percentage": round(percentage, 1),
             }
         )
@@ -683,29 +534,36 @@ def dashboard_fetch(request):
     # Payment type data processing
     payment_type_data = []
     for ptype in payment_type_breakdown:
-        percentage = (
-            (ptype["count"] / total_invoices * 100) if total_invoices > 0 else 0
-        )
+        ptype_amount = float(ptype["amount"] or 0)
+        percentage = (ptype_amount / float(total_sales) * 100) if total_sales > 0 else 0
         payment_type_data.append(
             {
                 "payment_type": ptype["payment_type"].replace("_", " ").title(),
                 "count": ptype["count"],
-                "amount": float(ptype["amount"] or 0),
+                "amount": ptype_amount,
                 "percentage": round(percentage, 1),
             }
         )
 
     # Customer breakdown data processing
+    # Calculate percentage based on top 10 customers only (for pie chart accuracy)
     customer_data = []
-    for customer in customer_breakdown:
+    customer_list = list(customer_breakdown)
+    # Calculate total of top 10 customers only
+    top10_customer_total = float(sum(float(c["amount"] or 0) for c in customer_list))
+
+    for customer in customer_list:
+        customer_amount = float(customer["amount"] or 0)
         percentage = (
-            (customer["count"] / total_invoices * 100) if total_invoices > 0 else 0
+            (customer_amount / top10_customer_total * 100)
+            if top10_customer_total > 0
+            else 0
         )
         customer_data.append(
             {
                 "customer_name": customer["customer__name"] or "Unknown",
                 "count": customer["count"],
-                "amount": float(customer["amount"] or 0),
+                "amount": customer_amount,
                 "percentage": round(percentage, 1),
             }
         )

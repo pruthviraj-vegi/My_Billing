@@ -1,158 +1,102 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-
-{% block title %}Supplier Invoice Tracking{% endblock title %}
-
+{% block title %}
+    Supplier Invoice Tracking
+{% endblock title %}
 {% block content %}
-<!-- Page Header -->
-<div class="page-header">
-    <h2 class="page-title">Supplier Invoice Tracking</h2>
-    <div class="page-actions">
-        <a href="{% url 'inventory:supplier_invoice_tracking' %}" class="btn">
-            <i class="fas fa-refresh"></i>
-            Refresh
-        </a>
-    </div>
-</div>
-
-<!-- Breadcrumb Navigation -->
-<nav class="breadcrumb breadcrumb-right">
-    <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Inventory</a>
-    <span class="breadcrumb-separator">/</span>
-    <span class="breadcrumb-active">Supplier Invoices</span>
-</nav>
-
-<!-- Search and Filter Section -->
-<div class="search-filter-section">
-    <form method="get" class="search-filter-form" id="searchForm">
-        <div class="search-group search-expanded">
-            <i class="fas fa-search search-icon"></i>
-            <input 
-                type="search" 
-                name="search" 
-                class="search-input" 
-                placeholder="Search invoices..." 
-                value="{{ search_query }}"
-                id="searchInput"
-                autofocus
-            >
+    <div class="page-header">
+        <h2 class="page-title">Supplier Invoice Tracking</h2>
+        <div class="page-actions">
+            <button type="button"
+                    class="btn btn-secondary"
+                    onclick="reloadTable('supplierInvoiceTable')">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
         </div>
-        
-        <select name="supplier" class="filter-select" id="supplierFilter">
-            <option value="">All Suppliers</option>
-            {% for supplier in suppliers %}
-                <option value="{{ supplier.id }}" {% if supplier_filter == supplier.id|stringformat:"s" %}selected{% endif %}>
-                    {{ supplier.name }}
-                </option>
-            {% endfor %}
-        </select>
-        
-        <select name="sort" class="filter-select" id="sortSelect">
-            <option value="-invoice_date" {% if sort_by == '-invoice_date' %}selected{% endif %}>Newest First</option>
-            <option value="invoice_date" {% if sort_by == 'invoice_date' %}selected{% endif %}>Oldest First</option>
-            <option value="supplier_name" {% if sort_by == 'supplier_name' %}selected{% endif %}>Supplier A-Z</option>
-            <option value="-supplier_name" {% if sort_by == '-supplier_name' %}selected{% endif %}>Supplier Z-A</option>
-            <option value="stock_in_quantity" {% if sort_by == 'stock_in_quantity' %}selected{% endif %}>Stock In Low-High</option>
-            <option value="-stock_in_quantity" {% if sort_by == '-stock_in_quantity' %}selected{% endif %}>Stock In High-Low</option>
-        </select>
-        
-        <button type="submit" class="btn btn-primary">
-            <i class="fas fa-search"></i>
-            Search
-        </button>
-    </form>
-</div>
-
-<!-- Data Table -->
-<div class="table-container">
-    {% if invoice_summaries %}
-        <table class="data-table">
+    </div>
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Inventory</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Supplier Invoices</span>
+    </nav>
+    <div class="search-filter-section">
+        <form method="get"
+              class="search-filter-form"
+              id="searchForm"
+              autocomplete="off">
+            <div class="search-group search-expanded">
+                <i class="fas fa-search search-icon"></i>
+                <input type="search"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search invoices..."
+                       value="{{ search_query }}"
+                       id="searchInput">
+            </div>
+            <select name="supplier" class="filter-select" id="supplierFilter">
+                <option value="">All Suppliers</option>
+                {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}"
+                            {% if supplier_filter == supplier.id|stringformat:"s" %}selected{% endif %}>
+                        {{ supplier.name }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+        </form>
+    </div>
+    <div class="table-container">
+        <table class="data-table"
+               id="supplierInvoiceTable"
+               data-sort="-invoice_date">
             <thead>
                 <tr>
-                    <th>Invoice Number</th>
-                    <th>Supplier</th>
-                    <th>Date</th>
-                    <th>Total Amount</th>
-                    <th>Stock In</th>
-                    <th>Sales</th>
-                    <th>Remaining</th>
-                    <th>Sold Percentage</th>
+                    <th class="sortable" data-sort="invoice_number">Invoice Number</th>
+                    <th class="sortable" data-sort="supplier_name">Supplier</th>
+                    <th class="sortable" data-sort="invoice_date">Date</th>
+                    <th class="sortable" data-sort="invoice_amount">Invoice Amount</th>
+                    <th class="sortable" data-sort="stock_amount">Stock Amount</th>
+                    <th class="sortable" data-sort="stock_in_quantity">Stock In</th>
+                    <th class="sortable" data-sort="sales_quantity">Sales</th>
+                    <th class="sortable" data-sort="remaining_quantity">Remaining</th>
+                    <th class="sortable" data-sort="remaining_percentage">Sold %</th>
                     <th>Products</th>
                     <th class="text-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for invoice in invoice_summaries %}
                 <tr>
-                    <td>
-                        <strong>{{ invoice.invoice_number }}</strong>
-                    </td>
-                    <td>{{ invoice.supplier_name }}</td>
-                    <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
-                    <td>{{ invoice.total_amount|currency }}</td>
-                    <td>{{ invoice.stock_in_quantity|floatformat:0 }}</td>
-                    <td>{{ invoice.sales_quantity|floatformat:0 }}</td>
-                    <td>{{ invoice.remaining_quantity|floatformat:0 }}</span></td>
-                    <td>
-                        <span class="badge 
-                        {% if invoice.remaining_percentage < 25 %} text-danger 
-                         {% elif invoice.remaining_percentage < 50 %} text-mute 
-                          {% else %} text-success {% endif %}">
-                           {{ invoice.remaining_percentage }}%</span>
-                    </td>
-                    <td>
-                        <span class="badge bg-secondary">{{ invoice.products_count }}</span>
-                    </td>
-                    <td>
-                        <div class="action-buttons">
-                            <a href="{% url 'inventory:supplier_invoice_details' invoice.id %}" 
-                               class="btn-action btn-view" title="View Invoice Details">
-                                <i class="fas fa-eye"></i>
-                            </a>
+                    <td colspan="11" class="text-center empty-state-container p-3">
+                        <div class="empty-state">
+                            <i class="fas fa-file-invoice"></i>
+                            <h3>No Supplier Invoices Found</h3>
+                            <p>No supplier invoices match your filters. Try adjusting the search criteria.</p>
                         </div>
                     </td>
                 </tr>
-                {% endfor %}
             </tbody>
         </table>
-    {% else %}
-        <div class="empty-state">
-            <i class="fas fa-inbox"></i>
-            <h3>No Supplier Invoices Found</h3>
-            <p>No supplier invoices with inventory found. Try adjusting your search criteria or add inventory to supplier invoices.</p>
-        </div>
-    {% endif %}
-</div>
-
+    </div>
 {% endblock content %}
-
 {% block extra_js %}
-<script>
-// Search and filter functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchInput');
-    const supplierFilter = document.getElementById('supplierFilter');
-    const sortSelect = document.getElementById('sortSelect');
-    const searchForm = document.getElementById('searchForm');
-    
-    // Auto-submit form on filter change
-    supplierFilter.addEventListener('change', function() {
-        searchForm.submit();
-    });
-    
-    sortSelect.addEventListener('change', function() {
-        searchForm.submit();
-    });
-    
-    // Debounced search
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(function() {
-            searchForm.submit();
-        }, 500);
-    });
-});
-</script>
-{% endblock extra_js %} 
+    <script src="{% static 'js/fetchData.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const urls = {
+                fetch: '{% url "inventory:supplier_invoice_tracking_fetch" %}',
+            };
+
+            initTableAjax('searchForm', 'supplierInvoiceTable', urls.fetch, {
+                loadingText: 'Loading supplier invoices...',
+                autoLoad: true,
+            }, true);
+
+            initTableSorting('supplierInvoiceTable');
+        });
+    </script>
+{% endblock extra_js %}

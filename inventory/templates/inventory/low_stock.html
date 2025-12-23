@@ -150,32 +150,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <!-- Pagination -->
-            {% if page_obj.has_other_pages %}
-                <div class="pagination-container">
-                    <nav class="pagination">
-                        {% if page_obj.has_previous %}
-                            <a href="?page=1" class="page-link"><i class="fas fa-angle-double-left"></i></a>
-                            <a href="?page={{ page_obj.previous_page_number }}" class="page-link"><i class="fas fa-angle-left"></i></a>
-                        {% endif %}
-                        {% for num in page_obj.paginator.page_range %}
-                            {% if page_obj.number == num %}
-                                <span class="page-link active">{{ num }}</span>
-                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                <a href="?page={{ num }}" class="page-link">{{ num }}</a>
-                            {% endif %}
-                        {% endfor %}
-                        {% if page_obj.has_next %}
-                            <a href="?page={{ page_obj.next_page_number }}" class="page-link"><i class="fas fa-angle-right"></i></a>
-                            <a href="?page={{ page_obj.paginator.num_pages }}" class="page-link"><i class="fas fa-angle-double-right"></i></a>
-                        {% endif %}
-                    </nav>
-                    <div class="pagination-info">
-                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                        ({{ page_obj.paginator.count }} items)
-                    </div>
-                </div>
-            {% endif %}
         {% else %}
             <div class="empty-state">
                 <i class="fas fa-check-circle"></i>
@@ -268,20 +242,7 @@
             letter-spacing: 0.5px;
         }
         
-        /* Pagination */
-        .pagination-container {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-color);
-        }
         
-        .pagination {
-            display: flex;
-            gap: 5px;
-        }
         
         .page-link {
             display: flex;
@@ -309,10 +270,6 @@
             border-color: var(--primary-color);
         }
         
-        .pagination-info {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
         
         /* Responsive Design */
         @media (max-width: 768px) {
@@ -320,10 +277,7 @@
                 grid-template-columns: 1fr;
             }
             
-            .pagination-container {
-                flex-direction: column;
-                gap: 15px;
-            }
+            
         }
     </style>
 {% endblock extra_css %}

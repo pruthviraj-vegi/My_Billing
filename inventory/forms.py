@@ -1,5 +1,4 @@
 from django import forms
-from django.core.exceptions import ValidationError
 from .models import (
     Product,
     ProductVariant,
@@ -24,63 +23,74 @@ class ProductForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter product name",
                 }
             ),
             "brand": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter brand name",
                     "autofocus": True,
                 }
             ),
             "description": forms.Textarea(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter product description",
-                    "rows": 4,
+                    "rows": 3,
                 }
             ),
-            "category": forms.Select(
-                attrs={"class": "form-input", "placeholder": "Select category"}
-            ),
-            "cloth_type": forms.Select(
-                attrs={"class": "form-input", "placeholder": "Select cloth type"}
-            ),
-            "uom": forms.Select(
-                attrs={"class": "form-input", "placeholder": "Select UOM"}
-            ),
-            "hsn_code": forms.Select(
-                attrs={
-                    "class": "form-input",
-                    "placeholder": "Select Hsn Code",
-                }
-            ),
+            "category": forms.Select(attrs={"placeholder": "Select category"}),
+            "cloth_type": forms.Select(attrs={"placeholder": "Select cloth type"}),
+            "uom": forms.Select(attrs={"placeholder": "Select UOM"}),
+            "hsn_code": forms.Select(attrs={"placeholder": "Select HSN Code"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Restrict HSN field to active codes and set a sensible initial
-        try:
-            active_hsn_qs = GSTHsnCode.objects.filter(is_active=True)
-            self.fields["hsn_code"].queryset = active_hsn_qs
+        # Add required field indicators and form-control class
+        for field in self.fields.values():
+            if field.required:
+                field.label = f"{field.label} *"
+            field.widget.attrs["class"] = "form-input"
 
-            if active_hsn_qs.exists():
+        # Restrict to active querysets
+        self._set_active_queryset("hsn_code", GSTHsnCode)
+        self._set_active_queryset("uom", UOM)
+
+    def _set_active_queryset(self, field_name, model):
+        """Helper method to set active queryset for a field"""
+        try:
+            active_qs = model.objects.filter(is_active=True)
+            self.fields[field_name].queryset = active_qs
+
+            if active_qs.exists():
                 if not self.instance.pk:
-                    self.fields["hsn_code"].initial = active_hsn_qs.first()
+                    self.fields[field_name].initial = active_qs.first()
             else:
-                # Gracefully handle empty table so other parts of the app keep working
-                self.fields["hsn_code"].help_text = (
-                    "Add an active GST HSN code before assigning it to a product."
+                model_name = model._meta.verbose_name or model.__name__
+                self.fields[field_name].help_text = (
+                    f"Add an active {model_name} before assigning it to a product."
                 )
         except Exception as e:
-            # Handle case where table doesn't exist yet (during migrations)
-            if "does not exist" in str(e) or "relation" in str(e):
-                pass
-            else:
-                raise
+            pass
+
+    def clean_brand(self):
+        """Validate brand name length"""
+        brand = self.cleaned_data.get("brand")
+        if brand and len(brand) > 255:
+            raise forms.ValidationError(
+                "Brand name must be less than 255 characters long"
+            )
+        return brand
+
+    def clean_name(self):
+        """Validate product name length"""
+        name = self.cleaned_data.get("name")
+        if name and len(name) > 255:
+            raise forms.ValidationError(
+                "Product name must be less than 255 characters long"
+            )
+        return name
 
 
 class VariantForm(forms.ModelForm):
@@ -101,71 +111,68 @@ class VariantForm(forms.ModelForm):
             "product",
             "barcode",
             "damaged_quantity",
-            # "commission_percentage"
             "status",
             "created_by",
             "extra_attributes",
         ]
         widgets = {
-            "supplier": forms.Select(
-                attrs={"class": "form-input", "placeholder": "Select supplier"}
-            ),
-            "quantity": forms.NumberInput(
-                attrs={"class": "form-input", "placeholder": "Enter quantity"}
-            ),
+            "supplier": forms.Select(attrs={"placeholder": "Select supplier"}),
+            "quantity": forms.NumberInput(attrs={"placeholder": "Enter quantity"}),
             "minimum_quantity": forms.NumberInput(
-                attrs={"class": "form-input", "placeholder": "Enter minimum quantity"}
+                attrs={"placeholder": "Enter minimum quantity"}
             ),
             "discount_percentage": forms.NumberInput(
-                attrs={
-                    "class": "form-input",
-                    "placeholder": "Enter discount percentage",
-                }
+                attrs={"placeholder": "Enter discount percentage"}
             ),
-            "gst_percentage": forms.NumberInput(
-                attrs={"class": "form-input", "placeholder": "Enter GST percentage"}
+            "commission_percentage": forms.NumberInput(
+                attrs={"placeholder": "Enter commission percentage"}
             ),
-            # "commission_percentage": forms.NumberInput(
-            #     attrs={
-            #         "class": "form-input",
-            #         "placeholder": "Enter commission percentage",
-            #     }
-            # ),
             "purchase_price": forms.NumberInput(
-                attrs={"class": "form-input", "placeholder": "Enter purchase price"}
+                attrs={"placeholder": "Enter purchase price"}
             ),
-            "mrp": forms.NumberInput(
-                attrs={"class": "form-input", "placeholder": "Enter selling price"}
-            ),
-            "size": forms.Select(
-                attrs={"class": "form-input", "placeholder": "Select size"}
-            ),
-            # "color": forms.Select(
-            #     attrs={"class": "form-input", "placeholder": "Select color"}
-            # ),
+            "mrp": forms.NumberInput(attrs={"placeholder": "Enter selling price"}),
+            "size": forms.Select(attrs={"placeholder": "Select size"}),
+            "color": forms.Select(attrs={"placeholder": "Select color"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add required field indicators and form-control class
+        for field in self.fields.values():
+            if field.required:
+                field.label = f"{field.label} *"
+            field.widget.attrs["class"] = "form-input"
+
+    def _validate_positive_number(self, value, field_name, error_message):
+        """Helper method to validate positive numbers"""
+        if value is not None and value <= 0:
+            raise forms.ValidationError(error_message)
+        return value
+
     def clean_quantity(self):
-        quantity = self.cleaned_data.get("quantity")
-        if quantity is not None and quantity <= 0:
-            raise forms.ValidationError("Quantity must be greater than 0")
-        return quantity
+        """Validate quantity is greater than 0"""
+        return self._validate_positive_number(
+            self.cleaned_data.get("quantity"),
+            "quantity",
+            "Quantity must be greater than 0",
+        )
 
     def clean_purchase_price(self):
-        purchase_price = self.cleaned_data.get("purchase_price")
-        if purchase_price is not None and purchase_price <= 0:
-            raise forms.ValidationError("Purchase price must be greater than 0")
-        return purchase_price
+        """Validate purchase price is greater than 0"""
+        return self._validate_positive_number(
+            self.cleaned_data.get("purchase_price"),
+            "purchase_price",
+            "Purchase price must be greater than 0",
+        )
 
     def clean_mrp(self):
-        mrp = self.cleaned_data.get("mrp")
-        if mrp is not None and mrp <= 0:
-            raise forms.ValidationError("Selling price must be greater than 0")
-        return mrp
-
-    def clean(self):
-        cleaned_data = super().clean()
-        return cleaned_data
+        """Validate selling price (MRP) is greater than 0"""
+        return self._validate_positive_number(
+            self.cleaned_data.get("mrp"),
+            "mrp",
+            "Selling price must be greater than 0",
+        )
 
 
 class CategoryForm(forms.ModelForm):
@@ -177,19 +184,38 @@ class CategoryForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter category name",
                     "autofocus": True,
                 }
             ),
             "description": forms.Textarea(
                 attrs={
-                    "class": "form-input",
                     "rows": 3,
                     "placeholder": "Enter category description",
                 }
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add form-input class to all fields
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-input"
+
+    def clean_name(self):
+        """Ensure category name is unique (case-insensitive)"""
+        name = self.cleaned_data.get("name")
+        if name:
+            name = name.strip()
+            # Check for duplicate (case-insensitive), excluding current instance
+            qs = Category.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                raise forms.ValidationError("A category with this name already exists.")
+        return name
 
 
 class ColorForm(forms.ModelForm):
@@ -201,29 +227,53 @@ class ColorForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter color name",
                     "autofocus": True,
                 }
             ),
             "hex_code": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "#FF0000",
                     "pattern": "#[0-9A-Fa-f]{6}",
                 }
             ),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add form-input class to all fields
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-input"
+
+        # Override maxlength for hex_code to enforce 6 digits
+        self.fields["hex_code"].widget.attrs["maxlength"] = "6"
+
+    def clean_name(self):
+        """Ensure color name is unique (case-insensitive)"""
+        name = self.cleaned_data.get("name")
+        if name:
+            name = name.strip()
+            # Check for duplicate (case-insensitive), excluding current instance
+            qs = Color.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                raise forms.ValidationError("A color with this name already exists.")
+        return name
+
     def clean_hex_code(self):
+        """Validate and normalize hex color code"""
         hex_code = self.cleaned_data.get("hex_code")
         if hex_code:
+            hex_code = hex_code.strip().upper()
             if not hex_code.startswith("#"):
                 hex_code = "#" + hex_code
             if len(hex_code) != 7 or not all(
-                c in "0123456789ABCDEFabcdef" for c in hex_code[1:]
+                c in "0123456789ABCDEF" for c in hex_code[1:]
             ):
-                raise ValidationError(
+                raise forms.ValidationError(
                     "Please enter a valid hex color code (e.g., #FF0000)"
                 )
         return hex_code
@@ -238,19 +288,38 @@ class SizeForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter size name",
                     "autofocus": True,
                 }
             ),
             "description": forms.Textarea(
                 attrs={
-                    "class": "form-input",
                     "rows": 3,
                     "placeholder": "Enter size description",
                 }
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add form-input class to all fields
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-input"
+
+    def clean_name(self):
+        """Ensure size name is unique (case-insensitive)"""
+        name = self.cleaned_data.get("name")
+        if name:
+            name = name.strip()
+            # Check for duplicate (case-insensitive), excluding current instance
+            qs = Size.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                raise forms.ValidationError("A size with this name already exists.")
+        return name
 
 
 class ClothTypeForm(forms.ModelForm):
@@ -262,19 +331,40 @@ class ClothTypeForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter cloth type name",
                     "autofocus": True,
                 }
             ),
             "description": forms.Textarea(
                 attrs={
-                    "class": "form-input",
                     "rows": 3,
                     "placeholder": "Enter cloth type description",
                 }
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add form-input class to all fields
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-input"
+
+    def clean_name(self):
+        """Ensure cloth type name is unique (case-insensitive)"""
+        name = self.cleaned_data.get("name")
+        if name:
+            name = name.strip()
+            # Check for duplicate (case-insensitive), excluding current instance
+            qs = ClothType.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                raise forms.ValidationError(
+                    "A cloth type with this name already exists."
+                )
+        return name
 
 
 class UOMForm(forms.ModelForm):
@@ -294,32 +384,24 @@ class UOMForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter UOM name (e.g., Piece, Dozen, Meter)",
                     "autofocus": True,
                 }
             ),
             "short_code": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter short code (e.g., pcs, doz, m)",
                     "maxlength": "10",
                 }
             ),
             "category": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter category (e.g., Quantity, Weight, Length)",
                 }
             ),
-            "base_unit": forms.CheckboxInput(
-                attrs={
-                    "class": "form-check-input",
-                }
-            ),
+            "base_unit": forms.CheckboxInput(),
             "conversion_factor": forms.NumberInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter conversion factor (e.g., 12 for dozen)",
                     "step": "0.0001",
                     "min": "0.0001",
@@ -327,33 +409,150 @@ class UOMForm(forms.ModelForm):
             ),
             "description": forms.Textarea(
                 attrs={
-                    "class": "form-input",
                     "rows": 3,
                     "placeholder": "Enter UOM description (optional)",
                 }
             ),
-            "is_active": forms.CheckboxInput(
-                attrs={
-                    "class": "form-check-input",
-                }
-            ),
+            "is_active": forms.CheckboxInput(),
         }
 
-    def clean_conversion_factor(self):
-        conversion_factor = self.cleaned_data.get("conversion_factor")
-        if conversion_factor is not None and conversion_factor <= 0:
-            raise ValidationError("Conversion factor must be greater than 0")
-        return conversion_factor
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add form-input class to text/number fields, form-check-input to checkboxes
+        for field_name, field in self.fields.items():
+            widget = field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                widget.attrs["class"] = "form-check-input"
+            else:
+                widget.attrs["class"] = "form-input"
 
     def clean_short_code(self):
+        """Validate and normalize short code, ensure uniqueness"""
         short_code = self.cleaned_data.get("short_code")
         if short_code:
-            short_code = short_code.upper()
+            short_code = short_code.strip().upper()
+            # Check for duplicate, excluding current instance
+            qs = UOM.objects.filter(short_code=short_code)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                raise forms.ValidationError(
+                    "A UOM with this short code already exists."
+                )
         return short_code
+
+    def clean_conversion_factor(self):
+        """Validate conversion factor is greater than 0"""
+        conversion_factor = self.cleaned_data.get("conversion_factor")
+        if conversion_factor is not None and conversion_factor <= 0:
+            raise forms.ValidationError("Conversion factor must be greater than 0")
+        return conversion_factor
+
+
+class GSTHsnCodeForm(forms.ModelForm):
+    """Form for creating and editing GST HSN Code"""
+
+    class Meta:
+        model = GSTHsnCode
+        fields = [
+            "code",
+            "gst_percentage",
+            "cess_rate",
+            "effective_from",
+            "description",
+            "is_active",
+        ]
+        widgets = {
+            "code": forms.TextInput(
+                attrs={
+                    "placeholder": "Enter HSN Code (e.g., 61091000)",
+                    "autofocus": True,
+                    "maxlength": "10",
+                }
+            ),
+            "gst_percentage": forms.NumberInput(
+                attrs={
+                    "placeholder": "Enter GST percentage (e.g., 12.00)",
+                    "step": "0.01",
+                    "min": "0.00",
+                    "max": "40.00",
+                }
+            ),
+            "cess_rate": forms.NumberInput(
+                attrs={
+                    "placeholder": "Enter Cess rate (e.g., 0.00)",
+                    "step": "0.01",
+                    "min": "0.00",
+                    "max": "25.00",
+                }
+            ),
+            "effective_from": forms.DateInput(
+                attrs={
+                    "type": "date",
+                    "placeholder": "Select effective date",
+                }
+            ),
+            "description": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Enter HSN code description (optional)",
+                }
+            ),
+            "is_active": forms.CheckboxInput(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add form-input class to text/number/date fields, form-check-input to checkboxes
+        for field_name, field in self.fields.items():
+            widget = field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                widget.attrs["class"] = "form-check-input"
+            else:
+                widget.attrs["class"] = "form-input"
+
+    def clean_code(self):
+        """Validate HSN code format and ensure uniqueness"""
+        code = self.cleaned_data.get("code")
+        if code:
+            code = code.strip()
+            # Ensure code is numeric
+            if not code.isdigit():
+                raise forms.ValidationError("HSN Code must contain only numbers")
+            # Validate length
+            if len(code) < 4 or len(code) > 10:
+                raise forms.ValidationError("HSN Code must be 4-10 digits long")
+            # Check for duplicate, excluding current instance
+            qs = GSTHsnCode.objects.filter(code=code)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                raise forms.ValidationError(
+                    "A GST HSN Code with this code already exists."
+                )
+        return code
+
+    def clean_gst_percentage(self):
+        """Validate GST percentage is between 0.00 and 40.00"""
+        gst_percentage = self.cleaned_data.get("gst_percentage")
+        if gst_percentage is not None and (gst_percentage < 0 or gst_percentage > 40):
+            raise forms.ValidationError("GST percentage must be between 0.00 and 40.00")
+        return gst_percentage
+
+    def clean_cess_rate(self):
+        """Validate Cess rate is between 0.00 and 25.00"""
+        cess_rate = self.cleaned_data.get("cess_rate")
+        if cess_rate is not None and (cess_rate < 0 or cess_rate > 25):
+            raise forms.ValidationError("Cess rate must be between 0.00 and 25.00")
+        return cess_rate
 
 
 class StockInForm(forms.ModelForm):
-    """Form specifically for stock in operations"""
+    """Optimized form for stock-in operations."""
 
     class Meta:
         model = InventoryLog
@@ -366,89 +565,75 @@ class StockInForm(forms.ModelForm):
             "notes",
         ]
         widgets = {
-            "variant": forms.Select(attrs={"class": "form-input"}),
+            "variant": forms.Select(),
             "quantity_change": forms.NumberInput(
                 attrs={
-                    "class": "form-input",
-                    "step": "0.01",
                     "autofocus": True,
                     "placeholder": "Enter quantity",
                 }
             ),
-            "purchase_price": forms.NumberInput(
-                attrs={"class": "form-input", "step": "0.01"}
-            ),
-            "mrp": forms.NumberInput(attrs={"class": "form-input", "step": "0.01"}),
-            "supplier_invoice": forms.Select(attrs={"class": "form-input"}),
-            "notes": forms.Textarea(attrs={"class": "form-input", "rows": 3}),
+            "purchase_price": forms.NumberInput(attrs={}),
+            "mrp": forms.NumberInput(attrs={}),
+            "supplier_invoice": forms.Select(),
+            "notes": forms.Textarea(attrs={"rows": 3}),
         }
 
     def __init__(self, *args, **kwargs):
-        self.variant = kwargs.pop("variant", None)  # Get variant from kwargs
+        variant = kwargs.pop("variant", None)
         super().__init__(*args, **kwargs)
 
-        # If variant is provided, hide the variant field and set it
+        # Standardize widget styling using a CSS class (see main.css theming)
+        for name, field in self.fields.items():
+            if isinstance(field.widget, forms.Textarea):
+                field.widget.attrs.setdefault("class", "form-input multiline")
+            elif isinstance(field.widget, forms.Select):
+                field.widget.attrs.setdefault("class", "form-input")
+            elif isinstance(field.widget, forms.NumberInput):
+                field.widget.attrs.setdefault("class", "form-input number")
+                field.widget.attrs.setdefault("min", "0")
+            else:
+                field.widget.attrs.setdefault("class", "form-input")
+
+        self.variant = variant
+
         if self.variant:
             self.fields["variant"].widget = forms.HiddenInput()
             self.fields["variant"].initial = self.variant
             self.fields["variant"].required = False
         else:
-            # Only show variant dropdown if no variant provided
             self.fields["variant"].queryset = ProductVariant.objects.filter(
                 is_deleted=False
             )
 
-        # For stock-in operations, show all active supplier invoices
-        # This allows linking to any supplier invoice (same product from different suppliers)
         self.fields["supplier_invoice"].queryset = SupplierInvoice.objects.filter(
             supplier__is_deleted=False
         )
-
-        # Make supplier_invoice optional
         self.fields["supplier_invoice"].required = False
-        # Make purchase price required for stock in
         self.fields["purchase_price"].required = True
 
-    def clean(self):
-        cleaned_data = super().clean()
-        quantity_change = cleaned_data.get("quantity_change")
-        purchase_price = cleaned_data.get("purchase_price")
-        mrp = cleaned_data.get("mrp")
-        supplier_invoice = cleaned_data.get("supplier_invoice")
-        variant = (
-            cleaned_data.get("variant") or self.variant
-        )  # Use passed variant if available
-
-        # Validate variant is available
-        if not variant:
-            raise forms.ValidationError("Please select a product variant.")
-
-        # For stock-in operations, we don't validate supplier invoice contains the variant
-        # This allows linking to any supplier invoice (same product from different suppliers)
-
-        # Allow zero values for all fields
+    def clean_quantity_change(self):
+        quantity_change = self.cleaned_data.get("quantity_change")
         if quantity_change is not None and quantity_change <= 0:
-            raise forms.ValidationError("Stock in quantity cannot be negative.")
+            raise forms.ValidationError("Stock in quantity must be greater than zero.")
+        return quantity_change
 
+    def clean_purchase_price(self):
+        purchase_price = self.cleaned_data.get("purchase_price")
         if purchase_price is not None and purchase_price < 0:
             raise forms.ValidationError("Purchase price cannot be negative.")
+        return purchase_price
 
-        if mrp is not None and mrp < 0:
-            raise forms.ValidationError("Selling price cannot be negative.")
-
-        return cleaned_data
+    def clean_mrp(self):
+        mrp = self.cleaned_data.get("mrp")
+        if mrp is not None and mrp <= 0:
+            raise forms.ValidationError("MRP cannot be negative.")
+        return mrp
 
     def save(self, commit=True):
-        """Override save to set variant and transaction_type"""
         instance = super().save(commit=False)
-
-        # Set variant if passed from view
         if self.variant and not instance.variant:
             instance.variant = self.variant
-
-        # Set transaction type for stock in
         instance.transaction_type = InventoryLog.TransactionTypes.STOCK_IN
-
         if commit:
             instance.save()
         return instance
@@ -626,87 +811,3 @@ class DamageForm(InventoryAdjustmentForm):
     def __init__(self, *args, **kwargs):
         kwargs["adjustment_type"] = "damage"
         super().__init__(*args, **kwargs)
-
-
-class GSTHsnCodeForm(forms.ModelForm):
-    """Form for creating and editing GST HSN Code"""
-
-    class Meta:
-        model = GSTHsnCode
-        fields = [
-            "code",
-            "gst_percentage",
-            "cess_rate",
-            "effective_from",
-            "description",
-            "is_active",
-        ]
-        widgets = {
-            "code": forms.TextInput(
-                attrs={
-                    "class": "form-input",
-                    "placeholder": "Enter HSN Code (e.g., 61091000)",
-                    "autofocus": True,
-                    "maxlength": "8",
-                }
-            ),
-            "gst_percentage": forms.NumberInput(
-                attrs={
-                    "class": "form-input",
-                    "placeholder": "Enter GST percentage (e.g., 12.00)",
-                    "step": "0.01",
-                    "min": "0.00",
-                    "max": "40.00",
-                }
-            ),
-            "cess_rate": forms.NumberInput(
-                attrs={
-                    "class": "form-input",
-                    "placeholder": "Enter Cess rate (e.g., 0.00)",
-                    "step": "0.01",
-                    "min": "0.00",
-                    "max": "25.00",
-                }
-            ),
-            "effective_from": forms.DateInput(
-                attrs={
-                    "class": "form-input",
-                    "type": "date",
-                    "placeholder": "Select effective date",
-                }
-            ),
-            "description": forms.Textarea(
-                attrs={
-                    "class": "form-input",
-                    "rows": 3,
-                    "placeholder": "Enter HSN code description (optional)",
-                }
-            ),
-            "is_active": forms.CheckboxInput(
-                attrs={
-                    "class": "form-check-input",
-                }
-            ),
-        }
-
-    def clean_code(self):
-        code = self.cleaned_data.get("code")
-        if code:
-            # Ensure code is numeric and 6-8 digits
-            if not code.isdigit():
-                raise ValidationError("HSN Code must contain only numbers")
-            if len(code) < 6 or len(code) > 8:
-                raise ValidationError("HSN Code must be 6-8 digits long")
-        return code
-
-    def clean_gst_percentage(self):
-        gst_percentage = self.cleaned_data.get("gst_percentage")
-        if gst_percentage is not None and (gst_percentage < 0 or gst_percentage > 40):
-            raise ValidationError("GST percentage must be between 0.00 and 40.00")
-        return gst_percentage
-
-    def clean_cess_rate(self):
-        cess_rate = self.cleaned_data.get("cess_rate")
-        if cess_rate is not None and (cess_rate < 0 or cess_rate > 25):
-            raise ValidationError("Cess rate must be between 0.00 and 25.00")
-        return cess_rate

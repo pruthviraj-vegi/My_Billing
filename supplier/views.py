@@ -1,6 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.template.loader import render_to_string
 from django.http import JsonResponse
 from django.db.models import (
     Q,
@@ -17,24 +16,13 @@ from django.db.models.functions import Coalesce
 from django.contrib import messages
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-from django.utils import timezone
 from datetime import timedelta
-from django.core.paginator import Paginator
-from django.template.loader import render_to_string
 from decimal import Decimal
 from base.getDates import getDates
-from .models import (
-    Supplier,
-    SupplierInvoice,
-    SupplierPayment,
-    SupplierPaymentAllocation,
-)
-from .forms import (
-    SupplierForm,
-    SupplierInvoiceForm,
-    SupplierPaymentForm,
-    SupplierPaymentAllocationForm,
-)
+from .models import Supplier, SupplierInvoice, SupplierPayment
+from .forms import SupplierForm, SupplierInvoiceForm, SupplierPaymentForm
+
+from base.utility import get_periodic_data, get_period_label, render_paginated_response
 import logging
 
 logger = logging.getLogger(__name__)
@@ -60,10 +48,8 @@ def get_total_outstanding_balance():
     return (total_all_invoiced - total_all_paid).quantize(Decimal("0.01"))
 
 
-@login_required
 def dashboard(request):
     """Supplier management dashboard with analytics and insights."""
-    date_filter = request.GET.get("date_filter", "this_month")
 
     # Calculate full balance due (all invoices - all payments, regardless of status)
     # This matches the logic in Supplier.balance_due property
@@ -73,7 +59,6 @@ def dashboard(request):
     total_suppliers = Supplier.objects.filter(is_deleted=False).count()
 
     context = {
-        "date_filter": date_filter,
         "total_outstanding": total_outstanding,
         "total_suppliers": total_suppliers,
     }
@@ -83,66 +68,9 @@ def dashboard(request):
 def get_comparison_data(date_filter, current_start, current_end):
     """Generate comparison data for line chart based on date filter"""
     # Calculate previous period dates
-    period_duration = current_end - current_start
-
-    if date_filter in ["today", "yesterday"]:
-        previous_start = current_start - timedelta(days=1)
-        previous_end = current_end - timedelta(days=1)
-        period_type = "daily"
-    elif date_filter in ["this_month", "last_month"]:
-        if current_start.month == 1:
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=12
-            )
-        else:
-            previous_start = current_start.replace(month=current_start.month - 1)
-        if previous_start.month == 12:
-            next_month = previous_start.replace(year=previous_start.year + 1, month=1)
-        else:
-            next_month = previous_start.replace(month=previous_start.month + 1)
-        previous_end = next_month - timedelta(days=1)
-        period_type = "monthly"
-    elif date_filter in ["this_quarter", "last_quarter"]:
-        quarter = (current_start.month - 1) // 3
-        quarter_start_month = quarter * 3 + 1
-        previous_quarter_start = current_start.replace(
-            month=quarter_start_month - 3 if quarter_start_month > 3 else 9, day=1
-        )
-        if previous_quarter_start.month == 10:
-            previous_quarter_start = previous_quarter_start.replace(
-                year=previous_quarter_start.year - 1
-            )
-        previous_start = previous_quarter_start
-        period_type = "quarterly"
-    elif date_filter in ["this_finance", "last_finance"]:
-        if current_start.month >= 4:
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=4, day=1
-            )
-            previous_end = current_start.replace(
-                year=current_start.year, month=3, day=31
-            )
-        else:
-            previous_start = current_start.replace(
-                year=current_start.year - 2, month=4, day=1
-            )
-            previous_end = current_start.replace(
-                year=current_start.year - 1, month=3, day=31
-            )
-        period_type = "yearly"
-    else:
-        if current_start.month == 1:
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=12
-            )
-        else:
-            previous_start = current_start.replace(month=current_start.month - 1)
-        if previous_start.month == 12:
-            next_month = previous_start.replace(year=previous_start.year + 1, month=1)
-        else:
-            next_month = previous_start.replace(month=previous_start.month + 1)
-        previous_end = next_month - timedelta(days=1)
-        period_type = "monthly"
+    previous_start, previous_end, period_type = get_periodic_data(
+        date_filter, current_start, current_end
+    )
 
     current_invoices = SupplierInvoice.objects.filter(
         is_deleted=False, invoice_date__date__range=[current_start, current_end]
@@ -160,11 +88,11 @@ def get_comparison_data(date_filter, current_start, current_end):
 
     return {
         "current_period": {
-            "label": f"{current_start.strftime('%b %d, %Y')} - {current_end.strftime('%b %d, %Y')}",
+            "label": get_period_label(current_start, current_end, period_type),
             "data": current_data,
         },
         "previous_period": {
-            "label": f"{previous_start.strftime('%b %d, %Y')} - {previous_end.strftime('%b %d, %Y')}",
+            "label": get_period_label(previous_start, previous_end, period_type),
             "data": previous_data,
         },
         "period_type": period_type,
@@ -257,7 +185,6 @@ def get_period_data(invoices, start_date, end_date, period_type):
         return monthly_data
 
 
-@login_required
 def dashboard_fetch(request):
     """AJAX endpoint to fetch supplier dashboard data"""
     date_filter = request.GET.get("date_filter", "this_month")
@@ -385,7 +312,7 @@ def dashboard_fetch(request):
     invoice_status_data = []
     for status in invoice_status_breakdown:
         percentage = (
-            (status["count"] / total_invoices * 100) if total_invoices > 0 else 0
+            (status["amount"] / total_invoiced * 100) if total_invoiced > 0 else 0
         )
         invoice_status_data.append(
             {
@@ -397,31 +324,40 @@ def dashboard_fetch(request):
         )
 
     # Supplier breakdown data processing
+    # Calculate percentage based on sum of top 10 suppliers only (for pie chart accuracy)
+    # This ensures percentages add up to 100% for the displayed suppliers
     supplier_data = []
-    for supplier in supplier_breakdown:
-        percentage = (
-            (supplier["count"] / total_invoices * 100) if total_invoices > 0 else 0
-        )
+    # Convert QuerySet to list to avoid multiple evaluations
+    supplier_list = list(supplier_breakdown)
+    # Calculate total of top 10 suppliers only
+    top10_total = sum(float(s["amount"] or 0) for s in supplier_list)
+
+    for supplier in supplier_list:
+        supplier_amount = float(supplier["amount"] or 0)
+        percentage = (supplier_amount / top10_total * 100) if top10_total > 0 else 0
         supplier_data.append(
             {
                 "supplier_name": supplier["supplier__name"] or "Unknown",
                 "count": supplier["count"],
-                "amount": float(supplier["amount"] or 0),
+                "amount": supplier_amount,
                 "percentage": round(percentage, 1),
             }
         )
 
     # Invoice type data processing
+    # Calculate percentage: (type_amount / total_invoiced) * 100
+    # This shows what percentage of total invoiced amount belongs to each invoice type
     invoice_type_data = []
     for inv_type in invoice_type_breakdown:
+        type_amount = float(inv_type["amount"] or 0)
         percentage = (
-            (inv_type["count"] / total_invoices * 100) if total_invoices > 0 else 0
+            (type_amount / float(total_invoiced) * 100) if total_invoiced > 0 else 0
         )
         invoice_type_data.append(
             {
                 "category_name": inv_type["invoice_type"].replace("_", " ").title(),
                 "count": inv_type["count"],
-                "amount": float(inv_type["amount"] or 0),
+                "amount": type_amount,
                 "percentage": round(percentage, 1),
             }
         )
@@ -443,258 +379,6 @@ def dashboard_fetch(request):
     )
 
 
-@login_required
-def dashboard_old(request):
-    """Supplier management dashboard with analytics and insights - OLD VERSION"""
-
-    # Get date range filter (default to current month)
-    date_filter = request.GET.get("date_filter", "current_month")
-
-    # Calculate date ranges
-    today = timezone.now().date()
-    if date_filter == "current_month":
-        start_date = today.replace(day=1)
-        end_date = today
-    elif date_filter == "last_month":
-        last_month = today.replace(day=1) - timedelta(days=1)
-        start_date = last_month.replace(day=1)
-        end_date = today.replace(day=1) - timedelta(days=1)
-    elif date_filter == "last_3_months":
-        start_date = today - timedelta(days=90)
-        end_date = today
-    elif date_filter == "last_6_months":
-        start_date = today - timedelta(days=180)
-        end_date = today
-    elif date_filter == "current_year":
-        start_date = today.replace(month=1, day=1)
-        end_date = today
-    else:
-        start_date = today.replace(day=1)
-        end_date = today
-
-    # Overall Statistics
-    total_suppliers = Supplier.objects.filter(is_deleted=False).count()
-    active_suppliers = Supplier.objects.filter(is_deleted=False).count()
-    inactive_suppliers = Supplier.objects.filter(is_deleted=True).count()
-
-    # Financial Statistics
-    total_invoiced = (
-        SupplierInvoice.objects.filter(
-            is_deleted=False, invoice_date__date__range=[start_date, end_date]
-        ).aggregate(total=Sum("total_amount"))["total"]
-        or 0
-    )
-
-    total_paid = (
-        SupplierPayment.objects.filter(
-            is_deleted=False, payment_date__date__range=[start_date, end_date]
-        ).aggregate(total=Sum("amount"))["total"]
-        or 0
-    )
-
-    outstanding_balance = total_invoiced - total_paid
-
-    # Invoice Statistics
-    total_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False, invoice_date__date__range=[start_date, end_date]
-    ).count()
-
-    paid_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False,
-        status="PAID",
-        invoice_date__date__range=[start_date, end_date],
-    ).count()
-
-    unpaid_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False,
-        status="UNPAID",
-        invoice_date__date__range=[start_date, end_date],
-    ).count()
-
-    partially_paid_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False,
-        status="PARTIALLY_PAID",
-        invoice_date__date__range=[start_date, end_date],
-    ).count()
-
-    # Payment Statistics
-    total_payments = SupplierPayment.objects.filter(
-        is_deleted=False, payment_date__date__range=[start_date, end_date]
-    ).count()
-
-    # Top Suppliers by Outstanding Balance
-    top_suppliers_outstanding = (
-        Supplier.objects.filter(is_deleted=False)
-        .annotate(
-            total_invoiced=Sum(
-                "invoices__total_amount", filter=Q(invoices__is_deleted=False)
-            ),
-            total_paid=Sum(
-                "payments_made__amount", filter=Q(payments_made__is_deleted=False)
-            ),
-        )
-        .annotate(
-            outstanding=Sum(
-                "invoices__total_amount", filter=Q(invoices__is_deleted=False)
-            )
-            - Sum("payments_made__amount", filter=Q(payments_made__is_deleted=False))
-        )
-        .filter(outstanding__gt=0)
-        .order_by("-outstanding")[:5]
-    )
-
-    # Recent Activities
-    recent_invoices = (
-        SupplierInvoice.objects.filter(is_deleted=False)
-        .select_related("supplier")
-        .order_by("-created_at")[:5]
-    )
-
-    recent_payments = (
-        SupplierPayment.objects.filter(is_deleted=False)
-        .select_related("supplier")
-        .order_by("-created_at")[:5]
-    )
-
-    # Monthly Trends (last 6 months)
-    monthly_data = []
-    for i in range(6):
-        month_date = today - timedelta(days=30 * i)
-        month_start = month_date.replace(day=1)
-        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(
-            days=1
-        )
-
-        month_invoiced = (
-            SupplierInvoice.objects.filter(
-                is_deleted=False, invoice_date__date__range=[month_start, month_end]
-            ).aggregate(total=Sum("total_amount"))["total"]
-            or 0
-        )
-
-        month_paid = (
-            SupplierPayment.objects.filter(
-                is_deleted=False, payment_date__date__range=[month_start, month_end]
-            ).aggregate(total=Sum("amount"))["total"]
-            or 0
-        )
-
-        monthly_data.append(
-            {
-                "month": month_start.strftime("%b %Y"),
-                "invoiced": float(month_invoiced),
-                "paid": float(month_paid),
-                "outstanding": float(month_invoiced - month_paid),
-            }
-        )
-
-    monthly_data.reverse()  # Show oldest to newest
-
-    # Payment Method Distribution
-    payment_methods = (
-        SupplierPayment.objects.filter(
-            is_deleted=False, payment_date__date__range=[start_date, end_date]
-        )
-        .values("method")
-        .annotate(count=Count("id"), total_amount=Sum("amount"))
-        .order_by("-total_amount")
-    )
-
-    # Invoice Type Distribution
-    invoice_types = (
-        SupplierInvoice.objects.filter(
-            is_deleted=False, invoice_date__date__range=[start_date, end_date]
-        )
-        .values("invoice_type")
-        .annotate(count=Count("id"), total_amount=Sum("total_amount"))
-        .order_by("-total_amount")
-    )
-
-    # GST vs Non-GST Analysis
-    gst_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False,
-        invoice_type="GST_APPLICABLE",
-        invoice_date__date__range=[start_date, end_date],
-    ).aggregate(
-        count=Count("id"),
-        total_amount=Sum("total_amount"),
-        total_gst=Sum("cgst_amount") + Sum("igst_amount"),
-    )
-
-    local_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False,
-        invoice_type="LOCAL_PURCHASE",
-        invoice_date__date__range=[start_date, end_date],
-    ).aggregate(count=Count("id"), total_amount=Sum("total_amount"))
-
-    # Quick Actions Data
-    suppliers_needing_attention = (
-        Supplier.objects.filter(is_deleted=False)
-        .annotate(
-            total_invoiced=Sum(
-                "invoices__total_amount", filter=Q(invoices__is_deleted=False)
-            ),
-            total_paid=Sum(
-                "payments_made__amount", filter=Q(payments_made__is_deleted=False)
-            ),
-        )
-        .annotate(
-            outstanding=Sum(
-                "invoices__total_amount", filter=Q(invoices__is_deleted=False)
-            )
-            - Sum("payments_made__amount", filter=Q(payments_made__is_deleted=False))
-        )
-        .filter(outstanding__gt=0)
-        .count()
-    )
-
-    overdue_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False,
-        status__in=["UNPAID", "PARTIALLY_PAID"],
-        invoice_date__date__lt=today - timedelta(days=30),
-    ).count()
-
-    context = {
-        # Date filters
-        "date_filter": date_filter,
-        "start_date": start_date,
-        "end_date": end_date,
-        # Overall statistics
-        "total_suppliers": total_suppliers,
-        "active_suppliers": active_suppliers,
-        "inactive_suppliers": inactive_suppliers,
-        # Financial statistics
-        "total_invoiced": total_invoiced,
-        "total_paid": total_paid,
-        "outstanding_balance": outstanding_balance,
-        # Invoice statistics
-        "total_invoices": total_invoices,
-        "paid_invoices": paid_invoices,
-        "unpaid_invoices": unpaid_invoices,
-        "partially_paid_invoices": partially_paid_invoices,
-        # Payment statistics
-        "total_payments": total_payments,
-        # Top suppliers
-        "top_suppliers_outstanding": top_suppliers_outstanding,
-        # Recent activities
-        "recent_invoices": recent_invoices,
-        "recent_payments": recent_payments,
-        # Charts data
-        "monthly_data": monthly_data,
-        "payment_methods": list(payment_methods),
-        "invoice_types": list(invoice_types),
-        # GST analysis
-        "gst_invoices": gst_invoices,
-        "local_invoices": local_invoices,
-        # Quick actions
-        "suppliers_needing_attention": suppliers_needing_attention,
-        "overdue_invoices": overdue_invoices,
-    }
-
-    return render(request, "supplier/dashboard.html", context)
-
-
-@login_required
 def home(request):
     """Supplier management main page with search and filter functionality."""
 
@@ -799,36 +483,19 @@ def get_suppliers_data(request):
     return suppliers
 
 
-@login_required
 def fetch_suppliers(request):
     """AJAX endpoint to fetch suppliers with search, filter, sorting, and pagination."""
 
     suppliers = get_suppliers_data(request)
-    # Debug prints removed
 
-    paginator = Paginator(suppliers, SUPPLIERS_PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-    }
-
-    table_html = render_to_string("supplier/fetch.html", context, request=request)
-
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        suppliers,
+        "supplier/fetch.html",
+        per_page=SUPPLIERS_PER_PAGE,
     )
 
 
-@login_required
 def fetch_supplier_invoices(request, pk):
     """AJAX: fetch invoices for a supplier with pagination and optional sorting."""
     supplier = get_object_or_404(Supplier, id=pk)
@@ -851,32 +518,15 @@ def fetch_supplier_invoices(request, pk):
 
     queryset = supplier.invoices.filter(is_deleted=False).order_by(sort_by)
 
-    paginator = Paginator(queryset, 10)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        "supplier": supplier,
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-    }
-
-    table_html = render_to_string(
-        "supplier/invoice/fetch.html", context, request=request
-    )
-
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        queryset,
+        "supplier/invoice/fetch.html",
+        per_page=8,
+        supplier=supplier,
     )
 
 
-@login_required
 def fetch_supplier_payments(request, pk):
     """AJAX: fetch payments for a supplier with pagination and optional sorting."""
     supplier = get_object_or_404(Supplier, id=pk)
@@ -899,45 +549,28 @@ def fetch_supplier_payments(request, pk):
 
     queryset = supplier.payments_made.filter(is_deleted=False).order_by(sort_by)
 
-    paginator = Paginator(queryset, 10)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        "supplier": supplier,
-        "page_obj": page_obj,
-        "total_count": paginator.count,
-    }
-
-    table_html = render_to_string(
-        "supplier/payment/fetch.html", context, request=request
-    )
-
-    pagination_html = ""
-    if page_obj and page_obj.paginator.num_pages > 1:
-        pagination_html = render_to_string(
-            "common/_pagination.html", context, request=request
-        )
-
-    return JsonResponse(
-        {"html": table_html, "pagination": pagination_html, "success": True}
+    return render_paginated_response(
+        request,
+        queryset,
+        "supplier/payment/fetch.html",
+        per_page=8,
+        supplier=supplier,
     )
 
 
-@login_required
 def supplier_detail(request, pk):
     """View supplier details with invoices and payments tables."""
     supplier = get_object_or_404(Supplier, id=pk)
 
     # Get actual invoices from database
-    invoices = supplier.invoices.all().order_by("-invoice_date")
+    invoices = supplier.invoices.filter(is_deleted=False).order_by("-invoice_date")
 
     # Calculate invoice summary data
     total_invoice_amount = sum(invoice.total_amount for invoice in invoices)
     unpaid_invoices_count = sum(1 for invoice in invoices if invoice.status != "PAID")
 
     # Get actual payments from database (replace sample data later)
-    payments = supplier.payments_made.all().order_by("-payment_date")
+    payments = supplier.payments_made.filter(is_deleted=False).order_by("-payment_date")
 
     # Calculate payment summary data
     total_payment_amount = sum(payment.amount for payment in payments)
@@ -956,7 +589,6 @@ def supplier_detail(request, pk):
     return render(request, "supplier/detail.html", context)
 
 
-@login_required
 def delete_invoice(request, supplier_pk, invoice_pk):
     """Delete an invoice."""
     supplier = get_object_or_404(Supplier, id=supplier_pk)
@@ -973,42 +605,7 @@ def delete_invoice(request, supplier_pk, invoice_pk):
     return render(request, "supplier/invoice/delete.html", context)
 
 
-@login_required
-def search_suppliers_ajax(request):
-    """AJAX endpoint for real-time supplier search."""
-    search_query = request.GET.get("q", "")
-
-    if len(search_query) < 2:
-        return JsonResponse({"suppliers": []})
-
-    suppliers = Supplier.objects.filter(
-        Q(name__icontains=search_query)
-        | Q(contact_person__icontains=search_query)
-        | Q(phone__icontains=search_query)
-        | Q(email__icontains=search_query)
-        | Q(gstin__icontains=search_query)
-    )[
-        :10
-    ]  # Limit to 10 results
-
-    data = []
-    for supplier in suppliers:
-        data.append(
-            {
-                "id": supplier.id,
-                "name": supplier.name,
-                "contact_person": supplier.contact_person,
-                "phone": supplier.phone,
-                "email": supplier.email,
-                "gstin": supplier.gstin,
-                "is_active": not supplier.is_deleted,
-            }
-        )
-
-    return JsonResponse({"suppliers": data})
-
-
-class CreateSupplier(LoginRequiredMixin, CreateView):
+class CreateSupplier(CreateView):
     model = Supplier
     form_class = SupplierForm
     template_name = "supplier/form.html"
@@ -1031,7 +628,7 @@ class CreateSupplier(LoginRequiredMixin, CreateView):
         return context
 
 
-class EditSupplier(LoginRequiredMixin, UpdateView):
+class EditSupplier(UpdateView):
     model = Supplier
     form_class = SupplierForm
     template_name = "supplier/form.html"
@@ -1053,7 +650,7 @@ class EditSupplier(LoginRequiredMixin, UpdateView):
         return super().form_invalid(form)
 
 
-class DeleteSupplier(LoginRequiredMixin, DeleteView):
+class DeleteSupplier(DeleteView):
     model = Supplier
     success_url = reverse_lazy("supplier:home")
     template_name = "supplier/delete.html"
@@ -1075,7 +672,7 @@ class DeleteSupplier(LoginRequiredMixin, DeleteView):
 
 
 # Payment Views
-class CreatePayment(LoginRequiredMixin, CreateView):
+class CreatePayment(CreateView):
     model = SupplierPayment
     form_class = SupplierPaymentForm
     template_name = "supplier/payment/form.html"
@@ -1097,12 +694,13 @@ class CreatePayment(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.supplier = self.supplier
         form.instance.created_by = self.request.user
-        form.instance.save()
+        # Let super().form_valid() handle the save - it will trigger the signal correctly
+        response = super().form_valid(form)
         messages.success(
             self.request,
             f"Payment of ₹{form.instance.amount} recorded successfully!",
         )
-        return super().form_valid(form)
+        return response
 
     def form_invalid(self, form):
         logger.error(f"Form invalid: {form.errors}")
@@ -1114,7 +712,7 @@ class CreatePayment(LoginRequiredMixin, CreateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class EditPayment(LoginRequiredMixin, UpdateView):
+class EditPayment(UpdateView):
     model = SupplierPayment
     form_class = SupplierPaymentForm
     template_name = "supplier/payment/form.html"
@@ -1145,21 +743,8 @@ class EditPayment(LoginRequiredMixin, UpdateView):
         return kwargs
 
     def form_valid(self, form):
-        # Get the old payment amount before saving
-        old_amount = self.get_object().amount
-        new_amount = form.cleaned_data["amount"]
-
-        # Save the payment
+        # Save the payment - signals will handle reallocation automatically
         payment = form.save()
-
-        # Recalculate unallocated amount if payment amount changed
-        if old_amount != new_amount:
-            total_allocated = (
-                payment.allocations.aggregate(total=Sum("amount_allocated"))["total"]
-                or 0
-            )
-            payment.unallocated_amount = new_amount - total_allocated
-            payment.save(update_fields=["unallocated_amount"])
 
         messages.success(
             self.request,
@@ -1179,259 +764,7 @@ class EditPayment(LoginRequiredMixin, UpdateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-@login_required
-def delete_payment(request, supplier_pk, payment_pk):
-    """Delete a payment."""
-    supplier = get_object_or_404(Supplier, id=supplier_pk)
-    payment = get_object_or_404(SupplierPayment, id=payment_pk, supplier=supplier)
-
-    if request.method == "POST":
-        payment_amount = payment.amount
-        payment.delete()
-        messages.success(request, f"Payment of ₹{payment_amount} deleted successfully!")
-        return redirect("supplier:detail", pk=supplier_pk)
-
-    context = {"supplier": supplier, "payment": payment}
-
-    return render(request, "supplier/payment/delete.html", context)
-
-
-@login_required
-def payment_detail(request, supplier_pk, payment_pk):
-    """View payment details."""
-    supplier = get_object_or_404(Supplier, id=supplier_pk)
-    payment = get_object_or_404(SupplierPayment, id=payment_pk, supplier=supplier)
-
-    # Get payment allocations if any
-    allocations = payment.allocations.all().select_related("invoice")
-
-    context = {
-        "supplier": supplier,
-        "payment": payment,
-        "allocations": allocations,
-    }
-
-    return render(request, "supplier/payment/detail.html", context)
-
-
-# Allocation Views
-class CreateAllocation(LoginRequiredMixin, CreateView):
-    model = SupplierPaymentAllocation
-    form_class = SupplierPaymentAllocationForm
-    template_name = "supplier/allocation/form.html"
-
-    def get_success_url(self):
-        return reverse_lazy(
-            "supplier:payment_detail",
-            kwargs={"supplier_pk": self.supplier.pk, "payment_pk": self.payment.pk},
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["title"] = "Allocate Payment"
-        context["supplier"] = self.supplier
-        context["payment"] = self.payment
-        return context
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["payment"] = self.payment
-        kwargs["supplier"] = self.supplier
-        return kwargs
-
-    def form_valid(self, form):
-        form.instance.payment = self.payment
-        form.instance.created_by = self.request.user
-
-        # Save the allocation
-        allocation = form.save()
-
-        # Update payment unallocated amount
-        self.payment.unallocated_amount -= allocation.amount_allocated
-        self.payment.save()
-
-        # Recalculate paid amount for the invoice based on all allocations
-        invoice = allocation.invoice
-        total_allocated = (
-            invoice.allocations.aggregate(total=Sum("amount_allocated"))["total"] or 0
-        )
-        invoice.paid_amount = total_allocated
-
-        # Update invoice status
-        if invoice.paid_amount >= invoice.total_amount:
-            invoice.status = "PAID"
-        elif invoice.paid_amount > 0:
-            invoice.status = "PARTIALLY_PAID"
-        else:
-            invoice.status = "UNPAID"
-
-        invoice.save()
-
-        messages.success(
-            self.request,
-            f"₹{allocation.amount_allocated:,.2f} allocated to Invoice {invoice.invoice_number} successfully!",
-        )
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
-        messages.error(self.request, "Please correct the errors below.")
-        return super().form_invalid(form)
-
-    def dispatch(self, request, *args, **kwargs):
-        self.supplier = get_object_or_404(Supplier, id=kwargs["supplier_pk"])
-        self.payment = get_object_or_404(
-            SupplierPayment, id=kwargs["payment_pk"], supplier=self.supplier
-        )
-        return super().dispatch(request, *args, **kwargs)
-
-
-class EditAllocation(LoginRequiredMixin, UpdateView):
-    model = SupplierPaymentAllocation
-    form_class = SupplierPaymentAllocationForm
-    template_name = "supplier/allocation/form.html"
-    pk_url_kwarg = "allocation_pk"
-
-    def get_success_url(self):
-        return reverse_lazy(
-            "supplier:payment_detail",
-            kwargs={"supplier_pk": self.supplier.pk, "payment_pk": self.payment.pk},
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["title"] = "Edit Allocation"
-        context["supplier"] = self.supplier
-        context["payment"] = self.payment
-        context["allocation"] = self.get_object()
-
-        # Calculate available amount for editing (unallocated + current allocation)
-        current_allocation = self.get_object()
-        available_amount = (
-            self.payment.unallocated_amount + current_allocation.amount_allocated
-        )
-        context["available_amount"] = available_amount
-
-        return context
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        # Create a temporary payment object for form validation without modifying the actual payment
-        temp_payment = type(self.payment)(
-            id=self.payment.id,
-            amount=self.payment.amount,
-            unallocated_amount=self.payment.unallocated_amount
-            + self.get_object().amount_allocated,
-        )
-        kwargs["payment"] = temp_payment
-        kwargs["supplier"] = self.supplier
-        kwargs["current_allocation"] = self.get_object()
-        return kwargs
-
-    def form_valid(self, form):
-        old_allocation = self.get_object()
-        old_amount = old_allocation.amount_allocated
-        old_invoice = old_allocation.invoice
-
-        # Revert old allocation
-        self.payment.unallocated_amount += old_amount
-        self.payment.save()
-
-        # Save new allocation
-        allocation = form.save()
-
-        # Apply new allocation
-        self.payment.unallocated_amount -= allocation.amount_allocated
-        self.payment.save()
-
-        # Recalculate paid amount for the invoice based on all allocations
-        invoice = allocation.invoice
-        total_allocated = (
-            invoice.allocations.aggregate(total=Sum("amount_allocated"))["total"] or 0
-        )
-        invoice.paid_amount = total_allocated
-
-        # Update invoice status
-        if invoice.paid_amount >= invoice.total_amount:
-            invoice.status = "PAID"
-        elif invoice.paid_amount > 0:
-            invoice.status = "PARTIALLY_PAID"
-        else:
-            invoice.status = "UNPAID"
-        invoice.save()
-
-        messages.success(
-            self.request,
-            f"Allocation updated successfully!",
-        )
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
-        messages.error(
-            self.request, "Invalid form submission. Please check your inputs."
-        )
-        return super().form_invalid(form)
-
-    def dispatch(self, request, *args, **kwargs):
-        self.supplier = get_object_or_404(Supplier, id=kwargs["supplier_pk"])
-        self.payment = get_object_or_404(
-            SupplierPayment, id=kwargs["payment_pk"], supplier=self.supplier
-        )
-        return super().dispatch(request, *args, **kwargs)
-
-
-@login_required
-def delete_allocation(request, supplier_pk, payment_pk, allocation_pk):
-    """Delete an allocation."""
-    supplier = get_object_or_404(Supplier, id=supplier_pk)
-    payment = get_object_or_404(SupplierPayment, id=payment_pk, supplier=supplier)
-    allocation = get_object_or_404(
-        SupplierPaymentAllocation, id=allocation_pk, payment=payment
-    )
-
-    if request.method == "POST":
-        # Revert the allocation
-        payment.unallocated_amount += allocation.amount_allocated
-        payment.save()
-
-        # Recalculate paid amount for the invoice based on remaining allocations
-        invoice = allocation.invoice
-        allocation_amount = allocation.amount_allocated
-        allocation.delete()
-
-        # Recalculate total allocated amount after deletion
-        total_allocated = (
-            invoice.allocations.aggregate(total=Sum("amount_allocated"))["total"] or 0
-        )
-        invoice.paid_amount = total_allocated
-
-        # Update invoice status
-        if invoice.paid_amount >= invoice.total_amount:
-            invoice.status = "PAID"
-        elif invoice.paid_amount > 0:
-            invoice.status = "PARTIALLY_PAID"
-        else:
-            invoice.status = "UNPAID"
-        invoice.save()
-
-        messages.success(
-            request, f"Allocation of ₹{allocation_amount:,.2f} deleted successfully!"
-        )
-        return redirect(
-            "supplier:payment_detail", supplier_pk=supplier_pk, payment_pk=payment_pk
-        )
-
-    context = {
-        "supplier": supplier,
-        "payment": payment,
-        "allocation": allocation,
-    }
-
-    return render(request, "supplier/allocation/delete.html", context)
-
-
-class CreateInvoice(LoginRequiredMixin, CreateView):
+class CreateInvoice(CreateView):
     model = SupplierInvoice
     form_class = SupplierInvoiceForm
     template_name = "supplier/invoice/form.html"
@@ -1471,7 +804,7 @@ class CreateInvoice(LoginRequiredMixin, CreateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class EditInvoice(LoginRequiredMixin, UpdateView):
+class EditInvoice(UpdateView):
     model = SupplierInvoice
     form_class = SupplierInvoiceForm
     template_name = "supplier/invoice/form.html"
@@ -1511,189 +844,207 @@ class EditInvoice(LoginRequiredMixin, UpdateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-@login_required
-def supplier_report(request, pk):
-    """Generate a comprehensive report showing all purchases and payments for a supplier sorted by date."""
-    supplier = get_object_or_404(Supplier, id=pk)
+def delete_payment(request, supplier_pk, payment_pk):
+    """Delete a payment."""
+    supplier = get_object_or_404(Supplier, id=supplier_pk)
+    payment = get_object_or_404(SupplierPayment, id=payment_pk, supplier=supplier)
 
-    # Get view type parameter (timeline or table)
-    view_type = request.GET.get("view", "timeline")
+    if request.method == "POST":
+        payment_amount = payment.amount
+        payment.delete()
+        messages.success(request, f"Payment of ₹{payment_amount} deleted successfully!")
+        return redirect("supplier:detail", pk=supplier_pk)
 
-    # Get all invoices and payments
-    invoices = supplier.invoices.all().order_by("invoice_date")
-    payments = supplier.payments_made.all().order_by("payment_date")
+    context = {"supplier": supplier, "payment": payment}
 
-    # Create a combined timeline of all transactions
-    transactions = []
+    return render(request, "supplier/payment/delete.html", context)
 
-    # Add invoices to transactions
-    for invoice in invoices:
-        transactions.append(
-            {
-                "date": invoice.invoice_date,
-                "type": "invoice",
-                "object": invoice,
-                "amount": invoice.total_amount,
-                "description": f"Invoice #{invoice.invoice_number}",
-                "status": invoice.status,
-                "method": None,
-                "reference": invoice.invoice_number,
-                "gst_type": invoice.gst_type,
-                "sub_total": invoice.sub_total,
-                "cgst_amount": invoice.cgst_amount,
-                "igst_amount": invoice.igst_amount,
-                "adjustment_amount": invoice.adjustment_amount,
-                "paid_amount": invoice.paid_amount,
-                "notes": invoice.notes,
-            }
-        )
 
-    # Add payments to transactions
-    for payment in payments:
-        transactions.append(
-            {
-                "date": payment.payment_date,
-                "type": "payment",
-                "object": payment,
-                "amount": payment.amount,
-                "description": f"Payment #{payment.id}",
-                "status": "PAID",
-                "method": payment.method,
-                "reference": payment.transaction_id,
-                "gst_type": None,
-                "sub_total": None,
-                "cgst_amount": None,
-                "igst_amount": None,
-                "adjustment_amount": None,
-                "paid_amount": None,
-                "notes": None,
-                "unallocated_amount": payment.unallocated_amount,
-            }
-        )
+def payment_detail(request, supplier_pk, payment_pk):
+    """View payment details."""
+    supplier = get_object_or_404(Supplier, id=supplier_pk)
+    payment = get_object_or_404(SupplierPayment, id=payment_pk, supplier=supplier)
 
-    # Sort all transactions by date (oldest first)
-    transactions.sort(key=lambda x: x["date"])
-
-    # Calculate running balance
-    running_balance = 0
-    for transaction in transactions:
-        if transaction["type"] == "invoice":
-            running_balance += transaction["amount"]
-        else:  # payment
-            running_balance -= transaction["amount"]
-        transaction["running_balance"] = running_balance
-
-    # Calculate summary statistics
-    total_invoiced = sum(t["amount"] for t in transactions if t["type"] == "invoice")
-    total_paid = sum(t["amount"] for t in transactions if t["type"] == "payment")
-    outstanding_balance = total_invoiced - total_paid
-
-    # Get date range for filtering
-    start_date = request.GET.get("start_date")
-    end_date = request.GET.get("end_date")
-
-    if start_date:
-        try:
-            from datetime import datetime
-
-            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-            transactions = [t for t in transactions if t["date"] >= start_date]
-        except ValueError:
-            start_date = None
-
-    if end_date:
-        try:
-            from datetime import datetime
-
-            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
-            transactions = [t for t in transactions if t["date"] <= end_date]
-        except ValueError:
-            end_date = None
+    # Get payment allocations if any
+    allocations = payment.allocations.all().select_related("invoice")
 
     context = {
         "supplier": supplier,
+        "payment": payment,
+        "allocations": allocations,
+    }
+
+    return render(request, "supplier/payment/detail.html", context)
+
+
+def get_opening_balance(supplier, start_date):
+    """Get the opening balance for a supplier at a specific date."""
+    invoice_filters = Q(is_deleted=False) & Q(invoice_date__date__lt=start_date)
+    payment_filters = Q(is_deleted=False) & Q(payment_date__date__lt=start_date)
+    invoices = supplier.invoices.filter(invoice_filters).order_by("invoice_date")
+    payments = supplier.payments_made.filter(payment_filters).order_by("payment_date")
+    total_invoiced = invoices.aggregate(total=Sum("total_amount"))["total"] or 0
+    total_paid = payments.aggregate(total=Sum("amount"))["total"] or 0
+    return total_invoiced - total_paid
+
+
+def get_supplier_report_data(supplier, date_range):
+    # Fetch only necessary fields
+
+    opening_balance = get_opening_balance(supplier, date_range[0])
+
+    invoices = (
+        supplier.invoices.filter(is_deleted=False, invoice_date__date__range=date_range)
+        .only("id", "invoice_date", "total_amount", "invoice_number", "status", "notes")
+        .order_by("invoice_date")
+    )
+
+    payments = (
+        supplier.payments_made.filter(
+            is_deleted=False, payment_date__date__range=date_range
+        )
+        .only("id", "payment_date", "amount", "transaction_id")
+        .order_by("payment_date")
+    )
+
+    # Build transactions list using list comprehension
+    transactions = []
+
+    # Add invoices
+    transactions.extend(
+        [
+            {
+                "date": invoice.invoice_date,
+                "type": "invoice",
+                "invoice_id": invoice.id,
+                "credit": invoice.total_amount,
+                "debit": Decimal("0"),
+                "description": invoice.invoice_number,
+                "status": invoice.status,
+                "reference": invoice.invoice_number,
+                "notes": invoice.notes or "",
+            }
+            for invoice in invoices
+        ]
+    )
+
+    # Add payments
+    transactions.extend(
+        [
+            {
+                "date": payment.payment_date,
+                "type": "payment",
+                "payment_id": payment.id,
+                "credit": Decimal("0"),
+                "debit": payment.amount,
+                "description": f"Payment #{payment.id}",
+                "status": "",
+                "reference": payment.transaction_id or "",
+                "notes": "",
+            }
+            for payment in payments
+        ]
+    )
+
+    # Sort by date (oldest first)
+    transactions.sort(key=lambda x: x["date"])
+
+    # Single-pass calculation: running balance and totals
+    running_balance = opening_balance
+    total_invoiced = Decimal("0")
+    total_paid = Decimal("0")
+
+    for transaction in transactions:
+        credit = transaction["credit"]
+        debit = transaction["debit"]
+
+        running_balance += credit - debit
+        transaction["running_balance"] = running_balance
+
+        total_invoiced += credit
+        total_paid += debit
+
+    outstanding_balance = total_invoiced - total_paid
+
+    context = {
         "transactions": transactions,
         "total_invoiced": total_invoiced,
         "total_paid": total_paid,
         "outstanding_balance": outstanding_balance,
-        "start_date": start_date,
-        "end_date": end_date,
-        "transaction_count": len(transactions),
-        "view_type": view_type,
+        "opening_balance": opening_balance,
+    }
+
+    return context
+
+
+def supplier_report(request, pk):
+    """Generate a comprehensive report showing all purchases and payments for a supplier sorted by date."""
+    supplier = get_object_or_404(Supplier, id=pk)
+
+    # Get date filter from request (default value)
+    date_filter = request.GET.get("date_filter", "this_month")
+
+    # Only pass supplier details - all transaction data will be loaded via AJAX
+    context = {
+        "supplier": supplier,
+        "date_filter": date_filter,
     }
 
     return render(request, "supplier/report.html", context)
 
 
-@login_required
+def supplier_report_fetch(request, pk):
+    """AJAX endpoint to fetch supplier report data - optimized version"""
+
+    supplier = get_object_or_404(Supplier, id=pk)
+    start_date, end_date = getDates(request)
+
+    # Get opening balance
+
+    # Define filters
+    date_range = [start_date, end_date]
+
+    # Get report data
+    context = get_supplier_report_data(supplier, date_range)
+
+    # Render table HTML
+    table_html = render_to_string(
+        "supplier/report/fetch.html",
+        {
+            "supplier": supplier,
+            "transactions": context["transactions"],
+            "opening_balance": context["opening_balance"],
+            "start_date": start_date,
+        },
+        request=request,
+    )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "total_invoiced": float(context["total_invoiced"]),
+            "total_paid": float(context["total_paid"]),
+            "outstanding_balance": float(context["outstanding_balance"]),
+            "opening_balance": float(context["opening_balance"]),
+            "transaction_count": len(context["transactions"]),
+            "table_html": table_html,
+        }
+    )
+
+
 def auto_reallocate(request, pk):
     """
     Auto reallocate payments using FIFO method.
-    This function deletes all existing allocations and reapplies them
-    in chronological order (oldest invoices first).
+    This function uses the signal's reallocation logic but skips signals
+    to avoid double reallocation.
     """
+    from supplier.signals import reallocate_supplier_payments
+
     supplier = get_object_or_404(Supplier, id=pk)
 
-    # Get all invoices and payments for this supplier
-    invoices = supplier.invoices.filter(is_deleted=False).order_by("invoice_date")
-    payments = supplier.payments_made.filter(is_deleted=False).order_by("payment_date")
-
-    # Delete all existing allocations for this supplier
-    SupplierPaymentAllocation.objects.filter(
-        payment__supplier=supplier, payment__is_deleted=False
-    ).delete()
-
-    # Reset all invoice paid amounts and status
-    for invoice in invoices:
-        invoice.paid_amount = 0
-        invoice.status = "UNPAID"
-        invoice.save()
-
-    # Reset all payment unallocated amounts
-    for payment in payments:
-        payment.unallocated_amount = payment.amount
-        payment.save()
-
-    # Implement FIFO allocation
-    for payment in payments:
-        remaining_payment_amount = payment.unallocated_amount
-
-        # Get unpaid invoices in chronological order (FIFO)
-        unpaid_invoices = invoices.filter(
-            status__in=["UNPAID", "PARTIALLY_PAID"]
-        ).order_by("invoice_date")
-
-        for invoice in unpaid_invoices:
-            if remaining_payment_amount <= 0:
-                break
-
-            # Calculate how much is still owed on this invoice
-            amount_owed = invoice.total_amount - invoice.paid_amount
-
-            if amount_owed > 0:
-                # Calculate allocation amount (either full remaining payment or full invoice amount)
-                allocation_amount = min(remaining_payment_amount, amount_owed)
-
-                # Create allocation
-                allocation = SupplierPaymentAllocation.objects.create(
-                    payment=payment,
-                    invoice=invoice,
-                    amount_allocated=allocation_amount,
-                    created_by=request.user,
-                )
-
-                # Update invoice paid amount and status
-                invoice.paid_amount += allocation_amount
-                if invoice.paid_amount >= invoice.total_amount:
-                    invoice.status = "PAID"
-                elif invoice.paid_amount > 0:
-                    invoice.status = "PARTIALLY_PAID"
-                invoice.save()
-
-                # Update payment unallocated amount
-                remaining_payment_amount -= allocation_amount
-                payment.unallocated_amount = remaining_payment_amount
-                payment.save()
+    # Use the signal's reallocation function directly
+    # This ensures consistency with automatic reallocation
+    reallocate_supplier_payments(supplier)
 
     messages.success(
         request,

@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{{ page_title }}</h1>
+    <div class="page-actions">
+        <a href="{% url 'setting:payment_details_edit' payment.pk %}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Edit
+        </a>
+        <a href="{% url 'setting:payment_details_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="details-container">
+    <div class="details-card">
+        <div class="details-header">
+            <div class="details-title">
+                <h2>{{ payment.payment_name }}</h2>
+                <span class="badge badge-info">{{ payment.get_payment_type_display }}</span>
+            </div>
+            <div class="details-status">
+                {% if payment.is_active %}
+                    <span class="status-badge status-active">
+                        <i class="fas fa-check-circle"></i> Active
+                    </span>
+                {% else %}
+                    <span class="status-badge status-inactive">
+                        <i class="fas fa-times-circle"></i> Inactive
+                    </span>
+                {% endif %}
+                
+                {% if payment.is_default %}
+                    <span class="badge badge-success ml-2">Default</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="details-body">
+            <!-- Basic Info -->
+            <div class="details-section">
+                <h3 class="section-title">Basic Information</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Payment Name</label>
+                        <p>{{ payment.payment_name }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Payment Type</label>
+                        <p>{{ payment.get_payment_type_display }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Display Order</label>
+                        <p>{{ payment.display_order }}</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Shop</label>
+                        <p>{{ payment.shop.shop_name }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Specific Details based on Type -->
+            {% if payment.payment_type == 'UPI' %}
+                <div class="details-section">
+                    <h3 class="section-title">UPI Details</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>UPI ID</label>
+                            <p>{{ payment.upi_id }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if payment.payment_type == 'BANK' %}
+                <div class="details-section">
+                    <h3 class="section-title">Bank Account Details</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Account Holder</label>
+                            <p>{{ payment.account_holder_name|default:"-" }}</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Bank Name</label>
+                            <p>{{ payment.bank_name|default:"-" }}</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Account Number</label>
+                            <p>{{ payment.account_number|default:"-" }}</p>
+                        </div>
+                        <div class="info-item">
+                            <label>IFSC Code</label>
+                            <p>{{ payment.ifsc_code|default:"-" }}</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Branch</label>
+                            <p>{{ payment.branch_name|default:"-" }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if payment.qr_code_image or payment.qr_code_url %}
+                <div class="details-section">
+                    <h3 class="section-title">QR Code</h3>
+                    <div class="row">
+                        {% if payment.qr_code_image %}
+                            <div class="col-md-6">
+                                <div class="qr-preview">
+                                    <img src="{{ payment.qr_code_image.url }}" alt="QR Code" class="img-fluid" style="max-width: 200px;">
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% if payment.qr_code_url %}
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <label>QR Code URL</label>
+                                    <p><a href="{{ payment.qr_code_url }}" target="_blank">{{ payment.qr_code_url }}</a></p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if payment.description %}
+                <div class="details-section">
+                    <h3 class="section-title">Additional Information</h3>
+                    <p>{{ payment.description|linebreaks }}</p>
+                </div>
+            {% endif %}
+            
+            {% if payment.counter_name %}
+                <div class="details-section">
+                    <h3 class="section-title">Location</h3>
+                    <div class="info-item">
+                        <label>Counter Name</label>
+                        <p>{{ payment.counter_name }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="details-footer">
+            <div class="meta-info">
+                <small>Created by {{ payment.created_by.username|default:"System" }} on {{ payment.created_at|date:"M d, Y" }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,7 +2,8 @@
 # File: accounts/forms.py
 # ------------------------------------------------------------------
 from django import forms
-from .models import CustomUser
+from django.utils import timezone
+from .models import CustomUser, Salary, Transaction
 
 
 class CustomUserForm(forms.ModelForm):
@@ -22,33 +23,56 @@ class CustomUserForm(forms.ModelForm):
         widgets = {
             "first_name": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter first name",
                     "autofocus": True,
                 }
             ),
             "last_name": forms.TextInput(
                 attrs={
-                    "class": "form-input",
                     "placeholder": "Enter last name",
                 }
             ),
             "phone_number": forms.TextInput(
                 attrs={
-                    "class": "form-input",
+                    "type": "tel",
                     "placeholder": "Enter phone number",
                     "maxlength": "15",
+                    "inputmode": "numeric",
                 }
             ),
-            "email": forms.EmailInput(
-                attrs={"class": "form-input", "placeholder": "Enter email address"}
-            ),
-            "role": forms.Select(attrs={"class": "form-select"}),
-            "is_active": forms.CheckboxInput(attrs={"class": "form-checkbox"}),
+            "email": forms.EmailInput(attrs={"placeholder": "Enter email address"}),
+            "role": forms.Select(attrs={}),
+            "is_active": forms.CheckboxInput(attrs={}),
             "address": forms.Textarea(
-                attrs={"class": "form-textarea", "placeholder": "Enter address"}
+                attrs={
+                    "placeholder": "Enter address",
+                    "rows": 3,
+                }
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add required field indicators
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.label = f"{field.label} *"
+
+        # Add appropriate classes to all fields based on widget type
+        for visible in self.visible_fields():
+            widget = visible.field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                widget.attrs["class"] = "form-checkbox"
+            elif isinstance(widget, forms.Select):
+                widget.attrs["class"] = "form-select"
+            elif isinstance(widget, forms.Textarea):
+                widget.attrs["class"] = "form-textarea"
+            else:
+                widget.attrs["class"] = "form-input"
+
+        # Override maxlength for phone_number to enforce 10 digits
+        self.fields["phone_number"].widget.attrs["maxlength"] = "10"
 
     def clean_phone_number(self):
         phone_number = self.cleaned_data.get("phone_number")
@@ -67,17 +91,15 @@ class CustomUserForm(forms.ModelForm):
 
         return phone_number
 
-    def clean_full_name(self):
-        full_name = self.cleaned_data.get("full_name")
-        if not full_name or not full_name.strip():
-            raise forms.ValidationError("Full name is required.")
-        return full_name.strip()
-
     def clean_email(self):
         email = self.cleaned_data.get("email")
         if email:
+            # Additional validation (Django's EmailField already validates basic format)
+            if "@" not in email:
+                raise forms.ValidationError("Please enter a valid email address.")
+
             # Check for duplicate email, excluding current instance
-            existing_user = CustomUser.objects.filter(email=email)
+            existing_user = CustomUser.objects.filter(email=email.lower())
             if self.instance and self.instance.pk:
                 existing_user = existing_user.exclude(pk=self.instance.pk)
 
@@ -85,6 +107,7 @@ class CustomUserForm(forms.ModelForm):
                 raise forms.ValidationError(
                     "This email address is already in use by another user."
                 )
+            return email.lower()
         return email or None  # Convert empty string to None
 
 
@@ -95,7 +118,6 @@ class PasswordResetForm(forms.Form):
         max_length=128,
         widget=forms.PasswordInput(
             attrs={
-                "class": "form-input",
                 "placeholder": "Enter new password",
                 "autofocus": True,
             }
@@ -107,12 +129,31 @@ class PasswordResetForm(forms.Form):
         max_length=128,
         widget=forms.PasswordInput(
             attrs={
-                "class": "form-input",
                 "placeholder": "Confirm new password",
             }
         ),
         label="Confirm Password",
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add required field indicators
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.label = f"{field.label} *"
+
+        # Add appropriate classes to all fields based on widget type
+        for visible in self.visible_fields():
+            widget = visible.field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                widget.attrs["class"] = "form-checkbox"
+            elif isinstance(widget, forms.Select):
+                widget.attrs["class"] = "form-select"
+            elif isinstance(widget, forms.Textarea):
+                widget.attrs["class"] = "form-textarea"
+            else:
+                widget.attrs["class"] = "form-input"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -130,3 +171,154 @@ class PasswordResetForm(forms.Form):
         if not new_password:
             raise forms.ValidationError("Password is required.")
         return new_password
+
+
+class SalaryForm(forms.ModelForm):
+    """Form for creating and editing salary records."""
+
+    class Meta:
+        model = Salary
+        fields = ("amount", "commission", "effective_from", "effective_to")
+        widgets = {
+            "amount": forms.NumberInput(
+                attrs={
+                    "placeholder": "Enter salary amount",
+                    "autofocus": True,
+                }
+            ),
+            "commission": forms.CheckboxInput(attrs={}),
+            "effective_from": forms.DateTimeInput(
+                attrs={
+                    "type": "datetime-local",
+                }
+            ),
+            "effective_to": forms.DateTimeInput(
+                attrs={
+                    "type": "datetime-local",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Add required field indicators
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.label = f"{field.label} *"
+
+        # Add appropriate classes to all fields based on widget type
+        for visible in self.visible_fields():
+            widget = visible.field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                widget.attrs["class"] = "form-checkbox"
+            elif isinstance(widget, forms.Select):
+                widget.attrs["class"] = "form-select"
+            elif isinstance(widget, forms.Textarea):
+                widget.attrs["class"] = "form-textarea"
+            else:
+                widget.attrs["class"] = "form-input"
+
+        if not self.instance.pk:
+            # For new salary, set default effective_from to today
+            self.fields["effective_from"].initial = timezone.now().date()
+            # If there's a current salary, suggest setting its effective_to
+            if self.user:
+                current_salary = self.user.salaries.filter(
+                    effective_to__isnull=True
+                ).first()
+                if current_salary:
+                    self.fields["effective_to"].help_text = (
+                        f"Setting this will end the current salary "
+                        f"(effective from {current_salary.effective_from}). "
+                        f"Leave blank to keep current salary active."
+                    )
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get("amount")
+        if amount is not None and amount <= 0:
+            raise forms.ValidationError("Amount must be greater than 0.")
+        return amount
+
+    def clean(self):
+        cleaned_data = super().clean()
+        effective_from = cleaned_data.get("effective_from")
+        effective_to = cleaned_data.get("effective_to")
+
+        if effective_from and effective_to:
+            if effective_to < effective_from:
+                raise forms.ValidationError(
+                    "Effective to date cannot be before effective from date."
+                )
+
+        return cleaned_data
+
+
+class TransactionForm(forms.ModelForm):
+    """Form for creating and editing transactions."""
+
+    class Meta:
+        model = Transaction
+        fields = (
+            "transaction_type",
+            "amount",
+            "payment_method",
+            "description",
+            "reference_number",
+            "notes",
+        )
+        widgets = {
+            "transaction_type": forms.Select(attrs={}),
+            "amount": forms.NumberInput(
+                attrs={
+                    "placeholder": "Enter amount",
+                    "autofocus": True,
+                }
+            ),
+            "payment_method": forms.Select(attrs={}),
+            "description": forms.Textarea(
+                attrs={
+                    "placeholder": "Enter transaction description",
+                    "rows": 2,
+                }
+            ),
+            "reference_number": forms.TextInput(
+                attrs={
+                    "placeholder": "Enter reference number (optional)",
+                }
+            ),
+            "notes": forms.Textarea(
+                attrs={
+                    "placeholder": "Internal notes (optional)",
+                    "rows": 2,
+                }
+            ),
+        }
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get("amount")
+        if amount is not None and amount == 0:
+            raise forms.ValidationError("Amount cannot be 0.")
+        return amount
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Add required field indicators
+        for field_name, field in self.fields.items():
+            if field.required:
+                field.label = f"{field.label} *"
+
+        # Add appropriate classes to all fields based on widget type
+        for visible in self.visible_fields():
+            widget = visible.field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                widget.attrs["class"] = "form-checkbox"
+            elif isinstance(widget, forms.Select):
+                widget.attrs["class"] = "form-select"
+            elif isinstance(widget, forms.Textarea):
+                widget.attrs["class"] = "form-textarea"
+            else:
+                widget.attrs["class"] = "form-input"

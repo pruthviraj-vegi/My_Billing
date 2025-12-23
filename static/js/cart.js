@@ -221,7 +221,13 @@ class CartManager {
     async onBarcodeSubmit(e) {
         e.preventDefault();
         const code = this.dom.input.value.trim();
-        if (!code) return this.notify('Please enter a barcode', 'error');
+
+        // Simple validation - no guard needed for barcode scanner
+        if (!code) {
+            this.notify('Please enter a barcode', 'error');
+            this.focusBarcode();
+            return;
+        }
 
         try {
             const data = await this.api(this.urls.scanBarcode, 'POST', {
@@ -231,13 +237,15 @@ class CartManager {
             });
 
             if (data.status !== 'success') {
-                return this.notify(data.message || 'Failed to add item', 'error');
+                this.notify(data.message || 'Failed to add item', 'error');
+                return;
             }
 
             this.dom.input.value = '';
 
             if (!data.cart_item) {
-                return this.notify('Invalid response structure', 'error');
+                this.notify('Invalid response structure', 'error');
+                return;
             }
 
             if (data.type === 'Create') {
@@ -257,10 +265,6 @@ class CartManager {
             console.error('Error in barcode submission:', err);
             this.notify(`Error adding product to cart: ${err.message}`, 'error');
         } finally {
-            // Mark form submission as complete (for FormSubmitGuard)
-            if (window.FormSubmitGuard && this.dom.form) {
-                window.FormSubmitGuard.complete(this.dom.form);
-            }
             this.focusBarcode();
         }
     }

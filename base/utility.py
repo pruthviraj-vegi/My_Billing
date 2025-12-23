@@ -1,7 +1,9 @@
-from fuzzywuzzy import process
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import time
 from functools import wraps
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.template.loader import render_to_string
 
 
 def get_financial_year(value):
@@ -117,11 +119,108 @@ class StringProcessor:
         return self.cleaned_string.capitalize()
 
 
+def get_periodic_data(date_filter, current_start, current_end):
+    """Return previous_start, previous_end, period_type for a given date filter."""
+
+    # ---------------- DAILY ----------------
+    if date_filter in ["today", "yesterday"]:
+        return (
+            current_start - timedelta(days=1),
+            current_end - timedelta(days=1),
+            "daily",
+        )
+
+    # ---------------- MONTHLY ----------------
+    if date_filter in ["this_month", "last_month"]:
+        if current_start.month == 1:
+            previous_start = current_start.replace(
+                year=current_start.year - 1, month=12
+            )
+        else:
+            previous_start = current_start.replace(month=current_start.month - 1)
+
+        # Next month of previous_start
+        if previous_start.month == 12:
+            next_month = previous_start.replace(year=previous_start.year + 1, month=1)
+        else:
+            next_month = previous_start.replace(month=previous_start.month + 1)
+
+        previous_end = next_month - timedelta(days=1)
+
+        return previous_start, previous_end, "monthly"
+
+    # ---------------- QUARTERLY ----------------
+    if date_filter in ["this_quarter", "last_quarter"]:
+        quarter_start_month = ((current_start.month - 1) // 3) * 3 + 1
+        current_q_start = current_start.replace(month=quarter_start_month, day=1)
+
+        # Determine previous quarter start
+        if quarter_start_month == 1:
+            prev_start = current_q_start.replace(
+                year=current_q_start.year - 1, month=10
+            )
+        else:
+            prev_start = current_q_start.replace(month=quarter_start_month - 3)
+
+        # Determine previous quarter end
+        prev_end = prev_start.replace(month=prev_start.month + 3, day=1) - timedelta(
+            days=1
+        )
+
+        return prev_start, prev_end, "quarterly"
+
+    # ---------------- FINANCIAL YEAR ----------------
+    if date_filter in ["this_finance", "last_finance"]:
+        if current_start.month >= 4:  # FY: Apr 1 – Mar 31
+            previous_start = current_start.replace(
+                year=current_start.year - 1, month=4, day=1
+            )
+            previous_end = current_start.replace(
+                year=current_start.year, month=3, day=31
+            )
+        else:
+            previous_start = current_start.replace(
+                year=current_start.year - 2, month=4, day=1
+            )
+            previous_end = current_start.replace(
+                year=current_start.year - 1, month=3, day=31
+            )
+
+        return previous_start, previous_end, "yearly"
+
+    # ---------------- DEFAULT: MONTHLY ----------------
+    if current_start.month == 1:
+        previous_start = current_start.replace(year=current_start.year - 1, month=12)
+    else:
+        previous_start = current_start.replace(month=current_start.month - 1)
+
+    if previous_start.month == 12:
+        next_month = previous_start.replace(year=previous_start.year + 1, month=1)
+    else:
+        next_month = previous_start.replace(month=previous_start.month + 1)
+
+    previous_end = next_month - timedelta(days=1)
+
+    return previous_start, previous_end, "monthly"
+
+
+def get_period_label(start_date, end_date, period_type):
+    if period_type == "daily":
+        return start_date.strftime("%B %d, %Y")
+    elif period_type == "monthly":
+        return f"{start_date.strftime('%B %d')} - {end_date.strftime('%B %d, %Y')}"
+    elif period_type == "quarterly":
+        return f"Q{((start_date.month - 1) // 3) + 1} {start_date.year}"
+    else:  # yearly
+        return f"FY {start_date.year}-{end_date.year}"
+
+
 def timed(fn):
     """
     Decorator to measure execution time of a function.
     Stores the last execution time in `fn._last_elapsed_time`.
     """
+
     @wraps(fn)
     def wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -134,3 +233,55 @@ def timed(fn):
 
     wrapper._last_elapsed_time = None  # init attribute
     return wrapper
+
+
+def render_paginated_response(
+    request,
+    queryset,
+    table_template,
+    per_page=20,
+    pagination_template="common/_pagination.html",
+    **kwargs,
+):
+    """
+    Reusable pagination + HTML rendering helper for HTMX/AJAX.
+
+    Args:
+        request: Django request object
+        queryset: List/QuerySet to paginate
+        table_template: Path to table HTML template
+        per_page: Number of items per page
+        pagination_template: Path to pagination template (optional)
+        **kwargs: Additional context variables to pass to template
+
+    Returns:
+        JsonResponse with HTML table + pagination
+    """
+    paginator = Paginator(queryset, per_page)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "total_count": paginator.count,
+    }
+    # Merge additional context from kwargs
+    context.update(kwargs)
+
+    # Render table
+    table_html = render_to_string(table_template, context, request=request)
+
+    # Render pagination if needed
+    pagination_html = ""
+    if page_obj and page_obj.paginator.num_pages > 1:
+        pagination_html = render_to_string(
+            pagination_template, context, request=request
+        )
+
+    return JsonResponse(
+        {
+            "html": table_html,
+            "pagination": pagination_html,
+            "success": True,
+        }
+    )

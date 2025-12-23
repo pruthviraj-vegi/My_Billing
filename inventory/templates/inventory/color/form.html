@@ -80,10 +80,17 @@
             {{ form.name }}
             <div class="suggestions-dropdown" id="nameSuggestions"></div>
           </div>
-          <small class="form-help">e.g., Red, Blue, Green...</small>
-          {% for error in form.name.errors %}
-            <div class="error-message"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
-          {% endfor %}
+          <small class="form-help {% if form.name.errors %}has-error{% endif %}">
+            {% if form.name.errors %}
+              {% for error in form.name.errors %}
+                <span class="form-error-inline">
+                  <i class="fas fa-exclamation-circle"></i>
+                  {{ error }}
+                </span>
+              {% endfor %}
+            {% endif %}
+            <span class="form-help-text">e.g., Red, Blue, Green...</span>
+          </small>
         </div>
 
         <!-- Hex Code -->
@@ -93,10 +100,17 @@
             {{ form.hex_code }}
             <div class="suggestions-dropdown" id="hexSuggestions"></div>
           </div>
-          <small class="form-help">e.g., #FF0000, #00FF00...</small>
-          {% for error in form.hex_code.errors %}
-            <div class="error-message"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
-          {% endfor %}
+          <small class="form-help {% if form.hex_code.errors %}has-error{% endif %}">
+            {% if form.hex_code.errors %}
+              {% for error in form.hex_code.errors %}
+                <span class="form-error-inline">
+                  <i class="fas fa-exclamation-circle"></i>
+                  {{ error }}
+                </span>
+              {% endfor %}
+            {% endif %}
+            <span class="form-help-text">e.g., #FF0000, #00FF00...</span>
+          </small>
         </div>
       </div>
 
