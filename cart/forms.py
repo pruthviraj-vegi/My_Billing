@@ -5,7 +5,7 @@ from .models import Cart
 class CartForm(forms.ModelForm):
     class Meta:
         model = Cart
-        fields = ["name", "status", "notes"]
+        fields = ["name", "status", "notes", "advance_payment"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -14,6 +14,14 @@ class CartForm(forms.ModelForm):
                     "maxlength": "255",
                     "autofocus": True,
                     "value": "Walk in",
+                }
+            ),
+            "advance_payment": forms.NumberInput(
+                attrs={
+                    "class": "form-input",
+                    "placeholder": "Enter advance payment",
+                    "maxlength": "10",
+                    "value": "0",
                 }
             ),
             "status": forms.Select(attrs={"class": "form-input"}),
@@ -25,6 +33,12 @@ class CartForm(forms.ModelForm):
                 }
             ),
         }
+
+    def clean_advance_payment(self):
+        advance_payment = self.cleaned_data.get("advance_payment")
+        if advance_payment is not None and advance_payment < 0:
+            raise forms.ValidationError("Advance payment cannot be negative")
+        return advance_payment
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
@@ -44,6 +58,11 @@ class CartForm(forms.ModelForm):
         self.fields["notes"].label = "Notes"
         self.fields["notes"].help_text = (
             "Optional notes about this cart (e.g., customer preferences, special instructions)"
+        )
+
+        self.fields["advance_payment"].label = "Advance Payment"
+        self.fields["advance_payment"].help_text = (
+            "Enter the advance payment received from customer"
         )
 
         # Set initial status to OPEN for new carts

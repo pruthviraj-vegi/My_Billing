@@ -21,13 +21,47 @@
                     <a href="{% url 'cart:getCartData' data.id %}"
                        class="btn cart-btn {% if data.id == cart.id %}btn-primary active-cart-btn{% else %}btn-secondary{% endif %}"
                        data-cart-id="{{ data.id }}">
-                        {{ data.name }} - <span class="value" id="cart-button-total-{{ data.id }}">{{ data.total_amount|currency }}</span>
+                        {{ data.name }} - <span class="value" id="cart-button-total-{{ data.id }}">{{ data.total_amount|currency }} {% if data.advance_payment > 0 %}
+                             ({{ data.advance_payment|currency }}){% endif %}</span>
                     </a>
                 {% endfor %}
             </div>
             <button type="button" class="nav-arrow nav-arrow-right" onclick="scrollCarts('right')" id="rightArrow">
                 <i class="fas fa-chevron-right"></i>
             </button>
+            <button type="button" class="nav-arrow list-cart-btn" onclick="toggleCartList()" id="listCartBtn" title="View all carts in list">
+                <i class="fas fa-list"></i>
+            </button>
+        </div>
+        <!-- Cart List Modal -->
+        <div class="cart-list-modal" id="cartListModal">
+            <div class="cart-list-overlay" onclick="toggleCartList()"></div>
+            <div class="cart-list-content">
+                <div class="cart-list-header">
+                    <h3>All Carts</h3>
+                    <button type="button" class="close-list-btn" onclick="toggleCartList()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="cart-list-body">
+                    <ul class="cart-list-items">
+                        {% for data in carts %}
+                            <li class="cart-list-item {% if data.id == cart.id %}active{% endif %}">
+                                <a href="{% url 'cart:getCartData' data.id %}" class="cart-list-link">
+                                    <div class="cart-list-info">
+                                        <span class="cart-list-name">{{ data.name }}</span>
+                                        <span class="cart-list-amount" id="cart-list-total-{{ data.id }}">{{ data.total_amount|currency }} {% if data.advance_payment > 0 %}
+                             ({{ data.advance_payment|currency }}){% endif %}</span>
+                                    </div>
+                                    {% if data.id == cart.id %}
+                                        <i class="fas fa-check-circle"></i>
+                                    {% endif %}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
         </div>
         <div class="page-actions">
             <a href="{% url 'cart:create_cart' %}" class="btn btn-primary">
@@ -117,6 +151,30 @@
             });
         }
     }
+    
+    // Toggle cart list modal
+    function toggleCartList() {
+        const modal = document.getElementById('cartListModal');
+        if (modal) {
+            modal.classList.toggle('show');
+            // Prevent body scroll when modal is open
+            if (modal.classList.contains('show')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+    }
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const modal = document.getElementById('cartListModal');
+            if (modal && modal.classList.contains('show')) {
+                toggleCartList();
+            }
+        }
+    });
     
     // Initialize arrow visibility on page load
     document.addEventListener('DOMContentLoaded', function() {
@@ -230,6 +288,214 @@
             max-width: 120px;
             font-size: 0.8em;
             padding: 8px 12px;
+        }
+    }
+    
+    /* List Cart Button - matches nav-arrow style */
+    .list-cart-btn {
+        margin-left: 10px;
+    }
+    
+    /* Cart List Modal */
+    .cart-list-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .cart-list-modal.show {
+        display: flex;
+        opacity: 1;
+    }
+    
+    .cart-list-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        cursor: pointer;
+        backdrop-filter: blur(2px);
+    }
+    
+    .cart-list-content {
+        position: relative;
+        background: var(--bg-surface, #ffffff);
+        margin: auto;
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
+        border: 1px solid var(--border-color, #e2e8f0);
+        display: flex;
+        flex-direction: column;
+        z-index: 1001;
+        animation: slideIn 0.3s ease;
+        overflow: hidden;
+    }
+    
+    @keyframes slideIn {
+        from {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .cart-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+        background: var(--bg-surface, #ffffff);
+    }
+    
+    .cart-list-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: var(--heading-weight, 600);
+        color: var(--text-primary, #1e293b);
+    }
+    
+    .close-list-btn {
+        background: transparent;
+        border: none;
+        font-size: 1.25rem;
+        color: var(--text-secondary, #64748b);
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+    }
+    
+    .close-list-btn:hover {
+        background-color: var(--bg-surface-hover, #f8fafc);
+        color: var(--primary, #2563eb);
+    }
+    
+    .close-list-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .cart-list-body {
+        overflow-y: auto;
+        flex: 1;
+        padding: 0.5rem 0;
+    }
+    
+    .cart-list-items {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .cart-list-item {
+        margin: 0;
+        padding: 0;
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+    }
+    
+    .cart-list-item:last-child {
+        border-bottom: none;
+    }
+    
+    .cart-list-link {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        text-decoration: none;
+        color: var(--text-primary, #1e293b);
+        transition: all 0.2s ease;
+    }
+    
+    .cart-list-link:hover {
+        background-color: var(--bg-surface-hover, #f8fafc);
+    }
+    
+    .cart-list-item.active .cart-list-link {
+        background-color: rgba(37, 99, 235, 0.08);
+        color: var(--primary, #2563eb);
+        font-weight: 500;
+        border-left: 3px solid var(--primary, #2563eb);
+    }
+    
+    .cart-list-info {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+    }
+    
+    .cart-list-name {
+        font-size: 1rem;
+        font-weight: 500;
+        color: inherit;
+    }
+    
+    .cart-list-amount {
+        font-size: 0.875rem;
+        color: var(--text-secondary, #64748b);
+        font-weight: 600;
+        margin-left: auto;
+    }
+    
+    .cart-list-item.active .cart-list-amount {
+        color: var(--primary, #2563eb);
+    }
+    
+    .cart-list-link i {
+        color: var(--primary, #2563eb);
+        font-size: 1.125rem;
+        margin-left: 0.75rem;
+        flex-shrink: 0;
+    }
+    
+    /* Responsive adjustments for modal */
+    @media (max-width: 768px) {
+        .cart-list-content {
+            width: 95%;
+            max-height: 85vh;
+            border-radius: 0.5rem;
+        }
+        
+        .cart-list-header {
+            padding: 1rem 1.25rem;
+        }
+        
+        .cart-list-header h3 {
+            font-size: 1.125rem;
+        }
+        
+        .cart-list-link {
+            padding: 0.875rem 1.25rem;
+        }
+        
+        .cart-list-name {
+            font-size: 0.9375rem;
+        }
+        
+        .cart-list-amount {
+            font-size: 0.8125rem;
         }
     }
 </style>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 {% block title %}
   {{ title }}
 {% endblock title %}
@@ -56,7 +57,7 @@
         {% endif %}
         <!-- Invoice Details Section -->
         <div class="form-section mb-2">
-          <h5 class="section-title">Invoice Details</h5>
+          <h5 class="section-title">Invoice Details:</h5>
           <!-- Customer Field -->
           <div class="row">
             <div class="col-md-12 mb-2">
@@ -240,7 +241,7 @@
         </div>
         <!-- Amount Summary Section -->
         <div class="form-section">
-          <div class="section-title">Amount Summary</div>
+          <div class="section-title">Amount Summary :<span class="text-success"> {% if cart.advance_payment > 0 %} (Advance Payment: {{ cart.advance_payment|currency }}){% endif %}</span></div>
           <div class="total-amount-display">
             <div class="total-row">
               <span class="total-label">Sub Total:</span>

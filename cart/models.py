@@ -22,6 +22,13 @@ class Cart(models.Model):
         choices=CartStatus.choices,
         default=CartStatus.OPEN,
     )
+    advance_payment = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Advance payment received from customer",
+    )
     notes = models.TextField(blank=True, null=True)
 
     created_by = models.ForeignKey(
@@ -39,7 +46,10 @@ class Cart(models.Model):
         ]
 
     def __str__(self):
-        return f"Cart #{self.id} - {self.name}"
+        if self.advance_payment > 0:
+            return f"Cart #{self.id} - {self.name} - ({self.advance_payment})"
+        else:
+            return f"Cart #{self.id} - {self.name}"
 
     def save(self, *args, **kwargs):
         self.name = StringProcessor(self.name).toTitle()

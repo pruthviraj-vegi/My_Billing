@@ -47,6 +47,14 @@
             <span class="value" id="totalAmount">{{ cart.total_amount|currency }}</span>
             </strong>
         </div>
+        {% if cart.advance_payment > 0 %}
+        <div class="row-lg-6">
+            <span class="label">Adv :</span>
+            <strong>
+            <span class="value" id="advancePayment">{{ cart.advance_payment|currency }}</span>
+                </strong>
+            </div>
+        {% endif %}
     </div>
     <div class="col-lg-6 d-flex justify-content-end align-items-center">
         <div class="d-flex gap-2">

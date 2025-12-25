@@ -175,17 +175,21 @@ document.addEventListener('DOMContentLoaded', function () {
 // ========================================
 
 // Format currency
-function formatCurrency(amount) {
-    try {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'decimal',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(parseFloat(amount) || 0);
-    } catch (error) {
-        console.error('Error formatting currency:', error);
-        return amount;
+function formatCurrency(value) {
+    if (value === null || value === undefined || isNaN(value)) {
+        return '₹0.00';
     }
+
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) {
+        return '₹0.00';
+    }
+
+    // Format with Indian number system (lakhs, crores)
+    return '₹' + numValue.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 // Format date
