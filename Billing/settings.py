@@ -26,9 +26,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DEBUG", default=True, cast=bool)
+DEBUG = config("DEBUG", cast=bool, default=False)
 
-ALLOWED_HOSTS = ["*"]
+# SECURITY: Restrict allowed hosts - add your actual domains
+ALLOWED_HOSTS = config(
+    "ALLOWED_HOSTS",
+    default="localhost,127.0.0.1",
+    cast=lambda v: [s.strip() for s in v.split(",")],
+)
+
 
 LOGIN_URL = "/login/"
 
@@ -36,6 +42,16 @@ LOGIN_URL = "/login/"
 INACTIVITY_TIMEOUT_SECONDS = 3 * 60 * 60  # 3 hours
 SESSION_COOKIE_AGE = 3 * 60 * 60  # 3 hours sliding expiry with save-every-request
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = (
+    not DEBUG
+)  # Set to True for extra security (stores in session instead of cookie)
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_NAME = "billing_sessionid"  # Obscure default name
+
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
 
 
 # Application definition
@@ -65,16 +81,17 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Custom middleware should come after standard Django middleware
     "base.middleware.InactivityLogoutMiddleware",
     "base.middleware.SessionMetaMiddleware",
     "base.middleware.CustomLoginRequiredMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 ROOT_URLCONF = "Billing.urls"
 
-# Add this new setting to exclude static files from login requirement
+# Exempt static/media files and login pages from login requirement
 LOGIN_EXEMPT_URLS = [
     r"^static/.*$",
     r"^media/.*$",
@@ -103,7 +120,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "Billing.wsgi.application"
 
-
+# cache settings
+# https://docs.djangoproject.com/en/5.2/topics/cache/
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": config(
+            "REDIS_URL",
+            default="redis://127.0.0.1:6379/1",
+        ),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+            "IGNORE_EXCEPTIONS": True,  # Fail silently if Redis is down
+        },
+        "KEY_PREFIX": "billing",
+    }
+}
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
@@ -114,12 +148,16 @@ DATABASES = {
         "USER": config("DB_USER"),
         "PASSWORD": config("DB_PASSWORD"),
         "HOST": config("DB_HOST"),
-        "PORT": config("DB_PORT"),
+        "PORT": config("DB_PORT", default="5432"),
+        "CONN_MAX_AGE": 600,  # Connection pooling - keep connections alive for 10 minutes
+        "OPTIONS": {
+            "connect_timeout": 10,
+        },
     }
 }
 
 
-# Password validation
+# Password validation - Enhanced for billing application
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -128,6 +166,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {
+            "min_length": 10,  # Increased from default 8
+        },
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -137,28 +178,83 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+DJANGO_REDIS_CONNECTION_FACTORY = "django_redis.pool.ConnectionFactory"
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
-
-# Internationalization
-# https://docs.djangoproject.com/en/4.1/topics/i18n/
 
 LANGUAGE_CODE = "en-in"
 
 TIME_ZONE = "Asia/Kolkata"
 
-# USE_I18N = False
 USE_L10N = True
 USE_I18N = False
 USE_TZ = False
 
+# CSRF Configuration
+CSRF_TRUSTED_ORIGINS = [
+    "https://ubuntu.clownbunny.in",
+    "https://www.ubuntu.clownbunny.in",
+    "https://*.clownbunny.in",
+]
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_NAME = "billing_csrftoken"  # Obscure default name
+CSRF_USE_SESSIONS = (
+    False  # Set to True for extra security (stores in session instead of cookie)
+)
+
+# Security Headers
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# SSL/HTTPS Settings (enabled in production)
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
+# Proxy settings
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
+# HSTS (HTTP Strict Transport Security)
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0  # 1 year in production
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Additional Security Headers
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = "DENY"
+
+# Referrer Policy
+SECURE_REFERRER_POLICY = "same-origin"
+
+# REST Framework security settings (if using DRF)
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {"anon": "100/hour", "user": "1000/hour"},
+}
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Additional locations of static files
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
@@ -175,6 +271,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Custom User Model
 AUTH_USER_MODEL = "user.CustomUser"
 
+# Admin Security
+ADMIN_URL = config("ADMIN_URL", default="admin/")  # Allow customizing admin URL
+
 
 class MaxLevelFilter(logging.Filter):
     def __init__(self, max_level):
@@ -184,6 +283,8 @@ class MaxLevelFilter(logging.Filter):
     def filter(self, record):
         return record.levelno <= self.max_level
 
+
+os.makedirs(BASE_DIR / "logs", exist_ok=True)
 
 LOGGING = {
     "version": 1,
@@ -201,6 +302,9 @@ LOGGING = {
     "filters": {
         "only_debug": {"()": MaxLevelFilter, "max_level": logging.DEBUG},
         "only_info": {"()": MaxLevelFilter, "max_level": logging.INFO},
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
     },
     "handlers": {
         "debug_file": {
@@ -229,16 +333,34 @@ LOGGING = {
             "backupCount": 5,
             "formatter": "verbose",
         },
+        "security_file": {
+            "level": "WARNING",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(BASE_DIR, "logs/security.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 10,
+            "formatter": "verbose",
+        },
         "console": {
             "level": "INFO",
             "class": "logging.StreamHandler",
             "formatter": "simple",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+            "filters": ["require_debug_false"],
         },
     },
     "loggers": {
         "django": {
             "handlers": ["console", "info_file", "error_file"],
             "level": "INFO",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["security_file", "mail_admins"],
+            "level": "WARNING",
             "propagate": False,
         },
         "django.utils.autoreload": {
@@ -251,7 +373,7 @@ LOGGING = {
             "level": "ERROR",
             "propagate": False,
         },
-        # Your app-specific logger (replace `myapp` with actual app name)
+        # Your app-specific logger
         "myapp": {
             "handlers": ["debug_file", "info_file", "error_file"],
             "level": "DEBUG",

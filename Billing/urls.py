@@ -17,6 +17,8 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -35,3 +37,8 @@ urlpatterns = [
 ]
 
 handler404 = "base.views.custom_404_view"
+
+# Serve media files during development
+# Note: Static files are automatically served by django.contrib.staticfiles when DEBUG=True
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

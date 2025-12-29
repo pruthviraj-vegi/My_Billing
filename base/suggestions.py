@@ -1,11 +1,15 @@
 import re
+import logging
 from django.core.cache import cache
+from django.core.cache.backends.base import InvalidCacheBackendError
 from django.http import JsonResponse
 from customer.models import Customer
 from invoice.models import Invoice
 from inventory.models import Product, ProductVariant
 from rapidfuzz import process, fuzz
 from supplier.models import Supplier
+
+logger = logging.getLogger(__name__)
 
 
 # Precompiled regex for speed
@@ -25,7 +29,11 @@ def get_related_words(query, list_of_words, limit=10, score_cutoff=60):
 
     # rapidfuzz can handle iterables directly (no need to force list)
     matches = process.extract(
-        query.lower(), list_of_words, scorer=fuzz.WRatio, limit=limit, score_cutoff=score_cutoff
+        query.lower(),
+        list_of_words,
+        scorer=fuzz.WRatio,
+        limit=limit,
+        score_cutoff=score_cutoff,
     )
 
     # Extract only words (discard scores)
@@ -42,16 +50,23 @@ def get_search_words(
 ):
     """
     Optimized helper to build/search word lists from model fields.
-    - Uses cache to avoid rebuilding.
+    - Uses Redis cache (via Django cache framework) to avoid rebuilding.
     - Minimizes memory overhead by streaming.
     - Tokenizes with set comprehension instead of nested loops.
     - Limits max_words to avoid huge cache payloads.
+    - Handles Redis connection errors gracefully.
     """
 
-    # 1. Try cache first
-    searchable_items = cache.get(cache_key)
-    if searchable_items is not None:
-        return get_related_words(query, searchable_items)
+    # 1. Try cache first (Redis-compatible)
+    try:
+        searchable_items = cache.get(cache_key)
+        if searchable_items is not None:
+            return get_related_words(query, searchable_items)
+    except (InvalidCacheBackendError, Exception) as e:
+        # Redis might be down or misconfigured - log and continue without cache
+        logger.warning(
+            f"Cache read failed for key '{cache_key}': {e}. Proceeding without cache."
+        )
 
     # 2. Stream from DB efficiently (iterator avoids full memory load)
     queryset = model.objects.values_list(*fields).iterator()
@@ -75,8 +90,14 @@ def get_search_words(
     # 3. Convert to list once
     searchable_items = list(all_words)
 
-    # 4. Save in cache
-    cache.set(cache_key, searchable_items, cache_timeout)
+    # 4. Save in cache (Redis-compatible - Django handles serialization)
+    try:
+        cache.set(cache_key, searchable_items, cache_timeout)
+    except (InvalidCacheBackendError, Exception) as e:
+        # Redis might be down - log but don't fail the request
+        logger.warning(
+            f"Cache write failed for key '{cache_key}': {e}. Results returned without caching."
+        )
 
     # 5. Get suggestions
     return get_related_words(query, searchable_items)
