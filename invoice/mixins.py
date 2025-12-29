@@ -111,6 +111,11 @@ class InvoiceFinancialMixin:
         return round(total, 2)
 
     @property
+    def cgst_amount(self):
+        """CGST amount (sum of cgst_amount from all invoice items)"""
+        return round(self.total_gst_amount / 2, 2)
+
+    @property
     def tax_values_by_gst(self):
         """
         Calculate tax values grouped by GST rate

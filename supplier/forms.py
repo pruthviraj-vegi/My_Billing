@@ -81,6 +81,8 @@ class SupplierForm(forms.ModelForm):
                 raise forms.ValidationError(
                     "A supplier with this phone number already exists."
                 )
+        else:
+            raise forms.ValidationError("Phone number is required.")
         return phone
 
     def clean_gstin(self):

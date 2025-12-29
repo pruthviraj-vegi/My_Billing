@@ -43,6 +43,9 @@
             <div class="dropdown-divider"></div>
             <a href="{% url 'invoice:return_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'return_home' %}active{% endif %}">Return Invoices</a>
+         
+            <a href="{% url 'invoice:report' %}"
+               class="dropdown-item {% if request.resolver_match.url_name == 'report' %}active{% endif %}">Invoice Report</a>
          </div>
       </li>
       <li class="nav-item">

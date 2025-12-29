@@ -132,6 +132,65 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof window !== 'undefined') {
         function bindHandlers() {
             if (!window.jQuery) { setTimeout(bindHandlers, 100); return; }
+
+            // Track if focus came from keyboard (Tab) vs mouse
+            var keyboardFocus = false;
+            var lastTabTime = 0;
+
+            // Detect Tab key press
+            $(document).on('keydown', function (e) {
+                if (e.key === 'Tab' || e.keyCode === 9) {
+                    keyboardFocus = true;
+                    lastTabTime = Date.now();
+                    // Reset after a short delay
+                    setTimeout(function () { keyboardFocus = false; }, 200);
+                }
+            });
+
+            // Auto-open Select2 dropdown when focused via keyboard (Tab)
+            $(document).on('focus', 'select.select2-hidden-accessible', function (e) {
+                var $select = $(e.target);
+                // Check if focus came from keyboard (within 200ms of Tab press)
+                var timeSinceTab = Date.now() - lastTabTime;
+                if ((keyboardFocus || timeSinceTab < 200) && $select.data('select2')) {
+                    // Small delay to ensure Select2 is ready
+                    setTimeout(function () {
+                        try {
+                            var select2Instance = $select.data('select2');
+                            if (select2Instance && !select2Instance.isOpen()) {
+                                $select.select2('open');
+                            }
+                        } catch (err) {
+                            // Silently fail if Select2 isn't fully initialized
+                        }
+                    }, 10);
+                }
+            });
+
+            // Also handle focus on Select2 container (the visible element)
+            $(document).on('focus', '.select2-selection, .select2-search__field', function (e) {
+                // Find the associated select element
+                var $container = $(e.target).closest('.select2-container');
+                if ($container.length) {
+                    var $select = $container.prev('select');
+                    if ($select.length && $select.data('select2')) {
+                        var timeSinceTab = Date.now() - lastTabTime;
+                        if ((keyboardFocus || timeSinceTab < 200)) {
+                            setTimeout(function () {
+                                try {
+                                    var select2Instance = $select.data('select2');
+                                    if (select2Instance && !select2Instance.isOpen()) {
+                                        $select.select2('open');
+                                    }
+                                } catch (err) {
+                                    // Silently fail if Select2 isn't fully initialized
+                                }
+                            }, 10);
+                        }
+                    }
+                }
+            });
+
             $(document)
                 .on('select2:open', function (e) {
                     showOverlay();

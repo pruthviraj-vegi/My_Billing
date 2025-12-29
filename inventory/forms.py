@@ -117,20 +117,24 @@ class VariantForm(forms.ModelForm):
         ]
         widgets = {
             "supplier": forms.Select(attrs={"placeholder": "Select supplier"}),
-            "quantity": forms.NumberInput(attrs={"placeholder": "Enter quantity"}),
+            "quantity": forms.NumberInput(
+                attrs={"placeholder": "Enter quantity", "step": "1"}
+            ),
             "minimum_quantity": forms.NumberInput(
-                attrs={"placeholder": "Enter minimum quantity"}
+                attrs={"placeholder": "Enter minimum quantity", "step": "1"}
             ),
             "discount_percentage": forms.NumberInput(
-                attrs={"placeholder": "Enter discount percentage"}
+                attrs={"placeholder": "Enter discount percentage", "step": "1"}
             ),
             "commission_percentage": forms.NumberInput(
-                attrs={"placeholder": "Enter commission percentage"}
+                attrs={"placeholder": "Enter commission percentage", "step": "1"}
             ),
             "purchase_price": forms.NumberInput(
-                attrs={"placeholder": "Enter purchase price"}
+                attrs={"placeholder": "Enter purchase price", "step": "1"}
             ),
-            "mrp": forms.NumberInput(attrs={"placeholder": "Enter selling price"}),
+            "mrp": forms.NumberInput(
+                attrs={"placeholder": "Enter selling price", "step": "1"}
+            ),
             "size": forms.Select(attrs={"placeholder": "Select size"}),
             "color": forms.Select(attrs={"placeholder": "Select color"}),
         }

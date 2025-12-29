@@ -467,11 +467,6 @@ def invoice_dashboard(request):
     return render(request, "invoice/dashboard.html")
 
 
-def invoice_dashboard_modern(request):
-    """Modern Invoice dashboard"""
-    return render(request, "invoice/dashboard_modern.html")
-
-
 def invoice_dashboard_fetch(request):
     """AJAX endpoint to fetch dashboard data"""
 

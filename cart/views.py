@@ -1,4 +1,3 @@
-from email import message
 from django.shortcuts import render, redirect
 from .models import Cart, CartItem
 from .forms import CartForm
@@ -13,10 +12,9 @@ from .serializers import (
     BarcodeScanSerializer,
     CartItemUpdateSerializer,
 )
-from inventory.models import ProductVariant, FavoriteVariant
+from inventory.models import ProductVariant, FavoriteVariant, BarcodeMapping
 from inventory.views_variant import get_variants_data
 from django.views.generic import CreateView, UpdateView
-from django.db.models import Q
 
 from django.urls import reverse
 from base.utility import render_paginated_response
@@ -178,21 +176,27 @@ def scan_barcode(request):
             # Parse JSON from request body if needed
             data = json.loads(request.body.decode("utf-8"))
 
-        serializer = BarcodeScanSerializer(data=data)
+        barcode_mapping = BarcodeMapping.objects.filter(barcode=data["barcode"]).first()
+        if barcode_mapping:
+            barcode = barcode_mapping.variant.barcode
+            cart_id = data["cart_id"]
+            quantity = data["quantity"]
+        else:
 
-        if not serializer.is_valid():
-            return Response(
-                {
-                    "status": "error",
-                    "message": "Invalid data",
-                    "errors": serializer.errors,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            serializer = BarcodeScanSerializer(data=data)
+            if not serializer.is_valid():
+                return Response(
+                    {
+                        "status": "error",
+                        "message": "Invalid data",
+                        "errors": serializer.errors,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        barcode = serializer.validated_data["barcode"]
-        cart_id = serializer.validated_data["cart_id"]
-        quantity = serializer.validated_data["quantity"]
+            barcode = serializer.validated_data["barcode"]
+            cart_id = serializer.validated_data["cart_id"]
+            quantity = serializer.validated_data["quantity"]
 
         try:
             cart = Cart.objects.get(id=cart_id, status="OPEN")
@@ -231,6 +235,7 @@ def scan_barcode(request):
                     "message": f"Product {product_variant.full_name} added to cart",
                     "cart_item": item_serializer.data,
                     "cart_total": cart.total_amount,
+                    "remaining_stock": product_variant.billing_stock,
                     "type": type,
                 },
                 status=status.HTTP_200_OK,
@@ -306,6 +311,7 @@ def manage_cart_item(request, item_id):
                         "message": "Cart item updated successfully",
                         "cart_item": CartItemSerializer(cart_item).data,
                         "cart_total": cart_item.cart.total_amount,
+                        "remaining_stock": cart_item.product_variant.billing_stock,
                     },
                     status=status.HTTP_200_OK,
                 )

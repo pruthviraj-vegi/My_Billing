@@ -227,6 +227,8 @@ def timed(fn):
         result = fn(*args, **kwargs)
         elapsed = time.perf_counter() - start
 
+        print(f"Time taken: {elapsed} seconds")
+
         # Store timing on the function itself
         wrapper._last_elapsed_time = elapsed
         return result

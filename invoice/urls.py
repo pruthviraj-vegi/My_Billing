@@ -1,12 +1,11 @@
 from django.urls import path
-from . import views, views_, views_return
+from . import views, views_, views_return, views_report
 
 app_name = "invoice"
 
 urlpatterns = [
     path("", views.invoiceHome, name="home"),
     path("dashboard/", views.invoice_dashboard, name="dashboard"),
-    path("dashboard-modern/", views.invoice_dashboard_modern, name="dashboard_modern"),
     path("dashboard/fetch/", views.invoice_dashboard_fetch, name="dashboard_fetch"),
     path("fetch/", views.fetch_invoices, name="fetch"),
     path(
@@ -77,4 +76,7 @@ urlpatterns = [
     # path("returns/delete/<int:pk>/", views_return.ReturnInvoiceDeleteView.as_view(), name="return_delete"),
     # path("returns/approve/<int:pk>/", views_return.approve_return, name="return_approve"),
     # path("returns/process/<int:pk>/", views_return.process_return, name="return_process"),
+    # Invoice Report
+    path("report/", views_report.invoice_report, name="report"),
+    path("report/fetch/", views_report.invoice_report_fetch, name="report_fetch"),
 ]

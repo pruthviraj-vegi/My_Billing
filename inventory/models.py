@@ -8,6 +8,7 @@ from .manager import ProductVariantManager, InventoryLogManager
 
 from base.utility import StringProcessor
 from django.urls import reverse
+from django.db.models import Sum
 
 User = settings.AUTH_USER_MODEL
 
@@ -489,7 +490,7 @@ class ProductVariant(SoftDeleteModel):
     @property
     def price_name(self):
         """Short name without barcode for display purposes"""
-        return self.get_name(include_barcode=False, include_variants=False)
+        return self.product.brand + " - " + self.simple_name
 
     @property
     def is_low_stock(self):
@@ -603,6 +604,15 @@ class ProductVariant(SoftDeleteModel):
         qty = min(quantities) if quantities else 0
         return max(1, int(qty + 1) // 2) if qty > 0 else 1
 
+    @property
+    def billing_stock(self):
+        """Get the billing stock for the variant"""
+        cart_qty = (
+            self.cart_items.aggregate(total_quantity=Sum("quantity"))["total_quantity"]
+            or 0
+        )
+        return max(0, self.quantity - cart_qty)
+
     def clean(self):
         """Custom validation"""
         from django.core.exceptions import ValidationError
@@ -615,6 +625,31 @@ class ProductVariant(SoftDeleteModel):
             if existing.exists():
                 raise ValidationError("Barcode must be unique")
 
+    def create_barcode(self, save=True):
+        """
+        Create a new barcode based on the object's ID.
+        If a barcode already exists, it will be replaced with a new one.
+
+        Args:
+            save (bool): Whether to save the barcode to the database.
+                        If False, only sets the barcode on the instance.
+
+        Returns:
+            str: The newly created barcode
+        """
+        # Ensure object has an ID (save if needed)
+        if not self.pk:
+            super(ProductVariant, self).save()
+
+        # Generate barcode: 6 digits with zero padding + suffix "3"
+        self.barcode = f"{self.id:06d}3"
+
+        # Save the barcode if requested
+        if save:
+            super(ProductVariant, self).save(update_fields=["barcode"])
+
+        return self.barcode
+
     def save(self, *args, **kwargs):
         """Override save to include validation"""
         self.clean()
@@ -622,8 +657,7 @@ class ProductVariant(SoftDeleteModel):
         # If new record and no barcode, generate after getting ID
         if not self.pk and not self.barcode:
             super().save(*args, **kwargs)  # First save to get ID
-            self.barcode = f"{self.id:06d}3"  # 6 digits with zero padding
-            super().save(update_fields=["barcode"])  # Update only barcode
+            self.create_barcode(save=True)  # Generate and save barcode
         else:
             super().save(*args, **kwargs)
 
@@ -817,3 +851,18 @@ class FavoriteVariant(models.Model):
             models.Index(fields=["variant"]),
             models.Index(fields=["created_at"]),
         ]
+
+
+class BarcodeMapping(models.Model):
+    barcode = models.CharField(max_length=100, unique=True)
+    variant = models.OneToOneField(
+        ProductVariant, on_delete=models.CASCADE, related_name="barcode_mappings"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.barcode} - {self.variant.full_name}"
+
+    class Meta:
+        ordering = ["-created_at"]

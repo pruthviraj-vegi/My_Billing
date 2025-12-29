@@ -4,10 +4,13 @@
 {% if page_obj %}
     {% for customer in page_obj %}
         <tr>
-            <td>{{ customer.id }}</td>
+            <td>{{ customer.id }}</td>     
             <td>
                 <div>
                     <span class="font-weight-bold text-primary">{{ customer.name }}</span>
+                    {% if customer.referred_by %}
+                        <small class="text-muted">({{ customer.referred_by.name }})</small>
+                    {% endif %}
                 </div>
             </td>
             <td>

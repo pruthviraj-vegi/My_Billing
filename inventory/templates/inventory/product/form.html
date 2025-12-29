@@ -37,7 +37,7 @@
   <!-- Product Form -->
   <div class="form-container">
     <div class="form-card">
-      <form method="post" class="details-form" autocomplete="off">
+      <form method="post" class="details-form" autocomplete="off" data-prevent-double-submit>
         {% csrf_token %}
         <!-- Form Errors -->
         {% if form.non_field_errors %}

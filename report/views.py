@@ -13,7 +13,12 @@ import base64
 from PIL import Image
 from inventory.models import ProductVariant
 from invoice.models import Invoice, InvoiceItem
-from setting.models import ShopDetails, ReportConfiguration, PaymentDetails, BarcodeConfiguration
+from setting.models import (
+    ShopDetails,
+    ReportConfiguration,
+    PaymentDetails,
+    BarcodeConfiguration,
+)
 from cart.models import Cart, CartItem
 from customer.models import Customer
 from customer.views_credit import _build_ledger_rows
@@ -35,6 +40,7 @@ from supplier.views import (
     get_supplier_report_data,
 )
 from inventory.views_variant import get_variants_data
+from invoice.views_report import get_invoice_report_data
 
 Barcode.default_writer_options["write_text"] = False
 
@@ -93,10 +99,12 @@ def createInvoice(request, pk):
     report_config = ReportConfiguration.get_default_config(
         ReportConfiguration.ReportType.INVOICE
     )
-    payment_details = PaymentDetails.get_active_payments(shop=shop_details).order_by(
-        "display_order"
-    ).first()
-    
+    payment_details = (
+        PaymentDetails.get_active_payments(shop=shop_details)
+        .order_by("display_order")
+        .first()
+    )
+
     if report_config.paper_size == ReportConfiguration.PaperSize._58mm:
         template = "report/58mm.html"
     else:
@@ -111,7 +119,12 @@ def createInvoice(request, pk):
     }
 
     # Generate QR code if enabled in config
-    if report_config and report_config.show_qr_code and payment_details and payment_details.upi_id:
+    if (
+        report_config
+        and report_config.show_qr_code
+        and payment_details
+        and payment_details.upi_id
+    ):
         try:
             # Create UPI payment QR code
             qr_data = f"upi://pay?pa={payment_details.upi_id}&pn={shop_details.shop_name}&am={invoice.net_amount_due}&tn=for bill no {invoice.invoice_number}&cu=INR"
@@ -154,7 +167,7 @@ def generate_barcode(request, pk):
     barcode_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     barcode_config = BarcodeConfiguration.get_active_barcodes(shop_details).first()
-    
+
     # Add the barcode image to the context dictionary
     context = {
         "values": variant,
@@ -382,4 +395,38 @@ def generate_supplier_ind_pdf(request, pk):
     template = "supplier_ind_report_pdf.html"
     filename = "supplier_individual_report"
 
+    return generatePdf(template, filename, context, request)
+
+
+def generate_invoice_report_pdf(request):
+    start_date, end_date = getDates(request)
+    date_range = [start_date, end_date]
+    invoices = get_invoice_report_data(date_range)
+    total_count = invoices.count()
+    total_net = Decimal("0")
+    total_cgst_amount = Decimal("0")
+    total_gst = Decimal("0")
+    total_amount = Decimal("0")
+
+    if invoices:
+        for invoice in invoices:
+            total_net += invoice.total_tax_value
+            total_cgst_amount += invoice.cgst_amount
+            total_gst += invoice.total_gst_amount
+            total_amount += invoice.total_payable
+
+    context = {
+        "data": invoices,
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_count": total_count,
+        "total_net": total_net,
+        "total_cgst_amount": total_cgst_amount,
+        "total_gst": total_gst,
+        "total_amount": total_amount,
+    }
+    template = "invoice_report_pdf.html"
+    filename = (
+        f"invoice_report_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
+    )
     return generatePdf(template, filename, context, request)

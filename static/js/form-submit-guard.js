@@ -2,9 +2,14 @@
  * Form Submit Guard - Prevents duplicate form submissions
  * Works with both regular forms and AJAX forms
  * 
+ * SECURE BY DEFAULT MODE:
+ * - All forms are automatically protected
+ * - Use data-allow-double-submit to opt-out specific forms
+ * 
  * Usage:
- * 1. Add data-prevent-double-submit attribute to form or button
- * 2. Or call FormSubmitGuard.init() to auto-protect all forms
+ * 1. Include this script - all forms are protected automatically
+ * 2. To allow double-submit: <form data-allow-double-submit>
+ * 3. Manual control: FormSubmitGuard.reset(formId) or .complete(formId)
  */
 
 (function (window) {
@@ -13,9 +18,14 @@
     const FormSubmitGuard = {
         // Track active submissions
         activeSubmissions: new Set(),
+        // Map elements to their submission IDs
+        elementToIdMap: new WeakMap(),
+        // Track protected forms to avoid duplicate listeners
+        protectedForms: new WeakSet(),
 
         // Default options
         defaults: {
+            autoProtect: true, // ✨ SECURE BY DEFAULT
             disableButton: true,
             showSpinner: true,
             restoreOnError: true,
@@ -27,29 +37,37 @@
         },
 
         /**
-         * Initialize - Auto-protect all forms with data-prevent-double-submit
+         * Initialize - Auto-protect all forms (except those with data-allow-double-submit)
          */
         init: function (options = {}) {
             const config = { ...this.defaults, ...options };
 
-            // Protect forms with data attribute
-            document.querySelectorAll('form[data-prevent-double-submit]').forEach(form => {
-                this.protectForm(form, config);
-            });
-
-            // Protect buttons with data attribute
-            document.querySelectorAll('button[data-prevent-double-submit], input[type="submit"][data-prevent-double-submit]').forEach(button => {
-                this.protectButton(button, config);
-            });
-
-            // Auto-protect all submit buttons if autoProtect is enabled
             if (config.autoProtect) {
+                // Protect ALL forms by default
                 document.querySelectorAll('form').forEach(form => {
-                    if (!form.hasAttribute('data-prevent-double-submit')) {
+                    // Skip forms that explicitly allow double-submit
+                    if (form.hasAttribute('data-allow-double-submit')) {
+                        return;
+                    }
+
+                    // Skip already protected forms
+                    if (!this.protectedForms.has(form)) {
+                        this.protectForm(form, config);
+                    }
+                });
+            } else {
+                // Legacy mode: Only protect forms with data-prevent-double-submit
+                document.querySelectorAll('form[data-prevent-double-submit]').forEach(form => {
+                    if (!this.protectedForms.has(form)) {
                         this.protectForm(form, config);
                     }
                 });
             }
+
+            // Protect individual buttons with data attribute
+            document.querySelectorAll('button[data-prevent-double-submit], input[type="submit"][data-prevent-double-submit]').forEach(button => {
+                this.protectButton(button, config);
+            });
         },
 
         /**
@@ -58,65 +76,85 @@
         protectForm: function (form, options = {}) {
             const config = { ...this.defaults, ...options };
             const formId = form.id || `form_${Date.now()}_${Math.random()}`;
+            // Mark as protected and store mapping
+            this.protectedForms.add(form);
+            this.elementToIdMap.set(form, formId);
 
             form.addEventListener('submit', function (e) {
-                // CRITICAL: Mark as submitting FIRST to prevent race conditions
-                // If two submit events are queued rapidly, both need to check the SAME state
+                // Check if already submitting
                 if (FormSubmitGuard.activeSubmissions.has(formId)) {
-                    // Already submitting - block this attempt
                     e.preventDefault();
                     e.stopPropagation();
-                    e.stopImmediatePropagation(); // Stop other listeners too
+                    e.stopImmediatePropagation();
                     return false;
                 }
 
-                // Mark as submitting IMMEDIATELY before any async operations
+                // Mark as submitting IMMEDIATELY
                 FormSubmitGuard.activeSubmissions.add(formId);
 
-                // Get submit button
-                const submitButton = form.querySelector('button[type="submit"], input[type="submit"]')
-                    || form.querySelector('button:not([type]), input:not([type])');
+                // Get ALL submit buttons
+                const allSubmitButtons = Array.from(
+                    form.querySelectorAll('button[type="submit"], input[type="submit"]')
+                );
 
-                // Store original state
-                const originalState = {
-                    button: submitButton,
-                    disabled: submitButton ? submitButton.disabled : false,
-                    text: submitButton ? submitButton.textContent || submitButton.value : '',
-                    innerHTML: submitButton ? submitButton.innerHTML : ''
-                };
+                // The actual button that was clicked
+                const clickedButton = e.submitter || allSubmitButtons[0];
 
-                // Disable button and show loading state IMMEDIATELY (synchronous)
-                if (submitButton && config.disableButton) {
-                    // Disable BEFORE setSubmittingState to prevent double clicks
-                    submitButton.disabled = true;
-                    FormSubmitGuard.setSubmittingState(submitButton, config);
+                // Store original state for ALL buttons
+                const buttonStates = new Map();
+                allSubmitButtons.forEach(btn => {
+                    buttonStates.set(btn, {
+                        disabled: btn.disabled,
+                        text: btn.textContent?.trim() || btn.value || '',
+                        innerHTML: btn.innerHTML
+                    });
+
+                    // Store in dataset for reset() method
+                    if (!btn.dataset.originalText) {
+                        btn.dataset.originalText = btn.textContent?.trim() || btn.value || '';
+                        if (btn.tagName !== 'INPUT') {
+                            btn.dataset.originalInnerHTML = btn.innerHTML;
+                        }
+                    }
+
+                    // Disable ALL buttons immediately
+                    btn.disabled = true;
+                });
+
+                // Show loading state ONLY on clicked button
+                if (clickedButton && config.showSpinner) {
+                    FormSubmitGuard.setSubmittingState(clickedButton, config);
                 }
 
-                // Handle form submission completion
+                // Handle form completion
                 const handleComplete = function () {
                     FormSubmitGuard.activeSubmissions.delete(formId);
 
-                    if (submitButton && config.disableButton) {
-                        if (config.restoreOnError) {
-                            // Auto-restore after delay (in case of network issues)
-                            setTimeout(() => {
-                                if (FormSubmitGuard.activeSubmissions.has(formId)) {
-                                    FormSubmitGuard.restoreButtonState(submitButton, originalState);
+                    // Restore ALL buttons
+                    if (config.restoreOnError) {
+                        allSubmitButtons.forEach(btn => {
+                            const originalState = buttonStates.get(btn);
+                            if (originalState) {
+                                btn.disabled = originalState.disabled;
+                                btn.classList.remove('submitting');
+
+                                if (btn.tagName === 'INPUT') {
+                                    btn.value = originalState.text;
+                                } else {
+                                    btn.innerHTML = originalState.innerHTML;
                                 }
-                            }, config.restoreDelay);
-                        }
+                            }
+                        });
                     }
                 };
 
-                // For AJAX forms, listen for custom events
+                // Listen for AJAX events
                 form.addEventListener('ajax:success', handleComplete, { once: true });
                 form.addEventListener('ajax:error', handleComplete, { once: true });
                 form.addEventListener('ajax:complete', handleComplete, { once: true });
 
-                // For regular forms, restore on page unload or after timeout
+                // Auto-restore after timeout for non-AJAX forms
                 if (!form.hasAttribute('data-ajax-form')) {
-                    // If form submits normally (page reload), browser will handle it
-                    // But if it's prevented, restore after timeout
                     setTimeout(handleComplete, config.restoreDelay);
                 }
             });
@@ -128,6 +166,8 @@
         protectButton: function (button, options = {}) {
             const config = { ...this.defaults, ...options };
             const buttonId = button.id || `btn_${Date.now()}_${Math.random()}`;
+            // Store mapping for later retrieval
+            this.elementToIdMap.set(button, buttonId);
 
             button.addEventListener('click', function (e) {
                 // Check if already submitting
@@ -189,11 +229,9 @@
             if (config.showSpinner) {
                 const spinner = '<i class="fas fa-spinner fa-spin"></i> ';
                 if (button.tagName === 'INPUT') {
-                    button.value = spinner + (config.buttonText.submitting || 'Submitting...');
+                    button.value = config.buttonText.submitting || 'Submitting...';
                 } else {
-                    const originalText = button.textContent.trim();
-                    button.dataset.originalText = originalText;
-                    button.innerHTML = spinner + (config.buttonText.submitting || originalText);
+                    button.innerHTML = spinner + (config.buttonText.submitting || button.dataset.originalText || 'Submitting...');
                 }
             }
         },
@@ -205,7 +243,7 @@
             if (!button) return;
 
             button.disabled = originalState.disabled;
-            button.classList.remove('submitting');
+            button.classList.remove('submitting', 'submitted');
 
             if (button.tagName === 'INPUT') {
                 button.value = originalState.text;
@@ -215,30 +253,80 @@
         },
 
         /**
-         * Manually mark submission as complete (for custom AJAX handlers)
+         * Mark submission as complete (graceful finish)
+         * Shows brief success state, then restores after delay
          */
         complete: function (formOrButton) {
             const element = typeof formOrButton === 'string'
                 ? document.getElementById(formOrButton)
                 : formOrButton;
 
-            if (element) {
-                const id = element.id || `element_${Date.now()}`;
+            if (!element) return;
+
+            const id = this.elementToIdMap.get(element) || element.id;
+            if (id) {
                 this.activeSubmissions.delete(id);
-
-                // Restore button if exists
-                const button = element.querySelector('button[type="submit"], input[type="submit"]')
-                    || element;
-
-                if (button && button.classList.contains('submitting')) {
-                    const originalText = button.dataset.originalText || button.textContent;
-                    button.disabled = false;
-                    button.classList.remove('submitting');
-                    if (button.tagName !== 'INPUT') {
-                        button.innerHTML = originalText;
-                    }
-                }
             }
+
+            const buttons = element.tagName === 'FORM'
+                ? Array.from(element.querySelectorAll('button[type="submit"], input[type="submit"]'))
+                : [element];
+
+            buttons.forEach(btn => {
+                btn.classList.remove('submitting');
+                btn.classList.add('submitted');
+
+                if (btn.tagName === 'INPUT') {
+                    btn.value = '✓ Submitted';
+                } else {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Submitted';
+                }
+            });
+
+            // Restore after short delay (only once, not per button)
+            setTimeout(() => this.reset(element), 1500);
+        },
+
+        /**
+         * Immediately reset to normal state (for errors/retries)
+         */
+        reset: function (formOrButton) {
+            const element = typeof formOrButton === 'string'
+                ? document.getElementById(formOrButton)
+                : formOrButton;
+
+            if (!element) return;
+
+            const id = this.elementToIdMap.get(element) || element.id;
+            if (id) {
+                this.activeSubmissions.delete(id);
+            }
+
+            const buttons = element.tagName === 'FORM'
+                ? Array.from(element.querySelectorAll('button[type="submit"], input[type="submit"]'))
+                : [element];
+
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('submitting', 'submitted');
+
+                if (btn.dataset.originalText) {
+                    if (btn.tagName === 'INPUT') {
+                        btn.value = btn.dataset.originalText;
+                    } else {
+                        btn.innerHTML = btn.dataset.originalInnerHTML || btn.dataset.originalText;
+                    }
+                    delete btn.dataset.originalText;
+                    delete btn.dataset.originalInnerHTML;
+                }
+            });
+        },
+
+        /**
+         * Alias for better readability
+         */
+        enable: function (formOrButton) {
+            return this.reset(formOrButton);
         },
 
         /**
@@ -251,8 +339,25 @@
 
             if (!element) return false;
 
-            const id = element.id || 'unknown';
-            return this.activeSubmissions.has(id);
+            const id = this.elementToIdMap.get(element) || element.id;
+            return id ? this.activeSubmissions.has(id) : false;
+        },
+
+        /**
+         * Manually protect a form (useful for dynamically added forms)
+         */
+        protect: function (formOrButton, options = {}) {
+            const element = typeof formOrButton === 'string'
+                ? document.getElementById(formOrButton)
+                : formOrButton;
+
+            if (!element) return;
+
+            if (element.tagName === 'FORM') {
+                this.protectForm(element, options);
+            } else {
+                this.protectButton(element, options);
+            }
         }
     };
 

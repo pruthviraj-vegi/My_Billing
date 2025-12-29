@@ -106,6 +106,7 @@
   padding: 2px;
   align-items: center;
   justify-content: space-evenly;
+  padding-right: 15px;
 }
 
 .price-text {
@@ -118,8 +119,7 @@
 
 .image img {
   width: 40mm;
-  height: 15px;
-  -webkit-print-color-adjust: exact;
+  height: 25px;
   print-color-adjust: exact;
 }
 

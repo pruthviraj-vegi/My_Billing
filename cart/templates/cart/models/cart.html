@@ -3,7 +3,7 @@
 <!-- Data Table -->
 <!-- Search and Filter Section -->
 <div class="search-filter-section">
-    <form href="" class="search-filter-form" id="barcodeForm"> 
+    <form href="" class="search-filter-form" id="barcodeForm" data-allow-double-submit> 
         {% csrf_token %}
         <div class="search-group search-expanded">
             <i class="fas fa-search search-icon"></i>
@@ -15,13 +15,13 @@
                    id="barcodeInput"
                    autofocus>
         </div>
-        <button type="button" class="btn btn-primary" id="favoriteBtn">
+        <button type="button" class="btn btn-primary" id="favoriteBtn" tabindex="-1">
             <i class="fas fa-star"></i>
         </button>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal" tabindex="-1">
             <i class="fas fa-search"></i>
         </button>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="btn btn-primary" tabindex="-1">
             <i class="fas fa-search"></i>
             Search
         </button>
@@ -58,13 +58,15 @@
     </div>
     <div class="col-lg-6 d-flex justify-content-end align-items-center">
         <div class="d-flex gap-2">
+            <strong><span class="value pe-2" id="remainingStock"></span></strong>
             <!-- Options Dropdown -->
             <div class="dropdown cart-dropdown">
                 <button class="btn btn-sm btn-primary dropdown-toggle"
                         type="button"
                         id="cartOptionsDropdown"
                         data-bs-toggle="dropdown"
-                        aria-expanded="false">
+                        aria-expanded="false"
+                        tabindex="-1">
                     <i class="fas fa-cog"></i>
                     Options
                 </button>
@@ -105,7 +107,7 @@
                     </li>
                 </ul>
             </div>
-            <a href="{% url 'invoice:create_invoice' cart.id %}" class="btn btn-sm btn-primary">
+            <a href="{% url 'invoice:create_invoice' cart.id %}" class="btn btn-sm btn-primary" tabindex="-1">
                 <i class="fas fa-plus"></i>
                 Submit
             </a>
@@ -129,42 +131,7 @@
         </thead>
         <tbody id="cartItemsBody">
             {% for data in cart_list %}
-                <tr id="cart-item-{{ data.id }}">
-                    <td>{{ data.product_variant.barcode }}</td>
-                    <td>{{ data.product_variant.product.brand }}</td>
-                    <td>{{ data.product_variant.simple_name }}</td>
-                    <td class="price-toggle-cell"
-                        data-selling-price="{{ data.product_variant.mrp }}"
-                        data-purchase-price="{{ data.product_variant.purchase_price }}">
-                        <span class="price-display">{{ data.product_variant.mrp|currency }}</span>
-                    </td>
-                    <td>
-                        <input type="number"
-                               class="form-input quantity-input strong"
-                               value="{{ data.quantity }}"
-                               data-item-id="{{ data.id }}"
-                               min="0"
-                               step="1">
-                    </td>
-                    <td>
-                        <input type="number"
-                               class="form-input price-input strong"
-                               value="{{ data.price }}"
-                               data-item-id="{{ data.id }}"
-                               min="0"
-                               step="1">
-                    </td>
-                    <td class="discount-cell">{{ data.discount_percentage }}%</td>
-                    <td class="amount-cell">{{ data.amount|currency }}</td>
-                    <td>
-                        <button class="btn btn-primary update-item-btn" data-item-id="{{ data.id }}">
-                            <i class="fas fa-save"></i>
-                        </button>
-                        <button class="btn btn-danger delete-item-btn" data-item-id="{{ data.id }}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
+            {% include 'cart/models/item_fetch.html' with item=data %}
             {% endfor %}
         </tbody>
     </table>

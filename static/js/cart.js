@@ -45,6 +45,7 @@ class CartManager {
             archiveBtn: document.getElementById('archiveCartBtn'),
             clearBtn: document.getElementById('clearCartBtn'),
             priceHeader: document.getElementById('priceColumnHeader'),
+            remainingStock: document.getElementById('remainingStock'),
         };
 
         // Initialize price toggle state
@@ -261,6 +262,9 @@ class CartManager {
             } else {
                 this.recalculateTotals();
             }
+            if (data.remaining_stock !== undefined) {
+                this.dom.remainingStock.textContent = data.remaining_stock;
+            }
         } catch (err) {
             console.error('Error in barcode submission:', err);
             this.notify(`Error adding product to cart: ${err.message}`, 'error');
@@ -362,6 +366,7 @@ class CartManager {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         }
 
+
         try {
             // Optimistic UI update
             const newAmount = qty * price;
@@ -379,8 +384,6 @@ class CartManager {
                 }
             }
 
-            this.recalculateTotals();
-
             const data = await this.api(this.urls.manageItem.replace('0', id), 'PUT', { quantity: qty, price });
 
             // Update with server response data
@@ -392,6 +395,9 @@ class CartManager {
                 // Update discount percentage if available
                 if (data.cart_item.discount_percentage !== undefined && discountCell) {
                     discountCell.textContent = `${data.cart_item.discount_percentage}%`;
+                }
+                if (data.remaining_stock !== undefined) {
+                    this.dom.remainingStock.textContent = this.format(data.remaining_stock);
                 }
             }
 
@@ -525,23 +531,23 @@ class CartManager {
             </td>
             <td>
                 <input type="number" class="form-input quantity-input" value="${quantity}" 
-                       data-item-id="${id}" min="0.01" step="0.01" 
+                       data-item-id="${id}" min="0.01" step="1" 
                        title="Press Enter to update">
             </td>
             <td>
                 <input type="number" class="form-input price-input" value="${price}" 
-                       data-item-id="${id}" min="0" step="0.01" 
+                       data-item-id="${id}" min="0" step="1" 
                        title="Press Enter to update">
             </td>
             <td class="discount-cell">${calculatedDiscount.toFixed(2)}%</td>
             <td class="amount-cell">${this.format(amount)}</td>
             <td>
                 <button type="button" class="btn btn-primary update-item-btn" data-item-id="${id}" 
-                        title="Save changes">
+                        title="Save changes" tabindex="-1">
                     <i class="fas fa-save"></i>
                 </button>
                 <button type="button" class="btn btn-danger delete-item-btn" data-item-id="${id}" 
-                        title="Remove item">
+                        title="Remove item" tabindex="-1">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>

@@ -30,4 +30,9 @@ urlpatterns = [
         views.generate_supplier_ind_pdf,
         name="supplier_ind_pdf",
     ),
+    path(
+        "invoice/report/pdf/",
+        views.generate_invoice_report_pdf,
+        name="invoice_report_pdf",
+    ),
 ]

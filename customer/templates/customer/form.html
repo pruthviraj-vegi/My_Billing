@@ -142,10 +142,7 @@
 {% block extra_js %}
   <script>
      $(document).ready(function() {
-       $('#id_referred_by').select2({
-         placeholder: "Type to search customers...",
-         width: '100%'
-       });
+      Select2Helper.init('#id_referred_by');
    });
   </script>
 {% endblock extra_js %}

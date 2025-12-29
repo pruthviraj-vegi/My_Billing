@@ -6,8 +6,19 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
 from django.db.models import Q
-from .models import ShopDetails, ReportConfiguration, PaymentDetails, BarcodeConfiguration
-from .forms import ShopDetailsForm, ReportConfigurationForm, QuickReportConfigForm, PaymentDetailsForm, BarcodeConfigurationForm
+from .models import (
+    ShopDetails,
+    ReportConfiguration,
+    PaymentDetails,
+    BarcodeConfiguration,
+)
+from .forms import (
+    ShopDetailsForm,
+    ReportConfigurationForm,
+    QuickReportConfigForm,
+    PaymentDetailsForm,
+    BarcodeConfigurationForm,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -287,8 +298,7 @@ def shop_settings_dashboard(request):
             default_configs[report_type] = ReportConfiguration.objects.get(
                 report_type=report_type, is_default=True, is_active=True
             )
-        except ReportConfiguration.DoesNotExist as e:
-            logger.error(f"Report configuration not found: {e}")
+        except ReportConfiguration.DoesNotExist:
             default_configs[report_type] = None
 
     context = {
@@ -303,7 +313,9 @@ def shop_settings_dashboard(request):
 
 def payment_details_list(request):
     """List all payment details."""
-    payments = PaymentDetails.objects.all().order_by("display_order", "-is_default", "-created_at")
+    payments = PaymentDetails.objects.all().order_by(
+        "display_order", "-is_default", "-created_at"
+    )
 
     # Search functionality
     search_query = request.GET.get("search", "")
@@ -345,7 +357,7 @@ def payment_details_create(request):
         initial_data = {}
         if ShopDetails.objects.count() == 1:
             initial_data["shop"] = ShopDetails.objects.first()
-        
+
         form = PaymentDetailsForm(initial=initial_data)
 
     context = {
@@ -452,7 +464,7 @@ def barcode_config_create(request):
         initial_data = {}
         if ShopDetails.objects.count() == 1:
             initial_data["shop"] = ShopDetails.objects.first()
-        
+
         form = BarcodeConfigurationForm(initial=initial_data)
 
     context = {

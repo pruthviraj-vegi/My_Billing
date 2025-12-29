@@ -1,6 +1,8 @@
+{% load custom_filters %}
+
 <tr id="cart-item-{{ item.id }}">
     <td>{{ item.product_variant.barcode }}</td>
-    <td>{{ item.product_variant.product.name }}</td>
+    <td>{{ item.product_variant.product.brand }}</td>
     <td>{{ item.product_variant.simple_name }}</td>
     <td class="price-toggle-cell"
         data-selling-price="{{ item.product_variant.mrp }}"
@@ -13,7 +15,7 @@
                value="{{ item.quantity }}"
                data-item-id="{{ item.id }}"
                min="0.01"
-               step="0.01">
+               step="1">
     </td>
     <td>
         <input type="number"
@@ -21,15 +23,15 @@
                value="{{ item.price }}"
                data-item-id="{{ item.id }}"
                min="0"
-               step="0.01">
+               step="1">
     </td>
     <td class="discount-cell">{{ item.product_variant.discount_percentage|default:"0" }}%</td>
     <td class="amount-cell">{{ item.amount|currency }}</td>
     <td>
-        <button class="btn btn-primary update-item-btn" data-item-id="{{ item.id }}">
+        <button type="button" class="btn btn-primary update-item-btn" data-item-id="{{ item.id }}" tabindex="-1">
             <i class="fas fa-save"></i>
         </button>
-        <button class="btn btn-danger delete-item-btn" data-item-id="{{ item.id }}">
+        <button type="button" class="btn btn-danger delete-item-btn" data-item-id="{{ item.id }}" tabindex="-1">
             <i class="fas fa-trash"></i>
         </button>
     </td>

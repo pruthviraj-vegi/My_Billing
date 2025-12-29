@@ -190,7 +190,7 @@ class SupplierInvoice(SoftDeleteModel):
         ordering = ["-invoice_date"]
 
     def __str__(self):
-        return f"Invoice {self.invoice_number} - {self.supplier.name} ({self.invoice_date.date()})"
+        return f"{self.invoice_number} - {self.supplier.name} ({self.invoice_date.date()}) - {self.get_invoice_type_display()} - {self.total_amount}"
 
     def save(self, *args, **kwargs):
         self.invoice_number = StringProcessor(self.invoice_number).toUppercase()
