@@ -454,26 +454,26 @@
         document.getElementById('gst-amount-display').textContent = `${gstAmount.toFixed(2)}`
     
         // Calculate purchase price with GST
-        const purchaseWithGST = purchase + gstAmount
-        document.getElementById('purchase-with-gst-display').textContent = `${purchaseWithGST.toFixed(2)}`
+        const purchaseWithGST = purchase
+        document.getElementById('purchase-with-gst-display').textContent = `${formatCurrency(purchaseWithGST)}`
     
         // Calculate after discount (final selling price)
         const discountAmount = selling * (discount / 100)
         const afterDiscount = selling - discountAmount
-        document.getElementById('after-discount').textContent = `${afterDiscount.toFixed(2)}`
+        document.getElementById('after-discount').textContent = `${formatCurrency(afterDiscount)}`
     
         // Calculate profit margin percentage - based on final selling price vs purchase price with GST
         const profitMargin = afterDiscount - purchaseWithGST
         const profitMarginPercentage = purchaseWithGST > 0 ? (profitMargin / purchaseWithGST) * 100 : 0
-        document.getElementById('profit-margin-percentage').textContent = `${profitMarginPercentage.toFixed(2)}%`
+        document.getElementById('profit-margin-percentage').textContent = `${formatCurrency(profitMarginPercentage)}%`
     
         // Calculate total value (purchase price × quantity)
         const totalValue = purchase * qty
-        document.getElementById('total-value').textContent = `${totalValue.toFixed(2)}`
+        document.getElementById('total-value').textContent = `${formatCurrency(totalValue)}`
     
         // Calculate final price (after discount)
         const finalPrice = afterDiscount
-        document.getElementById('final-price').textContent = `${finalPrice.toFixed(2)}`
+        document.getElementById('final-price').textContent = `${formatCurrency(finalPrice)}`
       }
     
       // Add event listeners

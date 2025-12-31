@@ -314,12 +314,12 @@
             retryBtn.addEventListener('click', () => {
                 document.getElementById('dashboardError').style.display = 'none';
                 document.getElementById('dashboardContent').style.display = 'block';
-                fetchDashboardData(dateFilter ? dateFilter.value : 'this_month');
+                fetchDashboardData(dateFilter ? dateFilter.value : 'today');
             });
         }
 
         // Initial Load
-        fetchDashboardData('this_month');
+        fetchDashboardData('today');
     });
     </script>
 {% endblock extra_js %}

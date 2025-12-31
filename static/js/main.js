@@ -174,24 +174,6 @@ document.addEventListener('DOMContentLoaded', function () {
 // UTILITY FUNCTIONS
 // ========================================
 
-// Format currency
-function formatCurrency(value) {
-    if (value === null || value === undefined || isNaN(value)) {
-        return '₹0.00';
-    }
-
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) {
-        return '₹0.00';
-    }
-
-    // Format with Indian number system (lakhs, crores)
-    return '₹' + numValue.toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-}
-
 // Format date
 function formatDate(date) {
     return new Intl.DateTimeFormat('en-IN', {

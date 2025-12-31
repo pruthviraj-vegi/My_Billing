@@ -139,8 +139,6 @@ def fetch_credits(request):
     cache_key_hash = hashlib.md5(cache_key_string.encode()).hexdigest()
     cache_key = f"credit_customers_data:{cache_key_hash}"
 
-    print(cache_key)
-
     # Get from cache or compute and cache for 2 minutes
     customers = cache.get_or_set(
         cache_key, lambda: credit_customers_data(request), timeout=120  # 2 minutes
@@ -555,30 +553,3 @@ def auto_reallocate(request, customer_id):
         )
 
     return redirect("customer:credit_detail", customer_id=customer_id)
-
-
-def auto_allot_all(request):
-    """
-    Auto allot all payments using FIFO method for all customers.
-    Uses signal-based reallocation for each customer.
-    """
-    from customer.signals import reallocate_customer_payments
-
-    customers = Customer.objects.filter(is_deleted=False)
-    success_count = 0
-    error_count = 0
-
-    for customer in customers:
-        try:
-            logger.info(f"Auto allotting payments for {customer.name}")
-            reallocate_customer_payments(customer, skip_signals=True)
-            success_count += 1
-        except Exception as e:
-            logger.error(f"Error auto allotting payments for {customer.name}: {e}")
-            error_count += 1
-            continue
-
-    return HttpResponse(
-        f"Successfully auto allotted payments for {success_count} customers. "
-        f"Errors: {error_count}."
-    )
