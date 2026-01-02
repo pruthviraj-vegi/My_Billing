@@ -37,13 +37,14 @@
                class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
             <a href="{% url 'invoice:home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">All Invoices</a>
+            <a href="{% url 'invoice:search_invoices_home' %}"
+               class="dropdown-item {% if request.resolver_match.url_name == 'search_invoices_home' %}active{% endif %}">Search Invoices</a>
             <div class="dropdown-divider"></div>
             <a href="{% url 'invoice:audit_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'invoices_audit' %}active{% endif %}">Invoices Audit</a>
             <div class="dropdown-divider"></div>
             <a href="{% url 'invoice:return_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'return_home' %}active{% endif %}">Return Invoices</a>
-         
             <a href="{% url 'invoice:report' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'report' %}active{% endif %}">Invoice Report</a>
          </div>
@@ -76,7 +77,7 @@
                class="dropdown-item {% if request.resolver_match.url_name == 'uom_home' %}active{% endif %}">UOMs</a>
             <a href="{% url 'inventory:gst_hsn_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'gst_hsn_home' %}active{% endif %}">GST HSN Codes</a>
-            <a href="{% url 'inventory_variant:favorites_home' %}"
+            <a href="{% url 'inventory:favorites_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'favorites_home' %}active{% endif %}">Favorites</a>
          </div>
       </li>

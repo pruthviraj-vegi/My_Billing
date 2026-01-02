@@ -7,16 +7,35 @@ from .forms import (
     GSTHsnCodeForm,
 )
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from .models import ClothType, Category, Color, Size, UOM, GSTHsnCode
+from .models import (
+    ClothType,
+    Category,
+    Color,
+    Size,
+    UOM,
+    GSTHsnCode,
+    FavoriteVariant,
+    ProductVariant,
+)
 from django.urls import reverse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import JsonResponse
-from django.db.models import Q
+from django.db.models import Q, F
 from django.views.decorators.http import require_http_methods
 import logging
 
 from base.utility import render_paginated_response
+
+try:
+    from rapidfuzz import process, fuzz
+except ImportError:
+    try:
+        from fuzzywuzzy import process, fuzz
+    except ImportError:
+        # Fallback if neither library is available
+        process = None
+        fuzz = None
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +322,8 @@ def search_suggestions(request):
         cache.set("category_search_words", searchable_items, 3600)
 
     # Perform fuzzy matching on individual words
+    if process is None:
+        return JsonResponse({"suggestions": []})
     fuzzy_matches = process.extract(query.lower(), searchable_items, limit=10)
 
     # Filter matches with score > 60 and return only words
@@ -555,6 +576,8 @@ def uom_search_suggestions(request):
         cache.set("uom_search_words", searchable_items, 3600)
 
     # Perform fuzzy matching on individual words
+    if process is None:
+        return JsonResponse({"suggestions": []})
     fuzzy_matches = process.extract(query.lower(), searchable_items, limit=10)
 
     # Filter matches with score > 60 and return only words
@@ -633,6 +656,8 @@ def gst_hsn_search_suggestions(request):
         combined_items.append(f"{code} - {desc}" if desc else code)
 
     # Fuzzy match against combined items
+    if process is None or fuzz is None:
+        return JsonResponse({"suggestions": []})
     matches = process.extract(
         query, combined_items, limit=10, scorer=fuzz.partial_ratio
     )
@@ -733,6 +758,263 @@ class DeleteGSTHsnCode(DeleteView):
 
     def get_success_url(self):
         return reverse("inventory:gst_hsn_home")
+
+
+# Constants for favorites pagination and sorting
+VARIANTS_PER_PAGE = 20
+
+VALID_FAVORITE_SORT_FIELDS = {
+    "id",
+    "-id",
+    "barcode",
+    "-barcode",
+    "product__brand",
+    "-product__brand",
+    "product__name",
+    "-product__name",
+    "quantity",
+    "-quantity",
+    "mrp",
+    "-mrp",
+    "status",
+    "-status",
+    "created_at",
+    "-created_at",
+}
+
+
+# Favorites Views
+def favorites_home(request):
+    """HTML page to display all favorite variants for the current user"""
+    # Adjust to your login URL
+    return render(
+        request,
+        "inventory/favorites/home.html",
+    )
+
+
+def fetch_favorites(request):
+    """AJAX endpoint to fetch favorite variants with search, filter, and pagination"""
+
+    try:
+        # Get search and filter parameters
+        search_query = request.GET.get("search", "")
+        status_filter = request.GET.get("status", "")
+        stock_filter = request.GET.get("stock", "")
+        sort_by = request.GET.get("sort", "-created_at")
+
+        # Start with user's favorites
+        favorites = FavoriteVariant.objects.filter(user=request.user).select_related(
+            "variant",
+            "variant__product",
+            "variant__product__category",
+            "variant__size",
+            "variant__color",
+        )
+
+        # Apply search filter
+        filters = Q()
+        if search_query:
+            filters &= (
+                Q(variant__product__brand__icontains=search_query)
+                | Q(variant__product__name__icontains=search_query)
+                | Q(variant__barcode__icontains=search_query)
+                | Q(variant__product__description__icontains=search_query)
+            )
+
+        # Apply status filter
+        if status_filter:
+            filters &= Q(variant__status=status_filter)
+
+        # Apply stock filter
+        if stock_filter == "in_stock":
+            filters &= Q(variant__quantity__gt=0)
+        elif stock_filter == "out_of_stock":
+            filters &= Q(variant__quantity=0)
+        elif stock_filter == "low_stock":
+            filters &= Q(
+                variant__quantity__lte=F("variant__minimum_quantity"),
+                variant__quantity__gt=0,
+            )
+
+        favorites = favorites.filter(filters)
+
+        # Convert to list to preserve favorite objects for sorting
+        favorites_list = list(favorites)
+
+        # Get variants from favorites
+        variants = [fav.variant for fav in favorites_list]
+
+        # Apply sorting
+        if sort_by not in VALID_FAVORITE_SORT_FIELDS:
+            sort_by = "-created_at"
+
+        # Sort variants
+        if sort_by.startswith("-"):
+            reverse = True
+            field = sort_by[1:]
+        else:
+            reverse = False
+            field = sort_by
+
+        # Create a mapping for favorite created_at dates
+        favorite_dates = {fav.variant_id: fav.created_at for fav in favorites_list}
+
+        def get_sort_key(variant):
+            if field == "created_at":
+                # Get the favorite's created_at
+                return favorite_dates.get(variant.id, variant.created_at)
+            try:
+                value = variant
+                for attr in field.split("__"):
+                    value = getattr(value, attr, None)
+                    if value is None:
+                        return ""
+                return value
+            except:
+                return ""
+
+        variants.sort(key=get_sort_key, reverse=reverse)
+
+        return render_paginated_response(
+            request,
+            variants,
+            "inventory/favorites/fetch.html",
+        )
+    except Exception as e:
+        logger.error(f"Error fetching favorites: {str(e)}")
+        return JsonResponse(
+            {"status": "error", "message": "Failed to fetch favorites"}, status=500
+        )
+
+
+@require_http_methods(["GET"])
+def get_variants_for_favorites(request):
+    """Get variants for adding to favorites (excludes already favorited ones)"""
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required"}, status=401
+        )
+
+    try:
+        # Get search query
+        search_query = request.GET.get("search", "")
+
+        # Get already favorited variant IDs
+        favorite_variant_ids = set(
+            FavoriteVariant.objects.filter(user=request.user).values_list(
+                "variant_id", flat=True
+            )
+        )
+
+        # Get variants excluding already favorited ones
+        variants = (
+            ProductVariant.objects.filter(status="ACTIVE")
+            .select_related("product", "product__category", "size", "color")
+            .exclude(id__in=favorite_variant_ids)
+        )
+
+        # Apply search filter
+        if search_query:
+            variants = variants.filter(
+                Q(product__brand__icontains=search_query)
+                | Q(product__name__icontains=search_query)
+                | Q(barcode__icontains=search_query)
+                | Q(product__description__icontains=search_query)
+            )
+
+        # Limit results
+        variants = variants[:50]  # Limit to 50 results for performance
+
+        variants_data = []
+        for variant in variants:
+            variants_data.append(
+                {
+                    "id": variant.id,
+                    "barcode": variant.barcode,
+                    "product_brand": variant.product.brand,
+                    "product_name": variant.product.name,
+                    "variant_name": variant.simple_name,
+                    "mrp": str(variant.mrp),
+                    "final_price": str(variant.final_price),
+                    "quantity": str(variant.quantity),
+                    "status": variant.status,
+                }
+            )
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "variants": variants_data,
+                "count": len(variants_data),
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error getting variants for favorites: {str(e)}")
+        return JsonResponse(
+            {"status": "error", "message": "Failed to get variants"}, status=500
+        )
+
+
+@require_http_methods(["POST"])
+def add_favorite(request, variant_id):
+    """Add a single variant to favorites"""
+
+    try:
+        variant = ProductVariant.objects.get(id=variant_id, status="ACTIVE")
+
+        # Check if already favorited
+        favorite, created = FavoriteVariant.objects.get_or_create(
+            user=request.user, variant=variant
+        )
+
+        if created:
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": "Product added to favorites",
+                }
+            )
+        else:
+            return JsonResponse(
+                {
+                    "status": "info",
+                    "message": "Product is already in favorites",
+                }
+            )
+    except ProductVariant.DoesNotExist:
+        return JsonResponse(
+            {"status": "error", "message": "Product variant not found"}, status=404
+        )
+    except Exception as e:
+        logger.error(f"Error adding favorite: {str(e)}")
+        return JsonResponse(
+            {"status": "error", "message": "Failed to add favorite"}, status=500
+        )
+
+
+@require_http_methods(["POST"])
+def remove_favorite(request, variant_id):
+    """Remove a single variant from favorites"""
+    try:
+        favorite = FavoriteVariant.objects.get(user=request.user, variant_id=variant_id)
+        favorite.delete()
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "message": "Product removed from favorites",
+            }
+        )
+    except FavoriteVariant.DoesNotExist:
+        return JsonResponse(
+            {"status": "error", "message": "Favorite not found"}, status=404
+        )
+    except Exception as e:
+        logger.error(f"Error removing favorite: {str(e)}")
+        return JsonResponse(
+            {"status": "error", "message": "Failed to remove favorite"}, status=500
+        )
 
 
 @require_http_methods(["POST"])

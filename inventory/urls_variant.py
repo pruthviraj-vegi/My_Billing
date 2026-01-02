@@ -38,25 +38,4 @@ urlpatterns = [
         views_variant.DamageCreate.as_view(),
         name="damage_create",
     ),
-    # Favorite operations
-    path(
-        "favorites/",
-        views_variant.favorites_home,
-        name="favorites_home",
-    ),
-    path(
-        "favorites/fetch/",
-        views_variant.fetch_favorites,
-        name="fetch_favorites",
-    ),
-    path(
-        "favorites/get-variants/",
-        views_variant.get_variants_for_favorites,
-        name="get_variants_for_favorites",
-    ),
-    path(
-        "favorites/add-bulk/",
-        views_variant.add_favorites_bulk,
-        name="add_favorites_bulk",
-    ),
 ]

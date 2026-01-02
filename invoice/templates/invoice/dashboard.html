@@ -87,6 +87,16 @@
 
         <div class="stat-card">
             <div class="stat-icon">
+                <i class="fas fa-calculator"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number counting-number" id="totalReturnAmount" data-count="0">0</h3>
+                <p class="stat-label">Total Return Amount</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
                 <i class="fas fa-chart-line"></i>
             </div>
             <div class="stat-content">
@@ -275,6 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCount('netAmount', data.stats.net_amount);
         updateCount('totalProfit', data.stats.total_profit);
         updateCount('totalDiscount', data.stats.total_discount);
+        updateCount('totalReturnAmount', data.stats.total_return_amount);
 
         // Update Revenue Chart
         if (data.comparison_data) {

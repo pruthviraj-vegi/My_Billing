@@ -68,15 +68,16 @@
     <!-- Top Bar -->
     <header class="topbar">
       <div class="topbar-left">
-        <a href="{% url 'admin:index' %}" class="logo">
+        <a href="{% url 'base:home' %}" class="logo">
           <img src="{% static 'images/logo.svg' %}"
                height="30"
                width="30"
                alt="Logo"
                loading="eager"
                fetchpriority="high"
+               class="logo-img"
                onerror="this.style.display='none'" />
-          <span>Billing System</span>
+          <span class="logo-text">Billing System</span>
         </a>
       </div>
       <div class="topbar-right">
@@ -200,11 +201,6 @@
     <script>
       // Load non-critical JavaScript after page load
       window.addEventListener('load', function() {
-        // Load Chart.js
-        const chartScript = document.createElement('script');
-        chartScript.src = '{% static "assets/plugins/chart/chart-4.5.js" %}';
-        document.head.appendChild(chartScript);
-        
         // Load remaining main.js functionality
         const mainScript = document.createElement('script');
         mainScript.src = '{% static "js/main.js" %}';

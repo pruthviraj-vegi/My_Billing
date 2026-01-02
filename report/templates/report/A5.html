@@ -91,7 +91,12 @@
                       <div class="font-semibold">{{ item.product_variant.price_name|truncatechars:40 }}</div>
                     </td>
                     <td class="text-center">{{ item.hsn_code.code|default:"-" }}</td>
-                    <td class="text-center">{{ item.quantity }}</td>
+                    <td class="text-center">{{ item.quantity }}
+                      {% if item.get_return_available_quantity != item.quantity %}
+                      <br>
+                        <span class="text-danger">(-{{ item.quantity|sub:item.get_return_available_quantity|floatformat:2 }} )</span>
+                  {% endif %}
+                    </td>
                     <td class="text-center">{{ item.product_variant.product.uom.short_code|default:"PCS" }}</td>
                     <td class="text-right">{{ item.unit_price|currency }}</td>
                     <td class="text-right font-semibold">{{ item.amount|currency }}</td>
@@ -159,6 +164,12 @@
                       <p>
                         <span class="text-gray-700">Advance:</span> 
                         <span class="font-semibold text-gray-600">- {{ details.advance_amount|currency }}</span>
+                      </p>
+                    {% endif %}
+                    {% if details.total_returned_amount > 0 %}
+                      <p>
+                        <span class="text-gray-700">Returned:</span> 
+                        <span class="font-semibold text-gray-600">- {{ details.total_returned_amount|currency }}</span>
                       </p>
                     {% endif %}
                   </div>

@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.views import View
 from cart.models import Cart
 from .form import InvoiceForm
-from .models import Invoice, InvoiceItem
+from .models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceItem
 from django.utils import timezone
 from django.db import transaction
 from inventory.services import InventoryService
@@ -317,7 +317,7 @@ class CreateInvoice(View):
                         product_variant=item.product_variant,
                         quantity=item.quantity,
                         unit_price=item.price,
-                        purchase_price=item.product_variant.actual_purchased_price,
+                        purchase_price=item.product_variant.purchase_price,
                         mrp=item.product_variant.mrp,
                         commission_percentage=item.product_variant.commission_percentage,
                     )
@@ -480,9 +480,17 @@ def invoice_dashboard_fetch(request):
         invoice_date__date__range=[start_date, end_date]
     ).select_related("customer")
 
+    return_invoices = ReturnInvoice.objects.filter(
+        return_date__date__range=[start_date, end_date]
+    ).select_related("invoice", "customer")
+
     # Calculate metrics
     total_invoices = invoices.count()
     total_amount = invoices.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    total_return_amount = return_invoices.aggregate(total=Sum("refund_amount"))[
+        "total"
+    ] or Decimal("0")
+    total_amount = total_amount
     total_discount = invoices.aggregate(total=Sum("discount_amount"))[
         "total"
     ] or Decimal("0")
@@ -496,7 +504,9 @@ def invoice_dashboard_fetch(request):
     total_profit = Decimal("0")
     for item in invoice_items:
         profit_per_unit = item.unit_price - item.purchase_price
-        total_profit += profit_per_unit * item.quantity
+        total_profit += profit_per_unit * item.actual_quantity
+
+    total_profit = total_profit - total_discount
 
     # Calculate net amount (amount - discount)
     net_amount = total_amount - total_discount
@@ -538,6 +548,7 @@ def invoice_dashboard_fetch(request):
         "net_amount": float(net_amount),
         "outstanding_amount": float(outstanding_amount),
         "total_profit": float(total_profit),
+        "total_return_amount": float(total_return_amount),
     }
 
     # Add percentage calculations for breakdowns
@@ -606,4 +617,18 @@ def invoice_dashboard_fetch(request):
                 "filter": date_filter,
             },
         }
+    )
+
+
+def search_invoices_home(request):
+    return render(request, "search_invoice/home.html")
+
+
+def fetch_search_invoices(request):
+    search_query = request.GET.get("search", "")
+    invoice_items = InvoiceItem.objects.filter(
+        product_variant__barcode__iexact=search_query
+    ).select_related("product_variant__product", "invoice")
+    return render_paginated_response(
+        request, invoice_items, "search_invoice/fetch.html"
     )

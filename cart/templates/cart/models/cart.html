@@ -78,7 +78,7 @@
                             Edit Cart
                         </a>
                     </li>
-                    <li>
+                    {% comment %} <li>
                         <a class="dropdown-item"
                            href="#"
                            id="archiveCartBtn"
@@ -86,7 +86,7 @@
                             <i class="fas fa-archive"></i>
                             Archive Cart
                         </a>
-                    </li>
+                    </li> {% endcomment %}
                     <li>
                         <a class="dropdown-item"
                            href="#"
@@ -208,7 +208,7 @@
                     <div class="row g-2 align-items-end">
                         <div class="col-md-3">
                             <label for="searchInput" class="form-label small">Search</label>
-                            <input type="text" 
+                            <input type="search" 
                                    id="searchInput" 
                                    name="search" 
                                    class="form-input" 
@@ -216,7 +216,7 @@
                         </div>
                         <div class="col-md-2">
                             <label for="categoryFilter" class="form-label small">Category</label>
-                            <input type="text" 
+                            <input type="search" 
                                    id="categoryFilter" 
                                    name="category" 
                                    class="form-input" 
@@ -224,7 +224,7 @@
                         </div>
                         <div class="col-md-2">
                             <label for="colorFilter" class="form-label small">Color</label>
-                            <input type="text" 
+                            <input type="search" 
                                    id="colorFilter" 
                                    name="color" 
                                    class="form-input" 
@@ -232,7 +232,7 @@
                         </div>
                         <div class="col-md-2">
                             <label for="sizeFilter" class="form-label small">Size</label>
-                            <input type="text" 
+                            <input type="search" 
                                    id="sizeFilter" 
                                    name="size" 
                                    class="form-input" 
@@ -251,7 +251,7 @@
                         </div>
                         <div class="col-md-1">
                             <button type="submit" class="btn btn-primary btn-sm w-100">
-                                <i class="fas fa-search"></i>
+                                <i class="fas fa-search"></i> Search
                             </button>
                         </div>
                     </div>
@@ -260,23 +260,23 @@
                     <table class="data-table" id="search_table" data-sort="">
                         <thead>
                             <tr>
-                                <th>Barcode</th>
-                                <th>Brand</th>
-                                <th>Product</th>
-                                <th>Category</th>
-                                <th>Color</th>
-                                <th>Size</th>
-                                <th>Quantity</th>
-                                <th>MRP</th>
-                                <th>Discount</th>
-                                <th>Price</th>
+                                <th class="sortable" data-sort="barcode">Barcode</th>
+                                <th class="sortable" data-sort="product__brand">Brand</th>
+                                <th class="sortable" data-sort="product__name">Product</th>
+                                <th class="sortable" data-sort="product__category__name">Category</th>
+                                <th class="sortable" data-sort="color__name">Color</th>
+                                <th class="sortable" data-sort="size__name">Size</th>
+                                <th class="sortable" data-sort="quantity">Quantity</th>
+                                <th class="sortable" data-sort="mrp">MRP</th>
+                                <th class="sortable" data-sort="discount_percentage">Discount</th>
+                                <th>Final Price</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="search_table_body">
                             <!-- Empty table body - data will be loaded via AJAX -->
                             <tr>
-                                <td colspan="11" class="text-center loading-cell">
+                                <td colspan="10" class="text-center loading-cell">
                                     <div class="loading">
                                         <i class="fas fa-spinner fa-spin"></i>
                                         Loading search results...
@@ -437,12 +437,32 @@
         }
     })();
     
-    // Initialize favorites table
-    initTableAjax(null, 'favorites_table', CART_DATA.urls.getFavorites, { autoLoad: true });
+    // Initialize favorites table (don't auto-load - only load when modal opens)
+    initTableAjax(null, 'favorites_table', CART_DATA.urls.getFavorites, { autoLoad: false });
     
-    // Initialize search table with form
-    initTableAjax('searchForm', 'search_table', CART_DATA.urls.customSearch, { autoLoad: true });
+    // Initialize search table with form (don't auto-load - only load when modal opens)
+    initTableAjax('searchForm', 'search_table', CART_DATA.urls.customSearch, { autoLoad: false });
+    
     initTableSorting('favorites_table');
     initTableSorting('search_table');
+    
+    // Load favorites table only when favorites modal is opened
+    const favoritesModal = document.getElementById('favoritesModal');
+    if (favoritesModal) {
+        favoritesModal.addEventListener('show.bs.modal', function() {
+            // Load favorites data when modal opens
+            loadTableData(null, 'favorites_table', CART_DATA.urls.getFavorites, {});
+        });
+    }
+    
+    // Load search table only when search modal is opened
+    const searchModal = document.getElementById('searchModal');
+    if (searchModal) {
+        searchModal.addEventListener('show.bs.modal', function() {
+            // Load search data when modal opens
+            loadTableData('searchForm', 'search_table', CART_DATA.urls.customSearch, {});
+            $("#searchInput").focus();
+        });
+    }
     </script>
 {% endblock extra_js %}

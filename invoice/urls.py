@@ -79,4 +79,11 @@ urlpatterns = [
     # Invoice Report
     path("report/", views_report.invoice_report, name="report"),
     path("report/fetch/", views_report.invoice_report_fetch, name="report_fetch"),
+    # Search Invoices
+    path("search_invoice/", views.search_invoices_home, name="search_invoices_home"),
+    path(
+        "search_invoice/fetch/",
+        views.fetch_search_invoices,
+        name="fetch_search_invoices",
+    ),
 ]

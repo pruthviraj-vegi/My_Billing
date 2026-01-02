@@ -17,6 +17,16 @@ class InvoiceFinancialMixin:
     """Mixin containing all financial calculation properties and methods for Invoice"""
 
     @property
+    def total_returned_amount(self):
+        """Total amount of returned items"""
+        try:
+            return self.return_invoices.filter(
+                status__in=["APPROVED", "COMPLETED"]
+            ).aggregate(total=Sum("refund_amount"))["total"] or Decimal("0")
+        except Exception as e:
+            return Decimal("0")
+
+    @property
     def total_payable(self):
         """Total amount customer owes after discount"""
         return self.amount - self.discount_amount
@@ -24,7 +34,7 @@ class InvoiceFinancialMixin:
     @property
     def net_amount_due(self):
         """Amount still owed after advance payments"""
-        return self.total_payable - self.advance_amount
+        return self.total_payable - self.advance_amount - self.total_returned_amount
 
     @property
     def remaining_amount(self):
@@ -39,7 +49,7 @@ class InvoiceFinancialMixin:
     @property
     def total_received(self):
         """Total amount received from customer (advance + payments)"""
-        return self.advance_amount + self.paid_amount
+        return self.advance_amount + self.paid_amount + self.total_returned_amount
 
     @property
     def is_fully_paid(self):
@@ -143,6 +153,19 @@ class InvoiceFinancialMixin:
 
 class InvoiceItemFinancialMixin:
     """Mixin containing all financial calculation properties for InvoiceItem"""
+
+    @property
+    def actual_quantity(self):
+        """Actual quantity for the invoice item"""
+        qty = self.return_items.aggregate(total=Sum("quantity_returned"))[
+            "total"
+        ] or Decimal("0")
+        return self.quantity - qty
+
+    @property
+    def actual_amount(self):
+        """Actual amount for the invoice item"""
+        return self.actual_quantity * self.unit_price
 
     @property
     def amount(self):

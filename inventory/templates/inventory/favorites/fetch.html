@@ -5,11 +5,6 @@
 {% if page_obj %}
     {% for variant in page_obj %}
         <tr>
-            <td>
-                <input type="checkbox" 
-                       class="favorite-checkbox" 
-                       data-variant-id="{{ variant.id }}">
-            </td>
             <td>{{ variant.id }}</td>
             <td>
                 <strong>{{ variant.barcode }}</strong>
@@ -57,24 +52,6 @@
                 <strong>{{ variant.final_price|currency }}</strong>
             </td>
             <td>
-                {% if variant.status == 'ACTIVE' %}
-                    <span class="badge badge-success">
-                        <i class="fas fa-check-circle"></i>
-                        Active
-                    </span>
-                {% elif variant.status == 'DRAFT' %}
-                    <span class="badge badge-warning">
-                        <i class="fas fa-edit"></i>
-                        Draft
-                    </span>
-                {% else %}
-                    <span class="badge badge-danger">
-                        <i class="fas fa-times-circle"></i>
-                        Discontinued
-                    </span>
-                {% endif %}
-            </td>
-            <td>
                 <div class="action-buttons">
                     <a href="{% url 'inventory_variant:details' variant.id %}"
                        class="btn-action btn-view"
@@ -85,7 +62,7 @@
                             class="btn-action btn-danger remove-favorite-btn" 
                             data-variant-id="{{ variant.id }}"
                             title="Remove from Favorites">
-                        <i class="fas fa-star"></i>
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </td>
@@ -94,68 +71,17 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="12" class="text-center" style="padding: 3rem;">
+        <td colspan="9" class="text-center" style="padding: 3rem;">
             <div class="empty-state">
                 <i class="fas fa-star" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
                 <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Favorites Found</h4>
                 <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
                     You haven't added any products to your favorites yet. 
-                    Go to the <a href="{% url 'inventory_variant:home' %}">Product Variants</a> page to add favorites.
+                    Click "Add Favorites" button to add products.
                 </p>
-                <a href="{% url 'inventory_variant:home' %}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left"></i>
-                    Browse Products
-                </a>
             </div>
         </td>
     </tr>
 {% endif %}
 
 <!-- Pagination separated from table content -->
-
-<script>
-    // Handle remove favorite button clicks
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-favorite-btn')) {
-            const btn = e.target.closest('.remove-favorite-btn');
-            const variantId = btn.dataset.variantId;
-            
-            if (!confirm('Are you sure you want to remove this product from favorites?')) {
-                return;
-            }
-
-            const url = urls.toggleFavorite + variantId + '/';
-            
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Reload table
-                    if (typeof reloadTable === 'function') {
-                        reloadTable('data_table');
-                    }
-                    if (window.showToast) {
-                        showToast(data.message, 'success');
-                    }
-                } else {
-                    if (window.showToast) {
-                        showToast(data.message || 'Failed to remove favorite', 'error');
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error removing favorite:', error);
-                if (window.showToast) {
-                    showToast('Failed to remove favorite', 'error');
-                }
-            });
-        }
-    });
-</script>

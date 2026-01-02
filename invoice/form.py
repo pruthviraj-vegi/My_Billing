@@ -84,6 +84,35 @@ class InvoiceForm(forms.ModelForm):
         except Exception as e:
             print(e)
 
+        # Filter sold_by queryset to show only commission users or admins as fallback
+        try:
+            # Get users with commission enabled (active salaries with commission=True)
+            commissioned_users = CustomUser.objects.filter(
+                salaries__commission=True,
+                salaries__effective_to__isnull=True,  # Current salary
+                is_active=True,
+            ).distinct()
+
+            # If no commissioned users exist, fall back to admins
+            if not commissioned_users.exists():
+                commissioned_users = CustomUser.objects.filter(
+                    is_staff=True, is_active=True
+                )
+
+            # Set the queryset for the sold_by field
+            self.fields["sold_by"].queryset = commissioned_users
+
+            # Set initial value for new invoices
+            if not self.instance.pk:
+                first_user = commissioned_users.order_by("id").first()
+                if first_user:
+                    self.fields["sold_by"].initial = first_user
+            else:
+                self.fields["sold_by"].initial = self.instance.sold_by
+
+        except Exception as e:
+            print(f"Error setting sold_by field: {e}")
+
     def clean_amount(self):
         """Validate amount is not negative"""
         amount = self.cleaned_data.get("amount")

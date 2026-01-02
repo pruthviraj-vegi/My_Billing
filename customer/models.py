@@ -96,6 +96,9 @@ class Customer(SoftDeleteModel):
             from invoice.models import Invoice
 
             credit_qs = self.invoices.filter(payment_type=Invoice.PaymentType.CREDIT)
+            return_qs = self.return_invoices.filter(
+                status__in=["APPROVED", "COMPLETED"]
+            )
         except Exception:
             # Fallback without importing to avoid circular import issues
             credit_qs = self.invoices.filter(payment_type="CREDIT")
@@ -112,7 +115,11 @@ class Customer(SoftDeleteModel):
             payment_type=Payment.PaymentType.Purchased
         ).aggregate(total=Coalesce(Sum("amount"), Value(Decimal("0"))))["total"]
 
-        return invoices_total + credit_payment_total
+        return_total = return_qs.aggregate(
+            total=Coalesce(Sum("refund_amount"), Value(Decimal("0")))
+        )["total"]
+
+        return invoices_total + credit_payment_total - return_total
 
     @cached_property
     def debit_amount(self):

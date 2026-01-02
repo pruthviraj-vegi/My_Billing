@@ -10,6 +10,7 @@ from .models import (
     ProductVariant,
     ProductImage,
     InventoryLog,
+    FavoriteVariant,
 )
 
 
@@ -322,6 +323,19 @@ class ProductImageAdmin(admin.ModelAdmin):
     list_filter = ["is_featured", "color"]
     search_fields = ["product__name", "product__brand", "alt_text"]
     ordering = ["product__brand", "product__name"]
+
+
+@admin.register(FavoriteVariant)
+class FavoriteVariantAdmin(admin.ModelAdmin):
+    list_display = ["user", "variant", "created_at"]
+    list_filter = ["created_at"]
+    search_fields = [
+        "user__username",
+        "variant__product__name",
+        "variant__product__brand",
+    ]
+    ordering = ["-created_at"]
+    readonly_fields = ["created_at"]
 
 
 # Custom admin site configuration

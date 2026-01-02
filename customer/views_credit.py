@@ -2,14 +2,14 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q, Sum
 from django.contrib import messages
 from .models import Customer, Payment
-from invoice.models import Invoice, PaymentAllocation
+from invoice.models import Invoice, PaymentAllocation, ReturnInvoice
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from .forms import PaymentForm
 from django.urls import reverse_lazy
 from decimal import Decimal
 from django.http import HttpResponse
 from datetime import datetime, timedelta
-from django.db.models import Sum, F, Value, Case, When, DecimalField
+from django.db.models import Sum, F, Value, Case, When, DecimalField, OuterRef, Subquery
 from django.db.models.functions import Coalesce
 from django.core.cache import cache
 import hashlib
@@ -223,16 +223,51 @@ def _build_ledger_rows(customer, start_date=None, end_date=None):
             advance=Coalesce(
                 F("advance_amount"), Decimal("0"), output_field=DecimalField()
             ),
+            # Calculate return amount from related ReturnInvoice records
+            return_amt=Coalesce(
+                Subquery(
+                    ReturnInvoice.objects.filter(invoice=OuterRef("pk"))
+                    .values("invoice")
+                    .annotate(total=Sum("refund_amount"))
+                    .values("total")[:1],
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+                output_field=DecimalField(),
+            ),
             net_amount=Coalesce(F("amount"), Decimal("0"), output_field=DecimalField())
             - Coalesce(F("discount_amount"), Decimal("0"), output_field=DecimalField())
-            - Coalesce(F("advance_amount"), Decimal("0"), output_field=DecimalField()),
+            - Coalesce(F("advance_amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(
+                Subquery(
+                    ReturnInvoice.objects.filter(invoice=OuterRef("pk"))
+                    .values("invoice")
+                    .annotate(total=Sum("refund_amount"))
+                    .values("total")[:1],
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+                output_field=DecimalField(),
+            ),
             paid_amt=Coalesce(
                 F("paid_amount"), Decimal("0"), output_field=DecimalField()
             ),
+            # Outstanding = Gross - Discount - Advance - Paid - Return
             outstanding=Coalesce(F("amount"), Decimal("0"), output_field=DecimalField())
             - Coalesce(F("discount_amount"), Decimal("0"), output_field=DecimalField())
             - Coalesce(F("advance_amount"), Decimal("0"), output_field=DecimalField())
-            - Coalesce(F("paid_amount"), Decimal("0"), output_field=DecimalField()),
+            - Coalesce(F("paid_amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(
+                Subquery(
+                    ReturnInvoice.objects.filter(invoice=OuterRef("pk"))
+                    .values("invoice")
+                    .annotate(total=Sum("refund_amount"))
+                    .values("total")[:1],
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+                output_field=DecimalField(),
+            ),
         )
         .values(
             "id",
@@ -241,6 +276,7 @@ def _build_ledger_rows(customer, start_date=None, end_date=None):
             "gross",
             "discount",
             "advance",
+            "return_amt",
             "net_amount",
             "paid_amt",
             "outstanding",

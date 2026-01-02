@@ -409,11 +409,7 @@
                         <div class="total-row total-final">
                             <span class="total-label">Final Balance:</span>
                             <span class="total-value">
-                                {% if total_return_amount > 0 %}
-                                    {{ invoice.net_amount_due|sub:total_return_amount|currency }}
-                                {% else %}
-                                    {{ invoice.net_amount_due|currency }}
-                                {% endif %}
+                                {{ invoice.net_amount_due|currency }}
                             </span>
                         </div>
                     </div>

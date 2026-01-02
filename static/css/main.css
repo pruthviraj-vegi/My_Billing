@@ -194,10 +194,27 @@ body {
     text-decoration: none;
 }
 
-.logo img {
+.logo img,
+.logo-img {
     width: 32px;
     height: 32px;
     object-fit: contain;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.logo-text {
+    color: var(--text-primary);
+    transition: color 0.3s ease;
+}
+
+/* Dark theme adjustments for logo */
+[data-theme="dark"] .logo-img {
+    /* Invert and brighten for dark backgrounds - adjust as needed */
+    filter: brightness(0) invert(1) opacity(0.9);
+}
+
+[data-theme="dark"] .logo-text {
+    color: var(--text-primary);
 }
 
 .topbar-right {
