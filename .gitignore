@@ -13,3 +13,4 @@ generate_customer_data.py
 logs/*
 .cursor/*
 .env
+staticfiles/*

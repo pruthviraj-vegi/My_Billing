@@ -41,6 +41,7 @@ from supplier.views import (
 )
 from inventory.views_variant import get_variants_data
 from invoice.views_report import get_invoice_report_data
+from django.conf import settings
 
 Barcode.default_writer_options["write_text"] = False
 
@@ -67,7 +68,7 @@ def generatePdf(template_name, file_name, context, request, report_type="INVOICE
             "{{ qrcode }}", f'<img src="data:image/png;base64, {barcode_data}"/>'
         )
 
-    pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
+    pdf_file = HTML(string=html, base_url=settings.STATIC_ROOT).write_pdf(
         presentational_hints=True
     )
 

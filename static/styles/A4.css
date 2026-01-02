@@ -10,20 +10,6 @@
     margin: 5mm;
 }
 
-@media print {
-    @page {
-        size: A4;
-        margin: 5mm;
-    }
-
-    body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        margin: 0;
-        padding: 0;
-    }
-}
-
 /* ========================================
    BASE STYLES
    ======================================== */
