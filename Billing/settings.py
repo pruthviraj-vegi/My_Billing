@@ -195,11 +195,10 @@ USE_I18N = False
 USE_TZ = False
 
 # CSRF Configuration
-CSRF_TRUSTED_ORIGINS = [
-    "https://ubuntu.clownbunny.in",
-    "https://www.ubuntu.clownbunny.in",
-    "https://*.clownbunny.in",
-]
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    cast=lambda v: [s.strip() for s in v.split(",")],
+)
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_NAME = "billing_csrftoken"  # Obscure default name
