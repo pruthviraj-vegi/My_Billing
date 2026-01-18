@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, statements
 
 
 app_name = "report"
@@ -35,4 +35,9 @@ urlpatterns = [
         views.generate_invoice_report_pdf,
         name="invoice_report_pdf",
     ),
+    path("send-invoice/<int:pk>/", statements.send_invoice, name="send_invoice"),
+    path(
+        "send-statement/<int:pk>/", statements.send_statement, name="send_pdf_statement"
+    ),
+    path("send-text/<int:pk>/", statements.send_text, name="send_text"),
 ]

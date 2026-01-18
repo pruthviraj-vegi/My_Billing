@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     "cart",
     "invoice",
     "report",
+    "api",
 ]
 
 MIDDLEWARE = [
@@ -96,6 +97,7 @@ LOGIN_EXEMPT_URLS = [
     r"^static/.*$",
     r"^media/.*$",
     r"^login/.*$",
+    r"^api/.*$",
 ]
 
 TEMPLATES = [

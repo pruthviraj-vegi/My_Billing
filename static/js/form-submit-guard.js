@@ -80,6 +80,48 @@
             this.protectedForms.add(form);
             this.elementToIdMap.set(form, formId);
 
+            // Get ALL submit buttons to track clicks
+            const allSubmitButtons = Array.from(
+                form.querySelectorAll('button[type="submit"], input[type="submit"]')
+            );
+
+            // Track which button was clicked and preserve its value
+            // This MUST happen on click, not mousedown, to ensure we capture the value
+            allSubmitButtons.forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const buttonName = btn.getAttribute('name');
+                    const buttonValue = btn.getAttribute('value');
+
+                    // If button has name and value, preserve it immediately
+                    if (buttonName && buttonValue !== null) {
+                        // Remove any existing hidden field with this name
+                        const existingFields = form.querySelectorAll(`input[type="hidden"][name="${buttonName}"]`);
+                        existingFields.forEach(field => field.remove());
+
+                        // Create hidden field immediately to preserve button value
+                        const hiddenField = document.createElement('input');
+                        hiddenField.type = 'hidden';
+                        hiddenField.name = buttonName;
+                        hiddenField.value = buttonValue;
+                        // Insert at the beginning of the form
+                        form.insertBefore(hiddenField, form.firstChild);
+
+                        console.debug('FormSubmitGuard: Preserved button value on click', {
+                            name: buttonName,
+                            value: buttonValue
+                        });
+                    }
+
+                    // Also mark for detection in submit handler (backup)
+                    btn.dataset.wasClicked = 'true';
+                    allSubmitButtons.forEach(otherBtn => {
+                        if (otherBtn !== btn) {
+                            delete otherBtn.dataset.wasClicked;
+                        }
+                    });
+                }, { capture: true });
+            });
+
             form.addEventListener('submit', function (e) {
                 // Check if already submitting
                 if (FormSubmitGuard.activeSubmissions.has(formId)) {
@@ -92,13 +134,49 @@
                 // Mark as submitting IMMEDIATELY
                 FormSubmitGuard.activeSubmissions.add(formId);
 
-                // Get ALL submit buttons
-                const allSubmitButtons = Array.from(
-                    form.querySelectorAll('button[type="submit"], input[type="submit"]')
-                );
+                // The actual button that was clicked - use multiple fallback methods
+                // Note: allSubmitButtons is already defined above in protectForm
+                let clickedButton = null;
 
-                // The actual button that was clicked
-                const clickedButton = e.submitter || allSubmitButtons[0];
+                // Method 1: Modern browsers support e.submitter
+                if (e.submitter && (e.submitter.type === 'submit' || e.submitter.tagName === 'BUTTON')) {
+                    clickedButton = e.submitter;
+                }
+                // Method 2: Check document.activeElement (the focused element when form was submitted)
+                else if (document.activeElement &&
+                    (document.activeElement.type === 'submit' ||
+                        (document.activeElement.tagName === 'BUTTON' && document.activeElement.type !== 'button'))) {
+                    clickedButton = document.activeElement;
+                }
+                // Method 3: Check which button was recently clicked (stored in data attribute)
+                else {
+                    allSubmitButtons.forEach(btn => {
+                        if (btn.dataset.wasClicked === 'true') {
+                            clickedButton = btn;
+                            delete btn.dataset.wasClicked;
+                        }
+                    });
+                }
+
+                // Fallback: Use first button if none detected
+                if (!clickedButton && allSubmitButtons.length > 0) {
+                    clickedButton = allSubmitButtons[0];
+                }
+
+                // Note: Button values are already preserved in hidden fields by the click handler above
+                // This is just for logging/debugging purposes
+                if (clickedButton) {
+                    const buttonName = clickedButton.getAttribute('name');
+                    const buttonValue = clickedButton.getAttribute('value');
+
+                    if (buttonName) {
+                        console.debug('FormSubmitGuard: Submit detected', {
+                            name: buttonName,
+                            value: buttonValue,
+                            hasHiddenField: !!form.querySelector(`input[type="hidden"][name="${buttonName}"]`)
+                        });
+                    }
+                }
 
                 // Store original state for ALL buttons
                 const buttonStates = new Map();

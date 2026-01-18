@@ -301,7 +301,7 @@
                     </td>
                     <td>{{ transaction.get_payment_method_display }}</td>
                     <td>{{ transaction.description|truncatewords:10|default:"-" }}</td>
-                    <td>{{ transaction.created_at|date:"M d, Y" }}</td>
+                    <td>{{ transaction.date|date:"M d, Y" }}</td>
                     <td>
                       <div class="action-buttons">
                         <a href="{% url 'user:transaction_edit' user.id transaction.id %}" class="btn btn-sm btn-outline" title="Edit">

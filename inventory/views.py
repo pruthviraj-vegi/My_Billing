@@ -411,6 +411,7 @@ class CreateProduct(View):
                     "Initial stock",
                     variant_form.cleaned_data.get("supplier_invoice"),
                 )
+
         except IntegrityError as e:
             logger.exception(
                 "Database integrity error during product creation",

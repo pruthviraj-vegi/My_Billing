@@ -192,7 +192,8 @@
                 aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form id="downloadReportForm d-flex flex-column gap-2 ">
+        <form id="downloadReportForm" class="d-flex flex-column gap-2">
+          {% csrf_token %}
           <div class="form-group mb-3">
             <label for="reportDateFilter" class="form-label">Select Date Range</label>
             <select name="date_filter" class="form-select" id="reportDateFilter">
@@ -232,6 +233,10 @@
         </form>
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="send_pdf_statement" >
+          <i class="fas fa-paper-plane"></i>
+          Send PDF Statement
+        </button>
         <button type="button" class="btn btn-secondary" id="cancelDownloadBtn">Cancel</button>
         <button type="button" class="btn btn-primary" id="submitDownloadBtn">
           <i class="fas fa-download"></i>
@@ -243,8 +248,10 @@
 {% endblock content %}
 
 {% block extra_js %}
+  <script src="{% static 'js/dateFilterUtils.js' %}"></script>
   <script src="{% static 'js/fetchData.js' %}"></script>
   <script src="{% static 'js/dropdown_style.js' %}"></script>
+
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       // Summary card click handlers
@@ -262,7 +269,8 @@
       // Initialize AJAX tables
       const urls = {
         ledger: '{% url "customer:fetch_credit_ledger" customer.id %}',
-        create_pdf: '{% url "report:credit_ind_pdf" customer.id %}'
+        create_pdf: '{% url "report:credit_ind_pdf" customer.id %}',
+        send_pdf: '{% url "report:send_pdf_statement" customer.id %}',
       }
 
       // Initialize table without form (form is now optional)
@@ -278,7 +286,7 @@
       const customDateInputs = document.getElementById('customDateInputs')
       const customFromDate = document.getElementById('customFromDate')
       const customToDate = document.getElementById('customToDate')
-      const customerId = {{ customer.id }}
+      const customerId = "{{ customer.id }}"
       let dropdownInitialized = false
       let fromDatePicker = null
       let toDatePicker = null
@@ -430,73 +438,145 @@
 
       // Submit download
       submitBtn.addEventListener('click', function() {
-        const styledRef = window.reportDateFilter_styled
-        const hiddenSelect = styledRef?.hiddenSelect || document.getElementById('reportDateFilter') || document.getElementById('reportDateFilter_hidden')
+        // Get date filter data using reusable function
+        const filterResult = getDateFilterData();
         
-        if (!hiddenSelect) {
-          console.error('Date filter not found')
-          return
+        if (!filterResult.isValid) {
+          showNotification(filterResult.error , "error");
+          return;
         }
 
-        const selectedValue = hiddenSelect.value
+        // Set loading state using reusable function
+        setButtonLoading(submitBtn, true, 'Generating...');
 
-        // Prepare request data
-        const requestData = {
-          date_filter: selectedValue
-        }
-
-        // Add custom dates if available (from modal inputs, not dropdown)
-        if (selectedValue === 'custom') {
-          const fromDate = customFromDate.getAttribute('data-iso-date')
-          const toDate = customToDate.getAttribute('data-iso-date')
-          
-          if (!fromDate || !toDate) {
-            alert('Please select both From and To dates for custom date range.')
-            submitBtn.innerHTML = originalText
-            submitBtn.disabled = false
-            return
-          }
-          
-          requestData.from_date = fromDate
-          requestData.to_date = toDate
-        }
-
-        // Show loading state
-        const originalText = submitBtn.innerHTML
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...'
-        submitBtn.disabled = true
-
-        // Build URL with query parameters
-        let downloadUrl = urls.create_pdf
-        const separator = downloadUrl.includes('?') ? '&' : '?'
-        downloadUrl += `${separator}date_filter=${encodeURIComponent(requestData.date_filter)}`
-        
-        if (requestData.from_date) {
-          downloadUrl += `&from_date=${encodeURIComponent(requestData.from_date)}`
-        }
-        if (requestData.to_date) {
-          downloadUrl += `&to_date=${encodeURIComponent(requestData.to_date)}`
-        }
+        // Build URL with query parameters using reusable function
+        const downloadUrl = buildDateFilterUrl(urls.create_pdf, filterResult.data);
 
         // Open PDF in new tab
         try {
-          window.open(downloadUrl, '_blank')
-          // Close modal after a short delay
+          window.open(downloadUrl, '_blank');
+          
+          // Close modal after short delay
           setTimeout(() => {
-            closeModal()
-            // Reset button state
-            submitBtn.innerHTML = originalText
-            submitBtn.disabled = false
-          }, 500)
+            closeModal();
+            setButtonLoading(submitBtn, false);
+          }, 500);
         } catch (error) {
-          console.error('Error opening PDF:', error)
-          alert('Failed to open report. Please try again.')
-          // Reset button state
-          submitBtn.innerHTML = originalText
-          submitBtn.disabled = false
+          showNotification(error, "error");
+          setButtonLoading(submitBtn, false);
+        }
+      })
+
+      // Send PDF Statement button handler
+      const sendPdfBtn = document.getElementById('send_pdf_statement')
+      
+      sendPdfBtn.addEventListener('click', async function() {
+        // Get date filter data using reusable function
+        const filterResult = getDateFilterData();
+        
+        if (!filterResult.isValid) {
+          showNotification(`⚠️ ${filterResult.error}` , "error")
+          return;
+        }
+
+        /* ============================================================================
+         * CLIENT-SIDE VALIDATION (UX ONLY - NOT SECURITY)
+         * ============================================================================
+         * IMPORTANT: This validation improves user experience but provides ZERO security.
+         * 
+         * WHY CLIENT-SIDE VALIDATION IS INSUFFICIENT:
+         * 1. Easily Bypassed: Users can disable JavaScript or modify it in DevTools
+         * 2. No Trust Boundary: Client code runs on user's machine (untrusted environment)
+         * 3. API Vulnerability: Direct API calls bypass all client-side checks
+         * 4. Browser Tools: Tools like Postman/curl can send any data directly
+         * 
+         * SECURITY RISKS OF TRUSTING CLIENT-PROVIDED DATES:
+         * 1. Data Exfiltration: Attacker requests date range covering entire database
+         *    Example: from_date='1900-01-01', to_date='2099-12-31'
+         * 2. Performance DoS: Massive date ranges cause expensive database queries
+         *    Example: 100-year range on millions of records = server timeout
+         * 3. Privacy Violation: Access to data outside authorized time period
+         *    Example: Employee requests future dates to see unreleased financial data
+         * 4. SQL Injection: Malformed dates could exploit poor server validation
+         *    Example: from_date="2024-01-01' OR '1'='1" (if not using parameterized queries)
+         * 
+         * EXAMPLE MALICIOUS ATTACK:
+         * Attacker opens DevTools console and runs:
+         *   fetch('/report/send-pdf-statement/230/', {
+         *     method: 'POST',
+         *     headers: {'Content-Type': 'application/json', 'X-CSRFToken': 'token'},
+         *     body: JSON.stringify({
+         *       date_filter: 'custom',
+         *       from_date: '1900-01-01',  // Entire history
+         *       to_date: '2099-12-31',    // Far future
+         *     })
+         *   })
+         * Result: Server generates massive PDF with all customer data, sends via WhatsApp
+         * 
+         * REQUIRED SERVER-SIDE VALIDATIONS (Django View):
+         * See implementation example below this validation block.
+         * ============================================================================
+         */
+
+        // Set loading state using reusable function
+        setButtonLoading(sendPdfBtn, true, 'Sending...');
+
+        // Build URL with query parameters using reusable function
+        const sendUrl = buildDateFilterUrl(urls.send_pdf, filterResult.data);
+
+        try {
+          const response = await fetch(sendUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          // Handle response using reusable function
+          const data = await handleFetchResponse(response);
+
+          // Success handling
+          if (data.success || data.status === 'success') {
+            showNotification('✅ PDF statement sent successfully via WhatsApp!', 'success');
+            
+            setTimeout(() => {
+              closeModal();
+            }, 500);
+          } else {
+            throw new Error(data.error || data.message || 'Unexpected response from server');
+          }
+        } catch (error) {
+          showNotification('send PDF statement', error);
+        } finally {
+          setButtonLoading(sendPdfBtn, false);
         }
       })
     })
+
+    // Global function - must be outside DOMContentLoaded to be accessible from dynamically loaded HTML
+    async function send_credit_payment(id) {
+      try {
+        const response = await fetch(`/report/send-text/${id}/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        // Handle response using reusable function
+        const data = await handleFetchResponse(response);
+
+        // Success handling
+        if (data.success || data.status === 'success') {
+          showNotification('✅ Payment sent successfully via WhatsApp!', 'success');
+        } else {
+          throw new Error(data.error || data.message || 'Unexpected response from server');
+        }
+      } catch (error) {
+        showNotification('send payment', error);
+      }
+    }
+
     
     function confirmAutoReallocate() {
       const confirmed = confirm('⚠️ WARNING: This action will:\n\n' + '• Delete ALL existing payment allocations\n' + '• Reapply payments using FIFO method (oldest invoices first)\n' + '• This action cannot be undone\n\n' + 'Are you sure you want to continue?')

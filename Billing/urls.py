@@ -34,6 +34,7 @@ urlpatterns = [
     path("report/", include("report.urls")),
     path("setting/", include("setting.urls")),
     path("suggestions/", include("base.urls_suggestions")),
+    path("api/", include("api.urls")),
 ]
 
 handler404 = "base.views.custom_404_view"

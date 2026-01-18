@@ -10,22 +10,9 @@
    ======================================== */
 @page {
     size: A5;
-    margin: 5mm;
-}
-
-@media print {
-    @page {
-        size: A5;
-        margin: 5mm;
-        padding: 2mm;
-    }
-
-    body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        margin: 0;
-        padding: 0;
-    }
+    margin: 0mm;
+    padding: 0mm;
+    background-color: #ddd;
 }
 
 /* ========================================
@@ -52,11 +39,9 @@ body {
    ======================================== */
 .container {
     max-width: 100%;
-    margin: 5mm auto;
     background: #ffffff;
     width: 148mm;
     min-height: 210mm;
-    padding: 10px;
     position: relative;
     /* Make container a positioning context */
     display: flex;
@@ -586,19 +571,6 @@ body {
     color: #64748b;
     font-style: italic;
     margin: 0;
-}
-
-/* ========================================
-   RESPONSIVE ADJUSTMENTS
-   ======================================== */
-@media print {
-    .container {
-        max-width: none;
-        margin: 0;
-        padding: 0;
-        gap: 2px;
-    }
-
 }
 
 /* ========================================

@@ -225,9 +225,7 @@ class CreateProductVariant(CreateView):
 
         # Check if this is the first variant for this product
         existing_variants = ProductVariant.objects.filter(product=product)
-        context["is_first_variant"] = (
-            existing_variants.count() == 0 if existing_variants.exists() else True
-        )
+        context["is_first_variant"] = not existing_variants.exists()
 
         # Add existing variants to context for reference
         if existing_variants.exists():
@@ -340,13 +338,19 @@ class CreateProductVariant(CreateView):
         messages.success(self.request, "Product variant created successfully")
 
         # Handle "create and add another" action
-        if action == self.ACTION_CREATE_ADD:
+        # Check action value (strip whitespace and compare case-insensitively for robustness)
+        action_normalized = (action or "").strip().lower()
+        if action_normalized == self.ACTION_CREATE_ADD.lower():
             self._persist_initial_fields(self.request, form)
             # Store barcode URL in session for JavaScript to open
             barcode_url = reverse("report:barcode", kwargs={"pk": variant.id})
             self.request.session[self.session_barcode_key] = barcode_url
             self.request.session.modified = True
-            return redirect(self.request.path)
+            # Use reverse to get the correct URL instead of self.request.path
+            create_url = reverse(
+                "inventory_variant:create", kwargs={"product_id": product.id}
+            )
+            return redirect(create_url)
 
         self._clear_initial_fields(self.request)
         return redirect("inventory_products:details", product_id=product.id)

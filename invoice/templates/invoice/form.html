@@ -96,40 +96,6 @@
                 </small>
               </div>
             </div>
-            <!-- Amount Field -->
-            <div class="col-md-4">
-              <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
-                <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
-                {{ form.amount }}
-                {% if form.amount.errors %}
-                  {% for error in form.amount.errors %}
-                    <small class="form-help form-error-inline">
-                      <i class="fas fa-exclamation-circle"></i>
-                      {{ error }}
-                    </small>
-                  {% endfor %}
-                {% elif form.amount.help_text %}
-                  <small class="form-help">{{ form.amount.help_text }}</small>
-                {% endif %}
-              </div>
-            </div>
-            <!-- Discount Amount Field -->
-            <div class="col-md-4">
-              <div class="form-group {% if form.discount_amount.errors %}has-error{% endif %}">
-                <label for="{{ form.discount_amount.id_for_label }}" class="form-label">{{ form.discount_amount.label }}</label>
-                {{ form.discount_amount }}
-                {% if form.discount_amount.errors %}
-                  {% for error in form.discount_amount.errors %}
-                    <small class="form-help form-error-inline">
-                      <i class="fas fa-exclamation-circle"></i>
-                      {{ error }}
-                    </small>
-                  {% endfor %}
-                {% elif form.discount_amount.help_text %}
-                  <small class="form-help">{{ form.discount_amount.help_text }}</small>
-                {% endif %}
-              </div>
-            </div>
             <!-- Invoice Type, Advance Amount, and Due Date Row -->
             <!-- Invoice Type Field -->
             <div class="col-md-4">
@@ -167,6 +133,43 @@
                 {% endif %}
               </div>
             </div>
+
+            <!-- Discount Amount Field -->
+            <div class="col-md-4">
+              <div class="form-group {% if form.discount_amount.errors %}has-error{% endif %}">
+                <label for="{{ form.discount_amount.id_for_label }}" class="form-label">{{ form.discount_amount.label }}</label>
+                {{ form.discount_amount }}
+                {% if form.discount_amount.errors %}
+                  {% for error in form.discount_amount.errors %}
+                    <small class="form-help form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </small>
+                  {% endfor %}
+                {% elif form.discount_amount.help_text %}
+                  <small class="form-help">{{ form.discount_amount.help_text }}</small>
+                {% endif %}
+              </div>
+            </div>
+            
+            <!-- Amount Field -->
+            <div class="col-md-4">
+              <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
+                <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
+                {{ form.amount }}
+                {% if form.amount.errors %}
+                  {% for error in form.amount.errors %}
+                    <small class="form-help form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </small>
+                  {% endfor %}
+                {% elif form.amount.help_text %}
+                  <small class="form-help">{{ form.amount.help_text }}</small>
+                {% endif %}
+              </div>
+            </div>
+            
             <!-- Due Date Field -->
             <div class="col-md-4">
               <div class="form-group {% if form.due_date.errors %}has-error{% endif %}">

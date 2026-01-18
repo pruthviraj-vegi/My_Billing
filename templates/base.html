@@ -210,10 +210,10 @@
       });
 
       // Check if there's a barcode URL to open
-      {% if redirect_url %}
+      '{% if redirect_url %}'
       // Open barcode in new tab
           window.open("{{ redirect_url }}", '_blank');
-      {% endif %}
+      '{% endif %}'
     </script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {

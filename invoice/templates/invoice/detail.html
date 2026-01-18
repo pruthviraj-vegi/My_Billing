@@ -13,6 +13,10 @@
                 <i class="fas fa-arrow-left"></i>
                 Back
             </a>
+            <a href="javascript:void(0);" onclick="sendInvoice('{{ invoice.id }}')" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i>
+                Send Invoice
+            </a>
             <a href="{% url 'invoice:create_auto_return_invoice' invoice.id %}" class="btn btn-primary">
                 <i class="fas fa-plus"></i>
                 Create Return
@@ -445,5 +449,34 @@
             })
         }
     })
+    </script>
+    <script>
+        function sendInvoice(id) {
+            console.log(id)
+            $.ajax({
+                url: '/report/send-invoice/' + id + '/',
+                type: 'GET',
+                success: function (response) {
+                    console.log(response)
+                    if (response.success) {
+                        showNotification('Invoice sent successfully', 'success')
+                    } else {
+                        // This will now properly catch failures
+                        showNotification(response.message || 'Failed to send invoice', 'error')
+                    }
+                },
+                error: function (xhr, status, error) {
+                    // Parse error response from backend
+                    let errorMessage = 'Error sending invoice';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage = response.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = error || errorMessage;
+                    }
+                    showNotification(errorMessage, 'error')
+                }
+            });
+        }
     </script>
 {% endblock extra_js %}

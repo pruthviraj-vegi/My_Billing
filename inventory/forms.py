@@ -148,6 +148,12 @@ class VariantForm(forms.ModelForm):
                 field.label = f"{field.label} *"
             field.widget.attrs["class"] = "form-input"
 
+        try:
+            if not self.instance.pk:
+                self.fields["commission_percentage"].initial = 1
+        except Exception as e:
+            print(e)
+
     def _validate_positive_number(self, value, field_name, error_message):
         """Helper method to validate positive numbers"""
         if value is not None and value <= 0:

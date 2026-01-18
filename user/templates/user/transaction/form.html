@@ -136,6 +136,23 @@
                         </small>
                     </div>
 
+                    <!-- Date Field -->
+                    <div class="form-group {% if form.date.errors %}has-error{% endif %}">
+                        <label for="{{ form.date.id_for_label }}" class="form-label">{{ form.date.label }}</label>
+                        {{ form.date }}
+                        <small class="form-help">
+                            {% if form.date.errors %}
+                                {% for error in form.date.errors %}
+                                    <span class="form-error-inline">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        {{ error }}
+                                    </span>
+                                {% endfor %}
+                            {% endif %}
+                            <span class="form-help-text">Transaction date</span>
+                        </small>
+                    </div>
+
                     <!-- Notes Field -->
                     <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
                         <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>

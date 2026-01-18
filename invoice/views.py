@@ -413,6 +413,7 @@ class InvoiceEdit(View):
             "invoice": invoice,
             "form": form,
             "title": f"Edit Invoice {invoice.invoice_number}",
+            "customer_form": CustomerForm(),
         }
         return render(request, self.template_name, context)
 
@@ -626,9 +627,11 @@ def search_invoices_home(request):
 
 def fetch_search_invoices(request):
     search_query = request.GET.get("search", "")
-    invoice_items = InvoiceItem.objects.filter(
-        product_variant__barcode__iexact=search_query
-    ).select_related("product_variant__product", "invoice")
+    invoice_items = (
+        InvoiceItem.objects.filter(product_variant__barcode__iexact=search_query)
+        .select_related("product_variant__product", "invoice")
+        .order_by("-id")
+    )
     return render_paginated_response(
         request, invoice_items, "search_invoice/fetch.html"
     )

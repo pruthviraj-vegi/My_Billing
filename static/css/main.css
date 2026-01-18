@@ -2432,6 +2432,7 @@ form.submitting * {
 /* Badge Styles */
 
 .badge {
+    color: var(--text-primary);
     display: inline-block;
     border-radius: 0.375rem;
     font-size: 0.6rem;

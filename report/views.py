@@ -49,7 +49,20 @@ logger = logging.getLogger(__name__)
 
 
 # general pdf creation values for all data
-def generatePdf(template_name, file_name, context, request, report_type="INVOICE"):
+def generatePdf(
+    template_name,
+    file_name,
+    context,
+    request,
+    report_type="INVOICE",
+    upload_to_r2=False,
+):
+    """
+    Generate PDF and optionally upload to R2 storage.
+
+    Args:
+        upload_to_r2: Set to True when you want to upload this specific PDF
+    """
     # Get shop details
     shop_details = ShopDetails.objects.filter(is_active=True).first()
     context["shop_details"] = shop_details
@@ -61,21 +74,46 @@ def generatePdf(template_name, file_name, context, request, report_type="INVOICE
     template = get_template(f"report/{template_name}")
     html = template.render(context)
 
-    # Insert barcode image into HTML using base64-encoded data URL
+    # Insert barcode image into HTML
     if "qrcode" in context:
         barcode_data = context["qrcode"]
         html = html.replace(
             "{{ qrcode }}", f'<img src="data:image/png;base64, {barcode_data}"/>'
         )
 
+    # Generate PDF
     pdf_file = HTML(string=html, base_url=settings.STATIC_ROOT).write_pdf(
         presentational_hints=True
     )
 
-    filename = f"{file_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+    # Upload to R2 only if requested
+    if upload_to_r2:
+        try:
+            from io import BytesIO
+            from api.cloudflare import upload_pdf_to_r2, BucketType, R2StorageError
+
+            pdf_buffer = BytesIO(pdf_file)
+            bucket_type = (
+                BucketType.INVOICE if report_type == "INVOICE" else BucketType.STATEMENT
+            )
+
+            r2_url = upload_pdf_to_r2(
+                file_obj=pdf_buffer, filename=filename, bucket_type=bucket_type
+            )
+
+            logger.info(f"PDF uploaded to R2: {r2_url}")
+            return r2_url
+
+        except R2StorageError as e:
+            logger.error(f"Failed to upload PDF to R2: {str(e)}")
+            return None
+
+    # Return HTTP response
     response = HttpResponse(pdf_file, content_type="application/pdf")
-    response["Content-Disposition"] = f'filename="{filename}.pdf"'
-    response["pdfkit-dpi"] = "800"  # Set the DPI to 300
+    response["Content-Disposition"] = f'filename="{filename}"'
+    response["pdfkit-dpi"] = "800"
     return response
 
 

@@ -170,6 +170,26 @@
                 </small>
               </div>
             </div>
+
+            <div class="col-md-3">
+              <div class="form-group {% if form.commission_percentage.errors %}has-error{% endif %}">
+                <label for="{{ form.commission_percentage.id_for_label }}"
+                       class="form-label">{{ form.commission_percentage.label }}</label>
+                <div class="input-group">{{ form.commission_percentage }}</div>
+                <small class="form-help {% if form.commission_percentage.errors %}has-error{% endif %}">
+                  {% if form.commission_percentage.errors %}
+                    {% for error in form.commission_percentage.errors %}
+                      <span class="form-error-inline">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </span>  
+                    {% endfor %}
+                  {% else %}
+                    <span class="form-help-text">e.g., 10.00, 15.50 (commission percentage)</span>
+                  {% endif %}
+                </small>
+              </div>
+            </div>
             
             <div class="col-md-3">
               <div class="form-group {% if form.size.errors %}has-error{% endif %}">
@@ -207,25 +227,7 @@
                 </small>
               </div>
             </div>
-            <div class="col-md-3">
-              <div class="form-group {% if form.commission_percentage.errors %}has-error{% endif %}">
-                <label for="{{ form.commission_percentage.id_for_label }}"
-                       class="form-label">{{ form.commission_percentage.label }}</label>
-                <div class="input-group">{{ form.commission_percentage }}</div>
-                <small class="form-help {% if form.commission_percentage.errors %}has-error{% endif %}">
-                  {% if form.commission_percentage.errors %}
-                    {% for error in form.commission_percentage.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>  
-                    {% endfor %}
-                  {% else %}
-                    <span class="form-help-text">e.g., 10.00, 15.50 (commission percentage)</span>
-                  {% endif %}
-                </small>
-              </div>
-            </div>
+            
             <div class="col-md-3">
               <div class="form-group {% if form.minimum_quantity.errors %}has-error{% endif %}">
                 <label for="{{ form.minimum_quantity.id_for_label }}" class="form-label">{{ form.minimum_quantity.label }}</label>

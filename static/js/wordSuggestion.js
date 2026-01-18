@@ -55,16 +55,23 @@ class WordSuggestion {
         this.dropdown.className = 'word-suggestion-dropdown';
         this.dropdown.setAttribute('role', 'listbox');
         this.dropdown.setAttribute('aria-live', 'polite');
-        this.dropdown.id = `dropdown-${
-            Math.random().toString(36).substr(2, 9)
-        }`;
+        this.dropdown.id = `dropdown-${Math.random().toString(36).substr(2, 9)
+            }`;
         this.dropdown.style.display = 'none';
 
         this.input.setAttribute('aria-autocomplete', 'list');
         this.input.setAttribute('aria-controls', this.dropdown.id);
 
-        // Find the form-group container or use parentNode as fallback
-        const container = this.input.closest('.form-group') || this.input.parentNode;
+        // Find the best container for the dropdown
+        // If inside a Bootstrap modal, append to modal-body for proper positioning
+        const modalBody = this.input.closest('.modal-body');
+        const container = modalBody || this.input.closest('.form-group') || this.input.parentNode;
+
+        // Set position relative on container if it's modal-body
+        if (modalBody) {
+            modalBody.style.position = 'relative';
+        }
+
         container.appendChild(this.dropdown);
     }
 
@@ -84,25 +91,25 @@ class WordSuggestion {
         const query = e.target.value.trim();
         clearTimeout(this.debounceTimer);
 
-        if (query.length<this.options.minQueryLength || (!this.options.allowSpaces && query.includes(' '))) {
+        if (query.length < this.options.minQueryLength || (!this.options.allowSpaces && query.includes(' '))) {
             this.hideDropdown();
             return;
         }
 
         this.debounceTimer = setTimeout(() => {
             this.searchSuggestions(query);
-        }, this.options.debounceDelay) 
+        }, this.options.debounceDelay)
 
 
-        
+
 
 
     }
 
     handleKeydown(e) {
-        if (!this.dropdown.classList.contains('show')) 
+        if (!this.dropdown.classList.contains('show'))
             return;
-        
+
 
 
         switch (e.key) {
@@ -149,26 +156,23 @@ class WordSuggestion {
     // ----------- DATA FETCHING -----------
 
     async searchSuggestions(query) {
-        if (this.abortController) 
+        if (this.abortController)
             this.abortController.abort();
-        
+
 
 
         this.abortController = new AbortController();
         this.showLoading();
 
         try {
-            const response = await fetch(`${
-                this.options.url
-            }?q=${
-                encodeURIComponent(query)
-            }`, {signal: this.abortController.signal});
+            const response = await fetch(`${this.options.url
+                }?q=${encodeURIComponent(query)
+                }`, { signal: this.abortController.signal });
 
-            if (! response.ok) 
-                throw new Error(`HTTP ${
-                    response.status
-                }`);
-            
+            if (!response.ok)
+                throw new Error(`HTTP ${response.status
+                    }`);
+
 
 
             const data = await response.json();
@@ -237,9 +241,8 @@ class WordSuggestion {
         this.dropdown.innerHTML = `
             <div class="word-suggestion-empty">
                 <i class="fas fa-search"></i>
-                <p>No suggestions found for "${
-            this.input.value
-        }"</p>
+                <p>No suggestions found for "${this.input.value
+            }"</p>
             </div>
         `;
     }
@@ -256,9 +259,9 @@ class WordSuggestion {
     // ----------- NAVIGATION -----------
 
     navigateDown() {
-        if (this.suggestions.length === 0) 
+        if (this.suggestions.length === 0)
             return;
-        
+
 
 
         this.selectedIndex = (this.selectedIndex + 1) % this.suggestions.length;
@@ -266,9 +269,9 @@ class WordSuggestion {
     }
 
     navigateUp() {
-        if (this.suggestions.length === 0) 
+        if (this.suggestions.length === 0)
             return;
-        
+
 
 
         this.selectedIndex = (this.selectedIndex - 1 + this.suggestions.length) % this.suggestions.length;
@@ -288,9 +291,9 @@ class WordSuggestion {
 
     selectSuggestion(index = null) {
         const selectedIndex = index !== null ? index : this.selectedIndex;
-        if (selectedIndex < 0 || selectedIndex >= this.suggestions.length) 
+        if (selectedIndex < 0 || selectedIndex >= this.suggestions.length)
             return;
-        
+
 
 
         const suggestion = this.suggestions[selectedIndex];
@@ -339,19 +342,19 @@ class WordSuggestion {
     }
 
     destroy() {
-        if (this.dropdown) 
+        if (this.dropdown)
             this.dropdown.remove();
-        
 
 
-        if (this.debounceTimer) 
+
+        if (this.debounceTimer)
             clearTimeout(this.debounceTimer);
-        
 
 
-        if (this.abortController) 
+
+        if (this.abortController)
             this.abortController.abort();
-        
+
 
 
         this.input.removeEventListener('input', this.boundHandleInput);
@@ -378,68 +381,68 @@ window.initWordSuggestion = initWordSuggestion;
 
 // Lightweight jQuery wrapper for word suggestions (only if jQuery not available)
 if (typeof window.$ === 'undefined') {
-  function $(selector) {
-    const elements = typeof selector === "string" ? document.querySelectorAll(selector) : [selector];
-    return {
-      wordSuggestion: function (options = {}) {
-        elements.forEach((element) => {
-          if (!element) return;
-          
-          const config = {
-            url: options.url || "",
-            placeholder: options.placeholder || "Type to search...",
-            minLength: options.minLength || 2,
-            debounceDelay: options.debounceDelay || 300,
-            maxSuggestions: options.maxSuggestions || 5,
-            onSelect: options.onSelect || null,
-            ...options
-          };
-          
-          if (!config.url) {
-            console.error("WordSuggestion: URL is required");
-            return;
-          }
-          
-          initWordSuggestion(element, config.url, {
-            debounceDelay: config.debounceDelay,
-            minQueryLength: config.minLength,
-            maxSuggestions: config.maxSuggestions,
-            onSuggestionSelected: config.onSelect
-          });
-        });
-        return this;
-      }
-    };
-  }
-  window.$ = $;
+    function $(selector) {
+        const elements = typeof selector === "string" ? document.querySelectorAll(selector) : [selector];
+        return {
+            wordSuggestion: function (options = {}) {
+                elements.forEach((element) => {
+                    if (!element) return;
+
+                    const config = {
+                        url: options.url || "",
+                        placeholder: options.placeholder || "Type to search...",
+                        minLength: options.minLength || 2,
+                        debounceDelay: options.debounceDelay || 300,
+                        maxSuggestions: options.maxSuggestions || 5,
+                        onSelect: options.onSelect || null,
+                        ...options
+                    };
+
+                    if (!config.url) {
+                        console.error("WordSuggestion: URL is required");
+                        return;
+                    }
+
+                    initWordSuggestion(element, config.url, {
+                        debounceDelay: config.debounceDelay,
+                        minQueryLength: config.minLength,
+                        maxSuggestions: config.maxSuggestions,
+                        onSuggestionSelected: config.onSelect
+                    });
+                });
+                return this;
+            }
+        };
+    }
+    window.$ = $;
 } else {
-  // Extend existing jQuery with wordSuggestion plugin
-  window.$.fn.wordSuggestion = function(options = {}) {
-    return this.each(function() {
-      const element = this;
-      const config = {
-        url: options.url || "",
-        placeholder: options.placeholder || "Type to search...",
-        minLength: options.minLength || 2,
-        debounceDelay: options.debounceDelay || 300,
-        maxSuggestions: options.maxSuggestions || 5,
-        onSelect: options.onSelect || null,
-        ...options
-      };
-      
-      if (!config.url) {
-        console.error("WordSuggestion: URL is required");
-        return;
-      }
-      
-      initWordSuggestion(element, config.url, {
-        debounceDelay: config.debounceDelay,
-        minQueryLength: config.minLength,
-        maxSuggestions: config.maxSuggestions,
-        onSuggestionSelected: config.onSelect
-      });
-    });
-  };
+    // Extend existing jQuery with wordSuggestion plugin
+    window.$.fn.wordSuggestion = function (options = {}) {
+        return this.each(function () {
+            const element = this;
+            const config = {
+                url: options.url || "",
+                placeholder: options.placeholder || "Type to search...",
+                minLength: options.minLength || 2,
+                debounceDelay: options.debounceDelay || 300,
+                maxSuggestions: options.maxSuggestions || 5,
+                onSelect: options.onSelect || null,
+                ...options
+            };
+
+            if (!config.url) {
+                console.error("WordSuggestion: URL is required");
+                return;
+            }
+
+            initWordSuggestion(element, config.url, {
+                debounceDelay: config.debounceDelay,
+                minQueryLength: config.minLength,
+                maxSuggestions: config.maxSuggestions,
+                onSuggestionSelected: config.onSelect
+            });
+        });
+    };
 }
 
 // Export for modules

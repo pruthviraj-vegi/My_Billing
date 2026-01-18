@@ -200,7 +200,9 @@ def user_detail(request, pk):
         user=user, event_type=LoginEvent.EventType.LOGIN
     )[:10]
     salaries = user.salaries.all()[:50]  # Last 50 salary records
-    transactions = user.transactions.all()[:50]  # Last 50 transactions
+    transactions = user.transactions.all().order_by("-date")[
+        :50
+    ]  # Last 50 transactions
     current_salary = user.current_salary
 
     # Calculate summary statistics

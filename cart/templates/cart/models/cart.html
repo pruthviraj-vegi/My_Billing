@@ -3,7 +3,10 @@
 <!-- Data Table -->
 <!-- Search and Filter Section -->
 <div class="search-filter-section">
-    <form href="" class="search-filter-form" id="barcodeForm" data-allow-double-submit> 
+    <form href=""
+          class="search-filter-form"
+          id="barcodeForm"
+          data-allow-double-submit>
         {% csrf_token %}
         <div class="search-group search-expanded">
             <i class="fas fa-search search-icon"></i>
@@ -18,7 +21,11 @@
         <button type="button" class="btn btn-primary" id="favoriteBtn" tabindex="-1">
             <i class="fas fa-star"></i>
         </button>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal" tabindex="-1">
+        <button type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#searchModal"
+                tabindex="-1">
             <i class="fas fa-search"></i>
         </button>
         <button type="submit" class="btn btn-primary" tabindex="-1">
@@ -32,26 +39,26 @@
         <div class="row-lg-6">
             <span class="label">Items:</span>
             <strong>
-            <span class="value strong " id="totalItems">{{ cart_list|currency }}</span>
+                <span class="value strong " id="totalItems">{{ cart_list|currency }}</span>
             </strong>
         </div>
         <div class="row-lg-6">
             <span class="label">Total Amount:</span>
             <strong>
-            <span class="value" id="totalSellingPrice">{{ total_selling_price|currency }}</span>
+                <span class="value" id="totalSellingPrice">{{ total_selling_price|currency }}</span>
             </strong>
         </div>
         <div class="row-lg-6">
             <span class="label">Amount:</span>
             <strong>
-            <span class="value" id="totalAmount">{{ cart.total_amount|currency }}</span>
+                <span class="value" id="totalAmount">{{ cart.total_amount|currency }}</span>
             </strong>
         </div>
         {% if cart.advance_payment > 0 %}
-        <div class="row-lg-6">
-            <span class="label">Adv :</span>
-            <strong>
-            <span class="value" id="advancePayment">{{ cart.advance_payment|currency }}</span>
+            <div class="row-lg-6">
+                <span class="label">Adv :</span>
+                <strong>
+                    <span class="value" id="advancePayment">{{ cart.advance_payment|currency }}</span>
                 </strong>
             </div>
         {% endif %}
@@ -79,10 +86,7 @@
                         </a>
                     </li>
                     {% comment %} <li>
-                        <a class="dropdown-item"
-                           href="#"
-                           id="archiveCartBtn"
-                           data-cart-id="{{ cart.id }}">
+                        <a class="dropdown-item" href="#" id="archiveCartBtn" data-cart-id="{{ cart.id }}">
                             <i class="fas fa-archive"></i>
                             Archive Cart
                         </a>
@@ -100,14 +104,18 @@
                         <hr class="dropdown-divider">
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{% url 'report:estimate_pdf' cart.id %}" target="_blank">
+                        <a class="dropdown-item"
+                           href="{% url 'report:estimate_pdf' cart.id %}"
+                           target="_blank">
                             <i class="fas fa-print"></i>
                             Print Estimate
                         </a>
                     </li>
                 </ul>
             </div>
-            <a href="{% url 'invoice:create_invoice' cart.id %}" class="btn btn-sm btn-primary" tabindex="-1">
+            <a href="{% url 'invoice:create_invoice' cart.id %}"
+               class="btn btn-sm btn-primary"
+               tabindex="-1">
                 <i class="fas fa-plus"></i>
                 Submit
             </a>
@@ -131,7 +139,7 @@
         </thead>
         <tbody id="cartItemsBody">
             {% for data in cart_list %}
-            {% include 'cart/models/item_fetch.html' with item=data %}
+                {% include 'cart/models/item_fetch.html' with item=data %}
             {% endfor %}
         </tbody>
     </table>
@@ -142,19 +150,18 @@
      tabindex="-1"
      aria-labelledby="favoritesModalLabel"
      aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 95vw; width: 95vw;">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable"
+         style="max-width: 95vw;
+                width: 95vw">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="favoritesModalLabel"> Favorite Products
-                </h5>
+                <h5 class="modal-title" id="favoritesModalLabel">Favorite Products</h5>
                 <button type="button"
                         class="btn-close"
                         data-bs-dismiss="modal"
-                        aria-label="Close">
-                </button>
+                        aria-label="Close"></button>
             </div>
-
-            <div class="modal-body p-0 m-0" id="favoritesModalBody">  
+            <div class="modal-body p-0 m-0" id="favoritesModalBody">
                 <div class="table-container">
                     <table class="data-table" id="favorites_table" data-sort="">
                         <thead>
@@ -188,61 +195,61 @@
         </div>
     </div>
 </div>
-
-<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 95vw; width: 95vw;">
+<div class="modal fade"
+     id="searchModal"
+     tabindex="-1"
+     aria-labelledby="searchModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable"
+         style="max-width: 95vw;
+                width: 95vw">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="searchModalLabel"> Search Products
-                </h5>
+                <h5 class="modal-title" id="searchModalLabel">Search Products</h5>
                 <button type="button"
                         class="btn-close"
                         data-bs-dismiss="modal"
-                        aria-label="Close">
-                </button>
+                        aria-label="Close"></button>
             </div>
-
-            <div class="modal-body p-0 m-0" id="searchModalBody">  
+            <div class="modal-body p-0 m-0" id="searchModalBody">
                 <!-- Search Form - Outside table for proper HTML structure -->
                 <form id="searchForm" method="get" class="p-3 border-bottom">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-3">
                             <label for="searchInput" class="form-label small">Search</label>
-                            <input type="search" 
-                                   id="searchInput" 
-                                   name="search" 
-                                   class="form-input" 
+                            <input type="search"
+                                   id="searchInput"
+                                   name="search"
+                                   class="form-input"
                                    placeholder="Barcode, brand, name...">
                         </div>
                         <div class="col-md-2">
                             <label for="categoryFilter" class="form-label small">Category</label>
-                            <input type="search" 
-                                   id="categoryFilter" 
-                                   name="category" 
-                                   class="form-input" 
+                            <input type="search"
+                                   id="categoryFilter"
+                                   name="category"
+                                   class="form-input"
                                    placeholder="Category">
                         </div>
                         <div class="col-md-2">
                             <label for="colorFilter" class="form-label small">Color</label>
-                            <input type="search" 
-                                   id="colorFilter" 
-                                   name="color" 
-                                   class="form-input" 
+                            <input type="search"
+                                   id="colorFilter"
+                                   name="color"
+                                   class="form-input"
                                    placeholder="Color">
                         </div>
                         <div class="col-md-2">
                             <label for="sizeFilter" class="form-label small">Size</label>
-                            <input type="search" 
-                                   id="sizeFilter" 
-                                   name="size" 
-                                   class="form-input" 
+                            <input type="search"
+                                   id="sizeFilter"
+                                   name="size"
+                                   class="form-input"
                                    placeholder="Size">
                         </div>
                         <div class="col-md-2">
                             <label for="stockFilter" class="form-label small">Stock</label>
-                            <select id="stockFilter" 
-                                    name="stock" 
-                                    class="form-input">
+                            <select id="stockFilter" name="stock" class="form-input">
                                 <option value="">All</option>
                                 <option value="in_stock">In Stock</option>
                                 <option value="out_of_stock">Out of Stock</option>
@@ -293,7 +300,6 @@
         </div>
     </div>
 </div>
-
 {% block extra_js %}
     <!-- Global variables for JavaScript -->
     <script src="{% static 'js/fetchData.js' %}"></script>

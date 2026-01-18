@@ -13,7 +13,10 @@
     <div class="page-header">
         <h2 class="page-title">Carts</h2>
         <div class="page-actions cart-navigation">
-            <button type="button" class="nav-arrow nav-arrow-left" onclick="scrollCarts('left')" id="leftArrow">
+            <button type="button"
+                    class="nav-arrow nav-arrow-left"
+                    onclick="scrollCarts('left')"
+                    id="leftArrow">
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="cart-buttons-container" id="cartButtonsContainer">
@@ -21,78 +24,86 @@
                     <a href="{% url 'cart:getCartData' data.id %}"
                        class="btn cart-btn {% if data.id == cart.id %}btn-primary active-cart-btn{% else %}btn-secondary{% endif %}"
                        data-cart-id="{{ data.id }}">
-                        {{ data.name }} - <span class="value" id="cart-button-total-{{ data.id }}">{{ data.total_amount|currency }} {% if data.advance_payment > 0 %}
-                             ({{ data.advance_payment|currency }}){% endif %}</span>
-                    </a>
-                {% endfor %}
-            </div>
-            <button type="button" class="nav-arrow nav-arrow-right" onclick="scrollCarts('right')" id="rightArrow">
-                <i class="fas fa-chevron-right"></i>
-            </button>
-            <button type="button" class="nav-arrow list-cart-btn" onclick="toggleCartList()" id="listCartBtn" title="View all carts in list">
-                <i class="fas fa-list"></i>
-            </button>
+                        {{ data.name }} - <span class="value" id="cart-button-total-{{ data.id }}">{{ data.total_amount|currency }}
+                        {% if data.advance_payment > 0 %}({{ data.advance_payment|currency }}){% endif %}
+                    </span>
+                </a>
+            {% endfor %}
         </div>
-        <!-- Cart List Modal -->
-        <div class="cart-list-modal" id="cartListModal">
-            <div class="cart-list-overlay" onclick="toggleCartList()"></div>
-            <div class="cart-list-content">
-                <div class="cart-list-header">
-                    <h3>All Carts</h3>
-                    <button type="button" class="close-list-btn" onclick="toggleCartList()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="cart-list-body">
-                    <ul class="cart-list-items">
-                        {% for data in carts %}
-                            <li class="cart-list-item {% if data.id == cart.id %}active{% endif %}">
-                                <a href="{% url 'cart:getCartData' data.id %}" class="cart-list-link">
-                                    <div class="cart-list-info">
-                                        <span class="cart-list-name">{{ data.name }}</span>
-                                        <span class="cart-list-amount" id="cart-list-total-{{ data.id }}">{{ data.total_amount|currency }} {% if data.advance_payment > 0 %}
-                             ({{ data.advance_payment|currency }}){% endif %}</span>
-                                    </div>
-                                    {% if data.id == cart.id %}
-                                        <i class="fas fa-check-circle"></i>
-                                    {% endif %}
-                                </a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
+        <button type="button"
+                class="nav-arrow nav-arrow-right"
+                onclick="scrollCarts('right')"
+                id="rightArrow">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <button type="button"
+                class="nav-arrow list-cart-btn"
+                onclick="toggleCartList()"
+                id="listCartBtn"
+                title="View all carts in list"
+                style="gap: 0.5rem">
+            {{ carts|length }}
+            <i class="fas fa-list"></i>
+        </button>
+    </div>
+    <!-- Cart List Modal -->
+    <div class="cart-list-modal" id="cartListModal">
+        <div class="cart-list-overlay" onclick="toggleCartList()"></div>
+        <div class="cart-list-content">
+            <div class="cart-list-header">
+                <h3>All Carts - {{ carts|length }}</h3>
+                <button type="button" class="close-list-btn" onclick="toggleCartList()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-        </div>
-        <div class="page-actions">
-            <a href="{% url 'cart:create_cart' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                New Cart
-            </a>
+            <div class="cart-list-body">
+                <ul class="cart-list-items">
+                    {% for data in carts %}
+                        <li class="cart-list-item {% if data.id == cart.id %}active{% endif %}">
+                            <a href="{% url 'cart:getCartData' data.id %}" class="cart-list-link">
+                                <div class="cart-list-info">
+                                    <span class="cart-list-name">{{ data.name }}</span>
+                                    <span class="cart-list-amount" id="cart-list-total-{{ data.id }}">{{ data.total_amount|currency }}
+                                        {% if data.advance_payment > 0 %}({{ data.advance_payment|currency }}){% endif %}
+                                    </span>
+                                </div>
+                                {% if data.id == cart.id %}<i class="fas fa-check-circle"></i>{% endif %}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
     </div>
-    <!-- Breadcrumb Navigation -->
-    <nav class="breadcrumb breadcrumb-right">
-        <a href="#" class="breadcrumb-item">Carts</a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-active">Cart Details</span>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-active">{{ cart.created_at|timesince }} ago</span>
-    </nav>
-    {% if cart %}
-        {% include "cart/models/cart.html" %}
-    {% else %}
-        <div class="empty-state">
-            <div class="empty-state-icon">
-                <i class="fas fa-shopping-cart"></i>
-            </div>
-            <h3>No Cart Selected</h3>
-            <p>Please select a cart from the buttons above or create a new one to start adding items.</p>
+    <div class="page-actions">
+        <a href="{% url 'cart:create_cart' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i>
+            New Cart
+        </a>
+    </div>
+</div>
+<!-- Breadcrumb Navigation -->
+<nav class="breadcrumb breadcrumb-right">
+    <a href="#" class="breadcrumb-item">Carts</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">Cart Details</span>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ cart.created_at|timesince }} ago</span>
+</nav>
+{% if cart %}
+    {% include "cart/models/cart.html" %}
+{% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="fas fa-shopping-cart"></i>
         </div>
-    {% endif %}
+        <h3>No Cart Selected</h3>
+        <p>Please select a cart from the buttons above or create a new one to start adding items.</p>
+    </div>
+{% endif %}
 {% endblock content %}
-
 {% block extra_js %}
-<script>
+    <script>
     function scrollCarts(direction) {
         const container = document.getElementById('cartButtonsContainer');
         const scrollAmount = 200; // pixels to scroll
@@ -193,9 +204,8 @@
             }, 300);
         }, 200);
     });
-</script>
-
-<style>
+    </script>
+    <style>
     .cart-navigation {
         display: flex;
         align-items: center;
@@ -498,6 +508,5 @@
             font-size: 0.8125rem;
         }
     }
-</style>
+    </style>
 {% endblock extra_js %}
-

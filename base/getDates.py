@@ -120,18 +120,43 @@ def getDates(request):
     Get date range from request. Accepts multiple parameter formats:
     - date_filter or date_range: "this_month", "last_month", "custom", etc.
     - For custom dates: from_date/to_date (dd-mm-yyyy) or start_date/end_date (yyyy-mm-dd)
+    Supports both GET query parameters and POST JSON body.
     """
+    import json
+
     today = datetime.now()
 
-    # Accept both 'date_filter' and 'date_range' parameter names
+    # Try to parse JSON body for POST requests
+    data = {}
+    if request.method == "POST" and request.body:
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # Accept both 'date_filter' and 'date_range' parameter names from GET or POST
     type_of = (
-        request.GET.get("date_filter") or request.GET.get("date_range") or "this_month"
+        request.GET.get("date_filter")
+        or request.GET.get("date_range")
+        or data.get("date_filter")
+        or data.get("date_range")
+        or "this_month"
     )
 
     if type_of == "custom":
         # Accept both 'from_date'/'to_date' and 'start_date'/'end_date' parameter names
-        from_date_str = request.GET.get("from_date") or request.GET.get("start_date")
-        to_date_str = request.GET.get("to_date") or request.GET.get("end_date")
+        from_date_str = (
+            request.GET.get("from_date")
+            or request.GET.get("start_date")
+            or data.get("from_date")
+            or data.get("start_date")
+        )
+        to_date_str = (
+            request.GET.get("to_date")
+            or request.GET.get("end_date")
+            or data.get("to_date")
+            or data.get("end_date")
+        )
 
         from_date = parse_date(from_date_str, today)
         to_date = parse_date(to_date_str, today)

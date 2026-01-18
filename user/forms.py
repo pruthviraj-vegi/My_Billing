@@ -235,6 +235,18 @@ class SalaryForm(forms.ModelForm):
                         f"Leave blank to keep current salary active."
                     )
 
+            try:
+                if not self.instance.pk:
+                    is_eligible = self.user.is_commission_eligible
+                    if is_eligible:
+                        self.fields["commission"].initial = True
+                        self.fields["commission"].help_text = (
+                            "User is eligible for commission."
+                        )
+
+            except Exception as e:
+                print(e)
+
     def clean_amount(self):
         amount = self.cleaned_data.get("amount")
         if amount is not None and amount <= 0:
@@ -266,6 +278,7 @@ class TransactionForm(forms.ModelForm):
             "payment_method",
             "description",
             "reference_number",
+            "date",
             "notes",
         )
         widgets = {
@@ -292,6 +305,13 @@ class TransactionForm(forms.ModelForm):
                 attrs={
                     "placeholder": "Internal notes (optional)",
                     "rows": 2,
+                }
+            ),
+            "date": forms.DateTimeInput(
+                attrs={
+                    "type": "datetime-local",
+                    "placeholder": "Enter date",
+                    "autofocus": True,
                 }
             ),
         }

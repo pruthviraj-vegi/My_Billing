@@ -10,6 +10,7 @@ from base.utility import StringProcessor
 from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MinValueValidator
+from django.utils import timezone
 
 from base.manager import SoftDeleteModel
 
@@ -150,6 +151,11 @@ class Salary(models.Model):
     def __str__(self):
         return f"{self.user.full_name} - {self.amount} ({self.effective_from})"
 
+    def is_eligible_for_salary(self):
+        if self.user.is_commission_eligible:
+            return True
+        return False
+
 
 class Transaction(models.Model):
     class TransactionType(models.TextChoices):
@@ -212,6 +218,7 @@ class Transaction(models.Model):
         help_text="External reference number (e.g., invoice number, receipt number)",
     )
 
+    date = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

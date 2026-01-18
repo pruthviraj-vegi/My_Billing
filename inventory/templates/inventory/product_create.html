@@ -181,8 +181,6 @@
             <h5 class="section-title">Variant Details</h5>
             <!-- Row 1: Size and Color -->
             <div class="row">
-              
-             
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.quantity.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.quantity.id_for_label }}" class="form-label">{{ variant_form.quantity.label }}</label>
@@ -200,8 +198,6 @@
                   </small>
                 </div>
               </div>
-              
-            
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.purchase_price.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.purchase_price.id_for_label }}"
@@ -237,7 +233,7 @@
                   </small>
                 </div>
               </div>
-            <!-- Row 4: Discount Percentage -->
+              <!-- Row 4: Discount Percentage -->
             
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.discount_percentage.errors %}has-error{% endif %}">
@@ -254,6 +250,24 @@
                       {% endfor %}
                     {% endif %}
                     <span class="form-help-text">e.g., 10.00, 15.50 (discount percentage)</span>
+                  </small>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-group {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
+                  <label for="{{ variant_form.commission_percentage.id_for_label }}"
+                        class="form-label">{{ variant_form.commission_percentage.label }}</label>
+                  {{ variant_form.commission_percentage }}
+                  <small class="form-help {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
+                    {% if variant_form.commission_percentage.errors %}
+                      {% for error in variant_form.commission_percentage.errors %}
+                        <span class="form-error-inline">
+                          <i class="fas fa-exclamation-circle"></i>
+                          {{ error }}
+                        </span>
+                      {% endfor %}
+                    {% endif %}
+                    <span class="form-help-text">e.g., 10.00, 15.50 (commission percentage)</span>
                   </small>
                 </div>
               </div>
@@ -276,7 +290,7 @@
                   </small>
                 </div>
               </div>
-               <div class="col-md-3">
+              <div class="col-md-3">
                 <div class="form-group {% if variant_form.color.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.color.id_for_label }}" class="form-label">{{ variant_form.color.label }}</label>
                   <div class="input-group">
@@ -295,26 +309,6 @@
                   </small>
                 </div>
               </div> 
-            
-
-              <div class="col-md-3">
-                <div class="form-group {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
-                  <label for="{{ variant_form.commission_percentage.id_for_label }}"
-                        class="form-label">{{ variant_form.commission_percentage.label }}</label>
-                  {{ variant_form.commission_percentage }}
-                  <small class="form-help {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
-                    {% if variant_form.commission_percentage.errors %}
-                      {% for error in variant_form.commission_percentage.errors %}
-                        <span class="form-error-inline">
-                          <i class="fas fa-exclamation-circle"></i>
-                          {{ error }}
-                        </span>
-                      {% endfor %}
-                    {% endif %}
-                    <span class="form-help-text">e.g., 10.00, 15.50 (commission percentage)</span>
-                  </small>
-                </div>
-              </div>
               
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.minimum_quantity.errors %}has-error{% endif %}">
