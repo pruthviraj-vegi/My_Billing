@@ -43,6 +43,13 @@ from inventory.views_variant import get_variants_data
 from invoice.views_report import get_invoice_report_data
 from django.conf import settings
 
+try:
+    from api.cloudflare import upload_pdf_to_r2, BucketType
+except Exception as e:
+    logger.error(f"Failed to import R2 modules: {e}")
+    raise
+from io import BytesIO
+
 Barcode.default_writer_options["write_text"] = False
 
 logger = logging.getLogger(__name__)
@@ -91,9 +98,6 @@ def generatePdf(
     # Upload to R2 only if requested
     if upload_to_r2:
         try:
-            from io import BytesIO
-            from api.cloudflare import upload_pdf_to_r2, BucketType, R2StorageError
-
             pdf_buffer = BytesIO(pdf_file)
             bucket_type = (
                 BucketType.INVOICE if report_type == "INVOICE" else BucketType.STATEMENT
