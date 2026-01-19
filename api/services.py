@@ -10,6 +10,7 @@ import qrcode
 import io
 import base64
 import logging
+import requests
 from django.contrib.auth.views import login_not_required
 from customer.views_credit import _build_ledger_rows, get_opening_balance
 
@@ -37,16 +38,21 @@ def generate_invoice_pdf(invoice, request):
     """
     # Check if valid PDF exists (not outdated)
     existing_pdf = InvoicePDF.get_valid_pdf(invoice)
-
     if existing_pdf:
-        return {
-            "url": existing_pdf.pdf_url,
-            "generated_at": existing_pdf.generated_at.isoformat(),
-            "pdf_status": "cached",
-            "filename": existing_pdf.filename,
-        }
+        # Validate that the URL is actually accessible
+        try:
+            response = requests.head(existing_pdf.pdf_url, timeout=5)
+            if response.status_code == 200:
+                return {
+                    "url": existing_pdf.pdf_url,
+                    "generated_at": existing_pdf.generated_at.isoformat(),
+                    "pdf_status": "cached",
+                    "filename": existing_pdf.filename,
+                }
+        except Exception as e:
+            pass
 
-    # PDF doesn't exist or is outdated, generate new one
+    # PDF doesn't exist, is outdated, or URL is invalid; generate new one
 
     values = (
         InvoiceItem.objects.by_invoice(invoice)
@@ -80,6 +86,7 @@ def generate_invoice_pdf(invoice, request):
     }
 
     # Generate QR code if enabled
+
     if (
         report_config
         and report_config.show_qr_code
@@ -124,7 +131,6 @@ def generate_invoice_pdf(invoice, request):
         "pdf_status": "newly_generated",
         "filename": invoice_pdf.filename,
     }
-    print(data)
 
     return data
 
@@ -156,12 +162,17 @@ def generate_statement_pdf(customer, start_date, end_date, request):
     )
 
     if existing_pdf:
-        return {
-            "url": existing_pdf.pdf_url,
-            "generated_at": existing_pdf.generated_at.isoformat(),
-            "pdf_status": "cached",
-            "filename": existing_pdf.filename,
-        }
+        try:
+            response = requests.head(existing_pdf.pdf_url, timeout=5)
+            if response.status_code == 200:
+                return {
+                    "url": existing_pdf.pdf_url,
+                    "generated_at": existing_pdf.generated_at.isoformat(),
+                    "pdf_status": "cached",
+                    "filename": existing_pdf.filename,
+                }
+        except Exception as e:
+            pass
 
     ledger = _build_ledger_rows(customer, start_date, end_date)
     opening_balance = get_opening_balance(customer, start_date)
@@ -223,7 +234,4 @@ def generate_statement_pdf(customer, start_date, end_date, request):
         "pdf_status": "newly_generated",
         "filename": f"{filename}.pdf",
     }
-
-    print(data)
-
     return data
