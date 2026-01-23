@@ -1,6 +1,5 @@
 {% load custom_filters %}
 {% load static %}
-
 <!-- Table Body Content -->
 {% if page_obj %}
     {% for return_invoice in page_obj %}
@@ -15,9 +14,9 @@
             <td>
                 <div>
                     <span class="font-weight-bold text-primary">
-                        <a style="text-decoration: none;" href="{% url 'customer:detail' return_invoice.customer.id %}" target="_blank">
-                            {{ return_invoice.customer.name|default:"N/A" }}
-                        </a>
+                        <a style="text-decoration: none"
+                           href="{% url 'customer:detail' return_invoice.customer.id %}"
+                           target="_blank">{{ return_invoice.customer.name|default:"N/A" }}</a>
                     </span>
                     <br />
                     {% if return_invoice.customer.phone_number %}
@@ -28,9 +27,9 @@
             <td>
                 <div>
                     <span class="font-weight-bold text-primary">
-                        <a style="text-decoration: none;" href="{% url 'invoice:detail' return_invoice.invoice.id %}" target="_blank">
-                            {{ return_invoice.invoice.invoice_number|default:"N/A" }}
-                        </a>
+                        <a style="text-decoration: none"
+                           href="{% url 'invoice:detail' return_invoice.invoice.id %}"
+                           target="_blank">{{ return_invoice.invoice.invoice_number|default:"N/A" }}</a>
                     </span>
                     <br />
                     <small class="text-muted">{{ return_invoice.invoice.invoice_type }}</small>
@@ -38,32 +37,32 @@
             </td>
             <td>
                 {% if return_invoice.status == 'PENDING' %}
-                    <span class="status-badge status-pending">
+                    <span class="badge badge-warning">
                         <i class="fas fa-clock"></i>
                         {{ return_invoice.get_status_display }}
                     </span>
                 {% elif return_invoice.status == 'APPROVED' %}
-                    <span class="status-badge status-approved">
+                    <span class="badge badge-success">
                         <i class="fas fa-check-circle"></i>
                         {{ return_invoice.get_status_display }}
                     </span>
                 {% elif return_invoice.status == 'PROCESSING' %}
-                    <span class="status-badge status-processing">
+                    <span class="badge badge-info">
                         <i class="fas fa-cog"></i>
                         {{ return_invoice.get_status_display }}
                     </span>
                 {% elif return_invoice.status == 'COMPLETED' %}
-                    <span class="status-badge status-completed">
+                    <span class="badge badge-success">
                         <i class="fas fa-check-double"></i>
                         {{ return_invoice.get_status_display }}
                     </span>
                 {% elif return_invoice.status == 'CANCELLED' %}
-                    <span class="status-badge status-cancelled">
+                    <span class="badge badge-danger">
                         <i class="fas fa-times-circle"></i>
                         {{ return_invoice.get_status_display }}
                     </span>
                 {% else %}
-                    <span class="status-badge status-default">
+                    <span class="badge badge-default">
                         <i class="fas fa-question-circle"></i>
                         {{ return_invoice.get_status_display }}
                     </span>
@@ -71,38 +70,32 @@
             </td>
             <td>
                 {% if return_invoice.refund_type == 'CASH_REFUND' %}
-                    <span class="type-badge type-cash">
+                    <span class="badge badge-warning">
                         <i class="fas fa-money-bill-wave"></i>
                         {{ return_invoice.get_refund_type_display }}
                     </span>
                 {% elif return_invoice.refund_type == 'CREDIT_REFUND' %}
-                    <span class="type-badge type-credit">
+                    <span class="badge badge-info">
                         <i class="fas fa-credit-card"></i>
                         {{ return_invoice.get_refund_type_display }}
                     </span>
                 {% elif return_invoice.refund_type == 'EXCHANGE' %}
-                    <span class="type-badge type-exchange">
+                    <span class="badge badge-info">
                         <i class="fas fa-exchange-alt"></i>
                         {{ return_invoice.get_refund_type_display }}
                     </span>
                 {% else %}
-                    <span class="type-badge type-default">
-                        {{ return_invoice.get_refund_type_display }}
-                    </span>
+                    <span class="badge badge-default">{{ return_invoice.get_refund_type_display }}</span>
                 {% endif %}
             </td>
             <td>
                 <div>
                     <div class="font-weight-bold text-primary">{{ return_invoice.total_amount|currency }}</div>
                     {% if return_invoice.refund_amount != return_invoice.total_amount %}
-                        <small class="text-muted">
-                            Refund: {{ return_invoice.refund_amount|currency }}
-                        </small>
+                        <small class="text-muted">Refund: {{ return_invoice.refund_amount|currency }}</small>
                     {% endif %}
                     {% if return_invoice.restocking_fee > 0 %}
-                        <small class="text-muted">
-                            Fee: {{ return_invoice.restocking_fee|currency }}
-                        </small>
+                        <small class="text-muted">Fee: {{ return_invoice.restocking_fee|currency }}</small>
                     {% endif %}
                 </div>
             </td>
@@ -117,19 +110,28 @@
                        title="View Details">
                         <i class="fas fa-eye"></i>
                     </a>
-                    
+                    <a href="javascript:void(0)"
+                       class="btn-action btn-delete"
+                       title="Delete Return Invoice"
+                       onclick="delete_invoice('{{ return_invoice.id }}')">
+                        <i class="fas fa-trash"></i>
+                    </a>
                 </div>
             </td>
         </tr>
     {% endfor %}
 {% else %}
-    <!-- Empty state -->
     <tr>
         <td colspan="8" class="text-center" style="padding: 3rem;">
             <div class="empty-state">
-                <i class="fas fa-receipt" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
+                <i class="fas fa-receipt"
+                   style="font-size: 3rem;
+                          margin-bottom: 1rem;
+                          color: var(--text-secondary)"></i>
                 <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Return Invoices Found</h4>
-                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">No return invoices match your search criteria. Try adjusting your filters or create a new return invoice.</p>
+                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
+                    No return invoices match your search criteria. Try adjusting your filters or create a new return invoice.
+                </p>
                 <a href="{% url 'invoice:return_create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Create First Return
@@ -138,5 +140,3 @@
         </td>
     </tr>
 {% endif %}
-
-<!-- Pagination separated from table content -->

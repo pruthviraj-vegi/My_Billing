@@ -72,10 +72,11 @@ urlpatterns = [
         views_return.submit_return_invoice,
         name="submit_return_invoice",
     ),
-    # path("returns/edit/<int:pk>/", views_return.ReturnInvoiceEditView.as_view(), name="return_edit"),
-    # path("returns/delete/<int:pk>/", views_return.ReturnInvoiceDeleteView.as_view(), name="return_delete"),
-    # path("returns/approve/<int:pk>/", views_return.approve_return, name="return_approve"),
-    # path("returns/process/<int:pk>/", views_return.process_return, name="return_process"),
+    path(
+        "returns/delete/<int:pk>/",
+        views_return.delete_return_invoice,
+        name="delete_return_invoice",
+    ),
     # Invoice Report
     path("report/", views_report.invoice_report, name="report"),
     path("report/fetch/", views_report.invoice_report_fetch, name="report_fetch"),

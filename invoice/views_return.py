@@ -458,3 +458,44 @@ def submit_return_invoice(request, pk):
     except Exception as e:
         logger.error(f"Error submitting return invoice: {e}")
         return JsonResponse({"success": False, "error": str(e)})
+
+
+@transaction.atomic
+def delete_return_invoice(request, pk):
+    """Delete a return invoice"""
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Only POST method allowed"})
+
+    try:
+        return_invoice = get_object_or_404(ReturnInvoice, pk=pk)
+
+        # Check if return invoice is in valid state for deletion
+        if return_invoice.status not in [
+            RefundStatusChoices.PENDING,
+            RefundStatusChoices.REJECTED,
+        ]:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": f"Return invoice is already {return_invoice.get_status_display()}. Cannot delete.",
+                }
+            )
+
+        # Delete all related items
+        ReturnInvoiceItem.objects.filter(return_invoice=return_invoice).delete()
+
+        # Delete the return invoice
+        return_invoice.delete()
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Return invoice deleted successfully",
+            }
+        )
+
+    except ReturnInvoice.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Return invoice not found"})
+    except Exception as e:
+        logger.error(f"Error deleting return invoice: {e}")
+        return JsonResponse({"success": False, "error": str(e)})
