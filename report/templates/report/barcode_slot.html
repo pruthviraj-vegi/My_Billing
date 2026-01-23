@@ -1,20 +1,11 @@
-{% load static %} {% load custom_filters %}
-
-
+{% load static %}
+{% load custom_filters %}
 <div class="slot">
   <div class="data_section">
     <div class="text_section">
-      {% if barcode_config.show_heading %}
-        <div class="shop-name">
-          {{ barcode_config.display_heading }}
-        </div>
-      {% endif %}
-      <div class="details">
-        {{ values.product.brand }} - {{ values.product.name }}
-          {% if values.size or values.color %}
-            ({% if values.size %}{{ values.size.name }}{% endif %}{% if values.size and values.color %}, {% endif %}{% if values.color %}{{ values.color.name }}{% endif %})
-          {% endif %}
-      </div>
+      {% if barcode_config.show_heading %}<div class="shop-name">{{ barcode_config.display_heading }}</div>{% endif %}
+      <div class="details">{{ values.product.brand }} - {{ values.product.name }}</div>
+      {% if values.barcode_with_name %}<div class="details">{{ values.barcode_with_name }}</div>{% endif %}
       {% if barcode_config.show_product_code %}
         <div class="code">
           <span class="code-value">{{ values.barcode }}</span>
@@ -22,19 +13,17 @@
       {% endif %}
     </div>
     <div class="amount_section">
-
       {% if barcode_config.show_mrp %}
         <div class="price-text">
-          {% if barcode_config.show_price %} MRP: {% endif %} <span class="price">{{ values.mrp|currency_nonDecimal }} /-</span>
+          {% if barcode_config.show_price %}MRP:{% endif %}
+          <span class="price">{{ values.mrp|currency_nonDecimal }} /-</span>
         </div>
       {% endif %}
-
       {% if barcode_config.show_discount %}
         <div class="price-text">
           <span class="price">{{ values.discount_percentage|floatformat:0 }}%</span>
         </div>
       {% endif %}
-
       {% if barcode_config.show_price %}
         <div class="price-text">
           Price: <span class="price">{{ values.final_price|currency_nonDecimal }} /-</span>
@@ -48,6 +37,3 @@
     </div>
   </div>
 </div>
-
-  
-  

@@ -493,6 +493,24 @@ class ProductVariant(SoftDeleteModel):
         return self.product.brand + " - " + self.simple_name
 
     @property
+    def barcode_with_name(self):
+        """Short name without barcode for display purposes"""
+
+        name = ""
+
+        # Add size if it exists
+        if hasattr(self, "size") and self.size:
+            name += f"{self.size.name}"
+
+        # Add color if it exists
+        if hasattr(self, "color") and self.color:
+            name += f" - {self.color.name}"
+
+        if name:
+            return name
+        return None
+
+    @property
     def is_low_stock(self):
         return self.quantity <= self.minimum_quantity
 
