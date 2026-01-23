@@ -1,11 +1,12 @@
 # signals.py for customer payment allocation
 
-from django.db.models.signals import post_save, post_delete, pre_save
+from django.db.models.signals import post_save, post_delete, pre_save, m2m_changed
 from django.dispatch import receiver
 from django.db import transaction
 from decimal import Decimal
 from .models import Customer, Payment
 from invoice.models import Invoice, PaymentAllocation
+from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -349,3 +350,75 @@ def reallocate_customer_payments(customer, skip_signals=False):
         Payment.objects.bulk_update(
             purchased_payments, ["unallocated_amount", "updated_at"], batch_size=100
         )
+
+    # Update CustomerCreditSummary since bulk_update skips signals
+    from customer.models import CustomerCreditSummary
+
+    CustomerCreditSummary.recalculate_for_customer(customer)
+
+
+# ============================================
+# 2. OPTIMIZED SIGNALS with Bulk Updates
+# ============================================
+# Create: customer/signals.py
+
+# Thread-local storage for batch updates
+_pending_updates = defaultdict(set)
+
+
+def queue_customer_update(customer_id):
+    """Queue customer for batch update"""
+    _pending_updates[transaction.get_connection().alias].add(customer_id)
+
+
+def process_queued_updates():
+    """Process all queued updates in a single batch"""
+    from customer.models import Customer, CustomerCreditSummary
+
+    connection_alias = transaction.get_connection().alias
+    customer_ids = _pending_updates.pop(connection_alias, set())
+
+    if not customer_ids:
+        return
+
+    logger.info(f"Processing {len(customer_ids)} customer credit updates")
+
+    # Bulk recalculate
+    customers = Customer.objects.filter(id__in=customer_ids)
+    for customer in customers:
+        try:
+            CustomerCreditSummary.recalculate_for_customer(customer)
+        except Exception as e:
+            logger.error(f"Failed to update summary for customer {customer.id}: {e}")
+
+
+@receiver([post_save, post_delete], sender="invoice.Invoice")
+def handle_invoice_change(sender, instance, **kwargs):
+    """Queue credit summary update when invoice changes"""
+    if instance.payment_type == sender.PaymentType.CREDIT:
+        queue_customer_update(instance.customer_id)
+        transaction.on_commit(process_queued_updates)
+
+
+@receiver([post_save, post_delete], sender="customer.Payment")
+def handle_payment_change(sender, instance, **kwargs):
+    """Queue credit summary update when payment changes"""
+    queue_customer_update(instance.customer_id)
+    transaction.on_commit(process_queued_updates)
+
+
+@receiver([post_save, post_delete], sender="invoice.ReturnInvoice")
+def handle_return_change(sender, instance, **kwargs):
+    """Queue credit summary update when return changes"""
+    if instance.status in ["APPROVED", "COMPLETED"]:
+        queue_customer_update(instance.customer_id)
+        transaction.on_commit(process_queued_updates)
+
+
+@receiver(post_save, sender="customer.Customer")
+def create_summary_for_new_customer(sender, instance, created, **kwargs):
+    """Create empty summary when customer is created"""
+    if created:
+        from customer.models import CustomerCreditSummary
+
+        CustomerCreditSummary.objects.get_or_create(customer=instance)

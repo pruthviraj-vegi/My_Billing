@@ -95,17 +95,17 @@
           <div class="summary-stats-compact">
             <div class="stat-item-compact">
               <span class="stat-number-compact counting-number"
-                    data-count="{{ customer.credit_amount }}">0</span>
+                    data-count="{{ customer.credit_summary.credit_amount }}">0</span>
               <span class="stat-label-compact">Total Credit</span>
             </div>
             <div class="stat-item-compact">
               <span class="stat-number-compact counting-number"
-                    data-count="{{ customer.debit_amount }}">0</span>
+                    data-count="{{ customer.credit_summary.debit_amount }}">0</span>
               <span class="stat-label-compact">Total Debit</span>
             </div>
             <div class="stat-item-compact">
               <span class="stat-number-compact counting-number"
-                    data-count="{{ customer.balance_amount }}">0</span>
+                    data-count="{{ customer.credit_summary.balance_amount }}">0</span>
               <span class="stat-label-compact">Outstanding</span>
             </div>
           </div>
@@ -122,7 +122,7 @@
             <div class="stat-item-compact">
               <span class="stat-number-compact counting-number"
                     id="total_paid"
-                    data-count="{{ customer.debit_amount }}">0</span>
+                    data-count="{{ customer.credit_summary.debit_amount }}">0</span>
               <span class="stat-label-compact">Total Paid</span>
             </div>
             <div class="stat-item-compact">
@@ -168,7 +168,6 @@
             <tbody id="ledger_table_body">
               <tr>
                 <td colspan="10" class="text-center p-4">
-                  
                   <div class="loading">
                     <i class="fas fa-spinner fa-spin"></i>
                     Loading ledger...
@@ -233,7 +232,7 @@
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-primary" id="send_pdf_statement" >
+        <button type="button" class="btn btn-primary" id="send_pdf_statement">
           <i class="fas fa-paper-plane"></i>
           Send PDF Statement
         </button>
@@ -246,12 +245,10 @@
     </div>
   </div>
 {% endblock content %}
-
 {% block extra_js %}
   <script src="{% static 'js/dateFilterUtils.js' %}"></script>
   <script src="{% static 'js/fetchData.js' %}"></script>
   <script src="{% static 'js/dropdown_style.js' %}"></script>
-
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       // Summary card click handlers

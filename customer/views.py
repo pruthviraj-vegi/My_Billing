@@ -264,12 +264,12 @@ def dashboard(request):
     # balance_amount = credit_amount - debit_amount
     # where credit_amount = (credit invoices - discount - advance) + purchased payments
     # and debit_amount = paid payments
-    total_outstanding = Decimal("0.00")
-    customers = Customer.objects.filter(is_deleted=False)
-    for customer in customers:
-        total_outstanding += customer.balance_amount
 
-    total_outstanding = total_outstanding.quantize(Decimal("0.01"))
+    customers = Customer.objects.filter(is_deleted=False)
+
+    total_outstanding = customers.aggregate(
+        total_outstanding=Coalesce(Sum("credit_summary__balance_amount"), Decimal("0"))
+    )["total_outstanding"]
 
     # Calculate total customers (static, doesn't change with date filter)
     total_customers = Customer.objects.filter(is_deleted=False).count()

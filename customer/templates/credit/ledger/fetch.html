@@ -1,5 +1,4 @@
 {% load custom_filters %}
-
 {% if page_obj %}
   {% for row in page_obj %}
     <tr>
@@ -12,9 +11,7 @@
         {% endif %}
       </td>
       <td class="text-center"># {{ row.ref }}</td>
-      <td class="text-center">{{ row.method|default:"-" }}</span>
-        
-      </td>
+      <td class="text-center">{{ row.method|default:"-" }}</td>
       <td class="text-center">{{ row.notes|default:"-"|truncatechars:15 }}</td>
       <td class="text-center">
         {% if row.type == "Invoice" %}
@@ -31,9 +28,11 @@
           {% if row.paid_amount > 0 %}
             <span class="text-success">{{ row.paid_amount|currency }}</span>
             {% if row.payment_status == "PAID" %}
-              <br><small class="secondary-text text-success">✓ Fully Paid</small>
+              <br>
+              <small class="secondary-text text-success">✓ Fully Paid</small>
             {% elif row.payment_status == "PARTIALLY_PAID" %}
-              <br><small class="secondary-text text-warning">⚠ Partially Paid</small>
+              <br>
+              <small class="secondary-text text-warning">⚠ Partially Paid</small>
             {% endif %}
           {% else %}
             <span class="text-muted">₹0.00</span>
@@ -61,8 +60,7 @@
             <i class="fas fa-eye"></i>
           </a>
         {% else %}
-        <a 
-              id="send_credit_payment"
+          <a id="send_credit_payment"
              class="btn-action btn-view"
              title="Send Payment"
              onclick="send_credit_payment('{{ row.id }}')">
@@ -93,4 +91,3 @@
     </td>
   </tr>
 {% endif %}
-

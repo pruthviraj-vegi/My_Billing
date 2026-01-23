@@ -89,61 +89,140 @@ class Customer(SoftDeleteModel):
             return f"Credit: ₹{self.store_credit_balance}"
         return "No Credit"
 
-    @cached_property
-    def credit_amount(self):
-        # Sum of amounts for this customer's CREDIT invoices
-        try:
-            from invoice.models import Invoice
+    # @cached_property
+    # def credit_amount(self):
+    #     """Calculate total credit amount (invoices + purchased - returns)"""
+    #     from invoice.models import Invoice
 
-            credit_qs = self.invoices.filter(payment_type=Invoice.PaymentType.CREDIT)
-            return_qs = self.return_invoices.filter(
-                status__in=["APPROVED", "COMPLETED"]
-            )
-        except Exception:
-            # Fallback without importing to avoid circular import issues
-            credit_qs = self.invoices.filter(payment_type="CREDIT")
+    #     # Use prefetched data if available
+    #     if (
+    #         hasattr(self, "_prefetched_objects_cache")
+    #         and "invoices" in self._prefetched_objects_cache
+    #     ):
+    #         credit_invoices = [
+    #             inv
+    #             for inv in self.invoices.all()
+    #             if inv.payment_type == Invoice.PaymentType.CREDIT
+    #         ]
+    #         invoices_total = sum(
+    #             (inv.amount - inv.discount_amount - inv.advance_amount)
+    #             for inv in credit_invoices
+    #         )
+    #     else:
+    #         # Fallback to database query
+    #         from django.db.models import F, Sum, ExpressionWrapper, DecimalField
+    #         from django.db.models.functions import Coalesce
 
-        net_expr = ExpressionWrapper(
-            F("amount") - F("discount_amount") - F("advance_amount"),
-            output_field=DecimalField(max_digits=12, decimal_places=2),
-        )
-        invoices_total = credit_qs.aggregate(
-            total=Coalesce(Sum(net_expr), Value(Decimal("0")))
-        )["total"]
+    #         credit_qs = self.invoices.filter(payment_type=Invoice.PaymentType.CREDIT)
+    #         net_expr = ExpressionWrapper(
+    #             F("amount") - F("discount_amount") - F("advance_amount"),
+    #             output_field=DecimalField(max_digits=12, decimal_places=2),
+    #         )
+    #         invoices_total = credit_qs.aggregate(
+    #             total=Coalesce(Sum(net_expr), Value(Decimal("0")))
+    #         )["total"]
 
-        credit_payment_total = self.credit_payment.filter(
-            payment_type=Payment.PaymentType.Purchased
-        ).aggregate(total=Coalesce(Sum("amount"), Value(Decimal("0"))))["total"]
+    #     if (
+    #         hasattr(self, "_prefetched_objects_cache")
+    #         and "credit_payment" in self._prefetched_objects_cache
+    #     ):
+    #         credit_payment_total = sum(
+    #             p.amount
+    #             for p in self.credit_payment.all()
+    #             if p.payment_type == Payment.PaymentType.Purchased
+    #         )
+    #     else:
+    #         from django.db.models.functions import Coalesce
 
-        return_total = return_qs.aggregate(
-            total=Coalesce(Sum("refund_amount"), Value(Decimal("0")))
-        )["total"]
+    #         credit_payment_total = self.credit_payment.filter(
+    #             payment_type=Payment.PaymentType.Purchased
+    #         ).aggregate(total=Coalesce(Sum("amount"), Value(Decimal("0"))))["total"]
 
-        return invoices_total + credit_payment_total - return_total
+    #     # Returns
+    #     if (
+    #         hasattr(self, "_prefetched_objects_cache")
+    #         and "return_invoices" in self._prefetched_objects_cache
+    #     ):
+    #         return_total = sum(
+    #             r.refund_amount
+    #             for r in self.return_invoices.all()
+    #             if r.status in ["APPROVED", "COMPLETED"]
+    #         )
+    #     else:
+    #         from django.db.models.functions import Coalesce
 
-    @cached_property
-    def debit_amount(self):
-        debit_payment_total = self.credit_payment.filter(
-            payment_type=Payment.PaymentType.Paid
-        ).aggregate(total=Coalesce(Sum("amount"), Value(Decimal("0"))))["total"]
-        return debit_payment_total
+    #         return_qs = self.return_invoices.filter(
+    #             status__in=["APPROVED", "COMPLETED"]
+    #         )
+    #         return_total = return_qs.aggregate(
+    #             total=Coalesce(Sum("refund_amount"), Value(Decimal("0")))
+    #         )["total"]
 
-    @cached_property
-    def balance_amount(self):
-        return self.credit_amount - self.debit_amount
+    #     return invoices_total + credit_payment_total - return_total
+
+    # @cached_property
+    # def debit_amount(self):
+    #     """Calculate total debit amount (paid payments)"""
+
+    #     if (
+    #         hasattr(self, "_prefetched_objects_cache")
+    #         and "credit_payment" in self._prefetched_objects_cache
+    #     ):
+    #         return sum(
+    #             p.amount
+    #             for p in self.credit_payment.all()
+    #             if p.payment_type == Payment.PaymentType.Paid
+    #         )
+    #     else:
+    #         from django.db.models import Sum
+    #         from django.db.models.functions import Coalesce
+
+    #         return self.credit_payment.filter(
+    #             payment_type=Payment.PaymentType.Paid
+    #         ).aggregate(total=Coalesce(Sum("amount"), Value(Decimal("0"))))["total"]
+
+    # @cached_property
+    # def balance_amount(self):
+    #     return self.credit_amount - self.debit_amount
 
     @cached_property
     def last_date(self):
+        """Get first unpaid/partially paid credit invoice date if balance > 500"""
+        if self.balance_amount <= 500:
+            return None
+
         from invoice.models import Invoice
 
-        credit_qs = self.invoices.filter(
-            payment_type=Invoice.PaymentType.CREDIT
-        ).order_by("invoice_date")
-        if credit_qs.exists() and self.balance_amount > 500:
-            for invoice in credit_qs:
-                if not invoice.amount_cleared:
-                    return invoice.invoice_date if not None else invoice.invoice_date
-        return None
+        # Use prefetched data if available
+        if (
+            hasattr(self, "_prefetched_objects_cache")
+            and "invoices" in self._prefetched_objects_cache
+        ):
+            unpaid_invoices = [
+                inv
+                for inv in self.invoices.all()
+                if inv.payment_type == Invoice.PaymentType.CREDIT
+                and inv.payment_status
+                in [Invoice.PaymentStatus.UNPAID, Invoice.PaymentStatus.PARTIALLY_PAID]
+            ]
+            if unpaid_invoices:
+                return min(inv.invoice_date for inv in unpaid_invoices)
+            return None
+        else:
+            # Fallback to database query
+            first_unpaid = (
+                self.invoices.filter(
+                    payment_type=Invoice.PaymentType.CREDIT,
+                    payment_status__in=[
+                        Invoice.PaymentStatus.UNPAID,
+                        Invoice.PaymentStatus.PARTIALLY_PAID,
+                    ],
+                )
+                .order_by("invoice_date")
+                .first()
+            )
+
+            return first_unpaid.invoice_date if first_unpaid else None
 
     def add_credit(self, amount):
         """Add credit to customer's balance."""
@@ -262,3 +341,300 @@ class Payment(SoftDeleteModel):
 
     def __str__(self) -> str:
         return f"{self.customer} - ₹{self.amount} ({self.get_payment_type_display()}) via {self.get_method_display()}"
+
+
+class CustomerCreditSummary(models.Model):
+    """
+    HIGH-PERFORMANCE denormalized summary table for customer credit data.
+    Optimized with proper indexes, constraints, and field choices.
+    """
+
+    # Primary relationship
+    customer = models.OneToOneField(
+        "Customer",
+        on_delete=models.CASCADE,
+        related_name="credit_summary",
+        primary_key=True,
+        db_index=True,  # Explicit index for faster lookups
+    )
+
+    # ===== CREDIT BREAKDOWN =====
+    credit_invoices_total = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+        db_index=True,
+        help_text="Sum of all credit invoices (after discount/advance)",
+    )
+
+    credit_purchased_total = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Sum of all purchased payments",
+    )
+
+    returns_total = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Sum of all approved returns",
+    )
+
+    # ===== CALCULATED TOTALS =====
+    credit_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        db_index=True,  # Index for sorting/filtering
+        help_text="Total credit = invoices + purchased - returns",
+    )
+
+    debit_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        db_index=True,  # Index for sorting/filtering
+        help_text="Total payments made by customer",
+    )
+
+    balance_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        db_index=True,  # CRITICAL: Index for filtering customers with debt
+        help_text="Outstanding balance = credit - debit (negative = customer has credit)",
+    )
+
+    # ===== ADDITIONAL METRICS =====
+    total_invoices_count = models.PositiveIntegerField(
+        default=0, help_text="Number of credit invoices"
+    )
+
+    unpaid_invoices_count = models.PositiveIntegerField(
+        default=0, db_index=True, help_text="Number of unpaid/partially paid invoices"
+    )
+
+    last_invoice_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,  # Index for overdue filtering
+        help_text="Date of first unpaid credit invoice (if balance > 500)",
+    )
+
+    last_payment_date = models.DateTimeField(
+        null=True, blank=True, help_text="Date of most recent payment"
+    )
+
+    # ===== STATUS FLAGS =====
+    is_overdue = models.BooleanField(
+        default=False,
+        db_index=True,  # Index for filtering overdue customers
+        help_text="True if last_invoice_date > 6 months old",
+    )
+
+    has_outstanding_balance = models.BooleanField(
+        default=False,
+        db_index=True,  # Index for filtering customers with debt
+        help_text="True if balance_amount > 0",
+    )
+
+    # ===== METADATA =====
+    last_calculated = models.DateTimeField(
+        auto_now=True,
+        db_index=True,
+        help_text="Last time this summary was recalculated",
+    )
+
+    calculation_version = models.PositiveIntegerField(
+        default=1, help_text="Incremented each time calculation logic changes"
+    )
+
+    class Meta:
+        db_table = "customer_credit_summary"
+        verbose_name = "Customer Credit Summary"
+        verbose_name_plural = "Customer Credit Summaries"
+
+        # ===== COMPOSITE INDEXES for common queries =====
+        indexes = [
+            # For filtering customers with outstanding balance
+            models.Index(
+                fields=["has_outstanding_balance", "-balance_amount"],
+                name="idx_outstanding_bal",
+            ),
+            # For filtering overdue customers
+            models.Index(
+                fields=["is_overdue", "-last_invoice_date"], name="idx_overdue"
+            ),
+            # For sorting by credit amount
+            models.Index(fields=["-credit_amount"], name="idx_credit_desc"),
+            # For sorting by balance
+            models.Index(fields=["-balance_amount"], name="idx_balance_desc"),
+            # For recent activity
+            models.Index(fields=["-last_calculated"], name="idx_last_calc"),
+        ]
+
+        # ===== CONSTRAINTS =====
+        constraints = [
+            # Balance can be positive (customer owes) or negative (customer has credit)
+            # No constraint needed - allow any decimal value
+            # Ensure credit/debit component amounts are non-negative
+            # (individual components should never be negative)
+            models.CheckConstraint(
+                check=models.Q(credit_invoices_total__gte=0),
+                name="credit_invoices_non_negative",
+            ),
+            models.CheckConstraint(
+                check=models.Q(credit_purchased_total__gte=0),
+                name="purchased_non_negative",
+            ),
+            models.CheckConstraint(
+                check=models.Q(returns_total__gte=0), name="returns_non_negative"
+            ),
+            models.CheckConstraint(
+                check=models.Q(debit_amount__gte=0), name="debit_non_negative"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.customer.name} - Balance: ₹{self.balance_amount:,.2f}"
+
+    @classmethod
+    def recalculate_for_customer(cls, customer, save=True):
+        """
+        OPTIMIZED recalculation with minimal queries.
+        Uses select_for_update to prevent race conditions.
+        """
+        from django.db.models import Sum, F, Q, Count, Max
+        from django.db.models.functions import Coalesce
+        from django.db import transaction
+        from invoice.models import Invoice
+
+        with transaction.atomic():
+            # Lock the summary row to prevent concurrent updates
+            try:
+                summary = cls.objects.select_for_update().get(customer=customer)
+            except cls.DoesNotExist:
+                summary = cls(customer=customer)
+
+            # ===== SINGLE AGGREGATION QUERY for invoices =====
+            invoice_stats = customer.invoices.filter(
+                payment_type=Invoice.PaymentType.CREDIT
+            ).aggregate(
+                total_amount=Coalesce(
+                    Sum(F("amount") - F("discount_amount") - F("advance_amount")),
+                    Decimal("0"),
+                ),
+                count=Count("id"),
+                unpaid_count=Count(
+                    "id",
+                    filter=Q(
+                        payment_status__in=[
+                            Invoice.PaymentStatus.UNPAID,
+                            Invoice.PaymentStatus.PARTIALLY_PAID,
+                        ]
+                    ),
+                ),
+            )
+
+            # ===== SINGLE AGGREGATION QUERY for payments =====
+            payment_stats = customer.credit_payment.aggregate(
+                purchased=Coalesce(
+                    Sum("amount", filter=Q(payment_type=Payment.PaymentType.Purchased)),
+                    Decimal("0"),
+                ),
+                paid=Coalesce(
+                    Sum("amount", filter=Q(payment_type=Payment.PaymentType.Paid)),
+                    Decimal("0"),
+                ),
+                last_payment=Max(
+                    "payment_date", filter=Q(payment_type=Payment.PaymentType.Paid)
+                ),
+            )
+
+            # ===== SINGLE AGGREGATION QUERY for returns =====
+            returns_stats = customer.return_invoices.filter(
+                status__in=["APPROVED", "COMPLETED"]
+            ).aggregate(total=Coalesce(Sum("refund_amount"), Decimal("0")))
+
+            # ===== CALCULATE TOTALS =====
+            credit_invoices = invoice_stats["total_amount"]
+            credit_purchased = payment_stats["purchased"]
+            returns = returns_stats["total"]
+            paid = payment_stats["paid"]
+
+            credit_total = credit_invoices + credit_purchased - returns
+            balance_total = credit_total - paid
+
+            # ===== FIND LAST INVOICE DATE (only if balance > 500) =====
+            last_inv_date = None
+            if balance_total > 500:
+                first_unpaid = (
+                    customer.invoices.filter(
+                        payment_type=Invoice.PaymentType.CREDIT,
+                        payment_status__in=[
+                            Invoice.PaymentStatus.UNPAID,
+                            Invoice.PaymentStatus.PARTIALLY_PAID,
+                        ],
+                    )
+                    .order_by("invoice_date")
+                    .values("invoice_date")
+                    .first()
+                )
+
+                if first_unpaid:
+                    last_inv_date = first_unpaid["invoice_date"]
+
+            # ===== CALCULATE OVERDUE STATUS =====
+            from datetime import timedelta
+
+            six_months_ago = timezone.now() - timedelta(days=180)
+            is_overdue = bool(last_inv_date and last_inv_date < six_months_ago)
+
+            # ===== UPDATE SUMMARY =====
+            summary.credit_invoices_total = credit_invoices
+            summary.credit_purchased_total = credit_purchased
+            summary.returns_total = returns
+            summary.credit_amount = credit_total
+            summary.debit_amount = paid
+            summary.balance_amount = balance_total
+            summary.total_invoices_count = invoice_stats["count"]
+            summary.unpaid_invoices_count = invoice_stats["unpaid_count"]
+            summary.last_invoice_date = last_inv_date
+            summary.last_payment_date = payment_stats["last_payment"]
+            summary.is_overdue = is_overdue
+            summary.has_outstanding_balance = balance_total > 0
+
+            if save:
+                summary.save()
+
+            return summary
+
+    def get_status_display(self):
+        """Human-readable status"""
+        if self.balance_amount < 0:
+            return f"Credit Balance: ₹{abs(self.balance_amount):,.2f}"
+        elif self.balance_amount == 0:
+            return "Cleared"
+        elif self.is_overdue:
+            return "Overdue"
+        else:
+            return "Outstanding"
+
+    @property
+    def has_credit_balance(self):
+        """Customer has overpaid and has credit"""
+        return self.balance_amount < 0
+
+    @property
+    def customer_owes(self):
+        """Amount customer owes (positive balance)"""
+        return max(self.balance_amount, Decimal("0"))
+
+    @property
+    def customer_credit(self):
+        """Amount customer has as credit (negative balance converted to positive)"""
+        return abs(min(self.balance_amount, Decimal("0")))

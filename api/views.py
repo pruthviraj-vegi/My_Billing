@@ -57,6 +57,7 @@ def get_balance(request, phone_number):
 
 @login_not_required
 def get_last_invoice(request, phone_number):
+    print(phone_number)
     try:
         phone_number = number_format(phone_number)
     except Exception as e:
@@ -76,7 +77,7 @@ def get_last_invoice(request, phone_number):
         # Use the helper function to generate or retrieve PDF
         pdf_data = generate_invoice_pdf(invoice, request)
 
-        return JsonResponse(
+        data = JsonResponse(
             {
                 "name": customer.name,
                 "invoice_number": invoice.invoice_number,
@@ -84,6 +85,8 @@ def get_last_invoice(request, phone_number):
             },
             status=200,
         )
+        print(data)
+        return data
     except Exception as e:
         logger.error(f"Error generating invoice PDF: {e}")
         return JsonResponse(

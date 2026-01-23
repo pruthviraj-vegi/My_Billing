@@ -33,6 +33,7 @@ class PaymentStatusChoices(models.TextChoices):
     PARTIALLY_PAID = "PARTIALLY_PAID", "Partially Paid"
     PAID = "PAID", "Paid"
     VOID = "VOID", "Void"
+    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class PaymentMethodChoices(models.TextChoices):

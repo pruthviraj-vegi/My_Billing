@@ -20,24 +20,12 @@
                     {{ customer.balance_amount|currency }}
                 </span>
             </td>
+            <td>{{ customer.credit_summary.last_payment_date|date:"M d, Y" |default:"N/A" }}</td>
             <td>
-                {% with customer.credit_payment.all as payments %}
-                    {% if payments %}
-                        {% with payments|first as latest_payment %}
-                            <span class="date-display">{{ latest_payment.payment_date|date:"M d, Y" }}</span>
-                            <br>
-                            <small class="text-muted">{{ latest_payment.amount|currency }}</small>
-                        {% endwith %}
-                    {% else %}
-                        <span class="text-muted">No payments</span>
-                    {% endif %}
-                {% endwith %}
-            </td>
-            <td>
-                {% if customer.last_date %}
-                    <span class="{% if customer.is_overdue %} text-danger {% endif %}">{{ customer.last_date|timesince }}</span>
+                {% if customer.credit_summary.last_invoice_date %}
+                    <span class="{% if customer.credit_summary.is_overdue %} text-danger {% endif %}">{{ customer.credit_summary.last_invoice_date|timesince }}</span>
                     <br>
-                    <small class="text-muted">{{ customer.last_date|date:"M d, Y" }}</small>
+                    <small class="text-muted">{{ customer.credit_summary.last_invoice_date|date:"M d, Y" }}</small>
                 {% else %}
                     <span class="text-muted">N/A</span>
                 {% endif %}

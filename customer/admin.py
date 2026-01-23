@@ -6,7 +6,7 @@ from django.db.models import Sum, Count
 from django.contrib.admin import SimpleListFilter
 from django.utils import timezone
 from datetime import timedelta
-from .models import Customer, Payment
+from .models import Customer, Payment, CustomerCreditSummary
 from invoice.models import PaymentAllocation
 
 
@@ -494,6 +494,19 @@ class PaymentAdmin(admin.ModelAdmin):
     auto_reallocate_selected_payments.short_description = (
         "Auto reallocate selected payments (FIFO)"
     )
+
+
+@admin.register(CustomerCreditSummary)
+class CustommerySummery(admin.ModelAdmin):
+    list_display = [
+        "customer",
+        "credit_amount",
+        "debit_amount",
+        "balance_amount",
+        "last_payment_date",
+        "last_invoice_date",
+        "is_overdue",
+    ]
 
 
 # Customize admin site

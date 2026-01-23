@@ -9,13 +9,28 @@ from django.urls import reverse_lazy
 from decimal import Decimal
 from django.http import HttpResponse
 from datetime import datetime, timedelta
-from django.db.models import Sum, F, Value, Case, When, DecimalField, OuterRef, Subquery
+from django.db.models import (
+    Sum,
+    F,
+    Value,
+    Case,
+    When,
+    DecimalField,
+    OuterRef,
+    Subquery,
+    Prefetch,
+)
 from django.db.models.functions import Coalesce
 from django.core.cache import cache
 import hashlib
 import json
 
+from invoice.models import Invoice
+from customer.models import Payment
+from django.db.models import DateTimeField
+from django.utils import timezone
 import logging
+
 
 from base.utility import render_paginated_response
 
@@ -52,26 +67,29 @@ def home(request):
 
 
 def total_credit_customers_data(request):
-    customers = Customer.objects.filter(is_deleted=False).only("id")
-    total = sum(
-        (c.balance_amount or Decimal("0")).quantize(Decimal("0.01")) for c in customers
-    )
-    return total
+    return Customer.objects.filter(is_deleted=False).aggregate(
+        total=Coalesce(Sum("credit_summary__balance_amount"), Value(Decimal("0")))
+    )["total"]
 
 
 def credit_customers_data(request):
-    """Fetch credit customers without caching, fully optimized."""
+    """
+    ULTRA-OPTIMIZED credit customers view.
+    - Single query with select_related
+    - All sorting in database
+    - No Python computation needed
+    """
 
     search_query = request.GET.get("search", "").strip()
     sort_by = request.GET.get("sort", "-created_at")
 
-    # 1️⃣ Base queryset — already filtered in DB
-    qs = Customer.objects.filter(
-        Q(invoices__payment_type=Invoice.PaymentType.CREDIT)
-        | Q(credit_payment__isnull=False)
-    ).distinct()
+    # ===== BASE QUERYSET =====
+    # Only customers with credit activity
+    qs = Customer.objects.filter(credit_summary__isnull=False).select_related(
+        "credit_summary"
+    )  # Single JOIN
 
-    # 2️⃣ Apply search in DB (faster than filtering Python list)
+    # ===== SEARCH =====
     if search_query:
         qs = qs.filter(
             Q(name__icontains=search_query)
@@ -80,44 +98,40 @@ def credit_customers_data(request):
             | Q(address__icontains=search_query)
         )
 
-    python_sort_fields = {
-        "credit_amount",
-        "-credit_amount",
-        "debit_amount",
-        "-debit_amount",
-        "balance_amount",
-        "-balance_amount",
-        "last_date",
-        "-last_date",
+    # ===== SORTING (All in database!) =====
+    sort_map = {
+        "credit_amount": "credit_summary__credit_amount",
+        "-credit_amount": "-credit_summary__credit_amount",
+        "debit_amount": "credit_summary__debit_amount",
+        "-debit_amount": "-credit_summary__debit_amount",
+        "balance_amount": "credit_summary__balance_amount",
+        "-balance_amount": "-credit_summary__balance_amount",
+        "last_date": "credit_summary__last_invoice_date",
+        "-last_date": "-credit_summary__last_invoice_date",
     }
 
-    # 3️⃣ Sorting
-    if sort_by in python_sort_fields:
-        customers = list(qs)
-        field = sort_by.lstrip("-")
-        reverse = sort_by.startswith("-")
-
-        key_map = {
-            "credit_amount": lambda c: c.credit_amount,
-            "debit_amount": lambda c: c.debit_amount,
-            "balance_amount": lambda c: c.balance_amount,
-            "last_date": lambda c: c.last_date
-            or (datetime.min if reverse else datetime.max),
-        }
-
-        customers.sort(key=key_map[field], reverse=reverse)
+    if sort_by in sort_map:
+        qs = qs.order_by(sort_map[sort_by])
     else:
-        if sort_by not in VALID_SORT_FIELDS:
+        # Fallback to valid field
+        valid_fields = {"id", "-id", "name", "-name", "created_at", "-created_at"}
+        if sort_by not in valid_fields:
             sort_by = "-created_at"
         qs = qs.order_by(sort_by)
-        customers = list(qs)
 
-    # 4️⃣ Overdue flag (last_date older than 6 months)
-    six_months_ago = datetime.now() - timedelta(days=180)
+    # ===== EXECUTE =====
+    customers = list(qs)
+
+    # ===== ATTACH VALUES (already loaded via select_related) =====
     for customer in customers:
-        customer.is_overdue = bool(
-            customer.last_date and customer.last_date < six_months_ago
-        )
+        summary = customer.credit_summary
+
+        # Attach for template/serializer compatibility
+        customer.credit_amount = summary.credit_amount
+        customer.debit_amount = summary.debit_amount
+        customer.balance_amount = summary.balance_amount
+        customer.last_date = summary.last_invoice_date
+        customer.is_overdue = summary.is_overdue
 
     return customers
 
