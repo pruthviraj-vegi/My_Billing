@@ -120,88 +120,109 @@ class StringProcessor:
 
 
 def get_periodic_data(date_filter, current_start, current_end):
-    """Return previous_start, previous_end, period_type for a given date filter."""
+    """
+    Return previous_start, previous_end, period_type for a given date filter.
+    Uses the existing DatesManipulation class to avoid code duplication.
+    """
+    from base.getDates import DatesManipulation
 
-    # ---------------- DAILY ----------------
-    if date_filter in ["today", "yesterday"]:
-        return (
-            current_start - timedelta(days=1),
-            current_end - timedelta(days=1),
+    dates = DatesManipulation()
+
+    # Map date filters to period types and get previous period dates
+    period_map = {
+        "today": ("daily", dates.yesterday_date),
+        "yesterday": (
             "daily",
-        )
+            (current_start - timedelta(days=1), current_end - timedelta(days=1)),
+        ),
+        "this_month": ("monthly", dates.last_month),
+        "last_month": ("monthly", None),  # Need to calculate 2 months ago
+        "this_quarter": ("quarterly", dates.last_quarter),
+        "last_quarter": ("quarterly", None),  # Need to calculate 2 quarters ago
+        "this_finance": ("yearly", dates.last_finance),
+        "last_finance": ("yearly", None),  # Need to calculate 2 FY ago
+    }
 
-    # ---------------- MONTHLY ----------------
-    if date_filter in ["this_month", "last_month"]:
-        if current_start.month == 1:
+    if date_filter in period_map:
+        period_type, previous_dates = period_map[date_filter]
+
+        if previous_dates:
+            previous_start, previous_end = previous_dates
+            return (
+                (
+                    previous_start.date()
+                    if hasattr(previous_start, "date")
+                    else previous_start
+                ),
+                previous_end.date() if hasattr(previous_end, "date") else previous_end,
+                period_type,
+            )
+
+    # Handle special cases that need calculation
+    if date_filter == "last_month":
+        # Get 2 months ago
+        if current_start.month <= 2:
             previous_start = current_start.replace(
-                year=current_start.year - 1, month=12
+                year=current_start.year - 1,
+                month=current_start.month + 10 if current_start.month == 2 else 11,
             )
         else:
-            previous_start = current_start.replace(month=current_start.month - 1)
+            previous_start = current_start.replace(month=current_start.month - 2)
 
-        # Next month of previous_start
+        # Calculate end of that month
         if previous_start.month == 12:
             next_month = previous_start.replace(year=previous_start.year + 1, month=1)
         else:
             next_month = previous_start.replace(month=previous_start.month + 1)
-
         previous_end = next_month - timedelta(days=1)
 
         return previous_start, previous_end, "monthly"
 
-    # ---------------- QUARTERLY ----------------
-    if date_filter in ["this_quarter", "last_quarter"]:
-        quarter_start_month = ((current_start.month - 1) // 3) * 3 + 1
-        current_q_start = current_start.replace(month=quarter_start_month, day=1)
+    elif date_filter == "last_quarter":
+        # Get 2 quarters ago (6 months back)
+        from base.getDates import quarter_start_end
 
-        # Determine previous quarter start
-        if quarter_start_month == 1:
-            prev_start = current_q_start.replace(
-                year=current_q_start.year - 1, month=10
-            )
-        else:
-            prev_start = current_q_start.replace(month=quarter_start_month - 3)
-
-        # Determine previous quarter end
-        prev_end = prev_start.replace(month=prev_start.month + 3, day=1) - timedelta(
-            days=1
+        last_month = current_start.month - 6
+        year = current_start.year
+        if last_month <= 0:
+            last_month += 12
+            year -= 1
+        previous_start, previous_end = quarter_start_end(year, last_month)
+        return (
+            (
+                previous_start.date()
+                if hasattr(previous_start, "date")
+                else previous_start
+            ),
+            previous_end.date() if hasattr(previous_end, "date") else previous_end,
+            "quarterly",
         )
 
-        return prev_start, prev_end, "quarterly"
-
-    # ---------------- FINANCIAL YEAR ----------------
-    if date_filter in ["this_finance", "last_finance"]:
-        if current_start.month >= 4:  # FY: Apr 1 – Mar 31
-            previous_start = current_start.replace(
-                year=current_start.year - 1, month=4, day=1
-            )
-            previous_end = current_start.replace(
-                year=current_start.year, month=3, day=31
-            )
-        else:
+    elif date_filter == "last_finance":
+        # Get 2 financial years ago
+        if current_start.month >= 4:
             previous_start = current_start.replace(
                 year=current_start.year - 2, month=4, day=1
             )
             previous_end = current_start.replace(
                 year=current_start.year - 1, month=3, day=31
             )
-
+        else:
+            previous_start = current_start.replace(
+                year=current_start.year - 3, month=4, day=1
+            )
+            previous_end = current_start.replace(
+                year=current_start.year - 2, month=3, day=31
+            )
         return previous_start, previous_end, "yearly"
 
-    # ---------------- DEFAULT: MONTHLY ----------------
-    if current_start.month == 1:
-        previous_start = current_start.replace(year=current_start.year - 1, month=12)
-    else:
-        previous_start = current_start.replace(month=current_start.month - 1)
-
-    if previous_start.month == 12:
-        next_month = previous_start.replace(year=previous_start.year + 1, month=1)
-    else:
-        next_month = previous_start.replace(month=previous_start.month + 1)
-
-    previous_end = next_month - timedelta(days=1)
-
-    return previous_start, previous_end, "monthly"
+    # Default: monthly (same as "this_month" case)
+    previous_start, previous_end = dates.last_month
+    return (
+        previous_start.date() if hasattr(previous_start, "date") else previous_start,
+        previous_end.date() if hasattr(previous_end, "date") else previous_end,
+        "monthly",
+    )
 
 
 def get_period_label(start_date, end_date, period_type):

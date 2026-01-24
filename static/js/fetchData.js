@@ -204,8 +204,16 @@ async function loadTableData(formId, tableId, fetchUrl, options = {}, page = 1) 
         );
 
         // Focus management for accessibility
+        // Smart focus: preserve user's current focus if they're typing in an input
+        const activeElement = document.activeElement;
+        const isUserTyping = activeElement && (
+            activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.tagName === 'SELECT'
+        );
+
         const firstFocusable = tableBody.querySelector('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (firstFocusable && options.focusAfterLoad !== false) {
+        if (firstFocusable && options.focusAfterLoad !== false && !isUserTyping) {
             firstFocusable.focus();
         }
 

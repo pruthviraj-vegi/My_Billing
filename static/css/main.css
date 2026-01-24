@@ -126,6 +126,12 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
     --max-width: 1200px;
+    /* Lighter background variants for badges and status indicators */
+    --primary-bg: #dbeafe;
+    --secondary-bg: #f1f5f9;
+    --success-bg: #d1f4e0;
+    --warning-bg: #fff3cd;
+    --danger-bg: #f8d7da;
     /* font-size: clamp(12px, 0.8vw + 1rem, 16px); */
 }
 
@@ -145,6 +151,12 @@
     --border-color-focus: #3b82f6;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    /* Lighter background variants for dark theme */
+    --primary-bg: #1e3a8a;
+    --secondary-bg: #334155;
+    --success-bg: #065f46;
+    --warning-bg: #854d0e;
+    --danger-bg: #991b1b;
 }
 
 /* ========================================
@@ -1317,44 +1329,7 @@ form.submitting * {
     opacity: 0.8;
 }
 
-/* Custom scrollbar styling for activity sections */
-.activity-section,
-.activity-list {
-    scrollbar-width: thin;
-    scrollbar-color: var(--primary) var(--bg-surface);
-}
-
-.activity-section::-webkit-scrollbar,
-.activity-list::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-    /* For horizontal scrollbars */
-}
-
-.activity-section::-webkit-scrollbar-track,
-.activity-list::-webkit-scrollbar-track {
-    background: var(--bg-surface);
-    border-radius: 3px;
-}
-
-.activity-section::-webkit-scrollbar-thumb,
-.activity-list::-webkit-scrollbar-thumb {
-    background: var(--primary);
-    border-radius: 3px;
-    transition: background 0.2s ease;
-}
-
-.activity-section::-webkit-scrollbar-thumb:hover,
-.activity-list::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-hover, #0056b3);
-}
-
-/* For Firefox */
-.activity-section,
-.activity-list {
-    scrollbar-width: thin;
-    scrollbar-color: var(--primary) var(--bg-surface);
-}
+/* Scrollbar styles consolidated with global scrollbar definitions below */
 
 /* Global scrollbar styling for theme consistency */
 * {
@@ -1773,55 +1748,7 @@ form.submitting * {
     color: var(--secondary);
 }
 
-/* --- Pagination Component --- */
-.pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.25rem;
-    margin-top: 0.75rem;
-    padding: 0.5rem;
-}
-
-.pagination-item {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0.375rem;
-    text-decoration: none;
-    color: var(--text-primary);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.pagination-item:hover {
-    background: var(--primary);
-    color: var(--text-on-primary);
-    border-color: var(--primary);
-    transform: translateY(-1px);
-}
-
-.pagination-item.active {
-    background: var(--primary);
-    color: var(--text-on-primary);
-    border-color: var(--primary);
-}
-
-.pagination-item.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.pagination-item.disabled:hover {
-    background: transparent;
-    color: var(--text-primary);
-    border-color: var(--border-color);
-    transform: none;
-}
+/* Pagination styles consolidated below in PAGINATION section */
 
 /* --- Empty State Component --- */
 .empty-state {
@@ -1856,87 +1783,6 @@ form.submitting * {
 .empty-state p {
     margin-bottom: 1rem;
     font-size: 0.875rem;
-}
-
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* --- Toast Notification Component --- */
-.toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    padding: 1rem 1.5rem;
-    box-shadow: var(--shadow-md);
-    z-index: 10001;
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-    max-width: 300px;
-}
-
-.toast.show {
-    transform: translateX(0);
-}
-
-.toast.success {
-    border-left: 4px solid var(--success);
-}
-
-.toast.error {
-    border-left: 4px solid var(--danger);
-}
-
-.toast.warning {
-    border-left: 4px solid var(--warning);
-}
-
-.toast.info {
-    border-left: 4px solid var(--primary);
-}
-
-.toast-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
-.toast-icon {
-    font-size: 1.25rem;
-    margin-top: 0.125rem;
-}
-
-.toast.success .toast-icon {
-    color: var(--success);
-}
-
-.toast.error .toast-icon {
-    color: var(--danger);
-}
-
-.toast.warning .toast-icon {
-    color: var(--warning);
-}
-
-.toast.info .toast-icon {
-    color: var(--primary);
-}
-
-.toast-message {
-    flex: 1;
-    color: var(--text-primary);
-    font-size: 0.875rem;
-    line-height: 1.4;
 }
 
 
@@ -2412,22 +2258,7 @@ form.submitting * {
 
 
 
-/* Text Colors */
-.text-muted {
-    color: var(--text-secondary) !important;
-}
-
-.text-success {
-    color: var(--success) !important;
-}
-
-.text-warning {
-    color: var(--warning) !important;
-}
-
-.text-danger {
-    color: var(--danger) !important;
-}
+/* Text color utilities consolidated below in REUSABLE COMPONENTS & UTILITIES section */
 
 /* Badge Styles */
 
@@ -3115,24 +2946,6 @@ form.submitting * {
     padding-top: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.2);
     font-style: italic;
-}
-
-/* Pulse animation for error messages */
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
-    }
-
-    50% {
-        transform: scale(1.02);
-        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
-    }
-
-    100% {
-        transform: scale(1);
-        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
-    }
 }
 
 /* ========================================
@@ -5451,9 +5264,6 @@ WORD SUGGESTION SYSTEM STYLES
     outline-offset: 2px;
 }
 
-.form-checkbox {
-    @extend .form-check-input;
-}
 
 .checkbox-label {
     font-weight: 500;

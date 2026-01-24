@@ -46,8 +46,16 @@ class WordSuggestion {
 
     // ----------- INIT -----------
     init() {
+        // Store focus state before initialization
+        const hadFocus = document.activeElement === this.input;
+
         this.createDropdown();
         this.bindEvents();
+
+        // Restore focus if input had it before
+        if (hadFocus) {
+            this.input.focus();
+        }
     }
 
     createDropdown() {
@@ -81,8 +89,7 @@ class WordSuggestion {
         this.input.addEventListener('focus', this.boundHandleFocus);
         this.input.addEventListener('blur', this.boundHandleBlur);
 
-        // Attach to document (global), but could be optimized with delegation
-        document.addEventListener('click', this.boundHandleClickOutside);
+        // Click handler will be attached only when dropdown is visible (optimized)
     }
 
     // ----------- HANDLERS -----------
@@ -238,13 +245,17 @@ class WordSuggestion {
     }
 
     showEmptyState() {
-        this.dropdown.innerHTML = `
-            <div class="word-suggestion-empty">
-                <i class="fas fa-search"></i>
-                <p>No suggestions found for "${this.input.value
-            }"</p>
-            </div>
-        `;
+        // Fix XSS vulnerability by using textContent
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'word-suggestion-empty';
+        emptyDiv.innerHTML = '<i class="fas fa-search"></i>';
+
+        const p = document.createElement('p');
+        p.textContent = `No suggestions found for "${this.input.value}"`;
+        emptyDiv.appendChild(p);
+
+        this.dropdown.innerHTML = '';
+        this.dropdown.appendChild(emptyDiv);
     }
 
     showErrorState() {
@@ -321,11 +332,15 @@ class WordSuggestion {
     showDropdown() {
         this.dropdown.classList.add('show');
         this.dropdown.style.display = 'block';
+        // Only attach click handler when dropdown is visible (performance optimization)
+        document.addEventListener('click', this.boundHandleClickOutside);
     }
 
     hideDropdown() {
         this.dropdown.classList.remove('show');
         this.dropdown.style.display = 'none';
+        // Remove click handler when dropdown is hidden (performance optimization)
+        document.removeEventListener('click', this.boundHandleClickOutside);
     }
 
     // ----------- PUBLIC METHODS -----------
