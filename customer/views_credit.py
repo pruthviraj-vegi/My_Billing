@@ -19,6 +19,7 @@ from django.db.models import (
     OuterRef,
     Subquery,
     Prefetch,
+    Q,
 )
 from django.db.models.functions import Coalesce
 from django.core.cache import cache
@@ -85,9 +86,11 @@ def credit_customers_data(request):
 
     # ===== BASE QUERYSET =====
     # Only customers with credit activity
-    qs = Customer.objects.filter(credit_summary__isnull=False).select_related(
-        "credit_summary"
-    )  # Single JOIN
+    qs = (
+        Customer.objects.filter(credit_summary__isnull=False)
+        .exclude(Q(credit_summary__credit_amount=0) & Q(credit_summary__debit_amount=0))
+        .select_related("credit_summary")
+    )  # Single JOIN, exclude customers with both credit and debit = 0
 
     # ===== SEARCH =====
     if search_query:

@@ -557,7 +557,8 @@ class CustomerCreditSummary(models.Model):
 
             # ===== SINGLE AGGREGATION QUERY for returns =====
             returns_stats = customer.return_invoices.filter(
-                status__in=["APPROVED", "COMPLETED"]
+                invoice__payment_type=Invoice.PaymentType.CREDIT,
+                status__in=["APPROVED", "COMPLETED"],
             ).aggregate(total=Coalesce(Sum("refund_amount"), Decimal("0")))
 
             # ===== CALCULATE TOTALS =====
