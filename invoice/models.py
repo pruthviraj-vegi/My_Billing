@@ -177,6 +177,28 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
     gst_type = models.CharField(
         max_length=20, choices=GstTypeChoices.choices, default=GstTypeChoices.CGST_SGST
     )
+
+    # Cancellation tracking
+    is_cancelled = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Whether this invoice has been cancelled",
+    )
+    cancelled_at = models.DateTimeField(
+        null=True, blank=True, help_text="When the invoice was cancelled"
+    )
+    cancelled_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invoices_cancelled_by",
+        help_text="User who cancelled this invoice",
+    )
+    cancellation_reason = models.TextField(
+        blank=True, null=True, help_text="Reason for cancellation"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -196,6 +218,28 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
         self.validate_financial_amounts()
 
     def save(self, *args, **kwargs):
+        # Prevent modifications to cancelled invoices
+        # Allow updates only for specific cancellation-related fields
+        if self.pk and self.is_cancelled:
+            # Check if we're only updating cancellation fields
+            update_fields = kwargs.get("update_fields", [])
+            allowed_fields = {
+                "is_cancelled",
+                "cancelled_at",
+                "cancelled_by",
+                "cancellation_reason",
+                "payment_status",
+                "updated_at",
+            }
+
+            # If update_fields is specified, check if all are allowed
+            if update_fields and not set(update_fields).issubset(allowed_fields):
+                raise ValidationError("Cannot modify a cancelled invoice")
+
+            # If no update_fields specified and invoice exists, prevent modification
+            if not update_fields:
+                raise ValidationError("Cannot modify a cancelled invoice")
+
         # Automatically set advance_amount to 0 and mark as fully paid for cash invoices
         if self.payment_type == PaymentTypeChoices.CASH:
             self.advance_amount = Decimal("0")
@@ -216,6 +260,84 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
             )
 
         super().save(*args, **kwargs)
+
+    def can_be_cancelled(self):
+        """Check if invoice can be cancelled"""
+        if self.is_cancelled:
+            return False, "Invoice is already cancelled"
+
+        # Add any other business rules here
+        # For example: prevent cancellation after certain time period
+        # from datetime import timedelta
+        # if timezone.now() - self.created_at > timedelta(days=30):
+        #     return False, "Cannot cancel invoices older than 30 days"
+
+        return True, ""
+
+    def cancel(self, user, reason):
+        """
+        Cancel this invoice and reverse all financial impacts.
+
+        Args:
+            user: User performing the cancellation
+            reason: Reason for cancellation
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        can_cancel, error_msg = self.can_be_cancelled()
+        if not can_cancel:
+            return False, error_msg
+
+        with transaction.atomic():
+            # Mark invoice as cancelled
+            self.is_cancelled = True
+            self.cancelled_at = timezone.now()
+            self.cancelled_by = user
+            self.cancellation_reason = reason
+            self.payment_status = PaymentStatusChoices.CANCELLED
+
+            # Save invoice
+            self.save(
+                update_fields=[
+                    "is_cancelled",
+                    "cancelled_at",
+                    "cancelled_by",
+                    "cancellation_reason",
+                    "payment_status",
+                    "updated_at",
+                ]
+            )
+
+            # Soft delete all payment allocations for this invoice
+            from invoice.models import PaymentAllocation
+
+            allocations = PaymentAllocation.objects.filter(
+                invoice=self, is_deleted=False
+            )
+            for allocation in allocations:
+                allocation.is_deleted = True
+                allocation.save(update_fields=["is_deleted", "updated_at"])
+
+            # Create cancellation audit record
+            InvoiceCancellation.objects.create(
+                invoice=self,
+                cancelled_by=user,
+                reason=reason,
+                original_amount=self.amount,
+                discount_amount=self.discount_amount,
+                advance_amount=self.advance_amount,
+                paid_amount=self.paid_amount,
+                payment_type=self.payment_type,
+            )
+
+            # Trigger reallocation for credit invoices
+            if self.payment_type == PaymentTypeChoices.CREDIT:
+                from customer.signals import reallocate_customer_payments
+
+                reallocate_customer_payments(self.customer)
+
+        return True, "Invoice cancelled successfully"
 
 
 class InvoiceItem(InvoiceItemFinancialMixin, InvoiceItemValidationMixin, models.Model):
@@ -1013,3 +1135,65 @@ class ReturnInvoiceItem(models.Model):
 
     def __str__(self):
         return f"Return {self.quantity_returned} × {self.product_variant.product.name} for {self.return_invoice}"
+
+
+class InvoiceCancellation(models.Model):
+    """
+    Audit model to track invoice cancellations.
+    Immutable once created - provides complete audit trail.
+    """
+
+    invoice = models.OneToOneField(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name="cancellation_record",
+        help_text="The cancelled invoice",
+    )
+
+    # Who and when
+    cancelled_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="invoice_cancellations",
+        help_text="User who cancelled the invoice",
+    )
+    cancelled_at = models.DateTimeField(
+        auto_now_add=True, help_text="When the cancellation occurred"
+    )
+
+    # Why
+    reason = models.TextField(help_text="Reason for cancellation")
+
+    # Financial snapshot at time of cancellation
+    original_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, help_text="Original invoice amount"
+    )
+    discount_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, help_text="Discount amount at cancellation"
+    )
+    advance_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, help_text="Advance amount at cancellation"
+    )
+    paid_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, help_text="Amount paid at cancellation"
+    )
+    payment_type = models.CharField(
+        max_length=20, help_text="Payment type (CASH/CREDIT)"
+    )
+
+    class Meta:
+        ordering = ["-cancelled_at"]
+        indexes = [
+            models.Index(fields=["cancelled_by"]),
+            models.Index(fields=["cancelled_at"]),
+            models.Index(fields=["payment_type"]),
+        ]
+
+    def __str__(self):
+        return f"Cancellation of {self.invoice.invoice_number} by {self.cancelled_by}"
+
+    @property
+    def net_amount_at_cancellation(self):
+        """Calculate net amount at time of cancellation"""
+        return self.original_amount - self.discount_amount - self.advance_amount
