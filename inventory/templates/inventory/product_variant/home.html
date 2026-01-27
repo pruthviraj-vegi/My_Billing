@@ -46,7 +46,7 @@
                 Search
             </button>
             <!-- Hidden Filters Row (inside form for filter-tags.js to work) -->
-            <div class="filters-row" id="filtersRow" style="display: none;">
+            <div class="filters-row hidden" id="filtersRow">
                 <div class="filters-container">
                     <select name="category" class="filter-select" id="categoryFilter">
                         <option value="">All Categories</option>
@@ -63,12 +63,6 @@
                     <select name="status" class="filter-select" id="statusFilter">
                         <option value="">All Status</option>
                         {% for value, label in status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                    </select>
-                    <select name="stock" class="filter-select" id="stockFilter">
-                        <option value="">All Stock</option>
-                        <option value="in_stock">In Stock</option>
-                        <option value="out_of_stock">Out of Stock</option>
-                        <option value="low_stock">Low Stock</option>
                     </select>
                 </div>
             </div>
@@ -88,33 +82,20 @@
                     <th class="sortable" data-sort="mrp">MRP</th>
                     <th>Discount</th>
                     <th>Final Price</th>
-                    <th class="sortable" data-sort="status">Status</th>
                     <th class="sortable" data-sort="created_at">Date</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="table_body">
-                <!-- Empty table body - data will be loaded via AJAX -->
                 <tr>
-                    <td colspan="12" class="text-center" style="padding: 2rem">
-                        <i class="fas fa-spinner fa-spin"
-                           style="color: var(--primary);
-                                  margin-right: 0.5rem"></i>
-                        Loading variants...
-                        <br>
-                        <br>
-                        <button type="button"
-                                class="btn btn-sm btn-outline-primary"
-                                onclick="window.retryTableLoad()">
-                            <i class="fas fa-refresh"></i>
-                            Retry
-                        </button>
+                    <td colspan="11" class="text-center p-2">
+                        <div class="empty-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Loading variants...
+                        </div>
                     </td>
                 </tr>
             </tbody>
-            <tfoot id="table_footer">
-                <!-- Pagination will be loaded here via AJAX -->
-            </tfoot>
         </table>
     </div>
 {% endblock content %}
@@ -132,16 +113,14 @@
             const toggleBtn = document.getElementById('toggleFiltersBtn');
             const filtersRow = document.getElementById('filtersRow');
             
-            toggleBtn.addEventListener('click', function() {
-                if (filtersRow.style.display === 'none') {
-                    filtersRow.style.display = 'block';
-                    toggleBtn.innerHTML = '<i class="fas fa-filter"></i> Hide Filters';
-                    toggleBtn.classList.add('active');
-                } else {
-                    filtersRow.style.display = 'none';
-                    toggleBtn.innerHTML = '<i class="fas fa-filter"></i> Filters';
-                    toggleBtn.classList.remove('active');
-                }
+            toggleBtn.addEventListener('click', () => {
+            const isHidden = filtersRow.classList.toggle('hidden');
+
+                toggleBtn.innerHTML = isHidden
+                    ? '<i class="fas fa-filter"></i> Filters'
+                    : '<i class="fas fa-filter"></i> Hide Filters';
+
+                toggleBtn.classList.toggle('active', !isHidden);
             });
         });
     </script>

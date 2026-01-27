@@ -6,7 +6,8 @@
     <form href=""
           class="search-filter-form"
           id="barcodeForm"
-          data-allow-double-submit>
+          data-allow-double-submit
+          autocomplete="off">
         {% csrf_token %}
         <div class="search-group search-expanded">
             <i class="fas fa-search search-icon"></i>

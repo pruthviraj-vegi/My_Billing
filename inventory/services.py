@@ -107,7 +107,7 @@ class InventoryService:
                 return inventory_log
 
         except Exception as e:
-            print(e)
+            logger.error(f"Failed to create initial log: {e}")
             return None
 
     @staticmethod
@@ -360,6 +360,57 @@ class InventoryService:
                 "quantity_returned": quantity_returned,
                 "new_stock": new_quantity,
                 "refund_amount": quantity_returned * variant.final_price,
+            }
+
+    @staticmethod
+    def cancelled_sale(
+        variant,
+        quantity_cancelled,
+        user=None,
+        invoice_item=None,
+        notes="",
+    ):
+        """Process a customer return and restore inventory"""
+        with transaction.atomic():
+            if quantity_cancelled <= 0:
+                raise ValueError("Return quantity must be positive")
+
+            new_quantity = variant.quantity + quantity_cancelled
+            variant.quantity = new_quantity
+            variant.save()
+
+            inventory_log = InventoryLog.objects.filter(
+                variant=variant,
+                transaction_type=InventoryLog.TransactionTypes.SALE,
+                quantity_change__lt=quantity_cancelled,
+                invoice_item=invoice_item,
+            ).first()
+
+            supplier_invoice = None
+            if inventory_log:
+                supplier_invoice = inventory_log.supplier_invoice
+
+            InventoryLog.objects.create(
+                variant=variant,
+                transaction_type=InventoryLog.TransactionTypes.CANCEL,
+                quantity_change=quantity_cancelled,  # Positive for returns
+                invoice_item=invoice_item,
+                remaining_quantity=quantity_cancelled,
+                created_by=user,
+                new_quantity=new_quantity,
+                supplier_invoice=supplier_invoice,
+                selling_price=invoice_item.unit_price,
+                total_value=quantity_cancelled * invoice_item.unit_price,
+                purchase_price=variant.purchase_price,
+                notes=notes
+                or f"Customer cancle: {quantity_cancelled} units{f' for {invoice_item}' if invoice_item else ''}",
+            )
+
+            return {
+                "success": True,
+                "quantity_cancelled": quantity_cancelled,
+                "new_stock": new_quantity,
+                "refund_amount": quantity_cancelled * variant.final_price,
             }
 
     @staticmethod

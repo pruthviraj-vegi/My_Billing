@@ -1,242 +1,220 @@
 {% extends "base.html" %}
-
 {% load static %}
 {% load custom_filters %}
-
 {% block title %}Invoice Dashboard{% endblock %}
-
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
 {% endblock extra_css %}
-
 {% block content %}
-
-<!-- Page Header -->
-<div class="page-header page-header-sticky">
-    <h2 class="page-title">Invoice Dashboard</h2>
-    <div class="page-actions">
-        <!-- Date Filter Dropdown -->
-        <form method="get" class="d-inline" id="dateFilterForm">
-            <select name="date_filter" class="form-select" id="dateFilter">
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="this_month">This Month</option>
-                <option value="last_month">Last Month</option>
-                <option value="this_finance">This Finance</option>
-                <option value="last_finance">Last Finance</option>
-                <option value="this_quarter">This Quarter</option>
-                <option value="last_quarter">Last Quarter</option>
-                <option value="full_date">Full Date</option>
-            </select>
-        </form>
-        <a href="{% url 'invoice:home' %}" class="btn">
-            <i class="fas fa-list"></i>
-            View All Invoices
-        </a>
-    </div>
-</div>
-
-<!-- Breadcrumb Navigation -->
-<nav class="breadcrumb breadcrumb-right">
-    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
-    <span class="breadcrumb-separator">/</span>
-    <span class="breadcrumb-active">Invoice Dashboard</span>
-</nav>
-
-<!-- Loading State - Hidden for seamless updates -->
-<div id="dashboardLoading" class="loading-container" style="display: none;">
-    <div class="loading">
-        <i class="fas fa-spinner fa-spin"></i>
-        Loading dashboard data...
-    </div>
-</div>
-
-<!-- Dashboard Content -->
-<div id="dashboardContent" class="dashboardContent">
-    <!-- Quick Stats -->
-    <div class="stats-grid" id="statsGrid">
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-file-invoice"></i>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number counting-number" id="totalInvoices" data-count="0">0</h3>
-                <p class="stat-label">Total Invoices</p>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-rupee-sign"></i>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number counting-number" id="totalAmount" data-count="0">0</h3>
-                <p class="stat-label">Total Amount</p>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-calculator"></i>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number counting-number" id="netAmount" data-count="0">0</h3>
-                <p class="stat-label">Net Amount</p>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-calculator"></i>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number counting-number" id="totalReturnAmount" data-count="0">0</h3>
-                <p class="stat-label">Total Return Amount</p>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-chart-line"></i>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number counting-number" id="totalProfit" data-count="0">0</h3>
-                <p class="stat-label">Amount</p>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-percentage"></i>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number counting-number" id="totalDiscount" data-count="0">0</h3>
-                <p class="stat-label">Total Discount</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Payment Analytics -->
-    <div class="activity-section">
-        <h2 class="section-title">Payment Analytics</h2>
-        
-        <!-- Payment Status Breakdown -->
-        <div class="breakdown-grid">
-            <!-- Payment Status -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Payment Status</h3>
-                </div>
-                <div class="payment-chart-wrapper">
-                    <div class="payment-chart-container">
-                        <canvas id="paymentStatusChart"></canvas>
-                    </div>
-                    <div id="paymentLegend" class="custom-legend"></div>
-                </div>
-            </div>
-
-            <!-- Payment Type -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Payment Type</h3>
-                </div>
-                <div class="payment-chart-wrapper">
-                    <div class="payment-chart-container">
-                        <canvas id="paymentTypeChart"></canvas>
-                    </div>
-                    <div id="paymentTypeLegend" class="custom-legend"></div>
-                </div>
-            </div>
-
-            <!-- Product Categories -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Top Categories</h3>
-                </div>
-                <div class="payment-chart-wrapper">
-                    <div class="payment-chart-container">
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                    <div id="categoryLegend" class="custom-legend"></div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Revenue Comparison Chart -->
-    <div class="activity-section">
-        <h2 class="section-title">Revenue Comparison</h2>
-        <div class="chart-card revenue-chart-card">
-            <div class="chart-header">
-                <h3 class="chart-title">Revenue Analytics</h3>
-                <div class="chart-summary-stats">
-                    <div class="stat-item">
-                        <span class="stat-label-small"><span class="legend-dot" style="background: var(--primary);"></span>Present</span>
-                        <span class="stat-value-small" id="revCurrentTotal">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label-small"><span class="legend-dot" style="background: var(--secondary);"></span>Past</span>
-                        <span class="stat-value-small" id="revPreviousTotal">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label-small">Change</span>
-                        <span class="stat-change" id="revChange">--</span>
-                    </div>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="revenueChart"></canvas>
-            </div>
-        </div>
-
-    </div>
-
-
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-        <h2 class="section-title">Quick Actions</h2>
-        <div class="actions-grid">
-            <a href="{% url 'invoice:home' %}" class="action-card">
+    <!-- Page Header -->
+    <div class="page-header page-header-sticky">
+        <h2 class="page-title">Invoice Dashboard</h2>
+        <div class="page-actions">
+            <!-- Date Filter Dropdown -->
+            <form method="get" class="d-inline" id="dateFilterForm">
+                <select name="date_filter" class="form-select" id="dateFilter">
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="this_month">This Month</option>
+                    <option value="last_month">Last Month</option>
+                    <option value="this_finance">This Finance</option>
+                    <option value="last_finance">Last Finance</option>
+                    <option value="this_quarter">This Quarter</option>
+                    <option value="last_quarter">Last Quarter</option>
+                    <option value="full_date">Full Date</option>
+                </select>
+            </form>
+            <a href="{% url 'invoice:home' %}" class="btn">
                 <i class="fas fa-list"></i>
-                <span>View All Invoices</span>
-            </a>
-            <a href="#" class="action-card">
-                <i class="fas fa-plus"></i>
-                <span>Create Invoice</span>
-            </a>
-            <a href="#" class="action-card">
-                <i class="fas fa-chart-bar"></i>
-                <span>Generate Report</span>
-            </a>
-            <a href="#" class="action-card">
-                <i class="fas fa-download"></i>
-                <span>Export Data</span>
+                View All Invoices
             </a>
         </div>
     </div>
-</div>
-
-<!-- Error State -->
-<div id="dashboardError" class="error-container" style="display: none;">
-    <div class="error-message">
-        <i class="fas fa-exclamation-triangle"></i>
-        <h3>Failed to load dashboard data</h3>
-        <p>Please try again or contact support if the problem persists.</p>
-        <button type="button" class="btn btn-primary" id="retryDashboardBtn">
-            <i class="fas fa-refresh"></i>
-            Retry
-        </button>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Invoice Dashboard</span>
+    </nav>
+    <!-- Loading State - Hidden for seamless updates -->
+    <div id="dashboardLoading" class="loading-container hidden">
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            Loading dashboard data...
+        </div>
     </div>
-</div>
+    <!-- Dashboard Content -->
+    <div id="dashboardContent" class="dashboardContent">
+        <!-- Quick Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number" id="totalInvoices" data-count="0">0</h3>
+                    <p class="stat-label">Total Invoices</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number" id="totalAmount" data-count="0">0</h3>
+                    <p class="stat-label">Total Amount</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number" id="netAmount" data-count="0">0</h3>
+                    <p class="stat-label">Net Amount</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number"
+                        id="totalReturnAmount"
+                        data-count="0">0</h3>
+                    <p class="stat-label">Total Ret/Cancel Amount</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number" id="totalProfit" data-count="0">0</h3>
+                    <p class="stat-label">Amount</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number" id="totalDiscount" data-count="0">0</h3>
+                    <p class="stat-label">Total Discount</p>
+                </div>
+            </div>
+        </div>
+        <!-- Payment Analytics -->
+        <div class="activity-section">
+            <h2 class="section-title">Payment Analytics</h2>
+            <!-- Payment Status Breakdown -->
+            <div class="breakdown-grid">
+                <!-- Payment Status -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Payment Status</h3>
+                    </div>
+                    <div class="payment-chart-wrapper">
+                        <div class="payment-chart-container">
+                            <canvas id="paymentStatusChart"></canvas>
+                        </div>
+                        <div id="paymentLegend" class="custom-legend"></div>
+                    </div>
+                </div>
+                <!-- Payment Type -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Payment Type</h3>
+                    </div>
+                    <div class="payment-chart-wrapper">
+                        <div class="payment-chart-container">
+                            <canvas id="paymentTypeChart"></canvas>
+                        </div>
+                        <div id="paymentTypeLegend" class="custom-legend"></div>
+                    </div>
+                </div>
+                <!-- Product Categories -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Top Categories</h3>
+                    </div>
+                    <div class="payment-chart-wrapper">
+                        <div class="payment-chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                        <div id="categoryLegend" class="custom-legend"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Revenue Comparison Chart -->
+        <div class="activity-section">
+            <h2 class="section-title">Revenue Comparison</h2>
+            <div class="chart-card revenue-chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Revenue Analytics</h3>
+                    <div class="chart-summary-stats">
+                        <div class="stat-item">
+                            <span class="stat-label-small"><span class="legend-dot" style="background: var(--primary);"></span>Present</span>
+                            <span class="stat-value-small" id="revCurrentTotal">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label-small"><span class="legend-dot" style="background: var(--secondary);"></span>Past</span>
+                            <span class="stat-value-small" id="revPreviousTotal">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label-small">Change</span>
+                            <span class="stat-change" id="revChange">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <h2 class="section-title">Quick Actions</h2>
+            <div class="actions-grid">
+                <a href="{% url 'invoice:home' %}" class="action-card">
+                    <i class="fas fa-list"></i>
+                    <span>View All Invoices</span>
+                </a>
+                <a href="#" class="action-card">
+                    <i class="fas fa-plus"></i>
+                    <span>Create Invoice</span>
+                </a>
+                <a href="#" class="action-card">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Generate Report</span>
+                </a>
+                <a href="#" class="action-card">
+                    <i class="fas fa-download"></i>
+                    <span>Export Data</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    <!-- Error State -->
+    <div id="dashboardError" class="error-container hidden">
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Failed to load dashboard data</h3>
+            <p>Please try again or contact support if the problem persists.</p>
+            <button type="button" class="btn btn-primary" id="retryDashboardBtn">
+                <i class="fas fa-refresh"></i>
+                Retry
+            </button>
+        </div>
+    </div>
 {% endblock content %}
-
 {% block extra_js %}
-{% load static %}
-<script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
-<script src="{% static 'js/modern-charts.js' %}"></script>
-<script src="{% static 'js/counting.js' %}"></script>
-<script>
+    {% load static %}
+    <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
+    <script src="{% static 'js/modern-charts.js' %}"></script>
+    <script src="{% static 'js/counting.js' %}"></script>
+    <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Charts
     const revenueCtx = document.getElementById('revenueChart').getContext('2d');
@@ -344,5 +322,5 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial Load
     fetchDashboardData('today');
 });
-</script>
+    </script>
 {% endblock extra_js %}

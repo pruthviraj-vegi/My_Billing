@@ -28,10 +28,6 @@ class CartManager {
         this.requestQueue = [];
         this.initOfflineDetection();
 
-        // Undo functionality
-        this.undoBuffer = new Map(); // Map<itemId, {row: HTMLElement, data: Object, timer: number}>
-        this.undoTimeouts = new Map(); // Map<itemId, timeoutId>
-
         // Debounced functions
         this.debouncedRecalculate = this.debounce(() => this.recalculateTotals(), 100);
         this.debouncedBarcodeSubmit = this.debounce((e) => this._handleBarcodeSubmit(e), 300);
@@ -211,156 +207,7 @@ class CartManager {
         }
     }
 
-    /*** ───────── UNDO FUNCTIONALITY ───────── ***/
-    /**
-     * Schedule item for deletion with undo window
-     * @param {string|number} itemId - Cart item ID
-     * @param {HTMLElement} row - Table row element
-     * @param {Object} itemData - Item data for restoration
-     * @private
-     */
-    scheduleUndo(itemId, row, itemData) {
-        const UNDO_DELAY = 5000; // 5 seconds
 
-        // Store in undo buffer
-        this.undoBuffer.set(itemId, {
-            row: row.cloneNode(true),
-            data: itemData,
-            timestamp: Date.now()
-        });
-
-        // Show undo notification
-        this.showUndoNotification(itemId);
-
-        // Schedule actual deletion
-        const timeoutId = setTimeout(() => {
-            this.finalizeDelete(itemId);
-        }, UNDO_DELAY);
-
-        this.undoTimeouts.set(itemId, timeoutId);
-    }
-
-    /**
-     * Show undo notification with action button
-     * @param {string|number} itemId - Cart item ID
-     * @private
-     */
-    showUndoNotification(itemId) {
-        // Create custom notification with undo button
-        const notification = document.createElement('div');
-        notification.id = `undo-notification-${itemId}`;
-        notification.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #323232;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 4px;
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            animation: slideUp 0.3s ease;
-        `;
-
-        notification.innerHTML = `
-            <span>Item removed</span>
-            <button id="undo-btn-${itemId}" style="
-                background: #4CAF50;
-                color: white;
-                border: none;
-                padding: 6px 12px;
-                border-radius: 3px;
-                cursor: pointer;
-                font-weight: bold;
-            ">UNDO</button>
-        `;
-
-        document.body.appendChild(notification);
-
-        // Add undo button click handler
-        const undoBtn = document.getElementById(`undo-btn-${itemId}`);
-        if (undoBtn) {
-            undoBtn.addEventListener('click', () => this.performUndo(itemId));
-        }
-
-        // Auto-remove notification after 5 seconds
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
-    }
-
-    /**
-     * Perform undo - restore deleted item
-     * @param {string|number} itemId - Cart item ID
-     */
-    async performUndo(itemId) {
-        const undoData = this.undoBuffer.get(itemId);
-        if (!undoData) {
-            this.notify('Cannot undo: item not found', 'error');
-            return;
-        }
-
-        // Clear the deletion timeout
-        const timeoutId = this.undoTimeouts.get(itemId);
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-            this.undoTimeouts.delete(itemId);
-        }
-
-        // Restore the row in the table
-        const restoredRow = undoData.row.cloneNode(true);
-        if (this.dom.body.firstChild) {
-            this.dom.body.insertBefore(restoredRow, this.dom.body.firstChild);
-        } else {
-            this.dom.body.appendChild(restoredRow);
-        }
-
-        // Clean up undo buffer
-        this.undoBuffer.delete(itemId);
-
-        // Remove notification
-        const notification = document.getElementById(`undo-notification-${itemId}`);
-        if (notification) {
-            notification.remove();
-        }
-
-        // Recalculate totals
-        this.recalculateTotals();
-        this.notify('Item restored', 'success');
-    }
-
-    /**
-     * Finalize deletion after undo window expires
-     * @param {string|number} itemId - Cart item ID
-     * @private
-     */
-    async finalizeDelete(itemId) {
-        const undoData = this.undoBuffer.get(itemId);
-        if (!undoData) return;
-
-        try {
-            // Actually delete from backend
-            const data = await this.api(this.urls.manageItem.replace('0', itemId), 'DELETE');
-
-            if (data.status === 'success') {
-                this.updateTotals(data.cart_total);
-                console.log(`[CartManager] Item ${itemId} permanently deleted`);
-            }
-        } catch (err) {
-            console.error('[CartManager] Error finalizing delete:', err);
-            // If deletion fails, restore the item
-            this.performUndo(itemId);
-            this.notify('Failed to delete item - restored', 'error');
-        } finally {
-            // Clean up
-            this.undoBuffer.delete(itemId);
-            this.undoTimeouts.delete(itemId);
-        }
-    }
 
     /*** ───────── HELPERS ───────── ***/
     /**
@@ -924,7 +771,7 @@ class CartManager {
     }
 
     /**
-     * Perform the actual delete operation with undo support
+     * Perform the actual delete operation
      * @param {string|number} id - Cart item ID
      * @private
      */
@@ -934,25 +781,27 @@ class CartManager {
             return this.notify('Item not found', 'error');
         }
 
-        // Extract item data for potential restoration
-        const qtyInput = row.querySelector('.quantity-input');
-        const priceInput = row.querySelector('.price-input');
-        const itemData = {
-            id: id,
-            quantity: qtyInput ? qtyInput.value : 0,
-            price: priceInput ? priceInput.value : 0
-        };
+        try {
+            // Delete from backend immediately
+            const data = await this.api(this.urls.manageItem.replace('0', id), 'DELETE');
 
-        // Schedule undo (this will handle the actual deletion after 5 seconds)
-        this.scheduleUndo(id, row, itemData);
+            if (data.status === 'success') {
+                // Remove from DOM
+                row.remove();
 
-        // Remove from DOM immediately for UX (will be in undo buffer)
-        row.remove();
-
-        // Recalculate totals
-        this.recalculateTotals();
-
-        this.focusBarcode();
+                // Update totals
+                this.updateTotals(data.cart_total);
+                this.notify('Item removed successfully', 'success');
+                console.log(`[CartManager] Item ${id} deleted`);
+            } else {
+                this.notify(data.message || 'Failed to delete item', 'error');
+            }
+        } catch (err) {
+            console.error('[CartManager] Error deleting item:', err);
+            this.notify(this.parseErrorMessage(err, 'delete'), 'error');
+        } finally {
+            this.focusBarcode();
+        }
     }
 
     /*** ───────── UI UPDATES ───────── ***/

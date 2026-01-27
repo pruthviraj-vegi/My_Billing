@@ -3,7 +3,7 @@
 <!-- Table Body Content -->
 {% if page_obj %}
     {% for invoice in page_obj %}
-        <tr>
+        <tr class="invoice-row" data-invoice-id="{{ invoice.id }}">
             <td>
                 <div>
                     <span class="font-weight-bold text-primary">{{ invoice.invoice_number|default:"N/A" }}</span>
@@ -45,7 +45,12 @@
                 </div>
             </td>
             <td>
-                {% if invoice.payment_status == 'PAID' %}
+                {% if invoice.is_cancelled %}
+                    <span class="badge badge-warning">
+                        <i class="fas fa-times-circle"></i>
+                        Cancelled
+                    </span>
+                {% elif invoice.payment_status == 'PAID' %}
                     <span class="badge badge-success">
                         <i class="fas fa-check-circle"></i>
                         Paid
@@ -77,16 +82,13 @@
                        title="View Details">
                         <i class="fas fa-eye"></i>
                     </a>
-                    <a href="{% url 'invoice:edit' invoice.id %}"
-                       class="btn-action btn-edit"
-                       title="Edit Invoice">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    <a href="{% url 'invoice:delete' invoice.id %}"
-                       class="btn-action btn-delete"
-                       title="Delete Invoice">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                    {% if not invoice.is_cancelled %}
+                        <a href="{% url 'invoice:edit' invoice.id %}"
+                           class="btn-action btn-edit"
+                           title="Edit Invoice">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    {% endif %}
                 </div>
             </td>
         </tr>

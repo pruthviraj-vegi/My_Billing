@@ -15,6 +15,7 @@ from customer.forms import CustomerForm
 from decimal import Decimal
 from base.getDates import getDates
 from base.utility import get_periodic_data, get_period_label, render_paginated_response
+from customer.signals import reallocate_customer_payments
 
 logger = logging.getLogger(__name__)
 
@@ -481,8 +482,11 @@ def invoice_dashboard_fetch(request):
         invoice_date__date__range=[start_date, end_date]
     ).select_related("customer")
 
+    cancelled_invoices = invoices.filter(is_cancelled=True)
+
     return_invoices = ReturnInvoice.objects.filter(
-        return_date__date__range=[start_date, end_date]
+        return_date__date__range=[start_date, end_date],
+        invoice__is_cancelled=False,
     ).select_related("invoice", "customer")
 
     # Calculate metrics
@@ -491,7 +495,10 @@ def invoice_dashboard_fetch(request):
     total_return_amount = return_invoices.aggregate(total=Sum("refund_amount"))[
         "total"
     ] or Decimal("0")
-    total_amount = total_amount
+
+    total_cancelled_amount = cancelled_invoices.aggregate(total=Sum("amount"))[
+        "total"
+    ] or Decimal("0")
     total_discount = invoices.aggregate(total=Sum("discount_amount"))[
         "total"
     ] or Decimal("0")
@@ -499,13 +506,15 @@ def invoice_dashboard_fetch(request):
 
     # Calculate profit from invoice items
     invoice_items = InvoiceItem.objects.filter(
-        invoice__invoice_date__date__range=[start_date, end_date]
+        invoice__invoice_date__date__range=[start_date, end_date],
+        invoice__is_cancelled=False,
     )
 
-    total_profit = Decimal("0")
-    for item in invoice_items:
-        profit_per_unit = item.unit_price - item.purchase_price
-        total_profit += profit_per_unit * item.actual_quantity
+    total_profit = sum(
+        (item.unit_price - item.purchase_price) * item.actual_quantity
+        for item in invoice_items
+        if item.unit_price is not None and item.purchase_price is not None
+    ) or Decimal("0")
 
     total_profit = total_profit - total_discount
 
@@ -549,7 +558,8 @@ def invoice_dashboard_fetch(request):
         "net_amount": float(net_amount),
         "outstanding_amount": float(outstanding_amount),
         "total_profit": float(total_profit),
-        "total_return_amount": float(total_return_amount),
+        "total_return_amount": float(total_return_amount)
+        + float(total_cancelled_amount),
     }
 
     # Add percentage calculations for breakdowns

@@ -1,6 +1,5 @@
 {% load custom_filters %}
 {% load static %}
-
 <!-- Table Body Content -->
 {% if page_obj %}
     {% for variant in page_obj %}
@@ -18,15 +17,9 @@
             </td>
             <td>
                 <div>
-                    {% if variant.size %}
-                        <span class="badge badge-info">{{ variant.size.name }}</span>
-                    {% endif %}
-                    {% if variant.color %}
-                        <span class="badge badge-secondary">{{ variant.color.name }}</span>
-                    {% endif %}
-                    {% if not variant.size and not variant.color %}
-                        <span class="text-muted">-</span>
-                    {% endif %}
+                    {% if variant.size %}<span class="badge badge-info">{{ variant.size.name }}</span>{% endif %}
+                    {% if variant.color %}<span class="badge badge-secondary">{{ variant.color.name }}</span>{% endif %}
+                    {% if not variant.size and not variant.color %}<span class="text-muted">-</span>{% endif %}
                 </div>
             </td>
             <td>
@@ -51,24 +44,6 @@
             <td>
                 <strong>{{ variant.final_price|currency }}</strong>
             </td>
-            <td>
-                {% if variant.status == 'ACTIVE' %}
-                    <span class="badge badge-success">
-                        <i class="fas fa-check-circle"></i>
-                        Active
-                    </span>
-                {% elif variant.status == 'DRAFT' %}
-                    <span class="badge badge-warning">
-                        <i class="fas fa-edit"></i>
-                        Draft
-                    </span>
-                {% else %}
-                    <span class="badge badge-danger">
-                        <i class="fas fa-times-circle"></i>
-                        Discontinued
-                    </span>
-                {% endif %}
-            </td>
             <td>{{ variant.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
@@ -80,7 +55,10 @@
                     <a href="#" class="btn-action btn-edit" title="Edit Variant">
                         <i class="fas fa-edit"></i>
                     </a>
-                    <a href="{% url 'report:barcode' variant.id %}" class="btn-action btn-barcode" target="_blank" title="Generate Barcode">
+                    <a href="{% url 'report:barcode' variant.id %}"
+                       class="btn-action btn-barcode"
+                       target="_blank"
+                       title="Generate Barcode">
                         <i class="fas fa-barcode"></i>
                     </a>
                     <a href="#" class="btn-action btn-delete" title="Delete Variant">
@@ -93,11 +71,11 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="12" class="text-center" style="padding: 3rem;">
+        <td colspan="12" class="text-center p-3">
             <div class="empty-state">
-                <i class="fas fa-boxes" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
-                <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Variants Found</h4>
-                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">No variants match your search criteria. Try adjusting your filters or add a new product.</p>
+                <i class="fas fa-boxes"></i>
+                <h4>No Variants Found</h4>
+                <p>No variants match your search criteria. Try adjusting your filters or add a new product.</p>
                 <a href="{% url 'inventory_products:create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Create First Product
@@ -106,5 +84,3 @@
         </td>
     </tr>
 {% endif %}
-
-<!-- Pagination separated from table content -->

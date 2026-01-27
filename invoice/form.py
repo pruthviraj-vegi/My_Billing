@@ -4,6 +4,9 @@ from django.utils import timezone
 from datetime import timedelta
 from user.models import CustomUser
 from customer.models import Customer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceForm(forms.ModelForm):
@@ -82,7 +85,7 @@ class InvoiceForm(forms.ModelForm):
                 if customer:
                     self.fields["customer"].initial = customer
         except Exception as e:
-            print(e)
+            logger.error(f"Error setting initial customer: {e}")
 
         # Filter sold_by queryset to show only commission users or admins as fallback
         try:
@@ -105,7 +108,7 @@ class InvoiceForm(forms.ModelForm):
                     self.fields["sold_by"].initial = first_user
 
         except Exception as e:
-            print(f"Error setting sold_by field: {e}")
+            logger.error(f"Error setting sold_by field: {e}")
 
     def clean_amount(self):
         """Validate amount is not negative"""
@@ -408,3 +411,51 @@ class ReturnInvoiceForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class InvoiceCancellationForm(forms.Form):
+    """Form for cancelling invoices"""
+
+    cancellation_reason = forms.CharField(
+        required=True,
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-textarea",
+                "placeholder": "Please provide a detailed reason for cancelling this invoice...",
+                "rows": "4",
+                "autofocus": True,
+            }
+        ),
+        label="Cancellation Reason *",
+        help_text="This reason will be permanently recorded in the audit trail",
+    )
+
+    confirm_cancellation = forms.BooleanField(
+        required=True,
+        widget=forms.CheckboxInput(attrs={"class": "form-checkbox"}),
+        label="I confirm that I want to cancel this invoice",
+        error_messages={"required": "You must confirm the cancellation to proceed"},
+    )
+
+    def __init__(self, *args, invoice=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.invoice = invoice
+
+    def clean_cancellation_reason(self):
+        reason = self.cleaned_data.get("cancellation_reason")
+        if reason and len(reason.strip()) < 10:
+            raise forms.ValidationError(
+                "Please provide a more detailed reason (at least 10 characters)"
+            )
+        return reason.strip()
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # Validate invoice can be cancelled
+        if self.invoice:
+            can_cancel, error_msg = self.invoice.can_be_cancelled()
+            if not can_cancel:
+                raise forms.ValidationError(error_msg)
+
+        return cleaned_data

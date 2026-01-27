@@ -199,7 +199,7 @@ def currencyToyWord(value, arg=None):
         amount = float(value)
         return num2words(amount, lang="en_IN", to="currency", currency="INR").title()
     except BaseException as e:
-        print(e)
+        logger.error(f"Currency to word formatting error for value '{value}': {e}")
         return value
 
 

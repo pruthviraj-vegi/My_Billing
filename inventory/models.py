@@ -721,6 +721,7 @@ class InventoryLog(SoftDeleteModel):
         STOCK_IN = "STOCK_IN", "Stock In"
         SALE = "SALE", "Sale"
         RETURN = "RETURN", "Customer Return"
+        CANCEL = "CANCEL", "Invoice Cancelled"
         ADJUSTMENT_IN = "ADJUSTMENT_IN", "Adjustment In"  # More specific
         ADJUSTMENT_OUT = "ADJUSTMENT_OUT", "Adjustment Out"  # More specific
         DAMAGE = "DAMAGE", "Mark as Damaged"

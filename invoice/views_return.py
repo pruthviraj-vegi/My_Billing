@@ -172,12 +172,12 @@ class ReturnInvoiceCreateView(CreateView):
             return redirect("invoice:return_home")  # For now, redirect to home
 
         except Exception as e:
-            print(e)
+            logger.error(f"Error creating return invoice: {e}")
             messages.error(self.request, f"Error creating return invoice: {str(e)}")
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        print(form.errors)
+        logger.error(f"Form validation error: {form.errors}")
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -335,7 +335,7 @@ def update_return_item(request, item_id):
                     }
                 )
         except ValueError as e:
-            print("Invalid quantity format", e)
+            logger.error(f"Invalid quantity format: {e}")
             return JsonResponse({"success": False, "error": "Invalid quantity format"})
 
         # Update item

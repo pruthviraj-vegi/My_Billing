@@ -4,6 +4,9 @@
 from django import forms
 from django.utils import timezone
 from .models import CustomUser, Salary, Transaction
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CustomUserForm(forms.ModelForm):
@@ -245,7 +248,7 @@ class SalaryForm(forms.ModelForm):
                         )
 
             except Exception as e:
-                print(e)
+                logger.error(f"Error setting commission field: {e}")
 
     def clean_amount(self):
         amount = self.cleaned_data.get("amount")

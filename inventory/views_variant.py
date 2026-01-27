@@ -578,7 +578,7 @@ class StockInCreate(CreateView):
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        print(form.errors)
+        logger.error(f"Form validation error: {form.errors}")
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -739,7 +739,7 @@ class AdjustmentOutCreate(CreateView):
                 )
                 return redirect(self.get_success_url())
         except Exception as e:
-            print(e)
+            logger.error(f"Error creating adjustment out entry: {e}")
             messages.error(
                 self.request, f"Error creating adjustment out entry: {str(e)}"
             )

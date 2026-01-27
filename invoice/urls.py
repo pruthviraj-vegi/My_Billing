@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, views_, views_return, views_report
+from . import views, views_, views_return, views_report, views_cancellation
 
 app_name = "invoice"
 
@@ -14,6 +14,16 @@ urlpatterns = [
     path("detail/<int:pk>/", views.InvoiceDetail.as_view(), name="detail"),
     path("edit/<int:pk>/", views.InvoiceEdit.as_view(), name="edit"),
     path("delete/<int:pk>/", views.InvoiceDelete.as_view(), name="delete"),
+    # Invoice Cancellation
+    path("cancel/<int:pk>/", views_cancellation.cancel_invoice, name="cancel_invoice"),
+    path(
+        "cancelled/", views_cancellation.cancelled_invoices_list, name="cancelled_list"
+    ),
+    path(
+        "cancellation/<int:pk>/",
+        views_cancellation.cancellation_detail,
+        name="cancellation_detail",
+    ),
     # invoice audit
     path("audits/", views_.audit_home, name="audit_home"),
     path("audit-fetch/", views_.fetch_audit_tables, name="audit_fetch"),

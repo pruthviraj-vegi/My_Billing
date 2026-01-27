@@ -147,19 +147,21 @@ def fetch_credits(request):
     search_query = request.GET.get("search", "").strip()
     sort_by = request.GET.get("sort", "-created_at")
 
-    # Create a unique cache key based on search and sort parameters
-    cache_key_data = {
-        "search": search_query,
-        "sort": sort_by,
-    }
-    cache_key_string = json.dumps(cache_key_data, sort_keys=True)
-    cache_key_hash = hashlib.md5(cache_key_string.encode()).hexdigest()
-    cache_key = f"credit_customers_data:{cache_key_hash}"
+    # # Create a unique cache key based on search and sort parameters
+    # cache_key_data = {
+    #     "search": search_query,
+    #     "sort": sort_by,
+    # }
+    # cache_key_string = json.dumps(cache_key_data, sort_keys=True)
+    # cache_key_hash = hashlib.md5(cache_key_string.encode()).hexdigest()
+    # cache_key = f"credit_customers_data:{cache_key_hash}"
 
-    # Get from cache or compute and cache for 2 minutes
-    customers = cache.get_or_set(
-        cache_key, lambda: credit_customers_data(request), timeout=120  # 2 minutes
-    )
+    # # Get from cache or compute and cache for 2 minutes
+    # customers = cache.get_or_set(
+    #     cache_key, lambda: credit_customers_data(request), timeout=120  # 2 minutes
+    # )
+
+    customers = credit_customers_data(request)
 
     return render_paginated_response(
         request,
@@ -176,6 +178,7 @@ def get_opening_balance(customer, start_date=None):
         Invoice.objects.filter(
             customer=customer,
             payment_type=Invoice.PaymentType.CREDIT,
+            is_cancelled=False,
             invoice_date__lt=start_date,
         )
         .annotate(
@@ -220,7 +223,9 @@ def _build_ledger_rows(customer, start_date=None, end_date=None):
     # -----------------------------------
     # 1️⃣ Build filters dynamically
     # -----------------------------------
-    invoice_filters = Q(customer=customer, payment_type=Invoice.PaymentType.CREDIT)
+    invoice_filters = Q(
+        customer=customer, payment_type=Invoice.PaymentType.CREDIT, is_cancelled=False
+    )
     payment_filters = Q(customer=customer)
 
     if start_date and end_date:

@@ -89,141 +89,6 @@ class Customer(SoftDeleteModel):
             return f"Credit: ₹{self.store_credit_balance}"
         return "No Credit"
 
-    # @cached_property
-    # def credit_amount(self):
-    #     """Calculate total credit amount (invoices + purchased - returns)"""
-    #     from invoice.models import Invoice
-
-    #     # Use prefetched data if available
-    #     if (
-    #         hasattr(self, "_prefetched_objects_cache")
-    #         and "invoices" in self._prefetched_objects_cache
-    #     ):
-    #         credit_invoices = [
-    #             inv
-    #             for inv in self.invoices.all()
-    #             if inv.payment_type == Invoice.PaymentType.CREDIT
-    #         ]
-    #         invoices_total = sum(
-    #             (inv.amount - inv.discount_amount - inv.advance_amount)
-    #             for inv in credit_invoices
-    #         )
-    #     else:
-    #         # Fallback to database query
-    #         from django.db.models import F, Sum, ExpressionWrapper, DecimalField
-    #         from django.db.models.functions import Coalesce
-
-    #         credit_qs = self.invoices.filter(payment_type=Invoice.PaymentType.CREDIT)
-    #         net_expr = ExpressionWrapper(
-    #             F("amount") - F("discount_amount") - F("advance_amount"),
-    #             output_field=DecimalField(max_digits=12, decimal_places=2),
-    #         )
-    #         invoices_total = credit_qs.aggregate(
-    #             total=Coalesce(Sum(net_expr), Value(Decimal("0")))
-    #         )["total"]
-
-    #     if (
-    #         hasattr(self, "_prefetched_objects_cache")
-    #         and "credit_payment" in self._prefetched_objects_cache
-    #     ):
-    #         credit_payment_total = sum(
-    #             p.amount
-    #             for p in self.credit_payment.all()
-    #             if p.payment_type == Payment.PaymentType.Purchased
-    #         )
-    #     else:
-    #         from django.db.models.functions import Coalesce
-
-    #         credit_payment_total = self.credit_payment.filter(
-    #             payment_type=Payment.PaymentType.Purchased
-    #         ).aggregate(total=Coalesce(Sum("amount"), Value(Decimal("0"))))["total"]
-
-    #     # Returns
-    #     if (
-    #         hasattr(self, "_prefetched_objects_cache")
-    #         and "return_invoices" in self._prefetched_objects_cache
-    #     ):
-    #         return_total = sum(
-    #             r.refund_amount
-    #             for r in self.return_invoices.all()
-    #             if r.status in ["APPROVED", "COMPLETED"]
-    #         )
-    #     else:
-    #         from django.db.models.functions import Coalesce
-
-    #         return_qs = self.return_invoices.filter(
-    #             status__in=["APPROVED", "COMPLETED"]
-    #         )
-    #         return_total = return_qs.aggregate(
-    #             total=Coalesce(Sum("refund_amount"), Value(Decimal("0")))
-    #         )["total"]
-
-    #     return invoices_total + credit_payment_total - return_total
-
-    # @cached_property
-    # def debit_amount(self):
-    #     """Calculate total debit amount (paid payments)"""
-
-    #     if (
-    #         hasattr(self, "_prefetched_objects_cache")
-    #         and "credit_payment" in self._prefetched_objects_cache
-    #     ):
-    #         return sum(
-    #             p.amount
-    #             for p in self.credit_payment.all()
-    #             if p.payment_type == Payment.PaymentType.Paid
-    #         )
-    #     else:
-    #         from django.db.models import Sum
-    #         from django.db.models.functions import Coalesce
-
-    #         return self.credit_payment.filter(
-    #             payment_type=Payment.PaymentType.Paid
-    #         ).aggregate(total=Coalesce(Sum("amount"), Value(Decimal("0"))))["total"]
-
-    # @cached_property
-    # def balance_amount(self):
-    #     return self.credit_amount - self.debit_amount
-
-    @cached_property
-    def last_date(self):
-        """Get first unpaid/partially paid credit invoice date if balance > 500"""
-        if self.balance_amount <= 500:
-            return None
-
-        from invoice.models import Invoice
-
-        # Use prefetched data if available
-        if (
-            hasattr(self, "_prefetched_objects_cache")
-            and "invoices" in self._prefetched_objects_cache
-        ):
-            unpaid_invoices = [
-                inv
-                for inv in self.invoices.all()
-                if inv.payment_type == Invoice.PaymentType.CREDIT
-                and inv.payment_status
-                in [Invoice.PaymentStatus.UNPAID, Invoice.PaymentStatus.PARTIALLY_PAID]
-            ]
-            if unpaid_invoices:
-                return min(inv.invoice_date for inv in unpaid_invoices)
-            return None
-        else:
-            # Fallback to database query
-            first_unpaid = (
-                self.invoices.filter(
-                    payment_type=Invoice.PaymentType.CREDIT,
-                    payment_status__in=[
-                        Invoice.PaymentStatus.UNPAID,
-                        Invoice.PaymentStatus.PARTIALLY_PAID,
-                    ],
-                )
-                .order_by("invoice_date")
-                .first()
-            )
-
-            return first_unpaid.invoice_date if first_unpaid else None
-
     def add_credit(self, amount):
         """Add credit to customer's balance."""
         if amount > 0:
@@ -522,7 +387,7 @@ class CustomerCreditSummary(models.Model):
 
             # ===== SINGLE AGGREGATION QUERY for invoices =====
             invoice_stats = customer.invoices.filter(
-                payment_type=Invoice.PaymentType.CREDIT
+                payment_type=Invoice.PaymentType.CREDIT, is_cancelled=False
             ).aggregate(
                 total_amount=Coalesce(
                     Sum(F("amount") - F("discount_amount") - F("advance_amount")),
@@ -558,6 +423,7 @@ class CustomerCreditSummary(models.Model):
             # ===== SINGLE AGGREGATION QUERY for returns =====
             returns_stats = customer.return_invoices.filter(
                 invoice__payment_type=Invoice.PaymentType.CREDIT,
+                invoice__is_cancelled=False,
                 status__in=["APPROVED", "COMPLETED"],
             ).aggregate(total=Coalesce(Sum("refund_amount"), Decimal("0")))
 
@@ -576,6 +442,7 @@ class CustomerCreditSummary(models.Model):
                 first_unpaid = (
                     customer.invoices.filter(
                         payment_type=Invoice.PaymentType.CREDIT,
+                        is_cancelled=False,
                         payment_status__in=[
                             Invoice.PaymentStatus.UNPAID,
                             Invoice.PaymentStatus.PARTIALLY_PAID,

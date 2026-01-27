@@ -16,8 +16,8 @@
             <td>{{ customer.credit_amount|currency }}</td>
             <td>{{ customer.debit_amount|currency }}</td>
             <td>
-                <span class="amount-display {% if customer.balance_amount > 0 %}text-danger{% else %}text-success{% endif %}">
-                    {{ customer.balance_amount|currency }}
+                <span class="amount-display {% if customer.credit_summary.balance_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ customer.credit_summary.balance_amount|currency }}
                 </span>
             </td>
             <td>{{ customer.credit_summary.last_payment_date|date:"M d, Y" |default:"N/A" }}</td>

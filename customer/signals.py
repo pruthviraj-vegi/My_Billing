@@ -83,14 +83,17 @@ def track_invoice_changes(sender, instance, **kwargs):
             instance._old_amount = old_instance.amount
             instance._old_discount_amount = old_instance.discount_amount
             instance._old_advance_amount = old_instance.advance_amount
+            instance._old_customer = old_instance.customer
         except Invoice.DoesNotExist:
             instance._old_amount = None
             instance._old_discount_amount = None
             instance._old_advance_amount = None
+            instance._old_customer = None
     else:
         instance._old_amount = None
         instance._old_discount_amount = None
         instance._old_advance_amount = None
+        instance._old_customer = None
 
 
 @receiver(post_save, sender=Invoice)
@@ -109,6 +112,7 @@ def reallocate_on_invoice_change(sender, instance, created, **kwargs):
     old_amount = getattr(instance, "_old_amount", None)
     old_discount = getattr(instance, "_old_discount_amount", None)
     old_advance = getattr(instance, "_old_advance_amount", None)
+    old_customer = getattr(instance, "_old_customer", None)
 
     # Reallocate if:
     # 1. New invoice created
@@ -118,9 +122,18 @@ def reallocate_on_invoice_change(sender, instance, created, **kwargs):
         old_discount is not None and old_discount != instance.discount_amount
     )
     advance_changed = old_advance is not None and old_advance != instance.advance_amount
+    customer_changed = old_customer is not None and old_customer != instance.customer
 
-    if created or amount_changed or discount_changed or advance_changed:
+    if (
+        created
+        or amount_changed
+        or discount_changed
+        or advance_changed
+        or customer_changed
+    ):
         reallocate_customer_payments(instance.customer)
+        if customer_changed:
+            reallocate_customer_payments(old_customer)
 
 
 @receiver(post_delete, sender=Invoice)
@@ -155,7 +168,9 @@ def reallocate_customer_payments(customer, skip_signals=False):
     # Note: Invoice model doesn't have is_deleted field (not a SoftDeleteModel)
     invoices = list(
         Invoice.objects.filter(
-            customer=customer, payment_type=Invoice.PaymentType.CREDIT
+            customer=customer,
+            payment_type=Invoice.PaymentType.CREDIT,
+            is_cancelled=False,
         )
         .select_for_update()
         .order_by("invoice_date", "id")
@@ -354,7 +369,7 @@ def reallocate_customer_payments(customer, skip_signals=False):
     # Update CustomerCreditSummary since bulk_update skips signals
     from customer.models import CustomerCreditSummary
 
-    CustomerCreditSummary.recalculate_for_customer(customer)
+    CustomerCreditSummary.recalculate_for_customer(customer, save=True)
 
 
 # ============================================
@@ -381,8 +396,6 @@ def process_queued_updates():
     if not customer_ids:
         return
 
-    logger.info(f"Processing {len(customer_ids)} customer credit updates")
-
     # Bulk recalculate
     customers = Customer.objects.filter(id__in=customer_ids)
     for customer in customers:
@@ -390,21 +403,6 @@ def process_queued_updates():
             CustomerCreditSummary.recalculate_for_customer(customer)
         except Exception as e:
             logger.error(f"Failed to update summary for customer {customer.id}: {e}")
-
-
-@receiver([post_save, post_delete], sender="invoice.Invoice")
-def handle_invoice_change(sender, instance, **kwargs):
-    """Queue credit summary update when invoice changes"""
-    if instance.payment_type == sender.PaymentType.CREDIT:
-        queue_customer_update(instance.customer_id)
-        transaction.on_commit(process_queued_updates)
-
-
-@receiver([post_save, post_delete], sender="customer.Payment")
-def handle_payment_change(sender, instance, **kwargs):
-    """Queue credit summary update when payment changes"""
-    queue_customer_update(instance.customer_id)
-    transaction.on_commit(process_queued_updates)
 
 
 @receiver([post_save, post_delete], sender="invoice.ReturnInvoice")

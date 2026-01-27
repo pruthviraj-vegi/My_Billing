@@ -521,8 +521,6 @@ class InvoiceManager(View):
                 "Resequence after conversion",
             )
 
-            print("resequence_result")
-
             # Prepare response
             return JsonResponse(
                 {

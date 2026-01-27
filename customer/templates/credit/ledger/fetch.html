@@ -60,12 +60,14 @@
             <i class="fas fa-eye"></i>
           </a>
         {% else %}
-          <a id="send_credit_payment"
-             class="btn-action btn-view"
-             title="Send Payment"
-             onclick="send_credit_payment('{{ row.id }}')">
-            <i class="fas fa-paper-plane"></i>
-          </a>
+          {% if row.type == "Paid" %}
+            <a id="send_credit_payment"
+               class="btn-action btn-view"
+               title="Send Payment"
+               onclick="send_credit_payment('{{ row.id }}')">
+              <i class="fas fa-paper-plane"></i>
+            </a>
+          {% endif %}
           <a href="{% url 'customer:payment_edit' row.id %}"
              class="btn-action btn-edit"
              title="Edit Payment">

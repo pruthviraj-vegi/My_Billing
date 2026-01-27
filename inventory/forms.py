@@ -11,6 +11,9 @@ from .models import (
     SupplierInvoice,
     InventoryLog,
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ProductForm(forms.ModelForm):
@@ -152,7 +155,7 @@ class VariantForm(forms.ModelForm):
             if not self.instance.pk:
                 self.fields["commission_percentage"].initial = 1
         except Exception as e:
-            print(e)
+            logger.error(f"Failed to set initial commission percentage: {e}")
 
     def _validate_positive_number(self, value, field_name, error_message):
         """Helper method to validate positive numbers"""
