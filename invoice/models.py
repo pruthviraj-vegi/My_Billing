@@ -6,6 +6,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from inventory.models import ProductVariant
+from inventory.services import InventoryService
 from base.utility import get_financial_year, StringProcessor
 from base.manager import SoftDeleteModel
 from django.db import transaction
@@ -330,6 +331,19 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
                 paid_amount=self.paid_amount,
                 payment_type=self.payment_type,
             )
+
+            # Cancel inventory allocations
+            invoice_items = InvoiceItem.objects.filter(invoice=self)
+            if invoice_items.exists():
+                for item in invoice_items:
+                    if item.get_return_available_quantity > 0:
+                        InventoryService.cancelled_sale(
+                            variant=item.product_variant,
+                            quantity_cancelled=item.get_return_available_quantity,
+                            user=user,
+                            invoice_item=item,
+                            notes=f"Cancelled Invoice: {self.invoice_number}",
+                        )
 
             # Trigger reallocation for credit invoices
             if self.payment_type == PaymentTypeChoices.CREDIT:
