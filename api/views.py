@@ -44,7 +44,7 @@ def get_balance(request, phone_number):
     if not customer:
         return JsonResponse({"error": "Customer not found"}, status=404)
 
-    balance = customer.balance_amount
+    balance = customer.credit_summary.balance_amount
     return JsonResponse(
         {
             "balance": balance,

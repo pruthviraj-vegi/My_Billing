@@ -158,7 +158,7 @@ def generate_statement_pdf(customer, start_date, end_date, request):
     """
     # Build ledger data
     existing_pdf = CustomerStatementPDF.get_valid_pdf(
-        customer, start_date, end_date, customer.balance_amount
+        customer, start_date, end_date, customer.credit_summary.balance_amount
     )
 
     if existing_pdf:
@@ -223,7 +223,7 @@ def generate_statement_pdf(customer, start_date, end_date, request):
         pdf_url=r2_url,
         from_date=start_date,
         to_date=end_date,
-        closing_balance=customer.balance_amount,
+        closing_balance=customer.credit_summary.balance_amount,
         filename=f"{filename}.pdf",
         generated_by=request.user if request.user.is_authenticated else None,
     )

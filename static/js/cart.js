@@ -5,21 +5,50 @@
  */
 
 class CartManager {
+    // Constants for timing and configuration
+    static DOM_READY_DELAY = 50;
+    static ANIMATION_DURATION = 300;
+    static DEBOUNCE_DELAY = 300;
+    static REDIRECT_DELAY = 1500;
+    static RETRY_ATTEMPTS = 3;
+    static RETRY_DELAY = 1000;
     constructor() {
         this.initGlobals();
         this.initDOM();
         this.initListeners();
         this.focusBarcode();
 
+        // Request management
+        this.abortController = null;
+        this.pendingRequests = new Set();
+        this.isProcessingBarcode = false;
+
+        // Offline detection
+        this.isOnline = navigator.onLine;
+        this.requestQueue = [];
+        this.initOfflineDetection();
+
+        // Undo functionality
+        this.undoBuffer = new Map(); // Map<itemId, {row: HTMLElement, data: Object, timer: number}>
+        this.undoTimeouts = new Map(); // Map<itemId, timeoutId>
+
+        // Debounced functions
+        this.debouncedRecalculate = this.debounce(() => this.recalculateTotals(), 100);
+        this.debouncedBarcodeSubmit = this.debounce((e) => this._handleBarcodeSubmit(e), 300);
+
         if (this.dom.totalSelling && this.dom.body) {
-            setTimeout(() => this.recalculateTotals(), 50);
+            setTimeout(() => this.recalculateTotals(), CartManager.DOM_READY_DELAY);
         }
     }
 
     /*** ───────── INITIALIZATION ───────── ***/
+    /**
+     * Initialize global configuration from window.CART_DATA
+     * @private
+     */
     initGlobals() {
         if (!window.CART_DATA) {
-            console.error('CART_DATA missing. Make sure the template is properly loaded.');
+            console.error('[CartManager] CART_DATA missing. Make sure the template is properly loaded.');
             return;
         }
 
@@ -34,6 +63,10 @@ class CartManager {
         });
     }
 
+    /**
+     * Cache DOM elements for performance
+     * @private
+     */
     initDOM() {
         this.dom = {
             form: document.getElementById('barcodeForm'),
@@ -48,9 +81,8 @@ class CartManager {
             remainingStock: document.getElementById('remainingStock'),
         };
 
-        // Initialize price toggle state
+        // Initialize price toggle state (removed global pollution)
         this.priceToggleState = false;
-        window.cartPriceToggleState = false; // Keep global for backward compatibility
     }
 
     initListeners() {
@@ -82,62 +114,480 @@ class CartManager {
         this.initPriceToggle();
     }
 
+    /*** ───────── OFFLINE DETECTION ───────── ***/
+    /**
+     * Initialize offline detection and event listeners
+     * @private
+     */
+    initOfflineDetection() {
+        // Listen for online/offline events
+        window.addEventListener('online', () => {
+            this.isOnline = true;
+            this.notify('Connection restored', 'success');
+            this.updateOfflineIndicator();
+            this.processQueue();
+        });
+
+        window.addEventListener('offline', () => {
+            this.isOnline = false;
+            this.notify('You are offline. Changes will be queued.', 'warning');
+            this.updateOfflineIndicator();
+        });
+
+        // Initial indicator update
+        this.updateOfflineIndicator();
+    }
+
+    /**
+     * Update visual offline indicator
+     * @private
+     */
+    updateOfflineIndicator() {
+        let indicator = document.getElementById('offlineIndicator');
+
+        if (!this.isOnline) {
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'offlineIndicator';
+                indicator.style.cssText = `
+                    position: fixed;
+                    top: 10px;
+                    right: 10px;
+                    background: #ff9800;
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    z-index: 9999;
+                    font-size: 14px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                `;
+                indicator.innerHTML = '<i class="fas fa-wifi" style="margin-right: 8px;"></i>Offline Mode';
+                document.body.appendChild(indicator);
+            }
+        } else {
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+    }
+
+    /**
+     * Queue request for later execution when offline
+     * @param {string} url - API endpoint
+     * @param {string} method - HTTP method
+     * @param {Object|null} body - Request body
+     * @private
+     */
+    queueRequest(url, method, body) {
+        this.requestQueue.push({ url, method, body, timestamp: Date.now() });
+        console.log(`[CartManager] Request queued (${this.requestQueue.length} in queue)`);
+    }
+
+    /**
+     * Process queued requests when back online
+     * @private
+     */
+    async processQueue() {
+        if (this.requestQueue.length === 0) return;
+
+        this.notify(`Processing ${this.requestQueue.length} queued request(s)...`, 'info');
+        const queue = [...this.requestQueue];
+        this.requestQueue = [];
+
+        for (const request of queue) {
+            try {
+                await this.api(request.url, request.method, request.body);
+            } catch (err) {
+                console.error('[CartManager] Failed to process queued request:', err);
+                // Re-queue failed requests
+                this.requestQueue.push(request);
+            }
+        }
+
+        if (this.requestQueue.length === 0) {
+            this.notify('All queued requests processed', 'success');
+            // Refresh the page to sync with server
+            setTimeout(() => window.location.reload(), 1000);
+        }
+    }
+
+    /*** ───────── UNDO FUNCTIONALITY ───────── ***/
+    /**
+     * Schedule item for deletion with undo window
+     * @param {string|number} itemId - Cart item ID
+     * @param {HTMLElement} row - Table row element
+     * @param {Object} itemData - Item data for restoration
+     * @private
+     */
+    scheduleUndo(itemId, row, itemData) {
+        const UNDO_DELAY = 5000; // 5 seconds
+
+        // Store in undo buffer
+        this.undoBuffer.set(itemId, {
+            row: row.cloneNode(true),
+            data: itemData,
+            timestamp: Date.now()
+        });
+
+        // Show undo notification
+        this.showUndoNotification(itemId);
+
+        // Schedule actual deletion
+        const timeoutId = setTimeout(() => {
+            this.finalizeDelete(itemId);
+        }, UNDO_DELAY);
+
+        this.undoTimeouts.set(itemId, timeoutId);
+    }
+
+    /**
+     * Show undo notification with action button
+     * @param {string|number} itemId - Cart item ID
+     * @private
+     */
+    showUndoNotification(itemId) {
+        // Create custom notification with undo button
+        const notification = document.createElement('div');
+        notification.id = `undo-notification-${itemId}`;
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #323232;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease;
+        `;
+
+        notification.innerHTML = `
+            <span>Item removed</span>
+            <button id="undo-btn-${itemId}" style="
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 3px;
+                cursor: pointer;
+                font-weight: bold;
+            ">UNDO</button>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Add undo button click handler
+        const undoBtn = document.getElementById(`undo-btn-${itemId}`);
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => this.performUndo(itemId));
+        }
+
+        // Auto-remove notification after 5 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
+    }
+
+    /**
+     * Perform undo - restore deleted item
+     * @param {string|number} itemId - Cart item ID
+     */
+    async performUndo(itemId) {
+        const undoData = this.undoBuffer.get(itemId);
+        if (!undoData) {
+            this.notify('Cannot undo: item not found', 'error');
+            return;
+        }
+
+        // Clear the deletion timeout
+        const timeoutId = this.undoTimeouts.get(itemId);
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+            this.undoTimeouts.delete(itemId);
+        }
+
+        // Restore the row in the table
+        const restoredRow = undoData.row.cloneNode(true);
+        if (this.dom.body.firstChild) {
+            this.dom.body.insertBefore(restoredRow, this.dom.body.firstChild);
+        } else {
+            this.dom.body.appendChild(restoredRow);
+        }
+
+        // Clean up undo buffer
+        this.undoBuffer.delete(itemId);
+
+        // Remove notification
+        const notification = document.getElementById(`undo-notification-${itemId}`);
+        if (notification) {
+            notification.remove();
+        }
+
+        // Recalculate totals
+        this.recalculateTotals();
+        this.notify('Item restored', 'success');
+    }
+
+    /**
+     * Finalize deletion after undo window expires
+     * @param {string|number} itemId - Cart item ID
+     * @private
+     */
+    async finalizeDelete(itemId) {
+        const undoData = this.undoBuffer.get(itemId);
+        if (!undoData) return;
+
+        try {
+            // Actually delete from backend
+            const data = await this.api(this.urls.manageItem.replace('0', itemId), 'DELETE');
+
+            if (data.status === 'success') {
+                this.updateTotals(data.cart_total);
+                console.log(`[CartManager] Item ${itemId} permanently deleted`);
+            }
+        } catch (err) {
+            console.error('[CartManager] Error finalizing delete:', err);
+            // If deletion fails, restore the item
+            this.performUndo(itemId);
+            this.notify('Failed to delete item - restored', 'error');
+        } finally {
+            // Clean up
+            this.undoBuffer.delete(itemId);
+            this.undoTimeouts.delete(itemId);
+        }
+    }
+
     /*** ───────── HELPERS ───────── ***/
+    /**
+     * Show stock warning if stock is low or negative
+     * @param {number} remainingStock - Remaining stock quantity
+     * @param {string} productName - Product name for context
+     * @private
+     */
+    showStockWarning(remainingStock, productName = 'Product') {
+        if (remainingStock === undefined || remainingStock === null) return;
+
+        if (remainingStock < 0) {
+            this.notify(`Warning: ${productName} is oversold (stock: ${remainingStock})`, 'warning');
+        } else if (remainingStock === 0) {
+            this.notify(`Warning: ${productName} is out of stock`, 'warning');
+        } else if (remainingStock < 10) {
+            this.notify(`Warning: ${productName} stock is low (${remainingStock} remaining)`, 'warning');
+        }
+    }
+
+    /**
+     * Debounce utility to limit function execution frequency
+     * @param {Function} func - Function to debounce
+     * @param {number} wait - Delay in milliseconds
+     * @returns {Function} Debounced function
+     * @private
+     */
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    /**
+     * Format number to Indian currency format
+     * @param {number|string} num - Number to format
+     * @returns {string} Formatted number string
+     */
     format(num) {
         const n = typeof num === 'string' ? parseFloat(num.replace(/[^\d.-]/g, '')) : parseFloat(num);
         return isNaN(n) || !isFinite(n) ? '0.00' : this.formatter.format(n);
     }
 
+    /**
+     * Calculate discount percentage
+     * @param {number} selling - Selling price
+     * @param {number} price - Actual price
+     * @returns {number} Discount percentage
+     */
     calcDiscount(selling, price) {
         return selling > 0 ? Math.max(0, ((selling - price) / selling) * 100) : 0;
     }
 
-    async api(url, method = 'GET', body = null) {
+    /**
+     * Parse error message and provide context-specific feedback
+     * @param {Error} err - Error object
+     * @param {string} operation - Operation being performed
+     * @returns {string} User-friendly error message
+     * @private
+     */
+    parseErrorMessage(err, operation = 'operation') {
+        const message = err.message || 'Unknown error';
+
+        // Map common error patterns to user-friendly messages
+        if (message.includes('NetworkError') || message.includes('Failed to fetch')) {
+            return `Network error during ${operation}. Please check your connection.`;
+        }
+        if (message.includes('timeout')) {
+            return `Request timed out during ${operation}. Please try again.`;
+        }
+        if (message.includes('401') || message.includes('Unauthorized')) {
+            return `Session expired. Please refresh the page and log in again.`;
+        }
+        if (message.includes('403') || message.includes('Forbidden')) {
+            return `You don't have permission to perform this ${operation}.`;
+        }
+        if (message.includes('404') || message.includes('Not Found')) {
+            return `Item not found. It may have been deleted.`;
+        }
+        if (message.includes('500') || message.includes('Internal Server Error')) {
+            return `Server error during ${operation}. Please contact support if this persists.`;
+        }
+        if (message.includes('failed after')) {
+            return `${operation} failed after multiple attempts. Please try again later.`;
+        }
+
+        // Return original message if no pattern matches
+        return `${operation} failed: ${message}`;
+    }
+
+    /**
+     * Retry wrapper with exponential backoff
+     * @param {Function} fn - Async function to retry
+     * @param {number} attempt - Current attempt number
+     * @returns {Promise<Object>} Result from function
+     * @private
+     */
+    async retryWithBackoff(fn, attempt = 1) {
         try {
-            const opts = {
-                method,
-                headers: {
-                    'X-CSRFToken': this.csrf,
-                    'Content-Type': 'application/json',
-                },
-            };
-            if (body) opts.body = JSON.stringify(body);
-
-            const res = await fetch(url, opts);
-            const data = await res.json();
-
-            // Check for API-level errors
-            if (!res.ok || data.status === 'error') {
-                throw new Error(data.message || res.statusText || `HTTP ${res.status}`);
+            return await fn();
+        } catch (err) {
+            // Don't retry if request was cancelled or if we've exhausted attempts
+            if (err.message === 'Request cancelled' || attempt >= CartManager.RETRY_ATTEMPTS) {
+                if (attempt >= CartManager.RETRY_ATTEMPTS) {
+                    throw new Error(`${err.message} (failed after ${CartManager.RETRY_ATTEMPTS} attempts)`);
+                }
+                throw err;
             }
 
-            return data;
-        } catch (err) {
-            // Re-throw for caller to handle - they can provide context-specific messages
-            throw err;
+            // Exponential backoff: 1s, 2s, 4s
+            const delay = CartManager.RETRY_DELAY * Math.pow(2, attempt - 1);
+            console.log(`[CartManager] Retry attempt ${attempt}/${CartManager.RETRY_ATTEMPTS} after ${delay}ms`);
+
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return this.retryWithBackoff(fn, attempt + 1);
         }
     }
 
-    focusBarcode() {
-        this.dom.input?.focus();
+    /**
+     * Make API request with AbortController support and retry logic
+     * @param {string} url - API endpoint
+     * @param {string} method - HTTP method
+     * @param {Object|null} body - Request body
+     * @returns {Promise<Object>} API response data
+     * @throws {Error} On network or API errors
+     */
+    async api(url, method = 'GET', body = null) {
+        // Check if offline and queue request
+        if (!this.isOnline) {
+            this.queueRequest(url, method, body);
+            throw new Error('You are offline. Request has been queued.');
+        }
+
+        return this.retryWithBackoff(async () => {
+            // Cancel previous request if exists
+            if (this.abortController) {
+                this.abortController.abort();
+            }
+
+            this.abortController = new AbortController();
+            const requestId = Date.now();
+            this.pendingRequests.add(requestId);
+
+            try {
+                const opts = {
+                    method,
+                    headers: {
+                        'X-CSRFToken': this.csrf,
+                        'Content-Type': 'application/json',
+                    },
+                    signal: this.abortController.signal,
+                };
+                if (body) opts.body = JSON.stringify(body);
+
+                const res = await fetch(url, opts);
+                const data = await res.json();
+
+                // Check for API-level errors
+                if (!res.ok || data.status === 'error') {
+                    throw new Error(data.message || res.statusText || `HTTP ${res.status}`);
+                }
+
+                return data;
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.log('[CartManager] Request cancelled');
+                    throw new Error('Request cancelled');
+                }
+                console.error('[CartManager] API Error:', err);
+                throw err;
+            } finally {
+                this.pendingRequests.delete(requestId);
+                if (this.pendingRequests.size === 0) {
+                    this.abortController = null;
+                }
+            }
+        });
     }
 
+    /**
+     * Focus barcode input only if user is not actively typing elsewhere
+     */
+    focusBarcode() {
+        // Check if user is currently focused on an input element
+        const activeElement = document.activeElement;
+        const isTypingElsewhere = activeElement &&
+            (activeElement.tagName === 'INPUT' ||
+                activeElement.tagName === 'TEXTAREA' ||
+                activeElement.isContentEditable);
+
+        // Only auto-focus if user is not typing elsewhere
+        if (!isTypingElsewhere) {
+            this.dom.input?.focus();
+        }
+    }
+
+    /**
+     * Show notification to user
+     * @param {string} msg - Notification message
+     * @param {string} type - Notification type (info, success, error, warning)
+     */
     notify(msg, type = 'info') {
         if (typeof showNotification === 'function') {
             showNotification(msg, type);
         } else {
-            console.log(`[${type.toUpperCase()}] ${msg}`);
+            console.log(`[CartManager ${type.toUpperCase()}] ${msg}`);
         }
     }
 
     /*** ───────── PRICE TOGGLE ───────── ***/
+    /**
+     * Initialize price toggle functionality (F9 key)
+     * @private
+     */
     initPriceToggle() {
         // Initialize price display format after DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.formatPriceDisplays());
         } else {
             // DOM already loaded
-            setTimeout(() => this.formatPriceDisplays(), 50);
+            setTimeout(() => this.formatPriceDisplays(), CartManager.DOM_READY_DELAY);
         }
 
         // Listen for F9 key press
@@ -164,7 +614,7 @@ class CartManager {
         });
     }
 
-    animatePriceChange(element, startValue, endValue, duration = 300) {
+    animatePriceChange(element, startValue, endValue, duration = CartManager.ANIMATION_DURATION) {
         const startTime = performance.now();
         const difference = endValue - startValue;
 
@@ -188,9 +638,12 @@ class CartManager {
         requestAnimationFrame(update);
     }
 
+    /**
+     * Toggle between selling price and purchase price display
+     * Triggered by F9 key
+     */
     togglePriceDisplay() {
         this.priceToggleState = !this.priceToggleState;
-        window.cartPriceToggleState = this.priceToggleState; // Keep global for backward compatibility
 
         const header = this.dom.priceHeader;
         const priceCells = document.querySelectorAll('.price-toggle-cell');
@@ -213,22 +666,35 @@ class CartManager {
                 const currentPrice = parseFloat(currentText) || 0;
 
                 // Animate the price change
-                this.animatePriceChange(displaySpan, currentPrice, targetPrice, 300);
+                this.animatePriceChange(displaySpan, currentPrice, targetPrice, CartManager.ANIMATION_DURATION);
             }
         });
     }
 
     /*** ───────── UI EVENTS ───────── ***/
+    /**
+     * Handle barcode form submission with debouncing to prevent race conditions
+     * @param {Event} e - Submit event
+     */
     async onBarcodeSubmit(e) {
         e.preventDefault();
+
+        // Prevent rapid successive scans (race condition fix)
+        if (this.isProcessingBarcode) {
+            console.log('[CartManager] Barcode scan in progress, ignoring duplicate request');
+            return;
+        }
+
         const code = this.dom.input.value.trim();
 
-        // Simple validation - no guard needed for barcode scanner
+        // Input validation
         if (!code) {
             this.notify('Please enter a barcode', 'error');
             this.focusBarcode();
             return;
         }
+
+        this.isProcessingBarcode = true;
 
         try {
             const data = await this.api(this.urls.scanBarcode, 'POST', {
@@ -257,18 +723,24 @@ class CartManager {
                 this.notify('Item updated successfully', 'success');
             }
 
+            // Update totals (removed duplicate call)
             if (data.cart_total !== undefined) {
                 this.updateTotals(data.cart_total);
-            } else {
-                this.recalculateTotals();
             }
+
             if (data.remaining_stock !== undefined) {
                 this.dom.remainingStock.textContent = data.remaining_stock;
+                // Show stock warning (non-blocking)
+                const productName = data.cart_item?.product_variant?.simple_name || 'Product';
+                this.showStockWarning(data.remaining_stock, productName);
             }
         } catch (err) {
-            console.error('Error in barcode submission:', err);
-            this.notify(`Error adding product to cart: ${err.message}`, 'error');
+            if (err.message !== 'Request cancelled') {
+                console.error('[CartManager] Error in barcode submission:', err);
+                this.notify(`Error adding product to cart: ${err.message}`, 'error');
+            }
         } finally {
+            this.isProcessingBarcode = false;
             this.focusBarcode();
         }
     }
@@ -297,6 +769,10 @@ class CartManager {
         }
     }
 
+    /**
+     * Handle real-time updates to quantity/price inputs with debouncing
+     * @param {Event} e - Input event
+     */
     onRealTimeUpdate(e) {
         const el = e.target;
         if (!el.matches('.quantity-input, .price-input')) return;
@@ -325,10 +801,15 @@ class CartManager {
         const discount = this.calcDiscount(sell, price);
         discountCell.textContent = `${discount.toFixed(2)}%`;
 
-        this.recalculateTotals();
+        // Debounced total recalculation for performance
+        this.debouncedRecalculate();
     }
 
     /*** ───────── CRUD OPS ───────── ***/
+    /**
+     * Update cart item with optimistic UI updates and rollback on failure
+     * @param {string|number} id - Cart item ID
+     */
     async updateItem(id) {
         const row = document.getElementById(`cart-item-${id}`);
         if (!row) {
@@ -347,9 +828,14 @@ class CartManager {
         const qty = parseFloat(qtyInput.value);
         const price = parseFloat(priceInput.value);
 
+        // Enhanced validation
         if (!qty || !price || qty <= 0 || price < 0) {
-            return this.notify('Please enter valid quantity and price', 'error');
+            return this.notify('Please enter valid quantity and price (quantity > 0, price ≥ 0)', 'error');
         }
+
+        // Disable inputs during update to prevent race conditions
+        qtyInput.disabled = true;
+        priceInput.disabled = true;
 
         // Store original values for rollback
         const originalValues = {
@@ -398,16 +884,24 @@ class CartManager {
                 }
                 if (data.remaining_stock !== undefined) {
                     this.dom.remainingStock.textContent = this.format(data.remaining_stock);
+                    // Show stock warning (non-blocking)
+                    const variantName = row.querySelector('td:nth-child(3)')?.textContent || 'Product';
+                    this.showStockWarning(data.remaining_stock, variantName.trim());
                 }
             }
 
+            // Update totals (removed duplicate recalculateTotals call)
             this.updateTotals(data.cart_total);
-            this.recalculateTotals();
+            this.notify('Item updated successfully', 'success');
         } catch (err) {
-            // console.error('Error updating item:', err);
+            console.error('[CartManager] Error updating item:', err);
             this.rollbackItemUpdate(id, originalValues);
             this.notify(err.message || 'Update failed - values restored', 'error');
         } finally {
+            // Re-enable inputs
+            qtyInput.disabled = false;
+            priceInput.disabled = false;
+
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-save"></i>';
@@ -416,52 +910,56 @@ class CartManager {
         }
     }
 
+    /**
+     * Delete cart item with confirmation
+     * @param {string|number} id - Cart item ID
+     */
     async deleteItem(id) {
-        if (!confirm('Are you sure you want to remove this item?')) return;
+        // Use custom modal for consistency
+        this.confirm(
+            'Remove Item',
+            'Are you sure you want to remove this item from the cart?',
+            () => this.performDelete(id)
+        );
+    }
 
+    /**
+     * Perform the actual delete operation with undo support
+     * @param {string|number} id - Cart item ID
+     * @private
+     */
+    async performDelete(id) {
         const row = document.getElementById(`cart-item-${id}`);
         if (!row) {
             return this.notify('Item not found', 'error');
         }
 
-        const btn = row.querySelector('.delete-item-btn');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        }
+        // Extract item data for potential restoration
+        const qtyInput = row.querySelector('.quantity-input');
+        const priceInput = row.querySelector('.price-input');
+        const itemData = {
+            id: id,
+            quantity: qtyInput ? qtyInput.value : 0,
+            price: priceInput ? priceInput.value : 0
+        };
 
-        row.style.opacity = '0.5';
+        // Schedule undo (this will handle the actual deletion after 5 seconds)
+        this.scheduleUndo(id, row, itemData);
 
-        try {
-            const data = await this.api(this.urls.manageItem.replace('0', id), 'DELETE');
+        // Remove from DOM immediately for UX (will be in undo buffer)
+        row.remove();
 
-            if (data.status !== 'success') {
-                row.style.opacity = '1';
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-trash"></i>';
-                }
-                throw new Error(data.message || 'Delete failed');
-            }
+        // Recalculate totals
+        this.recalculateTotals();
 
-            row.remove();
-            this.updateTotals(data.cart_total);
-            this.recalculateTotals();
-            this.notify('Item removed successfully', 'success');
-        } catch (err) {
-            console.error('Error deleting item:', err);
-            row.style.opacity = '1';
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-trash"></i>';
-            }
-            this.notify(err.message || 'Network error - item not removed', 'error');
-        } finally {
-            this.focusBarcode();
-        }
+        this.focusBarcode();
     }
 
     /*** ───────── UI UPDATES ───────── ***/
+    /**
+     * Update existing cart row with new item data
+     * @param {Object} item - Cart item data
+     */
     updateCartRow(item) {
         const row = document.getElementById(`cart-item-${item.id}`);
         if (!row) {
@@ -491,6 +989,10 @@ class CartManager {
         this.recalculateTotals();
     }
 
+    /**
+     * Add new cart row to the table
+     * @param {Object} data - Cart item data with product variant information
+     */
     addCartRow(data) {
         const {
             id,
@@ -514,7 +1016,7 @@ class CartManager {
         }
 
         // Get current price toggle state (default to selling price)
-        const isShowingPurchasePrice = this.priceToggleState || window.cartPriceToggleState || false;
+        const isShowingPurchasePrice = this.priceToggleState;
         const displayPrice = isShowingPurchasePrice ? parseFloat(purchasePrice) : parseFloat(sellingPrice);
         const priceDisplay = this.formatPriceAnimation(displayPrice);
 
@@ -532,23 +1034,23 @@ class CartManager {
             <td>
                 <input type="number" class="form-input quantity-input" value="${quantity}" 
                        data-item-id="${id}" min="0.01" step="1" 
-                       title="Press Enter to update">
+                       title="Press Enter to update" aria-label="Quantity">
             </td>
             <td>
                 <input type="number" class="form-input price-input" value="${price}" 
                        data-item-id="${id}" min="0" step="1" 
-                       title="Press Enter to update">
+                       title="Press Enter to update" aria-label="Price">
             </td>
             <td class="discount-cell">${calculatedDiscount.toFixed(2)}%</td>
             <td class="amount-cell">${this.format(amount)}</td>
             <td>
                 <button type="button" class="btn btn-primary update-item-btn" data-item-id="${id}" 
-                        title="Save changes" tabindex="-1">
-                    <i class="fas fa-save"></i>
+                        title="Save changes" aria-label="Save item changes">
+                    <i class="fas fa-save" aria-hidden="true"></i>
                 </button>
                 <button type="button" class="btn btn-danger delete-item-btn" data-item-id="${id}" 
-                        title="Remove item" tabindex="-1">
-                    <i class="fas fa-trash"></i>
+                        title="Remove item" aria-label="Remove item from cart">
+                    <i class="fas fa-trash" aria-hidden="true"></i>
                 </button>
             </td>
         `;
@@ -563,6 +1065,10 @@ class CartManager {
         this.recalculateTotals();
     }
 
+    /**
+     * Update total amount displays
+     * @param {number} total - New total amount
+     */
     updateTotals(total) {
         this.dom.totalAmount.textContent = this.format(total);
         // Update cart button total if it exists
@@ -570,6 +1076,7 @@ class CartManager {
         if (cartButtonTotal) {
             cartButtonTotal.textContent = this.format(total);
         }
+        // Recalculate derived totals (quantity, selling price)
         this.recalculateTotals();
     }
 
@@ -622,7 +1129,9 @@ class CartManager {
 
     /**
      * Legacy method for backward compatibility - returns totals data
-     * @deprecated Use recalculateTotals() instead
+     * @deprecated This method is kept for backward compatibility only.
+     * Use recalculateTotals() for UI updates. This will be removed in future versions.
+     * @returns {Object} Object containing totalItems, totalQuantity, and quantity arrays
      */
     calculateTotals() {
         if (!this.dom.body) {
@@ -684,22 +1193,48 @@ class CartManager {
     }
 
     /*** ───────── CART ACTIONS ───────── ***/
+    /**
+     * Archive current cart and redirect to cart list
+     */
     async archiveCart() {
+        // Disable buttons to prevent double-click
+        if (this.dom.archiveBtn) {
+            this.dom.archiveBtn.disabled = true;
+            this.dom.archiveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Archiving...';
+        }
+
         try {
             const data = await this.api(this.urls.archiveCart, 'POST');
             if (data.status === 'success') {
                 this.notify('Cart archived successfully', 'success');
-                setTimeout(() => (window.location.href = '/cart/'), 1500);
+                setTimeout(() => (window.location.href = '/cart/'), CartManager.REDIRECT_DELAY);
             } else {
                 this.notify(data.message || 'Failed to archive cart', 'error');
+                if (this.dom.archiveBtn) {
+                    this.dom.archiveBtn.disabled = false;
+                    this.dom.archiveBtn.innerHTML = '<i class="fas fa-archive"></i> Archive Cart';
+                }
             }
         } catch (err) {
-            console.error('Error archiving cart:', err);
-            this.notify('Failed to archive cart', 'error');
+            console.error('[CartManager] Error archiving cart:', err);
+            this.notify('Failed to archive cart. Please try again.', 'error');
+            if (this.dom.archiveBtn) {
+                this.dom.archiveBtn.disabled = false;
+                this.dom.archiveBtn.innerHTML = '<i class="fas fa-archive"></i> Archive Cart';
+            }
         }
     }
 
+    /**
+     * Clear all items from current cart
+     */
     async clearCart() {
+        // Disable buttons to prevent double-click
+        if (this.dom.clearBtn) {
+            this.dom.clearBtn.disabled = true;
+            this.dom.clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
+        }
+
         try {
             const data = await this.api(this.urls.clearCart, 'POST');
             if (data.status === 'success') {
@@ -708,42 +1243,113 @@ class CartManager {
                     this.dom.body.innerHTML = '';
                 }
                 this.updateTotals(0);
-                this.recalculateTotals();
             } else {
                 this.notify(data.message || 'Failed to clear cart', 'error');
             }
         } catch (err) {
-            console.error('Error clearing cart:', err);
-            this.notify('Failed to clear cart', 'error');
+            console.error('[CartManager] Error clearing cart:', err);
+            this.notify('Failed to clear cart. Please try again.', 'error');
+        } finally {
+            // Re-enable button
+            if (this.dom.clearBtn) {
+                this.dom.clearBtn.disabled = false;
+                this.dom.clearBtn.innerHTML = '<i class="fas fa-trash"></i> Clear Cart';
+            }
         }
     }
 
     /*** ───────── UI UTILITIES ───────── ***/
+    /**
+     * Show confirmation modal with custom message
+     * @param {string} title - Modal title
+     * @param {string} msg - Confirmation message
+     * @param {Function} cb - Callback to execute on confirmation
+     */
     confirm(title, msg, cb) {
         const modal = document.getElementById('confirmModal');
-        if (!modal) return cb();
+        if (!modal) {
+            // Fallback to native confirm if modal not available
+            if (window.confirm(`${title}\n\n${msg}`)) {
+                cb();
+            }
+            return;
+        }
 
         const modalTitle = modal.querySelector('.modal-title') || document.getElementById('confirmModalLabel');
         const modalBody = modal.querySelector('.modal-body') || document.getElementById('confirmModalBody');
         const confirmBtn = modal.querySelector('#confirmActionBtn') || document.getElementById('confirmActionBtn');
 
-        if (!modalTitle || !modalBody || !confirmBtn) return cb();
+        if (!modalTitle || !modalBody || !confirmBtn) {
+            // Fallback if modal structure is incomplete
+            if (window.confirm(`${title}\n\n${msg}`)) {
+                cb();
+            }
+            return;
+        }
 
         modalTitle.textContent = title;
         modalBody.textContent = msg;
 
-        // Simplified: Use onclick for cleaner lifecycle
-        confirmBtn.onclick = () => {
+        // Remove previous event listener to prevent memory leak
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        // Add new event listener
+        newConfirmBtn.addEventListener('click', () => {
             cb();
+            this.hideModal(modal);
+        });
+
+        // Show modal with Bootstrap or fallback
+        this.showModal(modal);
+    }
+
+    /**
+     * Show modal using Bootstrap or fallback
+     * @param {HTMLElement} modal - Modal element
+     * @private
+     */
+    showModal(modal) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+        } else {
+            // Fallback: manual modal display
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+
+            // Create backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            backdrop.id = 'customModalBackdrop';
+            document.body.appendChild(backdrop);
+        }
+    }
+
+    /**
+     * Hide modal using Bootstrap or fallback
+     * @param {HTMLElement} modal - Modal element
+     * @private
+     */
+    hideModal(modal) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             const bootstrapModal = bootstrap.Modal.getInstance(modal);
             if (bootstrapModal) {
                 bootstrapModal.hide();
             }
-        };
+        } else {
+            // Fallback: manual modal hide
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+            document.body.classList.remove('modal-open');
 
-        // Show modal
-        const bootstrapModal = new bootstrap.Modal(modal);
-        bootstrapModal.show();
+            // Remove backdrop
+            const backdrop = document.getElementById('customModalBackdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+        }
     }
 
     initDropdown() {

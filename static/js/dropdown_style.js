@@ -1,517 +1,605 @@
 /**
- * Simple Visual Select to Styled Dropdown Converter
- * Converts a plain select to a styled dropdown with custom date inputs
+ * Optimized Visual Select to Styled Dropdown Converter
  * 
- * Handles everything automatically - just pass the select ID and optional callback
+ * Key improvements:
+ * - Better performance with DocumentFragment and RAF
+ * - Proper state management
+ * - Memory leak prevention with WeakMap
+ * - Enhanced error handling and validation
+ * - Improved accessibility with ARIA attributes
  * 
  * Usage:
- *   // Basic usage
- *   convertSelectToStyledDropdown('dateFilter')
- * 
- *   // With onChange callback
- *   convertSelectToStyledDropdown('dateFilter', {
- *     onChange: function(data) {
- *       // data contains: { value, text, fromDate, toDate, type }
- *       // value: selected option value (e.g., 'today', 'this_month', 'custom')
- *       // text: selected option text (e.g., 'Today', 'This Month', 'Custom Date')
- *       // fromDate: ISO date string (yyyy-mm-dd) if custom date selected, null otherwise
- *       // toDate: ISO date string (yyyy-mm-dd) if custom date selected, null otherwise
- *       // type: 'quick_select' | 'custom_date' | 'programmatic_change'
- *       
- *       console.log('Date filter changed:', data);
- *       // Your code to update data/reload dashboard/etc.
+ *   const dropdown = convertSelectToStyledDropdown('dateFilter', {
+ *     onChange: (data) => {
+ *       // data: { value, text, fromDate, toDate, type }
+ *       console.log('Selection changed:', data);
+ *     },
+ *     onError: (error) => {
+ *       console.error('Dropdown error:', error);
  *     }
- *   })
+ *   });
+ * 
+ *   // Clean up when done
+ *   dropdown.destroy();
  */
 
-function convertSelectToStyledDropdown(selectId, options = {}) {
-    // Extract callback function from options
-    const onChangeCallback = options.onChange || options.onChangeCallback || null;
+(function () {
+    'use strict';
 
-    // Helper function to call callback with data
-    const triggerCallback = (data) => {
-        if (onChangeCallback && typeof onChangeCallback === 'function') {
-            try {
-                onChangeCallback(data);
-            } catch (error) {
-                console.error('Error in onChange callback:', error);
-            }
+    // Store instances using WeakMap to prevent memory leaks
+    const instances = new WeakMap();
+
+    // Shared RAF ID pool for position updates
+    const rafIds = new WeakMap();
+
+    // State management
+    const createState = (initialValue) => ({
+        currentValue: initialValue,
+        isOpen: false,
+        isInternalChange: false,
+        customDates: { from: null, to: null }
+    });
+
+    // Utility: Request Animation Frame wrapper
+    const scheduleUpdate = (element, callback) => {
+        const existingRaf = rafIds.get(element);
+        if (existingRaf) cancelAnimationFrame(existingRaf);
+
+        const rafId = requestAnimationFrame(() => {
+            callback();
+            rafIds.delete(element);
+        });
+
+        rafIds.set(element, rafId);
+    };
+
+    // Utility: Date validation and conversion
+    const dateUtils = {
+        isValid: (dateStr) => {
+            if (!dateStr) return false;
+            const date = new Date(dateStr);
+            return date instanceof Date && !isNaN(date.getTime());
+        },
+
+        convertToISO: (ddmmyyyy) => {
+            if (!ddmmyyyy) return null;
+            const parts = ddmmyyyy.split('-');
+            if (parts.length !== 3) return null;
+
+            const [day, month, year] = parts.map(p => parseInt(p, 10));
+            if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+            if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+            const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            return this.isValid(iso) ? iso : null;
+        },
+
+        validateRange: (fromDate, toDate) => {
+            if (!fromDate || !toDate) return false;
+            return new Date(fromDate) <= new Date(toDate);
         }
     };
 
-    // Wait for DOM to be ready
-    const init = () => {
-        const selectElement = document.getElementById(selectId);
-        if (!selectElement) {
-            console.error(`Select element with ID "${selectId}" not found`);
-            return null;
-        }
+    // Build DOM structure using DocumentFragment for better performance
+    const buildDropdownStructure = (selectOptions, selectedText, ids) => {
+        const fragment = document.createDocumentFragment();
 
-        // Track cleanup functions
-        const cleanup = [];
-
-        // Get all options from select
-        const selectOptions = Array.from(selectElement.options).map(opt => ({
-            value: opt.value,
-            text: opt.text,
-            selected: opt.selected
-        }));
-
-        // Get selected option text - use current value if set, otherwise find selected option
-        const currentValue = selectElement.value;
-        let selectedOption = null;
-        if (currentValue) {
-            selectedOption = selectOptions.find(opt => opt.value === currentValue);
-        }
-        if (!selectedOption) {
-            selectedOption = selectOptions.find(opt => opt.selected) || selectOptions[0];
-        }
-        const selectedText = selectedOption ? selectedOption.text : '';
-
-        // Get parent container
-        const parent = selectElement.parentNode;
+        // Create wrapper
         const wrapper = document.createElement('div');
         wrapper.className = 'multipleSelection';
-        // Ensure wrapper has relative positioning for dropdown
         wrapper.style.position = 'relative';
 
-        // Generate unique IDs
-        const dateSelectBoxId = selectId + '_selectBox_' + Date.now();
-        const checkBoxesId = selectId + '_checkBoxes_' + Date.now();
-        const fromDateInputId = selectId + '_fromDate_' + Date.now();
-        const toDateInputId = selectId + '_toDate_' + Date.now();
-        const submitButtonId = selectId + '_submitButton_' + Date.now();
+        // Create select box
+        const selectBox = document.createElement('div');
+        selectBox.className = 'selectBox';
+        selectBox.id = ids.selectBox;
+        selectBox.setAttribute('role', 'combobox');
+        selectBox.setAttribute('aria-expanded', 'false');
+        selectBox.setAttribute('aria-haspopup', 'listbox');
+        selectBox.setAttribute('tabindex', '0');
 
-        // Create the styled dropdown HTML structure with custom date inputs
-        wrapper.innerHTML = `
-    <div class="selectBox" id="${dateSelectBoxId}">
-      <p class="mb-0">
-        <i class="fas fa-calendar me-1 select-icon"></i>
-        <span class="date-filter-label">${selectedText}</span>
-      </p>
-      <span class="down-icon"><i class="fas fa-chevron-down"></i></span>
-    </div>
-    <div id="${checkBoxesId}" class="date-dropdown-panel" style="display: none;">
-      <div class="selectBox-cont selectBox-cont-one h-auto">
-        <div class="date-list" style="width: 100%;">
-          <ul style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;">
-            ${selectOptions.map(opt => `
-              <li style="width: 100%; margin: 0;">
-                <a href="#" class="btn date-btn" data-value="${opt.value}" style="width: 100%; display: block; text-align: center; padding: 0.5rem 1rem; font-size: 0.875rem; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-surface, #ffffff); color: var(--text-primary, #1e293b); text-decoration: none; border-radius: 6px; transition: all 0.2s ease;">${opt.text}</a>
-              </li>
-            `).join('')}
-          </ul>
-        </div>
-        <div class="date-list" style="width: 100%; margin-top: 0.75rem;">
-          <ul style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;">
-            <li style="display: flex; gap: 0.5rem; width: 100%; margin: 0;">
-              <div class="date-picker" style="flex: 1; min-width: 120px;">
-                <div class="form-custom cal-icon">
-                  <input class="form-input" type="text" id="${fromDateInputId}" placeholder="From: dd-mm-yyyy" readonly>
-                </div>
-              </div>
-              <div class="date-picker pe-0" style="flex: 1; min-width: 120px;">
-                <div class="form-custom cal-icon">
-                  <input class="form-input" type="text" id="${toDateInputId}" placeholder="To: dd-mm-yyyy" readonly>
-                </div>
-              </div>
-            </li>
-            <li class="student-submit" style="width: 100%; margin: 0;">
-              <button id="${submitButtonId}" type="button" class="btn btn-primary" style="width: 100%;">Submit</button>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  `;
+        const selectBoxContent = document.createElement('p');
+        selectBoxContent.className = 'mb-0';
+        selectBoxContent.innerHTML = `<i class="fas fa-calendar me-1 select-icon"></i><span class="date-filter-label">${selectedText}</span>`;
 
-        // Replace select with styled dropdown
-        parent.replaceChild(wrapper, selectElement);
+        const downIcon = document.createElement('span');
+        downIcon.className = 'down-icon';
+        downIcon.innerHTML = '<i class="fas fa-chevron-down"></i>';
 
-        // Create hidden select to maintain form compatibility
-        const hiddenSelect = document.createElement('select');
-        hiddenSelect.name = selectElement.name || selectId;
-        hiddenSelect.id = selectId + '_hidden';
-        hiddenSelect.style.display = 'none';
+        selectBox.appendChild(selectBoxContent);
+        selectBox.appendChild(downIcon);
 
-        // Add all options to hidden select (don't copy selected state - will be set explicitly)
+        // Create dropdown panel
+        const panel = document.createElement('div');
+        panel.id = ids.panel;
+        panel.className = 'date-dropdown-panel';
+        panel.style.display = 'none';
+        panel.setAttribute('role', 'listbox');
+
+        const panelContent = document.createElement('div');
+        panelContent.className = 'selectBox-cont selectBox-cont-one h-auto';
+
+        // Build quick select options
+        const quickSelectList = document.createElement('div');
+        quickSelectList.className = 'date-list';
+        quickSelectList.style.width = '100%';
+
+        const ul = document.createElement('ul');
+        ul.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
+
         selectOptions.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt.value;
-            option.text = opt.text;
-            // Don't set selected here - will be set explicitly based on currentFilter or original value
-            hiddenSelect.appendChild(option);
+            const li = document.createElement('li');
+            li.style.cssText = 'width: 100%; margin: 0;';
+
+            const btn = document.createElement('a');
+            btn.href = '#';
+            btn.className = 'btn date-btn';
+            btn.setAttribute('data-value', opt.value);
+            btn.setAttribute('role', 'option');
+            btn.textContent = opt.text;
+            btn.style.cssText = 'width: 100%; display: block; text-align: center; padding: 0.5rem 1rem; font-size: 0.875rem; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-surface, #ffffff); color: var(--text-primary, #1e293b); text-decoration: none; border-radius: 6px; transition: all 0.2s ease;';
+
+            li.appendChild(btn);
+            ul.appendChild(li);
         });
 
-        wrapper.appendChild(hiddenSelect);
+        quickSelectList.appendChild(ul);
+        panelContent.appendChild(quickSelectList);
 
-        // Get DOM elements
-        const dateSelectBox = document.getElementById(dateSelectBoxId);
-        const checkBoxes = document.getElementById(checkBoxesId);
-        const dateButtons = checkBoxes.querySelectorAll('.date-btn');
-        const label = wrapper.querySelector('.date-filter-label');
-        const fromDateInput = document.getElementById(fromDateInputId);
-        const toDateInput = document.getElementById(toDateInputId);
-        const submitButton = document.getElementById(submitButtonId);
+        // Build custom date inputs
+        const customDateList = document.createElement('div');
+        customDateList.className = 'date-list';
+        customDateList.style.cssText = 'width: 100%; margin-top: 0.75rem;';
 
-        // Initialize DatePickers (if DatePicker is available)
-        let fromDatePicker = null;
-        let toDatePicker = null;
+        const customUl = document.createElement('ul');
+        customUl.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
 
-        const initializeDatePickers = () => {
-            if (typeof DatePicker === 'undefined') {
-                console.warn('DatePicker.js not loaded - custom date inputs will not work');
-                return;
-            }
+        // Date inputs row
+        const dateRow = document.createElement('li');
+        dateRow.style.cssText = 'display: flex; gap: 0.5rem; width: 100%; margin: 0;';
 
-            if (!fromDatePicker && fromDateInput) {
+        const fromPicker = document.createElement('div');
+        fromPicker.className = 'date-picker';
+        fromPicker.style.cssText = 'flex: 1; min-width: 120px;';
+        fromPicker.innerHTML = `<div class="form-custom cal-icon"><input class="form-input" type="text" id="${ids.fromDate}" placeholder="From: dd-mm-yyyy" readonly aria-label="From date"></div>`;
+
+        const toPicker = document.createElement('div');
+        toPicker.className = 'date-picker pe-0';
+        toPicker.style.cssText = 'flex: 1; min-width: 120px;';
+        toPicker.innerHTML = `<div class="form-custom cal-icon"><input class="form-input" type="text" id="${ids.toDate}" placeholder="To: dd-mm-yyyy" readonly aria-label="To date"></div>`;
+
+        dateRow.appendChild(fromPicker);
+        dateRow.appendChild(toPicker);
+
+        // Submit button row
+        const submitRow = document.createElement('li');
+        submitRow.className = 'student-submit';
+        submitRow.style.cssText = 'width: 100%; margin: 0;';
+
+        const submitBtn = document.createElement('button');
+        submitBtn.id = ids.submit;
+        submitBtn.type = 'button';
+        submitBtn.className = 'btn btn-primary';
+        submitBtn.style.width = '100%';
+        submitBtn.textContent = 'Submit';
+
+        submitRow.appendChild(submitBtn);
+
+        customUl.appendChild(dateRow);
+        customUl.appendChild(submitRow);
+        customDateList.appendChild(customUl);
+        panelContent.appendChild(customDateList);
+
+        panel.appendChild(panelContent);
+
+        wrapper.appendChild(selectBox);
+        wrapper.appendChild(panel);
+        fragment.appendChild(wrapper);
+
+        return { fragment, wrapper, selectBox, panel };
+    };
+
+    // Main converter function
+    function convertSelectToStyledDropdown(selectId, options = {}) {
+        const { onChange, onError } = options;
+
+        // Error handler wrapper
+        const handleError = (error, context) => {
+            console.error(`[Dropdown ${selectId}] ${context}:`, error);
+            if (onError && typeof onError === 'function') {
                 try {
-                    fromDatePicker = new DatePicker(`#${fromDateInputId}`, {
-                        mode: 'single',
-                        format: 'd-m-Y',
-                        showIcon: true,
-                        iconPosition: 'right',
-                        clickOpens: true,
-                        allowInput: false,
-                        closeOnSelect: false,
-                        onChange: (date) => {
-                            if (date) {
-                                const isoDate = date.toISOString().split('T')[0];
-                                fromDateInput.setAttribute('data-iso-date', isoDate);
-                            }
-                        }
-                    });
-                    // Update stored reference
-                    if (window[selectId + '_styled']) {
-                        window[selectId + '_styled'].fromDatePicker = fromDatePicker;
-                    }
-                } catch (error) {
-                    console.error('Error initializing from date picker:', error);
-                }
-            }
-
-            if (!toDatePicker && toDateInput) {
-                try {
-                    toDatePicker = new DatePicker(`#${toDateInputId}`, {
-                        mode: 'single',
-                        format: 'd-m-Y',
-                        showIcon: true,
-                        iconPosition: 'right',
-                        clickOpens: true,
-                        allowInput: false,
-                        closeOnSelect: false,
-                        onChange: (date) => {
-                            if (date) {
-                                const isoDate = date.toISOString().split('T')[0];
-                                toDateInput.setAttribute('data-iso-date', isoDate);
-                            }
-                        }
-                    });
-                    // Update stored reference
-                    if (window[selectId + '_styled']) {
-                        window[selectId + '_styled'].toDatePicker = toDatePicker;
-                    }
-                } catch (error) {
-                    console.error('Error initializing to date picker:', error);
+                    onError({ error, context, selectId });
+                } catch (e) {
+                    console.error('Error in onError callback:', e);
                 }
             }
         };
 
-        // Function to adjust dropdown position to stay within viewport
-        const adjustDropdownPosition = () => {
-            if (!checkBoxes || !dateSelectBox) return;
+        // Callback wrapper with error handling
+        const triggerCallback = (data) => {
+            if (!onChange || typeof onChange !== 'function') return;
 
-            // Reset all positioning styles first
-            checkBoxes.style.left = '';
-            checkBoxes.style.right = '';
-            checkBoxes.style.top = '';
-            checkBoxes.style.bottom = '';
-            checkBoxes.style.maxHeight = '';
-            checkBoxes.style.overflowY = '';
-            checkBoxes.style.marginTop = '0.5rem';
-            checkBoxes.style.marginBottom = '';
-
-            // Force a reflow to get accurate measurements
-            void checkBoxes.offsetHeight;
-
-            const selectBoxRect = dateSelectBox.getBoundingClientRect();
-            const dropdownRect = checkBoxes.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-
-            // Calculate horizontal adjustments
-            let leftAdjust = 0;
-            if (dropdownRect.right > viewportWidth - 10) {
-                // Dropdown goes off right edge - shift left
-                leftAdjust = viewportWidth - dropdownRect.right - 10;
-            } else if (dropdownRect.left < 10) {
-                // Dropdown goes off left edge - shift right
-                leftAdjust = 10 - dropdownRect.left;
-            }
-
-            if (leftAdjust !== 0) {
-                const currentLeft = parseFloat(getComputedStyle(checkBoxes).left) || 0;
-                checkBoxes.style.left = `${currentLeft + leftAdjust}px`;
-            }
-
-            // Calculate vertical adjustments
-            const spaceBelow = viewportHeight - selectBoxRect.bottom;
-            const spaceAbove = selectBoxRect.top;
-            const dropdownHeight = dropdownRect.height;
-            const minSpace = 20; // Minimum space from viewport edge
-
-            if (spaceBelow < dropdownHeight + minSpace && spaceAbove > spaceBelow) {
-                // Not enough space below, show above instead
-                checkBoxes.style.top = 'auto';
-                checkBoxes.style.bottom = '100%';
-                checkBoxes.style.marginTop = '';
-                checkBoxes.style.marginBottom = '0.5rem';
-            } else {
-                // Show below (default) - limit height if needed
-                if (spaceBelow < dropdownHeight + minSpace) {
-                    const maxHeight = spaceBelow - minSpace;
-                    if (maxHeight > 100) { // Only limit if reasonable height
-                        checkBoxes.style.maxHeight = `${maxHeight}px`;
-                        checkBoxes.style.overflowY = 'auto';
-                    }
-                }
+            try {
+                onChange(data);
+            } catch (error) {
+                handleError(error, 'onChange callback');
             }
         };
 
-        // Toggle dropdown
-        const dateSelectBoxClickHandler = (e) => {
-            e.stopPropagation();
-            const isActive = checkBoxes.style.display === 'block';
-            checkBoxes.style.display = isActive ? 'none' : 'block';
-            dateSelectBox.classList.toggle('active', !isActive);
-
-            // Adjust position when opening
-            if (!isActive) {
-                // Small delay to ensure display is set
-                setTimeout(() => {
-                    adjustDropdownPosition();
-                    initializeDatePickers();
-                }, 10);
+        const init = () => {
+            const selectElement = document.getElementById(selectId);
+            if (!selectElement) {
+                handleError(new Error(`Element not found`), 'Initialization');
+                return null;
             }
-        };
 
-        if (dateSelectBox && checkBoxes) {
-            dateSelectBox.addEventListener('click', dateSelectBoxClickHandler);
-            cleanup.push(() => dateSelectBox.removeEventListener('click', dateSelectBoxClickHandler));
-        }
+            // Check if already initialized
+            if (instances.has(selectElement)) {
+                console.warn(`Dropdown already initialized for #${selectId}`);
+                return instances.get(selectElement);
+            }
 
-        // Debounce utility for performance
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
+            // Extract options
+            const selectOptions = Array.from(selectElement.options).map(opt => ({
+                value: opt.value,
+                text: opt.text,
+                selected: opt.selected
+            }));
+
+            if (selectOptions.length === 0) {
+                handleError(new Error('No options found in select'), 'Initialization');
+                return null;
+            }
+
+            // Get initial selection
+            const currentValue = selectElement.value;
+            const selectedOption = selectOptions.find(opt =>
+                opt.value === currentValue || opt.selected
+            ) || selectOptions[0];
+
+            // Generate unique IDs
+            const timestamp = Date.now();
+            const ids = {
+                selectBox: `${selectId}_box_${timestamp}`,
+                panel: `${selectId}_panel_${timestamp}`,
+                fromDate: `${selectId}_from_${timestamp}`,
+                toDate: `${selectId}_to_${timestamp}`,
+                submit: `${selectId}_submit_${timestamp}`
             };
-        }
 
-        // Debounced position adjustment (100ms delay for better performance)
-        const debouncedAdjustPosition = debounce(() => {
-            if (checkBoxes?.style.display === 'block') {
-                adjustDropdownPosition();
-            }
-        }, 100);
+            // Create state
+            const state = createState(selectedOption.value);
 
-        // Adjust position on window resize (debounced)
-        const resizeHandler = () => {
-            if (checkBoxes?.style.display === 'block') {
-                debouncedAdjustPosition();
-            }
-        };
-        window.addEventListener('resize', resizeHandler);
-        cleanup.push(() => window.removeEventListener('resize', resizeHandler));
+            // Build DOM
+            const { fragment, wrapper, selectBox, panel } = buildDropdownStructure(
+                selectOptions,
+                selectedOption.text,
+                ids
+            );
 
-        // Adjust position on scroll (debounced)
-        const scrollHandler = () => {
-            if (checkBoxes?.style.display === 'block') {
-                debouncedAdjustPosition();
-            }
-        };
-        window.addEventListener('scroll', scrollHandler, true);
-        cleanup.push(() => window.removeEventListener('scroll', scrollHandler, true));
+            // Replace original select
+            const parent = selectElement.parentNode;
+            parent.replaceChild(wrapper, selectElement);
 
-        // Close dropdown when clicking outside (but not on datepicker)
-        const closeHandler = (e) => {
-            const isDatepickerClick = e.target.closest('.datepicker-container') ||
-                e.target.closest('.datepicker-popup') ||
-                e.target.closest('.datepicker-calendar') ||
-                e.target.closest('.datepicker-day') ||
-                e.target === fromDateInput ||
-                e.target === toDateInput ||
-                e.target.closest('.datepicker-input-wrapper');
+            // Create hidden select for form compatibility
+            const hiddenSelect = document.createElement('select');
+            hiddenSelect.name = selectElement.name || selectId;
+            hiddenSelect.id = `${selectId}_hidden`;
+            hiddenSelect.style.display = 'none';
 
-            if (checkBoxes && dateSelectBox &&
-                !checkBoxes.contains(e.target) &&
-                !dateSelectBox.contains(e.target) &&
-                !isDatepickerClick) {
-                if (checkBoxes.style.display === 'block') {
-                    checkBoxes.style.display = 'none';
-                    dateSelectBox.classList.remove('active');
+            selectOptions.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.text = opt.text;
+                if (opt.value === state.currentValue) {
+                    option.selected = true;
                 }
-            }
-        };
-        document.addEventListener('click', closeHandler);
-        cleanup.push(() => document.removeEventListener('click', closeHandler));
-
-        // Prevent dropdown from closing when clicking on date inputs
-        const stopPropagationHandler = (e) => e.stopPropagation();
-
-        [fromDateInput, toDateInput].filter(Boolean).forEach(input => {
-            input.addEventListener('click', stopPropagationHandler);
-            cleanup.push(() => input.removeEventListener('click', stopPropagationHandler));
-        });
-
-        // Helper: Convert dd-mm-yyyy to yyyy-mm-dd
-        const convertToBackendFormat = (dateStr) => {
-            if (!dateStr) return '';
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                return `${parts[2]}-${parts[1]}-${parts[0]}`;
-            }
-            return dateStr;
-        };
-
-        // Handle option button clicks
-        const buttonHandlers = new Map();
-
-        dateButtons.forEach(btn => {
-            const handler = (e) => {
-                e.preventDefault();
-                const value = btn.getAttribute('data-value');
-                const text = btn.textContent.trim();
-
-                // Update hidden select value
-                hiddenSelect.value = value;
-
-                // Update label (VISUAL ONLY)
-                if (label) {
-                    label.textContent = text;
-                }
-
-                // Close dropdown
-                checkBoxes.style.display = 'none';
-                dateSelectBox.classList.remove('active');
-
-                // Mark as internal change to prevent duplicate callback
-                isInternalChange = true;
-
-                // Trigger change event on hidden select (so existing JS handlers can listen if needed)
-                hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-                // Call callback function with data
-                triggerCallback({
-                    value: value,
-                    text: text,
-                    fromDate: null,
-                    toDate: null,
-                    type: 'quick_select'
-                });
-            };
-            btn.addEventListener('click', handler);
-            buttonHandlers.set(btn, handler);
-        });
-
-        cleanup.push(() => {
-            buttonHandlers.forEach((handler, btn) => {
-                btn.removeEventListener('click', handler);
+                hiddenSelect.appendChild(option);
             });
-            buttonHandlers.clear();
-        });
 
-        // Handle custom date submit button
-        const submitButtonClickHandler = (e) => {
-            e.preventDefault();
+            wrapper.appendChild(hiddenSelect);
 
-            if (fromDateInput && toDateInput && fromDateInput.value && toDateInput.value) {
-                // Get ISO dates
+            // Get DOM references
+            const label = wrapper.querySelector('.date-filter-label');
+            const fromDateInput = document.getElementById(ids.fromDate);
+            const toDateInput = document.getElementById(ids.toDate);
+            const submitButton = document.getElementById(ids.submit);
+            const dateButtons = panel.querySelectorAll('.date-btn');
+
+            // Event listeners cleanup array
+            const listeners = [];
+
+            // DatePicker instances
+            let fromDatePicker = null;
+            let toDatePicker = null;
+
+            // Initialize DatePickers
+            const initDatePickers = () => {
+                if (typeof DatePicker === 'undefined') return;
+
+                if (!fromDatePicker && fromDateInput) {
+                    try {
+                        fromDatePicker = new DatePicker(`#${ids.fromDate}`, {
+                            mode: 'single',
+                            format: 'd-m-Y',
+                            showIcon: true,
+                            iconPosition: 'right',
+                            clickOpens: true,
+                            allowInput: false,
+                            closeOnSelect: false,
+                            onChange: (date) => {
+                                if (date) {
+                                    const isoDate = date.toISOString().split('T')[0];
+                                    fromDateInput.setAttribute('data-iso-date', isoDate);
+                                }
+                            }
+                        });
+                    } catch (error) {
+                        handleError(error, 'DatePicker initialization (from)');
+                    }
+                }
+
+                if (!toDatePicker && toDateInput) {
+                    try {
+                        toDatePicker = new DatePicker(`#${ids.toDate}`, {
+                            mode: 'single',
+                            format: 'd-m-Y',
+                            showIcon: true,
+                            iconPosition: 'right',
+                            clickOpens: true,
+                            allowInput: false,
+                            closeOnSelect: false,
+                            onChange: (date) => {
+                                if (date) {
+                                    const isoDate = date.toISOString().split('T')[0];
+                                    toDateInput.setAttribute('data-iso-date', isoDate);
+                                }
+                            }
+                        });
+                    } catch (error) {
+                        handleError(error, 'DatePicker initialization (to)');
+                    }
+                }
+            };
+
+            // Position adjustment using RAF
+            const adjustPosition = () => {
+                if (!panel || !selectBox || panel.style.display !== 'block') return;
+
+                // Reset positioning
+                panel.style.left = '';
+                panel.style.right = '';
+                panel.style.top = '';
+                panel.style.bottom = '';
+                panel.style.maxHeight = '';
+                panel.style.overflowY = '';
+                panel.style.marginTop = '0.5rem';
+                panel.style.marginBottom = '';
+
+                const selectBoxRect = selectBox.getBoundingClientRect();
+                const panelRect = panel.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const minSpace = 20;
+
+                // Horizontal adjustment
+                let leftAdjust = 0;
+                if (panelRect.right > viewportWidth - minSpace) {
+                    leftAdjust = viewportWidth - panelRect.right - minSpace;
+                } else if (panelRect.left < minSpace) {
+                    leftAdjust = minSpace - panelRect.left;
+                }
+
+                if (leftAdjust !== 0) {
+                    const currentLeft = parseFloat(getComputedStyle(panel).left) || 0;
+                    panel.style.left = `${currentLeft + leftAdjust}px`;
+                }
+
+                // Vertical adjustment
+                const spaceBelow = viewportHeight - selectBoxRect.bottom;
+                const spaceAbove = selectBoxRect.top;
+                const panelHeight = panelRect.height;
+
+                if (spaceBelow < panelHeight + minSpace && spaceAbove > spaceBelow) {
+                    // Show above
+                    panel.style.top = 'auto';
+                    panel.style.bottom = '100%';
+                    panel.style.marginTop = '';
+                    panel.style.marginBottom = '0.5rem';
+                } else if (spaceBelow < panelHeight + minSpace) {
+                    // Limit height
+                    const maxHeight = spaceBelow - minSpace;
+                    if (maxHeight > 100) {
+                        panel.style.maxHeight = `${maxHeight}px`;
+                        panel.style.overflowY = 'auto';
+                    }
+                }
+            };
+
+            // Toggle dropdown
+            const toggleDropdown = (forceClose = false) => {
+                const shouldOpen = forceClose ? false : !state.isOpen;
+
+                state.isOpen = shouldOpen;
+                panel.style.display = shouldOpen ? 'block' : 'none';
+                selectBox.classList.toggle('active', shouldOpen);
+                selectBox.setAttribute('aria-expanded', String(shouldOpen));
+
+                if (shouldOpen) {
+                    scheduleUpdate(panel, () => {
+                        adjustPosition();
+                        initDatePickers();
+                    });
+                }
+            };
+
+            // Select box click
+            const handleSelectBoxClick = (e) => {
+                e.stopPropagation();
+                toggleDropdown();
+            };
+            selectBox.addEventListener('click', handleSelectBoxClick);
+            listeners.push(() => selectBox.removeEventListener('click', handleSelectBoxClick));
+
+            // Keyboard support
+            const handleKeydown = (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleDropdown();
+                } else if (e.key === 'Escape' && state.isOpen) {
+                    toggleDropdown(true);
+                }
+            };
+            selectBox.addEventListener('keydown', handleKeydown);
+            listeners.push(() => selectBox.removeEventListener('keydown', handleKeydown));
+
+            // Window resize/scroll handlers
+            const handlePositionUpdate = () => {
+                if (state.isOpen) {
+                    scheduleUpdate(panel, adjustPosition);
+                }
+            };
+
+            window.addEventListener('resize', handlePositionUpdate);
+            window.addEventListener('scroll', handlePositionUpdate, true);
+            listeners.push(() => {
+                window.removeEventListener('resize', handlePositionUpdate);
+                window.removeEventListener('scroll', handlePositionUpdate, true);
+            });
+
+            // Click outside to close
+            const handleOutsideClick = (e) => {
+                const isDatepickerClick = e.target.closest('.datepicker-container') ||
+                    e.target.closest('.datepicker-popup') ||
+                    e.target === fromDateInput ||
+                    e.target === toDateInput;
+
+                if (!panel.contains(e.target) &&
+                    !selectBox.contains(e.target) &&
+                    !isDatepickerClick &&
+                    state.isOpen) {
+                    toggleDropdown(true);
+                }
+            };
+            document.addEventListener('click', handleOutsideClick);
+            listeners.push(() => document.removeEventListener('click', handleOutsideClick));
+
+            // Prevent dropdown close on date input click
+            const stopProp = (e) => e.stopPropagation();
+            [fromDateInput, toDateInput].filter(Boolean).forEach(input => {
+                input.addEventListener('click', stopProp);
+                listeners.push(() => input.removeEventListener('click', stopProp));
+            });
+
+            // Quick select buttons
+            dateButtons.forEach(btn => {
+                const handleBtnClick = (e) => {
+                    e.preventDefault();
+
+                    const value = btn.getAttribute('data-value');
+                    const text = btn.textContent.trim();
+
+                    state.currentValue = value;
+                    state.isInternalChange = true;
+
+                    hiddenSelect.value = value;
+                    if (label) label.textContent = text;
+
+                    toggleDropdown(true);
+
+                    hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    triggerCallback({
+                        value,
+                        text,
+                        fromDate: null,
+                        toDate: null,
+                        type: 'quick_select'
+                    });
+                };
+
+                btn.addEventListener('click', handleBtnClick);
+                listeners.push(() => btn.removeEventListener('click', handleBtnClick));
+            });
+
+            // Custom date submit
+            const handleSubmit = (e) => {
+                e.preventDefault();
+
+                if (!fromDateInput?.value || !toDateInput?.value) {
+                    handleError(new Error('Both dates required'), 'Custom date submission');
+                    return;
+                }
+
                 const fromDate = fromDateInput.getAttribute('data-iso-date') ||
-                    convertToBackendFormat(fromDateInput.value);
+                    dateUtils.convertToISO(fromDateInput.value);
                 const toDate = toDateInput.getAttribute('data-iso-date') ||
-                    convertToBackendFormat(toDateInput.value);
+                    dateUtils.convertToISO(toDateInput.value);
 
-                // Find or create "custom" option (prefer 'custom' over 'full_date')
+                if (!fromDate || !toDate) {
+                    handleError(new Error('Invalid date format'), 'Custom date submission');
+                    return;
+                }
+
+                if (!dateUtils.validateRange(fromDate, toDate)) {
+                    handleError(new Error('From date must be before To date'), 'Custom date submission');
+                    return;
+                }
+
+                state.customDates = { from: fromDate, to: toDate };
+                state.isInternalChange = true;
+
+                // Find or create custom option
                 let customOption = Array.from(hiddenSelect.options).find(opt =>
-                    opt.value === 'custom'
+                    opt.value === 'custom' || opt.value === 'full_date'
                 );
 
-                // If no 'custom' option, check for 'full_date' and update it
-                if (!customOption) {
-                    customOption = Array.from(hiddenSelect.options).find(opt =>
-                        opt.value === 'full_date'
-                    );
-                    if (customOption) {
-                        // Update existing 'full_date' option to 'custom'
-                        customOption.value = 'custom';
-                        customOption.text = 'Custom Date';
-                    }
-                }
-
-                // Create new option if still not found
                 if (!customOption) {
                     customOption = document.createElement('option');
                     customOption.value = 'custom';
                     customOption.text = 'Custom Date';
                     hiddenSelect.appendChild(customOption);
+                } else if (customOption.value === 'full_date') {
+                    customOption.value = 'custom';
+                    customOption.text = 'Custom Date';
                 }
 
-                // Set custom option as selected
                 hiddenSelect.value = 'custom';
+                if (label) label.textContent = 'Custom Date';
 
-                // Always update label to "Custom Date"
-                if (label) {
-                    label.textContent = 'Custom Date';
-                }
-
-                // Also update the option text to ensure consistency
-                customOption.text = 'Custom Date';
-
-                // Close dropdown
-                checkBoxes.style.display = 'none';
-                dateSelectBox.classList.remove('active');
-
-                // Store custom dates in data attributes for reference
                 hiddenSelect.setAttribute('data-from-date', fromDate);
                 hiddenSelect.setAttribute('data-to-date', toDate);
 
-                // Mark as internal change to prevent duplicate callback
-                isInternalChange = true;
+                toggleDropdown(true);
 
-                // Trigger change event
                 hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));
 
-                // Call callback function with custom date data
                 triggerCallback({
                     value: 'custom',
                     text: 'Custom Date',
-                    fromDate: fromDate,
-                    toDate: toDate,
+                    fromDate,
+                    toDate,
                     type: 'custom_date'
                 });
-            }
-        };
+            };
 
-        if (submitButton) {
-            submitButton.addEventListener('click', submitButtonClickHandler);
-            cleanup.push(() => submitButton.removeEventListener('click', submitButtonClickHandler));
-        }
-
-        // Track if change was triggered by our handlers (to avoid duplicate callbacks)
-        let isInternalChange = false;
-
-        // Also listen to programmatic changes on hidden select (only if not triggered internally)
-        const hiddenSelectChangeHandler = () => {
-            // Skip if this change was triggered by our internal handlers
-            if (isInternalChange) {
-                isInternalChange = false;
-                return;
+            if (submitButton) {
+                submitButton.addEventListener('click', handleSubmit);
+                listeners.push(() => submitButton.removeEventListener('click', handleSubmit));
             }
 
-            const selectedOption = hiddenSelect.options[hiddenSelect.selectedIndex];
-            if (selectedOption) {
+            // Listen for programmatic changes
+            const handleHiddenSelectChange = () => {
+                if (state.isInternalChange) {
+                    state.isInternalChange = false;
+                    return;
+                }
+
+                const selectedOption = hiddenSelect.options[hiddenSelect.selectedIndex];
+                if (!selectedOption) return;
+
+                if (label) label.textContent = selectedOption.text;
+
                 const fromDate = hiddenSelect.getAttribute('data-from-date');
                 const toDate = hiddenSelect.getAttribute('data-to-date');
 
@@ -522,87 +610,93 @@ function convertSelectToStyledDropdown(selectId, options = {}) {
                     toDate: toDate || null,
                     type: 'programmatic_change'
                 });
-            }
-        };
-        hiddenSelect.addEventListener('change', hiddenSelectChangeHandler);
-        cleanup.push(() => hiddenSelect.removeEventListener('change', hiddenSelectChangeHandler));
+            };
 
-        // Auto-update label when hidden select value changes (for programmatic changes)
-        const hiddenSelectLabelUpdateHandler = () => {
-            if (label && hiddenSelect.selectedIndex >= 0) {
-                const selectedOption = hiddenSelect.options[hiddenSelect.selectedIndex];
-                if (selectedOption) {
-                    label.textContent = selectedOption.text;
-                }
-            }
-        };
-        hiddenSelect.addEventListener('change', hiddenSelectLabelUpdateHandler);
-        cleanup.push(() => hiddenSelect.removeEventListener('change', hiddenSelectLabelUpdateHandler));
+            hiddenSelect.addEventListener('change', handleHiddenSelectChange);
+            listeners.push(() => hiddenSelect.removeEventListener('change', handleHiddenSelectChange));
 
-        // Destroy method to clean up all resources
-        const destroy = () => {
-            // Run all cleanup functions
-            cleanup.forEach(fn => {
-                try {
-                    fn();
-                } catch (error) {
-                    console.error('Error during cleanup:', error);
+            // Destroy method
+            const destroy = () => {
+                // Clean up listeners
+                listeners.forEach(cleanup => {
+                    try {
+                        cleanup();
+                    } catch (error) {
+                        handleError(error, 'Cleanup');
+                    }
+                });
+
+                // Destroy DatePickers
+                [fromDatePicker, toDatePicker].forEach(picker => {
+                    if (picker?.destroy) {
+                        try {
+                            picker.destroy();
+                        } catch (error) {
+                            handleError(error, 'DatePicker cleanup');
+                        }
+                    }
+                });
+
+                // Cancel any pending RAF
+                const rafId = rafIds.get(panel);
+                if (rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafIds.delete(panel);
                 }
+
+                // Remove from instances map
+                instances.delete(selectElement);
+
+                // Restore original select
+                if (wrapper.parentNode) {
+                    wrapper.parentNode.replaceChild(selectElement, wrapper);
+                }
+            };
+
+            // Create instance
+            const instance = {
+                wrapper,
+                hiddenSelect,
+                selectBox,
+                panel,
+                label,
+                fromDateInput,
+                toDateInput,
+                submitButton,
+                destroy,
+                getState: () => ({ ...state }),
+                getValue: () => hiddenSelect.value,
+                setValue: (value) => {
+                    const option = Array.from(hiddenSelect.options).find(opt => opt.value === value);
+                    if (option) {
+                        hiddenSelect.value = value;
+                        hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            };
+
+            // Store instance
+            instances.set(selectElement, instance);
+
+            return instance;
+        };
+
+        // Initialize
+        if (document.readyState === 'loading') {
+            return new Promise(resolve => {
+                document.addEventListener('DOMContentLoaded', () => resolve(init()));
             });
-
-            // Destroy DatePicker instances
-            if (fromDatePicker && typeof fromDatePicker.destroy === 'function') {
-                try {
-                    fromDatePicker.destroy();
-                } catch (error) {
-                    console.error('Error destroying fromDatePicker:', error);
-                }
-            }
-            if (toDatePicker && typeof toDatePicker.destroy === 'function') {
-                try {
-                    toDatePicker.destroy();
-                } catch (error) {
-                    console.error('Error destroying toDatePicker:', error);
-                }
-            }
-
-            // Remove global reference
-            delete window[selectId + '_styled'];
-        };
-
-        // Store reference globally for easy access (accessible as window.dateFilter_styled, etc.)
-        const instance = {
-            wrapper: wrapper,
-            hiddenSelect: hiddenSelect,
-            dateSelectBox: dateSelectBox,
-            checkBoxes: checkBoxes,
-            label: label,
-            fromDateInput: fromDateInput,
-            toDateInput: toDateInput,
-            submitButton: submitButton,
-            fromDatePicker: fromDatePicker,
-            toDatePicker: toDatePicker,
-            destroy: destroy
-        };
-
-        window[selectId + '_styled'] = instance;
-
-        // Return instance with destroy method
-        return instance;
-    };
-
-    // If DOM is ready, init immediately, otherwise wait
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        // Small delay to ensure select is in DOM
-        setTimeout(() => init(), 10);
+        } else {
+            return init();
+        }
     }
-}
 
-// Export for use
-if (typeof window !== 'undefined') {
-    window.convertSelectToStyledDropdown = convertSelectToStyledDropdown;
-}
+    // Export
+    if (typeof window !== 'undefined') {
+        window.convertSelectToStyledDropdown = convertSelectToStyledDropdown;
+    }
 
-
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = convertSelectToStyledDropdown;
+    }
+})();
