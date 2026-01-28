@@ -12,7 +12,7 @@ from django.db.models import (
     OuterRef,
     Subquery,
 )
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate, TruncWeek, TruncMonth
 from django.contrib import messages
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
@@ -21,9 +21,9 @@ from decimal import Decimal
 from base.getDates import getDates
 from .models import Supplier, SupplierInvoice, SupplierPayment
 from .forms import SupplierForm, SupplierInvoiceForm, SupplierPaymentForm
-
 from base.utility import get_periodic_data, get_period_label, render_paginated_response
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -100,93 +100,108 @@ def get_comparison_data(date_filter, current_start, current_end):
 
 
 def get_period_data(invoices, start_date, end_date, period_type):
-    """Get aggregated data for a specific period"""
+    """
+    Get aggregated data for a specific period using database-level grouping
+
+    OPTIMIZED: Uses Django's date truncation functions instead of Python loops
+    to perform grouping at the database level, dramatically reducing queries.
+
+    Args:
+        invoices: QuerySet of SupplierInvoice objects
+        start_date: Period start date
+        end_date: Period end date
+        period_type: One of 'daily', 'monthly', 'quarterly', 'yearly'
+
+    Returns:
+        List of dictionaries containing date, amount, and invoice count
+    """
+
     if period_type == "daily":
-        total_amount = invoices.aggregate(total=Sum("total_amount"))[
-            "total"
-        ] or Decimal("0")
-        total_invoices = invoices.count()
+        # For daily, return single aggregated data point
+        aggregated = invoices.aggregate(
+            total_amount=Coalesce(Sum("total_amount"), Decimal("0")),
+            total_invoices=Count("id"),
+        )
+
         return [
             {
                 "date": start_date.strftime("%Y-%m-%d"),
-                "amount": float(total_amount),
-                "invoices": total_invoices,
+                "amount": float(aggregated["total_amount"]),
+                "invoices": aggregated["total_invoices"],
             }
         ]
+
     elif period_type == "monthly":
-        daily_data = []
-        current_date = start_date
-        while current_date <= end_date:
-            day_invoices = invoices.filter(invoice_date__date=current_date)
-            day_amount = day_invoices.aggregate(total=Sum("total_amount"))[
-                "total"
-            ] or Decimal("0")
-            day_count = day_invoices.count()
-            daily_data.append(
-                {
-                    "date": current_date.strftime("%Y-%m-%d"),
-                    "amount": float(day_amount),
-                    "invoices": day_count,
-                }
+        # Group by day using database truncation
+        daily_data = (
+            invoices.annotate(day=TruncDate("invoice_date"))
+            .values("day")
+            .annotate(
+                amount=Coalesce(Sum("total_amount"), Decimal("0")),
+                invoices=Count("id"),
             )
-            current_date += timedelta(days=1)
-        return daily_data
+            .order_by("day")
+        )
+
+        return [
+            {
+                "date": item["day"].strftime("%Y-%m-%d"),
+                "amount": float(item["amount"]),
+                "invoices": item["invoices"],
+            }
+            for item in daily_data
+        ]
+
     elif period_type == "quarterly":
-        weekly_data = []
-        current_date = start_date
-        week_num = 1
-        while current_date <= end_date:
-            week_end = min(current_date + timedelta(days=6), end_date)
-            week_invoices = invoices.filter(
-                invoice_date__date__range=[current_date, week_end]
+        # Group by week using database truncation
+        weekly_data = (
+            invoices.annotate(week=TruncWeek("invoice_date"))
+            .values("week")
+            .annotate(
+                amount=Coalesce(Sum("total_amount"), Decimal("0")),
+                invoices=Count("id"),
             )
-            week_amount = week_invoices.aggregate(total=Sum("total_amount"))[
-                "total"
-            ] or Decimal("0")
-            week_count = week_invoices.count()
-            weekly_data.append(
-                {
-                    "date": current_date.strftime("%Y-%m-%d"),
-                    "amount": float(week_amount),
-                    "invoices": week_count,
-                }
-            )
-            current_date += timedelta(days=7)
-            week_num += 1
-        return weekly_data
+            .order_by("week")
+        )
+
+        return [
+            {
+                "date": item["week"].strftime("%Y-%m-%d"),
+                "amount": float(item["amount"]),
+                "invoices": item["invoices"],
+            }
+            for item in weekly_data
+        ]
+
     else:  # yearly
-        monthly_data = []
-        current_date = start_date
-        while current_date <= end_date:
-            month_end = (current_date.replace(day=28) + timedelta(days=4)).replace(
-                day=1
-            ) - timedelta(days=1)
-            month_end = min(month_end, end_date)
-            month_invoices = invoices.filter(
-                invoice_date__date__range=[current_date, month_end]
+        # Group by month using database truncation
+        monthly_data = (
+            invoices.annotate(month=TruncMonth("invoice_date"))
+            .values("month")
+            .annotate(
+                amount=Coalesce(Sum("total_amount"), Decimal("0")),
+                invoices=Count("id"),
             )
-            month_amount = month_invoices.aggregate(total=Sum("total_amount"))[
-                "total"
-            ] or Decimal("0")
-            month_count = month_invoices.count()
-            monthly_data.append(
-                {
-                    "date": current_date.strftime("%Y-%m-%d"),
-                    "amount": float(month_amount),
-                    "invoices": month_count,
-                }
-            )
-            if month_end.month == 12:
-                current_date = month_end.replace(
-                    year=month_end.year + 1, month=1, day=1
-                )
-            else:
-                current_date = month_end.replace(month=month_end.month + 1, day=1)
-        return monthly_data
+            .order_by("month")
+        )
+
+        return [
+            {
+                "date": item["month"].strftime("%Y-%m-%d"),
+                "amount": float(item["amount"]),
+                "invoices": item["invoices"],
+            }
+            for item in monthly_data
+        ]
 
 
 def dashboard_fetch(request):
-    """AJAX endpoint to fetch supplier dashboard data"""
+    """
+    AJAX endpoint to fetch supplier dashboard data
+
+    OPTIMIZED: Combines multiple aggregations into fewer queries and uses
+    single-pass list comprehensions for percentage calculations.
+    """
     date_filter = request.GET.get("date_filter", "this_month")
     start_date, end_date = getDates(request)
 
@@ -199,44 +214,33 @@ def dashboard_fetch(request):
         is_deleted=False, payment_date__date__range=[start_date, end_date]
     ).select_related("supplier")
 
-    # Calculate PERIOD-BASED totals (for "Total Invoiced" and "Total Paid" display)
-    # These show amounts within the selected date range
-    total_invoiced = invoices.aggregate(
-        total=Coalesce(
+    # Calculate PERIOD-BASED totals in a single query
+    invoice_metrics = invoices.aggregate(
+        total_invoiced=Coalesce(
             Sum("total_amount"),
-            Value(Decimal("0.00")),
+            Decimal("0"),
             output_field=DecimalField(max_digits=16, decimal_places=2),
-        )
-    )["total"] or Decimal("0.00")
+        ),
+        total_invoices=Count("id"),
+    )
 
+    # Get period-based payments
     total_paid = payments.aggregate(
         total=Coalesce(
             Sum("amount"),
-            Value(Decimal("0.00")),
+            Decimal("0"),
             output_field=DecimalField(max_digits=16, decimal_places=2),
         )
-    )["total"] or Decimal("0.00")
+    )["total"]
 
-    # Calculate ALL-TIME totals (for "Total Outstanding" calculation)
-    total_all_invoiced = SupplierInvoice.objects.filter(is_deleted=False).aggregate(
-        total=Coalesce(
-            Sum("total_amount"),
-            Value(Decimal("0.00")),
-            output_field=DecimalField(max_digits=16, decimal_places=2),
-        )
-    )["total"] or Decimal("0.00")
-
-    total_all_paid = SupplierPayment.objects.filter(is_deleted=False).aggregate(
-        total=Coalesce(
-            Sum("amount"),
-            Value(Decimal("0.00")),
-            output_field=DecimalField(max_digits=16, decimal_places=2),
-        )
-    )["total"] or Decimal("0.00")
+    # Calculate ALL-TIME totals (for "Total Outstanding" calculation) - not used in response but kept for reference
+    # total_all_invoiced = SupplierInvoice.objects.filter(is_deleted=False).aggregate(...)
+    # total_all_paid = SupplierPayment.objects.filter(is_deleted=False).aggregate(...)
 
     # Calculate metrics
-    total_invoices = invoices.count()  # Period-based invoice count
-    outstanding_balance = total_invoiced - total_paid  # Period-based outstanding
+    total_invoiced = invoice_metrics["total_invoiced"]
+    total_invoices = invoice_metrics["total_invoices"]
+    outstanding_balance = total_invoiced - total_paid
 
     # Calculate comparison data for line chart
     comparison_data = get_comparison_data(date_filter, start_date, end_date)
@@ -248,7 +252,7 @@ def dashboard_fetch(request):
             count=Count("id"),
             amount=Coalesce(
                 Sum("total_amount"),
-                Value(Decimal("0.00")),
+                Decimal("0"),
                 output_field=DecimalField(max_digits=16, decimal_places=2),
             ),
         )
@@ -262,7 +266,7 @@ def dashboard_fetch(request):
             count=Count("id"),
             amount=Coalesce(
                 Sum("amount"),
-                Value(Decimal("0.00")),
+                Decimal("0"),
                 output_field=DecimalField(max_digits=16, decimal_places=2),
             ),
         )
@@ -276,7 +280,7 @@ def dashboard_fetch(request):
             count=Count("id"),
             amount=Coalesce(
                 Sum("total_amount"),
-                Value(Decimal("0.00")),
+                Decimal("0"),
                 output_field=DecimalField(max_digits=16, decimal_places=2),
             ),
         )
@@ -290,7 +294,7 @@ def dashboard_fetch(request):
             count=Count("id"),
             amount=Coalesce(
                 Sum("total_amount"),
-                Value(Decimal("0.00")),
+                Decimal("0"),
                 output_field=DecimalField(max_digits=16, decimal_places=2),
             ),
         )
@@ -299,68 +303,65 @@ def dashboard_fetch(request):
 
     # Prepare response data
     stats = {
-        "total_invoices": total_invoices,  # Period-based count
-        "total_invoiced": float(total_invoiced),  # Period-based total
-        "total_paid": float(total_paid),  # Period-based total
-        "outstanding_balance": float(outstanding_balance),  # Period-based outstanding
+        "total_invoices": total_invoices,
+        "total_invoiced": float(total_invoiced),
+        "total_paid": float(total_paid),
+        "outstanding_balance": float(outstanding_balance),
         "net_amount": float(total_paid),
         "total_profit": float(outstanding_balance),
         "total_discount": float(Decimal("0")),
     }
 
-    # Invoice status data processing
-    invoice_status_data = []
-    for status in invoice_status_breakdown:
-        percentage = (
-            (status["amount"] / total_invoiced * 100) if total_invoiced > 0 else 0
-        )
-        invoice_status_data.append(
-            {
-                "payment_status": status["status"].replace("_", " ").title(),
-                "count": status["count"],
-                "amount": float(status["amount"] or 0),
-                "percentage": round(percentage, 1),
-            }
-        )
+    # Convert total_invoiced to float once for reuse
+    total_invoiced_float = float(total_invoiced)
 
-    # Supplier breakdown data processing
-    # Calculate percentage based on sum of top 10 suppliers only (for pie chart accuracy)
-    # This ensures percentages add up to 100% for the displayed suppliers
-    supplier_data = []
-    # Convert QuerySet to list to avoid multiple evaluations
+    # Invoice status data processing - single pass with list comprehension
+    invoice_status_data = [
+        {
+            "payment_status": status["status"].replace("_", " ").title(),
+            "count": status["count"],
+            "amount": float(status["amount"]),
+            "percentage": (
+                round((float(status["amount"]) / total_invoiced_float * 100), 1)
+                if total_invoiced_float > 0
+                else 0
+            ),
+        }
+        for status in invoice_status_breakdown
+    ]
+
+    # Supplier breakdown data processing - single pass with list comprehension
     supplier_list = list(supplier_breakdown)
-    # Calculate total of top 10 suppliers only
-    top10_total = sum(float(s["amount"] or 0) for s in supplier_list)
+    top10_total = float(sum(float(s["amount"]) for s in supplier_list))
 
-    for supplier in supplier_list:
-        supplier_amount = float(supplier["amount"] or 0)
-        percentage = (supplier_amount / top10_total * 100) if top10_total > 0 else 0
-        supplier_data.append(
-            {
-                "supplier_name": supplier["supplier__name"] or "Unknown",
-                "count": supplier["count"],
-                "amount": supplier_amount,
-                "percentage": round(percentage, 1),
-            }
-        )
+    supplier_data = [
+        {
+            "supplier_name": supplier["supplier__name"] or "Unknown",
+            "count": supplier["count"],
+            "amount": float(supplier["amount"]),
+            "percentage": (
+                round((float(supplier["amount"]) / top10_total * 100), 1)
+                if top10_total > 0
+                else 0
+            ),
+        }
+        for supplier in supplier_list
+    ]
 
-    # Invoice type data processing
-    # Calculate percentage: (type_amount / total_invoiced) * 100
-    # This shows what percentage of total invoiced amount belongs to each invoice type
-    invoice_type_data = []
-    for inv_type in invoice_type_breakdown:
-        type_amount = float(inv_type["amount"] or 0)
-        percentage = (
-            (type_amount / float(total_invoiced) * 100) if total_invoiced > 0 else 0
-        )
-        invoice_type_data.append(
-            {
-                "category_name": inv_type["invoice_type"].replace("_", " ").title(),
-                "count": inv_type["count"],
-                "amount": type_amount,
-                "percentage": round(percentage, 1),
-            }
-        )
+    # Invoice type data processing - single pass with list comprehension
+    invoice_type_data = [
+        {
+            "category_name": inv_type["invoice_type"].replace("_", " ").title(),
+            "count": inv_type["count"],
+            "amount": float(inv_type["amount"]),
+            "percentage": (
+                round((float(inv_type["amount"]) / total_invoiced_float * 100), 1)
+                if total_invoiced_float > 0
+                else 0
+            ),
+        }
+        for inv_type in invoice_type_breakdown
+    ]
 
     return JsonResponse(
         {
@@ -559,21 +560,42 @@ def fetch_supplier_payments(request, pk):
 
 
 def supplier_detail(request, pk):
-    """View supplier details with invoices and payments tables."""
+    """
+    View supplier details with invoices and payments tables.
+
+    OPTIMIZED: Uses database-level aggregations instead of Python loops
+    to calculate totals and counts.
+    """
     supplier = get_object_or_404(Supplier, id=pk)
 
     # Get actual invoices from database
     invoices = supplier.invoices.filter(is_deleted=False).order_by("-invoice_date")
 
-    # Calculate invoice summary data
-    total_invoice_amount = sum(invoice.total_amount for invoice in invoices)
-    unpaid_invoices_count = sum(1 for invoice in invoices if invoice.status != "PAID")
+    # Calculate invoice summary data using database aggregation
+    invoice_metrics = supplier.invoices.filter(is_deleted=False).aggregate(
+        total_amount=Coalesce(
+            Sum("total_amount"),
+            Decimal("0"),
+            output_field=DecimalField(max_digits=16, decimal_places=2),
+        ),
+        unpaid_count=Count("id", filter=~Q(status="PAID")),
+    )
 
-    # Get actual payments from database (replace sample data later)
+    # Get actual payments from database
     payments = supplier.payments_made.filter(is_deleted=False).order_by("-payment_date")
 
-    # Calculate payment summary data
-    total_payment_amount = sum(payment.amount for payment in payments)
+    # Calculate payment summary data using database aggregation
+    total_payment_amount = supplier.payments_made.filter(is_deleted=False).aggregate(
+        total=Coalesce(
+            Sum("amount"),
+            Decimal("0"),
+            output_field=DecimalField(max_digits=16, decimal_places=2),
+        )
+    )["total"]
+
+    # Calculate outstanding amount
+    total_invoice_amount = invoice_metrics["total_amount"]
+    unpaid_invoices_count = invoice_metrics["unpaid_count"]
     outstanding_amount = total_invoice_amount - total_payment_amount
 
     context = {
@@ -878,13 +900,31 @@ def payment_detail(request, supplier_pk, payment_pk):
 
 
 def get_opening_balance(supplier, start_date):
-    """Get the opening balance for a supplier at a specific date."""
+    """
+    Get the opening balance for a supplier at a specific date.
+
+    OPTIMIZED: Removed unnecessary ordering and uses Coalesce for null handling.
+    """
     invoice_filters = Q(is_deleted=False) & Q(invoice_date__date__lt=start_date)
     payment_filters = Q(is_deleted=False) & Q(payment_date__date__lt=start_date)
-    invoices = supplier.invoices.filter(invoice_filters).order_by("invoice_date")
-    payments = supplier.payments_made.filter(payment_filters).order_by("payment_date")
-    total_invoiced = invoices.aggregate(total=Sum("total_amount"))["total"] or 0
-    total_paid = payments.aggregate(total=Sum("amount"))["total"] or 0
+
+    # Aggregate without ordering (ordering not needed for aggregation)
+    total_invoiced = supplier.invoices.filter(invoice_filters).aggregate(
+        total=Coalesce(
+            Sum("total_amount"),
+            Decimal("0"),
+            output_field=DecimalField(max_digits=16, decimal_places=2),
+        )
+    )["total"]
+
+    total_paid = supplier.payments_made.filter(payment_filters).aggregate(
+        total=Coalesce(
+            Sum("amount"),
+            Decimal("0"),
+            output_field=DecimalField(max_digits=16, decimal_places=2),
+        )
+    )["total"]
+
     return total_invoiced - total_paid
 
 
@@ -1007,17 +1047,22 @@ def supplier_report_fetch(request, pk):
     # Get report data
     context = get_supplier_report_data(supplier, date_range)
 
-    # Render table HTML
-    table_html = render_to_string(
-        "supplier/report/fetch.html",
-        {
-            "supplier": supplier,
-            "transactions": context["transactions"],
-            "opening_balance": context["opening_balance"],
-            "start_date": start_date,
-        },
+    # Render paginated table
+    paginated_data = render_paginated_response(
         request=request,
+        queryset=context["transactions"],
+        table_template="supplier/report/fetch.html",
+        per_page=20,
+        supplier=supplier,
+        opening_balance=context["opening_balance"],
+        start_date=start_date,
     )
+
+    # Extract the data from the JsonResponse
+    # render_paginated_response returns a JsonResponse, we need to get its content
+    import json
+
+    paginated_content = json.loads(paginated_data.content.decode("utf-8"))
 
     return JsonResponse(
         {
@@ -1027,7 +1072,8 @@ def supplier_report_fetch(request, pk):
             "outstanding_balance": float(context["outstanding_balance"]),
             "opening_balance": float(context["opening_balance"]),
             "transaction_count": len(context["transactions"]),
-            "table_html": table_html,
+            "table_html": paginated_content.get("html", ""),
+            "pagination": paginated_content.get("pagination", ""),
         }
     )
 

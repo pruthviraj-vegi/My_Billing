@@ -1,5 +1,4 @@
 from datetime import datetime, date, timedelta
-import time
 from functools import wraps
 from django.core.paginator import Paginator
 from django.http import JsonResponse
@@ -234,28 +233,6 @@ def get_period_label(start_date, end_date, period_type):
         return f"Q{((start_date.month - 1) // 3) + 1} {start_date.year}"
     else:  # yearly
         return f"FY {start_date.year}-{end_date.year}"
-
-
-def timed(fn):
-    """
-    Decorator to measure execution time of a function.
-    Stores the last execution time in `fn._last_elapsed_time`.
-    """
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = fn(*args, **kwargs)
-        elapsed = time.perf_counter() - start
-
-        print(f"Time taken: {elapsed} seconds")
-
-        # Store timing on the function itself
-        wrapper._last_elapsed_time = elapsed
-        return result
-
-    wrapper._last_elapsed_time = None  # init attribute
-    return wrapper
 
 
 def render_paginated_response(

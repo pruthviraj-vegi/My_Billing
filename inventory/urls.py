@@ -7,11 +7,6 @@ urlpatterns = [
     # Dashboard
     path("dashboard/", views.inventory_dashboard, name="dashboard"),
     path("dashboard/fetch/", views.inventory_dashboard_fetch, name="dashboard_fetch"),
-    path(
-        "dashboard/supplier-shares/",
-        views.inventory_supplier_shares_fetch,
-        name="dashboard_supplier_shares",
-    ),
     path("low-stock/", views.low_stock_page, name="low_stock"),
     path("full-product/create/", views.CreateProduct.as_view(), name="product_create"),
     path(
@@ -101,9 +96,17 @@ urlpatterns = [
     # Favorites
     path("favorites/", _views.favorites_home, name="favorites_home"),
     path("favorites/fetch/", _views.fetch_favorites, name="fetch_favorites"),
-    path("favorites/get-variants/", _views.get_variants_for_favorites, name="get_variants_for_favorites"),
+    path(
+        "favorites/get-variants/",
+        _views.get_variants_for_favorites,
+        name="get_variants_for_favorites",
+    ),
     path("favorites/add/<int:variant_id>/", _views.add_favorite, name="add_favorite"),
-    path("favorites/remove/<int:variant_id>/", _views.remove_favorite, name="remove_favorite"),
+    path(
+        "favorites/remove/<int:variant_id>/",
+        _views.remove_favorite,
+        name="remove_favorite",
+    ),
     # Supplier Invoice Tracking
     path(
         "supplier-invoices/",

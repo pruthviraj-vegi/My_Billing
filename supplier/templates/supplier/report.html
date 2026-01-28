@@ -12,20 +12,21 @@
       <!-- Date Filter Dropdown -->
       <form method="get" class="d-inline" id="dateFilterForm">
         <select name="date_filter" class="form-select" id="dateFilter">
-          <option value="this_month" >This Month</option>
-          <option value="last_month" >Last Month</option>
-          <option value="this_quarter" >This Quarter</option>
-          <option value="last_quarter" >Last Quarter</option>
-          <option value="this_finance" >This Finance</option>
-          <option value="last_finance" >Last Finance</option>
-          <option value="full_date" >Full Date</option>
+          <option value="this_month">This Month</option>
+          <option value="last_month">Last Month</option>
+          <option value="this_quarter">This Quarter</option>
+          <option value="last_quarter">Last Quarter</option>
+          <option value="this_finance">This Finance</option>
+          <option value="last_finance">Last Finance</option>
+          <option value="full_date">Full Date</option>
         </select>
       </form>
       <button type="button" class="btn btn-info" id="downloadReportBtn">
         <i class="fas fa-download"></i>
         Download Report
       </button>
-      <a href="{% url 'supplier:detail' supplier.pk %}" class="btn btn-secondary">
+      <a href="{% url 'supplier:detail' supplier.pk %}"
+         class="btn btn-secondary">
         <i class="fas fa-arrow-left"></i>
         Back
       </a>
@@ -176,11 +177,12 @@
             </tbody>
           </table>
         </div>
+        <!-- Pagination Container -->
+        <div id="report_pagination" class="pagination-container"></div>
       </div>
     </div>
   </div>
 {% endblock content %}
-
 {% block extra_js %}
   <script src="{% static 'js/fetchData.js' %}"></script>
   <!-- Visual Select to Styled Dropdown Converter -->
@@ -208,7 +210,7 @@
 
 
       // Custom table loader that handles the backend-rendered HTML
-      async function loadReportTable(tableId, fetchUrl) {
+      async function loadReportTable(tableId, fetchUrl, page = 1) {
         const table = document.getElementById(tableId)
         const tbody = table.querySelector('tbody')
         
@@ -237,7 +239,8 @@
 
           // Build URL with query parameters
           const params = new URLSearchParams({
-            date_filter: dateFilterValue
+            date_filter: dateFilterValue,
+            page: page
           })
 
           // If custom date, add from_date and to_date parameters
@@ -278,6 +281,26 @@
             throw new Error('No table HTML received')
           }
 
+          // Insert pagination HTML if available
+          const paginationContainer = document.getElementById('report_pagination')
+          if (paginationContainer) {
+            paginationContainer.innerHTML = data.pagination || ''
+            
+            // Add click handlers to pagination links
+            if (data.pagination) {
+              const paginationLinks = paginationContainer.querySelectorAll('.page-link')
+              paginationLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                  e.preventDefault()
+                  const page = this.getAttribute('data-page')
+                  if (page) {
+                    loadReportTableWithPage(tableId, fetchUrl, page)
+                  }
+                })
+              })
+            }
+          }
+
         } catch (error) {
           console.error('Error loading report:', error)
           tbody.innerHTML = `
@@ -316,6 +339,11 @@
             })
           }
         }, 100)
+      }
+
+      // Helper function to load table with specific page
+      function loadReportTableWithPage(tableId, fetchUrl, page) {
+        loadReportTable(tableId, fetchUrl, page)
       }
 
       // Download Report function

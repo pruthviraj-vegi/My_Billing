@@ -1,9 +1,10 @@
 {% load custom_filters %}
-
 {% if opening_balance %}
   <tr>
     <td>{{ start_date|date:"M j, Y" }}</td>
-    <td colspan="3" class="text-center"><strong>Opening Balance</strong></td>
+    <td colspan="3" class="text-center">
+      <strong>Opening Balance</strong>
+    </td>
     <td class="text-right">-</td>
     <td class="text-right">-</td>
     <td class="text-right">
@@ -12,9 +13,8 @@
     <td>-</td>
   </tr>
 {% endif %}
-
-{% if transactions %}
-  {% for transaction in transactions %}
+{% if page_obj %}
+  {% for transaction in page_obj %}
     <tr>
       <td>{{ transaction.date|date:"M j, Y" }}</td>
       <td>

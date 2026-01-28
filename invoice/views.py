@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
-from django.db.models import Q, Sum, Count, F
+from django.db.models import Q, Sum, Count, F, DecimalField, OuterRef, Subquery
+from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, Coalesce
 from django.contrib import messages
 from django.views import View
 from cart.models import Cart
@@ -10,14 +11,256 @@ from django.utils import timezone
 from django.db import transaction
 from inventory.services import InventoryService
 from datetime import timedelta
-import logging
 from customer.forms import CustomerForm
 from decimal import Decimal
 from base.getDates import getDates
 from base.utility import get_periodic_data, get_period_label, render_paginated_response
 from customer.signals import reallocate_customer_payments
 
+import logging
+
+
 logger = logging.getLogger(__name__)
+
+
+def invoice_dashboard(request):
+    """Invoice dashboard with date filtering and metrics"""
+
+    return render(request, "invoice/dashboard.html")
+
+
+def invoice_dashboard_fetch(request):
+    """
+    AJAX endpoint to fetch dashboard data
+
+    Optimizations:
+    - Reduced database queries using aggregations
+    - Used Coalesce for cleaner null handling
+    - Consolidated related queries
+    - Improved readability with better variable names
+    """
+
+    # Get date filter and range
+    date_filter = request.GET.get("date_filter", "this_month")
+    start_date, end_date = getDates(request)
+
+    # Base queryset with date filtering
+    invoices = Invoice.objects.filter(invoice_date__date__range=[start_date, end_date])
+
+    # Get all metrics in a single query using aggregation
+    invoice_metrics = invoices.aggregate(
+        total_invoices=Count("id"),
+        total_amount=Coalesce(Sum("amount"), Decimal("0")),
+        total_discount=Coalesce(Sum("discount_amount"), Decimal("0")),
+        total_paid=Coalesce(Sum("paid_amount"), Decimal("0")),
+        cancelled_amount=Coalesce(
+            Sum("amount", filter=Q(is_cancelled=True)), Decimal("0")
+        ),
+    )
+
+    # Get return invoice metrics
+    return_metrics = ReturnInvoice.objects.filter(
+        return_date__date__range=[start_date, end_date],
+        invoice__is_cancelled=False,
+    ).aggregate(total_return_amount=Coalesce(Sum("refund_amount"), Decimal("0")))
+
+    # Calculate profit from invoice items in a single query
+    # Note: We need to account for returned items when calculating profit
+    # actual_quantity = quantity - returned_quantity
+    from .models import ReturnInvoiceItem
+
+    returned_subquery = (
+        ReturnInvoiceItem.objects.filter(
+            original_invoice_item=OuterRef("pk"), quantity_returned__gt=0
+        )
+        .values("original_invoice_item")
+        .annotate(total_returned=Sum("quantity_returned"))
+        .values("total_returned")
+    )
+
+    profit_data = (
+        InvoiceItem.objects.filter(
+            invoice__invoice_date__date__range=[start_date, end_date],
+            invoice__is_cancelled=False,
+            unit_price__isnull=False,
+            purchase_price__isnull=False,
+        )
+        .annotate(
+            returned_quantity=Coalesce(
+                Subquery(returned_subquery),
+                Decimal("0"),
+            ),
+            actual_qty=F("quantity") - F("returned_quantity"),
+        )
+        .aggregate(
+            total_profit=Coalesce(
+                Sum(
+                    (F("unit_price") - F("purchase_price")) * F("actual_qty"),
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+            )
+        )
+    )
+
+    # Extract metrics
+    total_amount = invoice_metrics["total_amount"]
+    total_discount = invoice_metrics["total_discount"]
+    total_paid = invoice_metrics["total_paid"]
+    total_cancelled_amount = invoice_metrics["cancelled_amount"]
+    total_return_amount = return_metrics["total_return_amount"]
+    total_profit = profit_data["total_profit"] - total_discount
+
+    # Calculate derived metrics
+    net_amount = (
+        total_amount - total_discount - total_return_amount - total_cancelled_amount
+    )
+    outstanding_amount = net_amount - total_paid
+
+    # Get comparison data for line chart
+    comparison_data = get_comparison_data(date_filter, start_date, end_date)
+
+    # Payment status breakdown with annotations
+    payment_status_breakdown = list(
+        invoices.values("payment_status")
+        .annotate(count=Count("id"), amount=Coalesce(Sum("amount"), Decimal("0")))
+        .order_by("payment_status")
+    )
+
+    # Payment type breakdown with annotations
+    payment_type_breakdown = list(
+        invoices.values("payment_type")
+        .annotate(count=Count("id"), amount=Coalesce(Sum("amount"), Decimal("0")))
+        .order_by("payment_type")
+    )
+
+    # Category breakdown from invoice items
+    category_breakdown = list(
+        InvoiceItem.objects.filter(
+            invoice__invoice_date__date__range=[start_date, end_date],
+            invoice__is_cancelled=False,
+        )
+        .select_related("product_variant__product__category")
+        .values("product_variant__product__category__name")
+        .annotate(
+            count=Count("id"),
+            amount=Coalesce(
+                Sum(F("unit_price") * F("quantity"), output_field=DecimalField()),
+                Decimal("0"),
+            ),
+        )
+        .order_by("-count")
+    )
+
+    # Build stats dictionary
+    stats = {
+        "total_invoices": invoice_metrics["total_invoices"],
+        "total_amount": float(total_amount),
+        "total_discount": float(total_discount),
+        "total_paid": float(total_paid),
+        "net_amount": float(net_amount),
+        "outstanding_amount": float(outstanding_amount),
+        "total_profit": float(total_profit),
+        "total_return_amount": float(total_return_amount + total_cancelled_amount),
+    }
+
+    # Process payment status breakdown
+    payment_status_data = _process_breakdown_data(
+        payment_status_breakdown, total_amount, "payment_status"
+    )
+
+    # Process payment type breakdown
+    payment_type_data = _process_breakdown_data(
+        payment_type_breakdown, total_amount, "payment_type"
+    )
+
+    # Process category breakdown
+    category_total = sum(float(cat["amount"]) for cat in category_breakdown)
+    category_data = _process_category_data(category_breakdown, category_total)
+
+    # Return response
+    return JsonResponse(
+        {
+            "success": True,
+            "stats": stats,
+            "payment_status_breakdown": payment_status_data,
+            "payment_type_breakdown": payment_type_data,
+            "category_breakdown": category_data,
+            "comparison_data": comparison_data,
+            "date_range": {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "filter": date_filter,
+            },
+        }
+    )
+
+
+def _process_breakdown_data(breakdown_list, total_amount, field_name):
+    """
+    Helper function to process payment status/type breakdown data
+
+    Args:
+        breakdown_list: List of breakdown dictionaries
+        total_amount: Total amount for percentage calculation
+        field_name: Name of the field (payment_status or payment_type)
+
+    Returns:
+        List of processed breakdown data with percentages
+    """
+    processed_data = []
+    total_amount_float = float(total_amount)
+
+    for item in breakdown_list:
+        amount = float(item["amount"])
+        percentage = (
+            (amount / total_amount_float * 100) if total_amount_float > 0 else 0
+        )
+
+        processed_data.append(
+            {
+                field_name: item[field_name].title(),
+                "count": item["count"],
+                "amount": amount,
+                "percentage": round(percentage, 1),
+            }
+        )
+
+    return processed_data
+
+
+def _process_category_data(category_breakdown, category_total):
+    """
+    Helper function to process category breakdown data
+
+    Args:
+        category_breakdown: List of category dictionaries
+        category_total: Total amount for percentage calculation
+
+    Returns:
+        List of processed category data with percentages
+    """
+    category_data = []
+
+    for category in category_breakdown:
+        category_name = (
+            category["product_variant__product__category__name"] or "Uncategorized"
+        )
+        category_amount = float(category["amount"])
+        percentage = (
+            (category_amount / category_total * 100) if category_total > 0 else 0
+        )
+
+        category_data.append(
+            {
+                "category_name": category_name,
+                "count": category["count"],
+                "amount": category_amount,
+                "percentage": round(percentage, 1),
+            }
+        )
+
+    return category_data
 
 
 def get_comparison_data(date_filter, current_start, current_end):
@@ -62,109 +305,253 @@ def get_comparison_data(date_filter, current_start, current_end):
 
 
 def get_period_data(invoices, start_date, end_date, period_type):
-    """Get aggregated data for a specific period"""
+    """
+    Get aggregated data for a specific period using database-level grouping
+
+    OPTIMIZED: Uses Django's date truncation functions instead of Python loops
+    to perform grouping at the database level, dramatically reducing queries.
+
+    Args:
+        invoices: QuerySet of Invoice objects
+        start_date: Period start date
+        end_date: Period end date
+        period_type: One of 'daily', 'monthly', 'quarterly', 'yearly'
+
+    Returns:
+        List of dictionaries containing date, amount, and invoice count
+    """
+
     if period_type == "daily":
-        # For daily, return single data point
-        total_amount = invoices.aggregate(total=Sum("amount"))["total"] or Decimal("0")
-        total_invoices = invoices.count()
+        # For daily, return single aggregated data point
+        aggregated = invoices.aggregate(
+            total_amount=Coalesce(Sum("amount"), Decimal("0")),
+            total_invoices=Count("id"),
+        )
+
         return [
             {
                 "date": start_date.strftime("%Y-%m-%d"),
-                "amount": float(total_amount),
-                "invoices": total_invoices,
+                "amount": float(aggregated["total_amount"]),
+                "invoices": aggregated["total_invoices"],
             }
         ]
 
     elif period_type == "monthly":
-        # Group by day
-        daily_data = []
-        current_date = start_date
-        while current_date <= end_date:
-            day_invoices = invoices.filter(invoice_date__date=current_date)
-            day_amount = day_invoices.aggregate(total=Sum("amount"))[
-                "total"
-            ] or Decimal("0")
-            day_count = day_invoices.count()
-
-            daily_data.append(
-                {
-                    "date": current_date.strftime("%Y-%m-%d"),
-                    "amount": float(day_amount),
-                    "invoices": day_count,
-                }
+        # Group by day using database truncation
+        daily_data = (
+            invoices.annotate(day=TruncDate("invoice_date"))
+            .values("day")
+            .annotate(
+                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
             )
-            current_date += timedelta(days=1)
+            .order_by("day")
+        )
 
-        return daily_data
+        return [
+            {
+                "date": item["day"].strftime("%Y-%m-%d"),
+                "amount": float(item["amount"]),
+                "invoices": item["invoices"],
+            }
+            for item in daily_data
+        ]
 
     elif period_type == "quarterly":
-        # Group by week
-        weekly_data = []
-        current_date = start_date
-        week_start = current_date
+        # Group by week using database truncation
+        weekly_data = (
+            invoices.annotate(week=TruncWeek("invoice_date"))
+            .values("week")
+            .annotate(
+                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
+            )
+            .order_by("week")
+        )
 
-        while current_date <= end_date:
-            if (
-                current_date.weekday() == 6 or current_date == end_date
-            ):  # Sunday or end of period
-                week_invoices = invoices.filter(
-                    invoice_date__date__range=[week_start, current_date]
-                )
-                week_amount = week_invoices.aggregate(total=Sum("amount"))[
-                    "total"
-                ] or Decimal("0")
-                week_count = week_invoices.count()
-
-                weekly_data.append(
-                    {
-                        "date": week_start.strftime("%Y-%m-%d"),
-                        "amount": float(week_amount),
-                        "invoices": week_count,
-                    }
-                )
-                week_start = current_date + timedelta(days=1)
-
-            current_date += timedelta(days=1)
-
-        return weekly_data
+        return [
+            {
+                "date": item["week"].strftime("%Y-%m-%d"),
+                "amount": float(item["amount"]),
+                "invoices": item["invoices"],
+            }
+            for item in weekly_data
+        ]
 
     else:  # yearly
-        # Group by month
-        monthly_data = []
-        current_date = start_date
+        # Group by month using database truncation
+        monthly_data = (
+            invoices.annotate(month=TruncMonth("invoice_date"))
+            .values("month")
+            .annotate(
+                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
+            )
+            .order_by("month")
+        )
 
+        return [
+            {
+                "date": item["month"].strftime("%Y-%m-%d"),
+                "amount": float(item["amount"]),
+                "invoices": item["invoices"],
+            }
+            for item in monthly_data
+        ]
+
+
+# ALTERNATIVE: If you need to fill in missing dates with zeros
+def get_period_data_with_zeros(invoices, start_date, end_date, period_type):
+    """
+    Same as get_period_data but fills in missing dates with zero values
+
+    Use this version if you need a data point for every period even when
+    there are no invoices (e.g., for continuous chart lines)
+    """
+
+    if period_type == "daily":
+        # Single day - same as original
+        aggregated = invoices.aggregate(
+            total_amount=Coalesce(Sum("amount"), Decimal("0")),
+            total_invoices=Count("id"),
+        )
+
+        return [
+            {
+                "date": start_date.strftime("%Y-%m-%d"),
+                "amount": float(aggregated["total_amount"]),
+                "invoices": aggregated["total_invoices"],
+            }
+        ]
+
+    elif period_type == "monthly":
+        # Get daily data from database
+        daily_data = (
+            invoices.annotate(day=TruncDate("invoice_date"))
+            .values("day")
+            .annotate(
+                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
+            )
+        )
+
+        # Create lookup dictionary
+        data_dict = {
+            item["day"]: {"amount": float(item["amount"]), "invoices": item["invoices"]}
+            for item in daily_data
+        }
+
+        # Fill in all dates
+        result = []
+        current_date = start_date
         while current_date <= end_date:
-            # Get last day of current month
-            if current_date.month == 12:
-                next_month = current_date.replace(
-                    year=current_date.year + 1, month=1, day=1
+            if current_date in data_dict:
+                result.append(
+                    {
+                        "date": current_date.strftime("%Y-%m-%d"),
+                        **data_dict[current_date],
+                    }
                 )
             else:
-                next_month = current_date.replace(month=current_date.month + 1, day=1)
+                result.append(
+                    {
+                        "date": current_date.strftime("%Y-%m-%d"),
+                        "amount": 0.0,
+                        "invoices": 0,
+                    }
+                )
+            current_date += timedelta(days=1)
 
-            month_end = next_month - timedelta(days=1)
-            if month_end > end_date:
-                month_end = end_date
+        return result
 
-            month_invoices = invoices.filter(
-                invoice_date__date__range=[current_date, month_end]
+    elif period_type == "quarterly":
+        # Get weekly data from database
+        weekly_data = (
+            invoices.annotate(week=TruncWeek("invoice_date"))
+            .values("week")
+            .annotate(
+                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
             )
-            month_amount = month_invoices.aggregate(total=Sum("amount"))[
-                "total"
-            ] or Decimal("0")
-            month_count = month_invoices.count()
+        )
 
-            monthly_data.append(
-                {
-                    "date": current_date.strftime("%Y-%m-%d"),
-                    "amount": float(month_amount),
-                    "invoices": month_count,
-                }
+        # Create lookup dictionary
+        data_dict = {
+            item["week"]: {
+                "amount": float(item["amount"]),
+                "invoices": item["invoices"],
+            }
+            for item in weekly_data
+        }
+
+        # Fill in all weeks
+        result = []
+        current_date = start_date
+        # Adjust to start of week (Monday)
+        current_date = current_date - timedelta(days=current_date.weekday())
+
+        while current_date <= end_date:
+            if current_date in data_dict:
+                result.append(
+                    {
+                        "date": current_date.strftime("%Y-%m-%d"),
+                        **data_dict[current_date],
+                    }
+                )
+            else:
+                result.append(
+                    {
+                        "date": current_date.strftime("%Y-%m-%d"),
+                        "amount": 0.0,
+                        "invoices": 0,
+                    }
+                )
+            current_date += timedelta(weeks=1)
+
+        return result
+
+    else:  # yearly
+        # Get monthly data from database
+        monthly_data = (
+            invoices.annotate(month=TruncMonth("invoice_date"))
+            .values("month")
+            .annotate(
+                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
             )
+        )
 
-            current_date = next_month
+        # Create lookup dictionary
+        data_dict = {
+            item["month"]: {
+                "amount": float(item["amount"]),
+                "invoices": item["invoices"],
+            }
+            for item in monthly_data
+        }
 
-        return monthly_data
+        # Fill in all months
+        result = []
+        current_date = start_date.replace(day=1)
+
+        while current_date <= end_date:
+            if current_date in data_dict:
+                result.append(
+                    {
+                        "date": current_date.strftime("%Y-%m-%d"),
+                        **data_dict[current_date],
+                    }
+                )
+            else:
+                result.append(
+                    {
+                        "date": current_date.strftime("%Y-%m-%d"),
+                        "amount": 0.0,
+                        "invoices": 0,
+                    }
+                )
+
+            # Move to next month
+            if current_date.month == 12:
+                current_date = current_date.replace(year=current_date.year + 1, month=1)
+            else:
+                current_date = current_date.replace(month=current_date.month + 1)
+
+        return result
 
 
 # Create your views here.
@@ -371,14 +758,19 @@ class InvoiceDetail(View):
         )
 
         # Add return item counts to each return invoice for template use
-        for ret in return_invoices:
-            ret.returned_items_count = len(
-                [
-                    item
-                    for item in ret.return_invoice_items.all()
-                    if item.quantity_returned > 0
-                ]
+        return_invoices = (
+            invoice.return_invoices.select_related(
+                "created_by", "approved_by", "processed_by"
             )
+            .prefetch_related("return_invoice_items")
+            .annotate(
+                returned_items_count=Count(
+                    "return_invoice_items",
+                    filter=Q(return_invoice_items__quantity_returned__gt=0),
+                )
+            )
+            .order_by("-created_at")
+        )
 
         # Get return items with details
         return_items_with_details = []
@@ -461,174 +853,6 @@ class InvoiceDelete(View):
         invoice.delete()
         messages.success(request, "Invoice deleted successfully")
         return redirect("invoice:home")
-
-
-def invoice_dashboard(request):
-    """Invoice dashboard with date filtering and metrics"""
-
-    return render(request, "invoice/dashboard.html")
-
-
-def invoice_dashboard_fetch(request):
-    """AJAX endpoint to fetch dashboard data"""
-
-    # Get date filter from request
-    date_filter = request.GET.get("date_filter", "this_month")
-
-    start_date, end_date = getDates(request)
-
-    # Filter invoices by date range
-    invoices = Invoice.objects.filter(
-        invoice_date__date__range=[start_date, end_date]
-    ).select_related("customer")
-
-    cancelled_invoices = invoices.filter(is_cancelled=True)
-
-    return_invoices = ReturnInvoice.objects.filter(
-        return_date__date__range=[start_date, end_date],
-        invoice__is_cancelled=False,
-    ).select_related("invoice", "customer")
-
-    # Calculate metrics
-    total_invoices = invoices.count()
-    total_amount = invoices.aggregate(total=Sum("amount"))["total"] or Decimal("0")
-    total_return_amount = return_invoices.aggregate(total=Sum("refund_amount"))[
-        "total"
-    ] or Decimal("0")
-
-    total_cancelled_amount = cancelled_invoices.aggregate(total=Sum("amount"))[
-        "total"
-    ] or Decimal("0")
-    total_discount = invoices.aggregate(total=Sum("discount_amount"))[
-        "total"
-    ] or Decimal("0")
-    total_paid = invoices.aggregate(total=Sum("paid_amount"))["total"] or Decimal("0")
-
-    # Calculate profit from invoice items
-    invoice_items = InvoiceItem.objects.filter(
-        invoice__invoice_date__date__range=[start_date, end_date],
-        invoice__is_cancelled=False,
-    )
-
-    total_profit = sum(
-        (item.unit_price - item.purchase_price) * item.actual_quantity
-        for item in invoice_items
-        if item.unit_price is not None and item.purchase_price is not None
-    ) or Decimal("0")
-
-    total_profit = total_profit - total_discount
-
-    # Calculate net amount (amount - discount)
-    net_amount = total_amount - total_discount
-
-    # Calculate outstanding amount (net amount - paid amount)
-    outstanding_amount = net_amount - total_paid
-
-    # Calculate comparison data for line chart
-    comparison_data = get_comparison_data(date_filter, start_date, end_date)
-
-    # Payment status breakdown
-    payment_status_breakdown = (
-        invoices.values("payment_status")
-        .annotate(count=Count("id"), amount=Sum("amount"))
-        .order_by("payment_status")
-    )
-
-    # Payment type breakdown
-    payment_type_breakdown = (
-        invoices.values("payment_type")
-        .annotate(count=Count("id"), amount=Sum("amount"))
-        .order_by("payment_type")
-    )
-
-    # Category breakdown from invoice items
-    category_breakdown = (
-        invoice_items.select_related("product_variant__product__category")
-        .values("product_variant__product__category__name")
-        .annotate(count=Count("id"), amount=Sum(F("unit_price") * F("quantity")))
-        .order_by("-count")
-    )
-
-    # Prepare response data
-    stats = {
-        "total_invoices": total_invoices,
-        "total_amount": float(total_amount),
-        "total_discount": float(total_discount),
-        "total_paid": float(total_paid),
-        "net_amount": float(net_amount),
-        "outstanding_amount": float(outstanding_amount),
-        "total_profit": float(total_profit),
-        "total_return_amount": float(total_return_amount)
-        + float(total_cancelled_amount),
-    }
-
-    # Add percentage calculations for breakdowns
-    payment_status_data = []
-    for status in payment_status_breakdown:
-        percentage = (status["amount"] / total_amount * 100) if total_amount > 0 else 0
-        payment_status_data.append(
-            {
-                "payment_status": status["payment_status"].title(),
-                "count": status["count"],
-                "amount": float(status["amount"]),
-                "percentage": round(percentage, 1),
-            }
-        )
-
-    payment_type_data = []
-    for type_data in payment_type_breakdown:
-        percentage = (
-            (type_data["amount"] / total_amount * 100) if total_amount > 0 else 0
-        )
-        payment_type_data.append(
-            {
-                "payment_type": type_data["payment_type"].title(),
-                "count": type_data["count"],
-                "amount": float(type_data["amount"]),
-                "percentage": round(percentage, 1),
-            }
-        )
-
-    # Category data processing
-    # Calculate total for category percentages
-    category_total = float(
-        sum(cat["amount"] for cat in category_breakdown if cat["amount"])
-    )
-
-    category_data = []
-    for category in category_breakdown:
-        category_name = (
-            category["product_variant__product__category__name"] or "Uncategorized"
-        )
-        category_amount = float(category["amount"] or 0)
-        percentage = (
-            (category_amount / category_total * 100) if category_total > 0 else 0
-        )
-
-        category_data.append(
-            {
-                "category_name": category_name,
-                "count": category["count"],
-                "amount": category_amount,
-                "percentage": round(percentage, 1),
-            }
-        )
-
-    return JsonResponse(
-        {
-            "success": True,
-            "stats": stats,
-            "payment_status_breakdown": payment_status_data,
-            "payment_type_breakdown": payment_type_data,
-            "category_breakdown": category_data,
-            "comparison_data": comparison_data,
-            "date_range": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat(),
-                "filter": date_filter,
-            },
-        }
-    )
 
 
 def search_invoices_home(request):

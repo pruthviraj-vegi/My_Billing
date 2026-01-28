@@ -40,6 +40,7 @@ from .models import Product, ProductVariant, InventoryLog
 from supplier.models import SupplierInvoice, Supplier
 from base.getDates import getDates
 from base.utility import render_paginated_response
+from base.decorators import timed, query_debugger
 
 import logging, json
 
@@ -54,14 +55,15 @@ def inventory_dashboard(request):
 
     # Additional metrics
     total_products = Product.objects.filter(is_deleted=False).count()
-    total_variants = active_variants.count()
-    low_stock_variants = active_variants.filter(
-        quantity__lte=F("minimum_quantity")
-    ).count()
 
     # Calculate total inventory value (quantity * purchase_price)
-    total_inventory_value = sum(
-        variant.quantity * variant.purchase_price for variant in active_variants
+    variant_metrics = active_variants.aggregate(
+        total_variants=Count("id"),
+        low_stock_count=Count("id", filter=Q(quantity__lte=F("minimum_quantity"))),
+        total_inventory_value=Coalesce(
+            Sum(F("quantity") * F("purchase_price"), output_field=DecimalField()),
+            Decimal("0"),
+        ),
     )
 
     # Calculate and cache total_stock_by_supplier (date-independent, loaded once)
@@ -69,9 +71,9 @@ def inventory_dashboard(request):
 
     context = {
         "total_products": total_products,
-        "total_variants": total_variants,
-        "low_stock_variants": low_stock_variants,
-        "total_inventory_value": total_inventory_value,
+        "total_variants": variant_metrics["total_variants"],
+        "low_stock_variants": variant_metrics["low_stock_count"],
+        "total_inventory_value": float(variant_metrics["total_inventory_value"]),
         "date_filter": request.GET.get("date_filter", "this_month"),
         "total_stock_data_json": json.dumps(
             total_stock_data
@@ -82,105 +84,118 @@ def inventory_dashboard(request):
 
 
 def inventory_dashboard_fetch(request):
-    """AJAX endpoint to fetch dynamic dashboard data based on date filter"""
+    """
+    AJAX endpoint to fetch dynamic dashboard data based on date filter
+
+    OPTIMIZED: Uses conditional aggregation to get all metrics in fewer queries
+    and processes percentages in a single pass instead of multiple loops.
+    """
     start_date, end_date = getDates(request)
     date_filter = request.GET.get("date_filter", "this_month")
 
-    # Calculate monetary Stock In (|quantity| * purchase_price)
-    stock_in = (
-        InventoryLog.objects.filter(
-            transaction_type="STOCK_IN",
-            variant__is_deleted=False,
-            timestamp__gte=start_date,
-            timestamp__lte=end_date,
-        ).aggregate(
-            total=Sum(
-                Abs(F("quantity_change")) * F("purchase_price"),
-                output_field=models.DecimalField(max_digits=16, decimal_places=2),
-            )
-        )[
-            "total"
-        ]
-        or 0
-    )
-
-    # Calculate monetary Stock Out valued at purchase price baseline (|quantity| * purchase_price)
-    stock_out = (
-        InventoryLog.objects.filter(
-            transaction_type="SALE",
-            variant__is_deleted=False,
-            timestamp__gte=start_date,
-            timestamp__lte=end_date,
-        ).aggregate(
-            total=Sum(
-                Abs(F("quantity_change")) * F("purchase_price"),
-                output_field=models.DecimalField(max_digits=16, decimal_places=2),
-            )
-        )[
-            "total"
-        ]
-        or 0
-    )
-
-    # Get supplier shares for stock_in and stock_out
-    def aggregate_by_supplier(qs, supplier_path):
-        data = (
-            qs.values(name=F(f"{supplier_path}__name"))
-            .annotate(
-                amount=Sum(
-                    Abs(F("quantity_change")) * F("purchase_price"),
-                    output_field=models.DecimalField(max_digits=16, decimal_places=2),
-                )
-            )
-            .order_by("-amount")
-        )
-        result = []
-        for item in data:
-            result.append(
-                {
-                    "supplier_name": item["name"] or "Others",
-                    "amount": float(item["amount"] or 0),
-                    "count": 0,  # Not applicable for inventory, but keeping format consistent
-                }
-            )
-        return result
-
-    # Base query for date range
+    # Base queryset for date range
     base_qs = InventoryLog.objects.filter(
         variant__is_deleted=False, timestamp__gte=start_date, timestamp__lte=end_date
     )
 
-    # Stock in breakdown by supplier
-    stock_in_breakdown = aggregate_by_supplier(
-        base_qs.filter(transaction_type="STOCK_IN"), "supplier_invoice__supplier"
+    # Get both stock_in and stock_out totals in a single query using conditional aggregation
+    totals = base_qs.aggregate(
+        stock_in_total=Coalesce(
+            Sum(
+                Abs(F("quantity_change")) * F("purchase_price"),
+                filter=Q(transaction_type__in=["STOCK_IN", "INITIAL"]),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            ),
+            Decimal("0"),
+        ),
+        stock_out_total=Coalesce(
+            Sum(
+                Abs(F("quantity_change")) * F("purchase_price"),
+                filter=Q(transaction_type="SALE"),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            ),
+            Decimal("0"),
+        ),
     )
 
-    # Calculate percentages for stock in
-    stock_in_total = float(sum(item["amount"] for item in stock_in_breakdown))
-    for item in stock_in_breakdown:
-        percentage = (
-            (item["amount"] / stock_in_total * 100) if stock_in_total > 0 else 0
-        )
-        item["percentage"] = round(percentage, 1)
+    stock_in_total = float(totals["stock_in_total"])
+    stock_out_total = float(totals["stock_out_total"])
 
-    # Stock out breakdown by supplier
-    stock_out_breakdown = aggregate_by_supplier(
-        base_qs.filter(transaction_type="SALE"),
-        "source_inventory_log__supplier_invoice__supplier",
+    # Stock in breakdown by supplier with percentage calculation
+    stock_in_breakdown_qs = (
+        base_qs.filter(transaction_type__in=["STOCK_IN", "INITIAL"])
+        .values(
+            supplier_name=Coalesce(
+                F("supplier_invoice__supplier__name"), Value("Others")
+            )
+        )
+        .annotate(
+            amount=Coalesce(
+                Sum(
+                    Abs(F("quantity_change")) * F("purchase_price"),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                ),
+                Decimal("0"),
+            )
+        )
+        .order_by("-amount")
     )
 
-    # Calculate percentages for stock out
-    stock_out_total = float(sum(item["amount"] for item in stock_out_breakdown))
-    for item in stock_out_breakdown:
-        percentage = (
-            (item["amount"] / stock_out_total * 100) if stock_out_total > 0 else 0
+    # Convert to list with percentages in a single pass
+    stock_in_breakdown = [
+        {
+            "supplier_name": item["supplier_name"],
+            "amount": float(item["amount"]),
+            "percentage": (
+                round((float(item["amount"]) / stock_in_total * 100), 1)
+                if stock_in_total > 0
+                else 0
+            ),
+            "count": 0,  # Keeping for consistency
+        }
+        for item in stock_in_breakdown_qs
+    ]
+
+    # Stock out breakdown by supplier with percentage calculation
+    stock_out_breakdown_qs = (
+        base_qs.filter(transaction_type="SALE")
+        .values(
+            supplier_name=Coalesce(
+                F("source_inventory_log__supplier_invoice__supplier__name"),
+                Value("Others"),
+            )
         )
-        item["percentage"] = round(percentage, 1)
+        .annotate(
+            amount=Coalesce(
+                Sum(
+                    Abs(F("quantity_change")) * F("purchase_price"),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                ),
+                Decimal("0"),
+            )
+        )
+        .order_by("-amount")
+    )
+
+    # Convert to list with percentages in a single pass
+    stock_out_breakdown = [
+        {
+            "supplier_name": item["supplier_name"],
+            "amount": float(item["amount"]),
+            "percentage": (
+                round((float(item["amount"]) / stock_out_total * 100), 1)
+                if stock_out_total > 0
+                else 0
+            ),
+            "count": 0,  # Keeping for consistency
+        }
+        for item in stock_out_breakdown_qs
+    ]
 
     # Prepare stats
     stats = {
-        "stock_in": float(round(stock_in, 2)),
-        "stock_out": float(round(stock_out, 2)),
+        "stock_in": round(stock_in_total, 2),
+        "stock_out": round(stock_out_total, 2),
     }
 
     return JsonResponse(
@@ -200,131 +215,81 @@ def inventory_dashboard_fetch(request):
 
 def _calculate_total_stock_by_supplier():
     """
-    Calculate total stock by supplier (cached, date-independent).
-    Optimized with bulk queries to avoid N+1 problem.
+    Calculate total stock by supplier (date-independent).
+
+    OPTIMIZED: Uses database-level aggregation with subquery to get latest supplier
+    per variant, eliminating Python-level iteration and reducing memory usage.
+
+    Performance improvements:
+    1. Single query with subquery instead of fetching all logs
+    2. Database-level aggregation instead of Python loops
+    3. Reduced memory footprint by not loading all variant/log data
     """
     cache_key = "inventory_total_stock_by_supplier"
     cached_result = cache.get(cache_key)
 
-    if cached_result is not None:
-        return cached_result
+    # if cached_result is not None:
+    #     return cached_result
 
-    # Get all active variants with their quantities and prices
-    active_variants = ProductVariant.objects.filter(
-        is_deleted=False, status=ProductVariant.VariantStatus.ACTIVE
-    ).values("id", "quantity", "purchase_price")
+    # Subquery to get the latest supplier for each variant
+    # This gets the supplier name from the most recent STOCK_IN/INITIAL log
+    latest_supplier_subquery = InventoryLog.objects.filter(
+        variant=models.OuterRef("pk"),
+        transaction_type__in=[
+            "STOCK_IN",
+            "INITIAL",
+        ],
+        supplier_invoice__isnull=False,
+    ).values("supplier_invoice__supplier__name")[:1]
 
-    variant_ids = [v["id"] for v in active_variants]
-
-    if not variant_ids:
-        result = {"labels": [], "values": []}
-        cache.set(cache_key, result, 300)  # Cache for 5 minutes
-        return result
-
-    # Get all stock-in transactions for variants (ordered by timestamp desc)
-    # Then group in Python to get latest per variant (works across all databases)
-    all_stock_in_logs = (
-        InventoryLog.objects.filter(
-            variant_id__in=variant_ids,
-            transaction_type__in=["STOCK_IN", "INITIAL"],
-            supplier_invoice__isnull=False,
+    # Aggregate stock value by supplier at the database level
+    stock_by_supplier = (
+        ProductVariant.objects.filter(
+            is_deleted=False, status=ProductVariant.VariantStatus.ACTIVE
         )
-        .select_related("supplier_invoice__supplier")
-        .order_by("variant_id", "-timestamp")
-        .values("variant_id", "supplier_invoice__supplier__name")
+        .annotate(
+            supplier_name=Coalesce(
+                models.Subquery(latest_supplier_subquery),
+                Value("Others"),
+            ),
+            stock_value=ExpressionWrapper(
+                F("quantity") * F("purchase_price"),
+                output_field=DecimalField(max_digits=16, decimal_places=2),
+            ),
+        )
+        .values("supplier_name")
+        .annotate(total_value=Sum("stock_value"))
+        .order_by("-total_value")
     )
 
-    # Create a mapping of variant_id -> supplier_name (keep first/latest per variant)
-    variant_to_supplier = {}
-    for log in all_stock_in_logs:
-        variant_id = log["variant_id"]
-        if (
-            variant_id not in variant_to_supplier
-        ):  # First occurrence is latest due to ordering
-            supplier_name = log.get("supplier_invoice__supplier__name")
-            if supplier_name:
-                variant_to_supplier[variant_id] = supplier_name
+    # Convert to lists
+    labels = []
+    values = []
+    total_stock_value = Decimal("0")
 
-    # Aggregate by supplier
-    total_stock_by_supplier = {}
-    for variant in active_variants:
-        variant_id = variant["id"]
-        supplier_name = variant_to_supplier.get(variant_id, "Others")
-        stock_value = float(variant["quantity"] * variant["purchase_price"])
-        total_stock_by_supplier[supplier_name] = (
-            total_stock_by_supplier.get(supplier_name, 0) + stock_value
-        )
+    for item in stock_by_supplier:
+        supplier_name = item["supplier_name"] or "Others"
+        value = float(item["total_value"] or 0)
 
-    # Convert to sorted lists
-    sorted_total_stock = sorted(
-        total_stock_by_supplier.items(), key=lambda x: x[1], reverse=True
-    )
+        labels.append(supplier_name)
+        values.append(round(value, 2))
+        total_stock_value += Decimal(str(value))
 
     # Calculate percentages
-    total_stock_value = sum(item[1] for item in sorted_total_stock)
+    total_float = float(total_stock_value)
+    percentages = [
+        round((val / total_float * 100), 1) if total_float > 0 else 0 for val in values
+    ]
 
     result = {
-        "labels": [item[0] for item in sorted_total_stock],
-        "values": [round(item[1], 2) for item in sorted_total_stock],
-        "percentages": [
-            (
-                round((item[1] / total_stock_value * 100), 1)
-                if total_stock_value > 0
-                else 0
-            )
-            for item in sorted_total_stock
-        ],
+        "labels": labels,
+        "values": values,
+        "percentages": percentages,
     }
 
     # Cache for 5 minutes (300 seconds)
     cache.set(cache_key, result, 300)
     return result
-
-
-def inventory_supplier_shares_fetch(request):
-    """
-    Return per-supplier shares for STOCK_IN and SALE (date-dependent only).
-    Total stock is loaded once on initial page load and cached.
-    """
-    start_date, end_date = getDates(request)
-
-    def aggregate_by_supplier(qs, supplier_path):
-        data = (
-            qs.values(name=F(f"{supplier_path}__name"))
-            .annotate(
-                amount=Sum(
-                    Abs(F("quantity_change")) * F("purchase_price"),
-                    output_field=models.DecimalField(max_digits=16, decimal_places=2),
-                )
-            )
-            .order_by("-amount")
-        )
-        labels = [item["name"] or "Others" for item in data]
-        values = [round(item["amount"] or 0, 2) for item in data]
-        return labels, values
-
-    # Only calculate date-dependent metrics (stock_in and stock_out)
-    # total_stock is loaded once on initial page render and stays cached
-    base_qs = InventoryLog.objects.filter(
-        variant__is_deleted=False, timestamp__gte=start_date, timestamp__lte=end_date
-    )
-
-    in_labels, in_values = aggregate_by_supplier(
-        base_qs.filter(transaction_type="STOCK_IN"), "supplier_invoice__supplier"
-    )
-
-    # STOCK_OUT share attributed to the source stock's supplier - date-dependent
-    out_labels, out_values = aggregate_by_supplier(
-        base_qs.filter(transaction_type="SALE"),
-        "source_inventory_log__supplier_invoice__supplier",
-    )
-
-    return JsonResponse(
-        {
-            "stock_in": {"labels": in_labels, "values": in_values},
-            "stock_out": {"labels": out_labels, "values": out_values},
-        }
-    )
 
 
 def low_stock_page(request):
@@ -947,138 +912,3 @@ def supplier_invoice_details(request, invoice_id):
         "sort_by": sort_by,
     }
     return render(request, "inventory/supplier_invoice_details.html", context)
-
-
-# def product_invoice_analytics(request, variant_id):
-#     """View to show analytics for a specific product variant by supplier invoice"""
-
-#     variant = get_object_or_404(ProductVariant, id=variant_id)
-
-#     # Get all supplier invoices for this variant
-#     invoices = (
-#         InventoryLog.objects.filter(variant=variant, supplier_invoice__isnull=False)
-#         .values("supplier_invoice__invoice_number", "supplier_invoice__supplier__name")
-#         .distinct()
-#     )
-
-#     analytics = []
-#     for invoice in invoices:
-#         invoice_number = invoice["supplier_invoice__invoice_number"]
-#         supplier_name = invoice["supplier_invoice__supplier__name"]
-
-#         # Get stock in for this invoice
-#         stock_in_logs = InventoryLog.objects.filter(
-#             variant=variant,
-#             supplier_invoice__invoice_number=invoice_number,
-#             transaction_type__in=["STOCK_IN", "INITIAL"],
-#         )
-
-#         # Get sales for this invoice
-#         sales_logs = InventoryLog.objects.filter(
-#             product_variant=variant,
-#             supplier_invoice__invoice_number=invoice_number,
-#             transaction_type="SALE",
-#         )
-
-#         # Calculate metrics
-#         total_stock_in = (
-#             stock_in_logs.aggregate(total=Sum("quantity_change"))["total"] or 0
-#         )
-#         total_sales = abs(
-#             sales_logs.aggregate(total=Sum("quantity_allocated"))["total"] or 0
-#         )
-#         remaining = total_stock_in - total_sales
-
-#         # Calculate movement rate
-#         if stock_in_logs.exists():
-#             first_stock_in = stock_in_logs.order_by("timestamp").first()
-#             days_since_stock_in = (timezone.now() - first_stock_in.timestamp).days
-#             movement_rate = (
-#                 total_sales / max(days_since_stock_in, 1)
-#                 if days_since_stock_in > 0
-#                 else 0
-#             )
-#         else:
-#             movement_rate = 0
-#             days_since_stock_in = 0
-
-#         analytics.append(
-#             {
-#                 "invoice_number": invoice_number,
-#                 "supplier_name": supplier_name,
-#                 "total_stock_in": total_stock_in,
-#                 "total_sales": total_sales,
-#                 "remaining_quantity": remaining,
-#                 "movement_rate": round(movement_rate, 2),
-#                 "days_since_stock_in": days_since_stock_in,
-#             }
-#         )
-
-#     context = {
-#         "variant": variant,
-#         "analytics": analytics,
-#         "title": f"{variant.simple_name} - Invoice Analytics",
-#     }
-#     return render(request, "inventory/product_invoice_analytics.html", context)
-
-
-# def supplier_analytics(request, supplier_id):
-#     """View to show analytics for a specific supplier"""
-
-#     supplier = get_object_or_404(Supplier, id=supplier_id)
-
-#     # Get all invoices for this supplier
-#     invoices = (
-#         InventoryLog.objects.filter(
-#             supplier_invoice__supplier=supplier,
-#             transaction_type__in=["STOCK_IN", "INITIAL"],
-#         )
-#         .values("supplier_invoice__invoice_number", "supplier_invoice__invoice_date")
-#         .distinct()
-#         .order_by("-supplier_invoice__invoice_date")
-#     )
-
-#     movement_data = []
-#     for invoice in invoices:
-#         invoice_number = invoice["supplier_invoice__invoice_number"]
-#         invoice_date = invoice["supplier_invoice__invoice_date"]
-
-#         # Get stock in for this invoice
-#         stock_in = (
-#             InventoryLog.objects.filter(
-#                 supplier_invoice__invoice_number=invoice_number,
-#                 transaction_type__in=["STOCK_IN", "INITIAL"],
-#             ).aggregate(total=Sum("quantity_change"))["total"]
-#             or 0
-#         )
-
-#         # Get sales for this invoice
-#         sales = abs(
-#             InventoryLog.objects.filter(
-#                 supplier_invoice__invoice_number=invoice_number,
-#                 transaction_type="SALE",
-#             ).aggregate(total=Sum("quantity_allocated"))["total"]
-#             or 0
-#         )
-
-#         # Calculate days since invoice
-#         days_since = (timezone.now() - invoice_date).days
-
-#         movement_data.append(
-#             {
-#                 "invoice_number": invoice_number,
-#                 "invoice_date": invoice_date,
-#                 "stock_in_quantity": stock_in,
-#                 "sales_quantity": sales,
-#                 "remaining_quantity": stock_in - sales,
-#                 "days_since_invoice": days_since,
-#                 "movement_rate": sales / max(days_since, 1) if days_since > 0 else 0,
-#             }
-#         )
-
-#     context = {
-#         "supplier": supplier,
-#         "movement_data": movement_data,
-#         "title": f"{supplier.name} - Analytics",
-#     }
-#     return render(request, "inventory/supplier_analytics.html", context)
