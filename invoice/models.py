@@ -981,6 +981,20 @@ class ReturnInvoice(models.Model):
 
         return None
 
+    @property
+    def total_tax_value(self):
+        return round(sum(item.tax_value for item in self.return_invoice_items.all()), 2)
+
+    @property
+    def total_gst_amount(self):
+        return round(
+            sum(item.gst_amount for item in self.return_invoice_items.all()), 2
+        )
+
+    @property
+    def cgst_amount(self):
+        return round(self.total_gst_amount / 2, 2)
+
     def __str__(self):
         return f"Return {self.return_number or self.pk} for {self.customer.name}"
 
@@ -1149,6 +1163,22 @@ class ReturnInvoiceItem(models.Model):
 
     def __str__(self):
         return f"Return {self.quantity_returned} × {self.product_variant.product.name} for {self.return_invoice}"
+
+    @property
+    def total_return_amount(self):
+        """Calculate total amount for this return item"""
+        return self.quantity_returned * self.unit_price
+
+    @property
+    def tax_value(self):
+        """Calculate tax value for this return item"""
+        return self.total_return_amount / (
+            1 + (self.original_invoice_item.gst_percentage / 100)
+        )
+
+    @property
+    def gst_amount(self):
+        return round(self.total_return_amount - self.tax_value, 2)
 
 
 class InvoiceCancellation(models.Model):

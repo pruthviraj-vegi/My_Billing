@@ -40,6 +40,8 @@ urlpatterns = [
 handler404 = "base.views.custom_404_view"
 
 # Serve media files during development
-# Note: Static files are automatically served by django.contrib.staticfiles when DEBUG=True
+# Static files from STATICFILES_DIRS are automatically served by django.contrib.staticfiles
+# when DEBUG=True and using 'runserver'. No collectstatic needed in development!
+# In production (DEBUG=False), run collectstatic to gather files into STATIC_ROOT
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

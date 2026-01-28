@@ -12,13 +12,13 @@
       <!-- Date Filter Dropdown -->
       <form method="get" class="d-inline" id="dateFilterForm">
         <select name="date_filter" class="form-select" id="dateFilter">
-          <option value="this_month" >This Month</option>
-          <option value="last_month" >Last Month</option>
-          <option value="this_quarter" >This Quarter</option>
-          <option value="last_quarter" >Last Quarter</option>
-          <option value="this_finance" >This Finance</option>
-          <option value="last_finance" >Last Finance</option>
-          <option value="full_date" >Full Date</option>
+          <option value="this_month">This Month</option>
+          <option value="last_month">Last Month</option>
+          <option value="this_quarter">This Quarter</option>
+          <option value="last_quarter">Last Quarter</option>
+          <option value="this_finance">This Finance</option>
+          <option value="last_finance">Last Finance</option>
+          <option value="full_date">Full Date</option>
         </select>
       </form>
       <button type="button" class="btn btn-info" id="downloadReportBtn">
@@ -34,7 +34,7 @@
     <span class="breadcrumb-active">Invoice Report</span>
   </nav>
   <!-- Main Layout -->
-  <div class="col d-flex flex-row">
+  <div class="col">
     <!-- Invoice Table -->
     <div class="col-md-12 d-flex flex-column gap-2 ps-1">
       <div class="table-section" id="reportSection">
@@ -73,112 +73,117 @@
         </div>
       </div>
     </div>
+    <div class="col-md-12 d-flex flex-column gap-2 ps-1">
+      <div class="table-section" id="cancled_reportSection">
+        <div class="table-header">
+          <h3>
+            <i class="fas fa-file-invoice-dollar"></i> Cancelled Invoice Report
+          </h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="cancled_report_table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Invoice Number</th>
+                <th>Customer</th>
+                <th>Invoice Type</th>
+                <th>Net Amount</th>
+                <th>CGST</th>
+                <th>SGST</th>
+                <th>IGST</th>
+                <th>Total Gst</th>
+                <th>Total Amount</th>
+              </tr>
+            </thead>
+            <tbody id="cancled_report_table_body">
+              <tr>
+                <td colspan="10" class="text-center p-4">
+                  <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading transactions...
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-12 d-flex flex-column gap-2 ps-1">
+      <div class="table-section" id="return_reportSection">
+        <div class="table-header">
+          <h3>
+            <i class="fas fa-file-invoice-dollar"></i> Return Invoice Report
+          </h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="return_report_table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Invoice Number</th>
+                <th>Customer</th>
+                <th>Invoice Type</th>
+                <th>Net Amount</th>
+                <th>CGST</th>
+                <th>SGST</th>
+                <th>IGST</th>
+                <th>Total Gst</th>
+                <th>Total Amount</th>
+              </tr>
+            </thead>
+            <tbody id="return_report_table_body">
+              <tr>
+                <td colspan="10" class="text-center p-4">
+                  <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading transactions...
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 {% endblock content %}
-
 {% block extra_js %}
   <script src="{% static 'js/fetchData.js' %}"></script>
   <!-- Visual Select to Styled Dropdown Converter -->
   <script src="{% static 'js/dropdown_style.js' %}"></script>
   <script>
+    const urls = {
+      report: '{% url "invoice:report_fetch" %}',
+      report_cancled: '{% url "invoice:report_cancled_fetch" %}',
+      report_return: '{% url "invoice:report_return_fetch" %}',
+      download_pdf: '{% url "report:invoice_report_pdf" %}',
+    }
+  </script>
+  <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Initialize AJAX table
-      const urls = {
-        report: '{% url "invoice:report_fetch" %}',
-        download_pdf: '{% url "report:invoice_report_pdf" %}',
-      }
+      // Initialize AJAX for both tables - they share the same form
+      // We need to initialize them separately since they have different URLs
+      initTableAjax('dateFilterForm', 'report_table', urls.report, {
+        method: 'GET',
+        loadingText: 'Loading transactions...',
+        autoLoad: true,
+      }, false)
 
-      // Custom table loader that handles the backend-rendered HTML
-      async function loadReportTable(tableId, fetchUrl) {
-        const table = document.getElementById(tableId)
-        const tbody = table.querySelector('tbody')
-        
-        if (!table || !tbody) {
-          console.error('Table elements not found')
-          return
-        }
+      initTableAjax('dateFilterForm', 'cancled_report_table', urls.report_cancled, {
+        method: 'GET',
+        loadingText: 'Loading cancelled transactions...',
+        autoLoad: true,
+      }, false)
 
-        // Show loading state
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="10" class="text-center p-4">
-              <div class="loading">
-                <i class="fas fa-spinner fa-spin"></i>
-                Loading transactions...
-              </div>
-            </td>
-          </tr>
-        `
-
-        try {
-          // Get date filter value from styled dropdown or regular select
-          const styledRef = window.dateFilter_styled
-          const dateFilter = styledRef?.hiddenSelect || document.getElementById('dateFilter') || document.getElementById('dateFilter_hidden')
-          const dateFilterValue = dateFilter ? dateFilter.value : 'this_month'
-
-          // Build URL with query parameters
-          const params = new URLSearchParams({
-            date_filter: dateFilterValue
-          })
-
-          // If custom date, add from_date and to_date parameters
-          if (dateFilterValue === 'custom' && dateFilter) {
-            const fromDate = dateFilter.getAttribute('data-from-date')
-            const toDate = dateFilter.getAttribute('data-to-date')
-            if (fromDate) params.append('from_date', fromDate)
-            if (toDate) params.append('to_date', toDate)
-          }
-
-          console.log(fetchUrl)
-
-          const url = `${fetchUrl}?${params.toString()}`
-          
-          const response = await fetch(url)
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-          
-          const data = await response.json()
-          if (!data.success) throw new Error(data.error || 'Failed to load')
-
-          // Update summary cards
-          const totalInvoiced = document.getElementById('totalInvoiced')
-          const totalPaid = document.getElementById('totalPaid')
-          const outstandingBalance = document.getElementById('outstandingBalance')
-          const transactionCount = document.getElementById('transactionCount')
-
-          if (totalInvoiced) totalInvoiced.textContent = formatCurrency(data.total_invoiced)
-          if (totalPaid) totalPaid.textContent = formatCurrency(data.total_paid)
-          if (transactionCount) transactionCount.textContent = data.transaction_count || 0
-
-          if (outstandingBalance) {
-            outstandingBalance.textContent = formatCurrency(data.outstanding_balance)
-            outstandingBalance.className = 'stat-number-compact ' + (data.outstanding_balance > 0 ? 'text-danger' : 'text-success')
-          }
-
-          // Insert table HTML from backend
-          if (data.table_html) {
-            tbody.innerHTML = data.table_html
-          } else {
-            throw new Error('No table HTML received')
-          }
-
-        } catch (error) {
-          console.error('Error loading report:', error)
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="8" class="text-center p-4">
-                <div class="error-state">
-                  <i class="fas fa-exclamation-triangle"></i>
-                  <p>Failed to load transactions. Please try again.</p>
-                </div>
-              </td>
-            </tr>
-          `
-        }
-      }
+      initTableAjax('dateFilterForm', 'return_report_table', urls.report_return, {
+        method: 'GET',
+        loadingText: 'Loading return transactions...',
+        autoLoad: true,
+      }, false)
 
       // Initialize styled dropdown for date filter
-      const currentFilter = '{{ date_filter|default:"this_month" }}'
-      
       if (typeof convertSelectToStyledDropdown !== 'undefined') {
         setTimeout(() => {
           const dateFilterSelect = document.getElementById('dateFilter')
@@ -194,48 +199,24 @@
                     hiddenSelect.setAttribute('data-to-date', data.toDate)
                   }
                 }
-                loadReportTable('report_table', urls.report)
+                // Reload both tables when filter changes
+                reloadTable('report_table')
+                reloadTable('cancled_report_table')
+                reloadTable('return_report_table')
               }
             })
           }
         }, 100)
       }
 
-      // Download Report function
-      function downloadReport() {
-        // Get date filter value from styled dropdown or regular select
-        const styledRef = window.dateFilter_styled
-        const dateFilter = styledRef?.hiddenSelect || document.getElementById('dateFilter') || document.getElementById('dateFilter_hidden')
-        const dateFilterValue = dateFilter ? dateFilter.value : 'this_month'
-
-        // Build URL with query parameters
-        const params = new URLSearchParams({
-          date_filter: dateFilterValue
-        })
-
-        // If custom date, add from_date and to_date parameters
-        if (dateFilterValue === 'custom' && dateFilter) {
-          const fromDate = dateFilter.getAttribute('data-from-date')
-          const toDate = dateFilter.getAttribute('data-to-date')
-          if (fromDate) params.append('from_date', fromDate)
-          if (toDate) params.append('to_date', toDate)
-        }
-
-        // Build download URL
-        const downloadUrl = `${urls.download_pdf}?${params.toString()}`
-
-        // Open PDF in new tab
-        window.open(downloadUrl, '_blank')
-      }
-
-      // Download report button handler
+      // Download Report function using fetchData.js helper
       const downloadReportBtn = document.getElementById('downloadReportBtn')
       if (downloadReportBtn) {
-        downloadReportBtn.addEventListener('click', downloadReport)
+        downloadReportBtn.addEventListener('click', function(e) {
+          e.preventDefault()
+          downloadTablePDF('dateFilterForm', 'report_table', urls.download_pdf)
+        })
       }
-
-      // Load table on page load
-      loadReportTable('report_table', urls.report)
     })
   </script>
 {% endblock extra_js %}

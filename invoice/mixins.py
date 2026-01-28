@@ -201,7 +201,7 @@ class InvoiceItemFinancialMixin:
 
     @property
     def tax_value(self):
-        return self.discounted_amount / (1 + self.gst_percentage / 100)
+        return self.discounted_amount / (1 + (self.gst_percentage / 100))
 
     @property
     def gst_amount(self):

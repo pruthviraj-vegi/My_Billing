@@ -40,7 +40,11 @@ from supplier.views import (
     get_supplier_report_data,
 )
 from inventory.views_variant import get_variants_data
-from invoice.views_report import get_invoice_report_data
+from invoice.views_report import (
+    get_invoice_report_data,
+    get_invoice_cancled_data,
+    get_invoice_return_data,
+)
 from django.conf import settings
 
 
@@ -444,24 +448,29 @@ def generate_supplier_ind_pdf(request, pk):
 
 
 def generate_invoice_report_pdf(request):
+    context = {}
     start_date, end_date = getDates(request)
     date_range = [start_date, end_date]
-    invoices = get_invoice_report_data(date_range)
-    total_count = invoices.count()
+    invoices_data = get_invoice_report_data(date_range)
+
+    context["start_date"] = start_date
+    context["end_date"] = end_date
+
+    total_count = invoices_data.count()
     total_net = Decimal("0")
     total_cgst_amount = Decimal("0")
     total_gst = Decimal("0")
     total_amount = Decimal("0")
 
-    if invoices:
-        for invoice in invoices:
+    if invoices_data:
+        for invoice in invoices_data:
             total_net += invoice.total_tax_value
             total_cgst_amount += invoice.cgst_amount
             total_gst += invoice.total_gst_amount
             total_amount += invoice.total_payable
 
-    context = {
-        "data": invoices,
+    context["invoices"] = {
+        "data": invoices_data,
         "start_date": start_date,
         "end_date": end_date,
         "total_count": total_count,
@@ -470,6 +479,75 @@ def generate_invoice_report_pdf(request):
         "total_gst": total_gst,
         "total_amount": total_amount,
     }
+
+    invoices_cancelled_data = get_invoice_cancled_data(date_range)
+    total_count = invoices_cancelled_data.count()
+    total_net = Decimal("0")
+    total_cgst_amount = Decimal("0")
+    total_gst = Decimal("0")
+    total_amount = Decimal("0")
+
+    if invoices_cancelled_data:
+        for invoice in invoices_cancelled_data:
+            total_net += invoice.total_tax_value
+            total_cgst_amount += invoice.cgst_amount
+            total_gst += invoice.total_gst_amount
+            total_amount += invoice.total_payable
+
+    context["invoices_cancelled"] = {
+        "data": invoices_cancelled_data,
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_count": total_count,
+        "total_net": total_net,
+        "total_cgst_amount": total_cgst_amount,
+        "total_gst": total_gst,
+        "total_amount": total_amount,
+    }
+
+    invoices_return_data = get_invoice_return_data(date_range)
+    total_count = invoices_return_data.count()
+    total_net = Decimal("0")
+    total_cgst_amount = Decimal("0")
+    total_gst = Decimal("0")
+    total_amount = Decimal("0")
+
+    if invoices_return_data:
+        for invoice in invoices_return_data:
+            total_net += invoice.total_tax_value
+            total_cgst_amount += invoice.cgst_amount
+            total_gst += invoice.total_gst_amount
+            total_amount += invoice.refund_amount
+
+    context["invoices_return"] = {
+        "data": invoices_return_data,
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_count": total_count,
+        "total_net": total_net,
+        "total_cgst_amount": total_cgst_amount,
+        "total_gst": total_gst,
+        "total_amount": total_amount,
+    }
+
+    context["summery"] = {
+        "count": context["invoices"]["total_count"]
+        + context["invoices_cancelled"]["total_count"]
+        + context["invoices_return"]["total_count"],
+        "net": context["invoices"]["total_net"]
+        - context["invoices_cancelled"]["total_net"]
+        - context["invoices_return"]["total_net"],
+        "cgst": context["invoices"]["total_cgst_amount"]
+        - context["invoices_cancelled"]["total_cgst_amount"]
+        - context["invoices_return"]["total_cgst_amount"],
+        "gst": context["invoices"]["total_gst"]
+        - context["invoices_cancelled"]["total_gst"]
+        - context["invoices_return"]["total_gst"],
+        "amount": context["invoices"]["total_amount"]
+        - context["invoices_cancelled"]["total_amount"]
+        - context["invoices_return"]["total_amount"],
+    }
+
     template = "invoice_report_pdf.html"
     filename = (
         f"invoice_report_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"

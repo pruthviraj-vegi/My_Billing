@@ -2,21 +2,21 @@
 {% if page_obj %}
   {% for value in page_obj %}
     <tr>
-      <td>{{ value.invoice_date|date:"M j, Y" }}</td>
-      <td>{{ value.invoice_number|default:"-" }}</td>
+      <td>{{ value.updated_at|date:"M j, Y" }}</td>
+      <td>{{ value.return_number|default:"-" }}</td>
       <td>{{ value.customer.name|default:"-" }}</td>
-      <td>{{ value.get_gst_type_display }}</td>
+      <td>{{ value.invoice.get_gst_type_display }}</td>
       <td>{{ value.total_tax_value|currency }}</td>
       <td>{{ value.cgst_amount|currency }}</td>
       <td>{{ value.cgst_amount|currency }}</td>
       <td>{{ value.igst_amount|currency }}</td>
       <td>{{ value.total_gst_amount|currency }}</td>
-      <td>{{ value.total_payable|currency }}</td>
+      <td>{{ value.refund_amount|currency }}</td>
     </tr>
   {% endfor %}
 {% else %}
   <tr>
-    <td colspan="10" class="text-center" style="padding: 2rem;">
+    <td colspan="10" class="text-center p-2">
       <div class="empty-state">
         <i class="fas fa-file-invoice-dollar"></i>
         <h4>No Invoices Found</h4>
