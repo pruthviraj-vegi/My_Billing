@@ -1,10 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block title %}
     Login Activity
 {% endblock title %}
-
 {% block content %}
     <div class="page-header">
         <h2 class="page-title">Login Activity</h2>
@@ -15,13 +13,11 @@
             </a>
         </div>
     </div>
-
     <nav class="breadcrumb breadcrumb-right">
         <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Login Activity</span>
     </nav>
-
     <div class="table-container">
         <table class="data-table">
             <thead>
@@ -36,26 +32,28 @@
             </thead>
             <tbody>
                 {% for ev in events %}
-                <tr>
-                    <td>{{ ev.occurred_at|date:"Y-m-d H:i:s" }}</td>
-                    <td>{{ ev.user.full_name|default:ev.user.get_username }}</td>
-                    <td>{{ ev.get_event_type_display }}</td>
-                    <td>{{ ev.ip_address|default:"-" }}</td>
-                    <td>
-                        {% if ev.user_agent %}
-                          <span title="{{ ev.user_agent }}">{{ ev.user_agent|truncatechars:32 }}</span>
-                        {% else %}-{% endif %}
-                    </td>
-                    <td><code>{{ ev.session_key|default:"-" }}</code></td>
-                </tr>
+                    <tr>
+                        <td>{{ ev.occurred_at|date:"Y-m-d H:i:s" }}</td>
+                        <td>{{ ev.user.full_name|default:ev.user.get_username }}</td>
+                        <td>{{ ev.get_event_type_display }}</td>
+                        <td>{{ ev.ip_address|default:"-" }}</td>
+                        <td>
+                            {% if ev.user_agent %}
+                                <span title="{{ ev.user_agent }}">{{ ev.user_agent|truncatechars:32 }}</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <code>{{ ev.session_key|default:"-" }}</code>
+                        </td>
+                    </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center">No login activity</td>
-                </tr>
+                    <tr>
+                        <td colspan="6" class="text-center">No login activity</td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-{% endblock %}
-
-
+{% endblock content %}

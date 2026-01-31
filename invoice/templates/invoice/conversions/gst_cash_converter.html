@@ -1,20 +1,16 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-
 {% block title %}
     GST to Cash Converter
 {% endblock title %}
-
 {% block content %}
     {% csrf_token %}
     <!-- Page Header -->
     <div class="page-header">
         <h2 class="page-title">
             GST to Cash Converter
-            {% if date_range_info != "All invoices" %}
-                <span class="text-muted">({{ date_range_info }})</span>
-            {% endif %}
+            {% if date_range_info != "All invoices" %}<span class="text-muted">({{ date_range_info }})</span>{% endif %}
         </h2>
         <div class="page-actions">
             <a href="{% url 'invoice:home' %}" class="btn">
@@ -31,35 +27,34 @@
             </button>
         </div>
     </div>
-
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
         <a href="{% url 'invoice:home' %}" class="breadcrumb-item">Invoices</a>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">GST Cash Converter</span>
     </nav>
-
     <!-- Date Filter Section -->
     <div class="search-filter-section">
         <form method="get" class="search-filter-form">
             <div class="search-group search-expanded">
                 <i class="fas fa-calendar-alt search-icon"></i>
                 <div class="search-input-container">
-                    <input type="date" 
-                           name="start_date" 
+                    <input type="date"
+                           name="start_date"
                            value="{{ start_date|default:'' }}"
                            class="search-input"
                            placeholder="Start Date">
                     <span class="date-separator">to</span>
-                    <input type="date" 
-                           name="end_date" 
+                    <input type="date"
+                           name="end_date"
                            value="{{ end_date|default:'' }}"
                            class="search-input"
                            placeholder="End Date">
                 </div>
             </div>
-            
-            <select class="filter-select" id="quickDateRange" onchange="setQuickDateRange(this.value)">
+            <select class="filter-select"
+                    id="quickDateRange"
+                    onchange="setQuickDateRange(this.value)">
                 <option value="">Quick Date Range</option>
                 <option value="thisMonth">This Month</option>
                 <option value="lastMonth">Last Month</option>
@@ -68,19 +63,17 @@
                 <option value="thisFinancialYear">This Financial Year</option>
                 <option value="lastFinancialYear">Last Financial Year</option>
             </select>
-            
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-filter"></i>
                 Apply Filter
             </button>
-            
-            <a href="{% url 'invoice:gst_cash_converter' %}" class="btn btn-secondary">
+            <a href="{% url 'invoice:gst_cash_converter' %}"
+               class="btn btn-secondary">
                 <i class="fas fa-times"></i>
                 Clear
             </a>
         </form>
     </div>
-
     <!-- Main Layout -->
     <div class="col d-flex flex-row gap-2">
         <!-- Left Column - GST Section -->
@@ -93,13 +86,15 @@
                     </h3>
                 </div>
                 <div class="table-container">
-                    <div id="gstSection" class="drag-section" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div id="gstSection"
+                         class="drag-section"
+                         ondrop="drop(event)"
+                         ondragover="allowDrop(event)">
                         <!-- GST items will be populated here -->
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Right Column - Cash Section -->
         <div class="col-md-6">
             <div class="table-section">
@@ -110,16 +105,18 @@
                     </h3>
                 </div>
                 <div class="table-container">
-                    <div id="cashSection" class="drag-section" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div id="cashSection"
+                         class="drag-section"
+                         ondrop="drop(event)"
+                         ondragover="allowDrop(event)">
                         <!-- Cash items will be populated here -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <!-- Export Results Modal -->
-    <div id="exportModal" class="modal" style="display: none;">
+    <div id="exportModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Export Results</h3>
@@ -135,9 +132,8 @@
         </div>
     </div>
 {% endblock content %}
-
 {% block extra_css %}
-<style>
+    <style>
 /* Date Filter Styles - Matching Home Page Search */
 .search-filter-section {
     margin-bottom: 1.5rem;
@@ -467,11 +463,10 @@
         padding: 0.25rem;
     }
 }
-</style>
+    </style>
 {% endblock extra_css %}
-
 {% block extra_js %}
-<script>
+    <script>
 // Quick date range functions
 function setQuickDateRange(range) {
     if (!range) return; // Don't do anything if no option selected
@@ -904,5 +899,5 @@ document.addEventListener('dragleave', function(e) {
 
 // Initialize the application when page loads
 document.addEventListener('DOMContentLoaded', init);
-</script>
+    </script>
 {% endblock extra_js %}

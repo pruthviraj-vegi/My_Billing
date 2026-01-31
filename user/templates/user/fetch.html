@@ -1,6 +1,5 @@
 {% load custom_filters %}
 {% load static %}
-
 <!-- Table Body Content -->
 {% if page_obj %}
     {% for user in page_obj %}
@@ -15,15 +14,14 @@
             <td>{{ user.phone_number }}</td>
             <td>{{ user.email|default:"-" }}</td>
             <td>
-                <span class="badge badge-{{ user.role|lower }}">
-                    {{ user.get_role_display }}
-                </span>
+                <span class="badge badge-{{ user.role|lower }}">{{ user.get_role_display }}</span>
             </td>
             <td>
                 {% if user.address %}
-                    <span class="text-truncate" style="max-width: 150px; display: inline-block;" title="{{ user.address }}">
-                        {{ user.address|truncatechars:30 }}
-                    </span>
+                    <span class="text-truncate"
+                          style="max-width: 150px;
+                                 display: inline-block"
+                          title="{{ user.address }}">{{ user.address|truncatechars:30 }}</span>
                 {% else %}
                     <span class="text-muted">-</span>
                 {% endif %}
@@ -86,11 +84,11 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="10" class="text-center" style="padding: 3rem;">
+        <td colspan="10" class="text-center p-2">
             <div class="empty-state">
-                <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
-                <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Users Found</h4>
-                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">No users match your search criteria. Try adjusting your filters or add a new user.</p>
+                <i class="fas fa-users"></i>
+                <h4>No Users Found</h4>
+                <p>No users match your search criteria. Try adjusting your filters or add a new user.</p>
                 <a href="{% url 'user:create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Add First User
@@ -99,6 +97,4 @@
         </td>
     </tr>
 {% endif %}
-
 <!-- Pagination separated from table content -->
-

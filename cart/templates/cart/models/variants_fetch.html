@@ -50,16 +50,11 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="13" class="text-center" style="padding: 3rem;">
+        <td colspan="13" class="text-center p-2">
             <div class="empty-state">
-                <i class="fas fa-boxes"
-                   style="font-size: 3rem;
-                          margin-bottom: 1rem;
-                          color: var(--text-secondary)"></i>
-                <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Variants Found</h4>
-                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
-                    No variants match your search criteria. Try adjusting your filters or add a new product.
-                </p>
+                <i class="fas fa-boxes"></i>
+                <h4>No Variants Found</h4>
+                <p>No variants match your search criteria. Try adjusting your filters or add a new product.</p>
                 <a href="{% url 'inventory_products:create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Create First Product

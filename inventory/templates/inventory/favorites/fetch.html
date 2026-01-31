@@ -1,6 +1,5 @@
 {% load custom_filters %}
 {% load static %}
-
 <!-- Table Body Content -->
 {% if page_obj %}
     {% for variant in page_obj %}
@@ -18,15 +17,9 @@
             </td>
             <td>
                 <div>
-                    {% if variant.size %}
-                        <span class="badge badge-info">{{ variant.size.name }}</span>
-                    {% endif %}
-                    {% if variant.color %}
-                        <span class="badge badge-secondary">{{ variant.color.name }}</span>
-                    {% endif %}
-                    {% if not variant.size and not variant.color %}
-                        <span class="text-muted">-</span>
-                    {% endif %}
+                    {% if variant.size %}<span class="badge badge-info">{{ variant.size.name }}</span>{% endif %}
+                    {% if variant.color %}<span class="badge badge-secondary">{{ variant.color.name }}</span>{% endif %}
+                    {% if not variant.size and not variant.color %}<span class="text-muted">-</span>{% endif %}
                 </div>
             </td>
             <td>
@@ -58,8 +51,8 @@
                        title="View Variant Details">
                         <i class="fas fa-eye"></i>
                     </a>
-                    <button type="button" 
-                            class="btn-action btn-danger remove-favorite-btn" 
+                    <button type="button"
+                            class="btn-action btn-danger remove-favorite-btn"
                             data-variant-id="{{ variant.id }}"
                             title="Remove from Favorites">
                         <i class="fas fa-trash"></i>
@@ -71,17 +64,16 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="9" class="text-center" style="padding: 3rem;">
+        <td colspan="9" class="text-center p-3">
             <div class="empty-state">
-                <i class="fas fa-star" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
-                <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Favorites Found</h4>
-                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
-                    You haven't added any products to your favorites yet. 
+                <i class="fas fa-star"></i>
+                <h4>No Favorites Found</h4>
+                <p>
+                    You haven't added any products to your favorites yet.
                     Click "Add Favorites" button to add products.
                 </p>
             </div>
         </td>
     </tr>
 {% endif %}
-
 <!-- Pagination separated from table content -->

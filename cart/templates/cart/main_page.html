@@ -40,8 +40,7 @@
                 class="nav-arrow list-cart-btn"
                 onclick="toggleCartList()"
                 id="listCartBtn"
-                title="View all carts in list"
-                style="gap: 0.5rem">
+                title="View all carts in list">
             {{ carts|length }}
             <i class="fas fa-list"></i>
         </button>
@@ -304,6 +303,7 @@
     /* List Cart Button - matches nav-arrow style */
     .list-cart-btn {
         margin-left: 10px;
+        gap: 0.5rem;
     }
     
     /* Cart List Modal */

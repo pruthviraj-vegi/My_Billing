@@ -2,11 +2,9 @@
 {% load static %}
 {% load custom_filters %}
 {% block title %}Supplier Dashboard{% endblock %}
-
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
 {% endblock extra_css %}
-
 {% block content %}
     <!-- Page Header -->
     <div class="page-header page-header-sticky">
@@ -39,7 +37,7 @@
         <span class="breadcrumb-active">Supplier Dashboard</span>
     </nav>
     <!-- Loading State - Hidden for seamless updates -->
-    <div id="dashboardLoading" class="loading-container" style="display: none;">
+    <div id="dashboardLoading" class="loading-container hidden">
         <div class="loading">
             <i class="fas fa-spinner fa-spin"></i>
             Loading dashboard data...
@@ -54,7 +52,9 @@
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalOutstanding" data-count="0">0</h3>
+                    <h3 class="stat-number counting-number"
+                        id="totalOutstanding"
+                        data-count="0">0</h3>
                     <p class="stat-label">Total Outstanding</p>
                 </div>
             </div>
@@ -63,7 +63,9 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalSuppliers" data-count="0">0</h3>
+                    <h3 class="stat-number counting-number"
+                        id="totalSuppliers"
+                        data-count="0">0</h3>
                     <p class="stat-label">Total Suppliers</p>
                 </div>
             </div>
@@ -99,7 +101,9 @@
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="outstandingBalance" data-count="0">0</h3>
+                    <h3 class="stat-number counting-number"
+                        id="outstandingBalance"
+                        data-count="0">0</h3>
                     <p class="stat-label">Outstanding Balance</p>
                 </div>
             </div>
@@ -108,47 +112,45 @@
         <div class="activity-section">
             <h2 class="section-title">Payment Analytics</h2>
             <!-- Payment Status Breakdown -->
-        <!-- Payment Status Breakdown -->
-        <div class="breakdown-grid">
-            <!-- Invoice Status -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Invoice Status</h3>
-                </div>
-                <div class="payment-chart-wrapper">
-                    <div class="payment-chart-container">
-                        <canvas id="invoiceStatusChart"></canvas>
+            <!-- Payment Status Breakdown -->
+            <div class="breakdown-grid">
+                <!-- Invoice Status -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Invoice Status</h3>
                     </div>
-                    <div id="invoiceStatusLegend" class="custom-legend"></div>
+                    <div class="payment-chart-wrapper">
+                        <div class="payment-chart-container">
+                            <canvas id="invoiceStatusChart"></canvas>
+                        </div>
+                        <div id="invoiceStatusLegend" class="custom-legend"></div>
+                    </div>
+                </div>
+                <!-- Supplier Purchases -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Top Suppliers</h3>
+                    </div>
+                    <div class="payment-chart-wrapper">
+                        <div class="payment-chart-container">
+                            <canvas id="supplierChart"></canvas>
+                        </div>
+                        <div id="supplierLegend" class="custom-legend"></div>
+                    </div>
+                </div>
+                <!-- Invoice Type -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Invoice Type</h3>
+                    </div>
+                    <div class="payment-chart-wrapper">
+                        <div class="payment-chart-container">
+                            <canvas id="invoiceTypeChart"></canvas>
+                        </div>
+                        <div id="invoiceTypeLegend" class="custom-legend"></div>
+                    </div>
                 </div>
             </div>
-
-            <!-- Supplier Purchases -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Top Suppliers</h3>
-                </div>
-                <div class="payment-chart-wrapper">
-                    <div class="payment-chart-container">
-                        <canvas id="supplierChart"></canvas>
-                    </div>
-                    <div id="supplierLegend" class="custom-legend"></div>
-                </div>
-            </div>
-
-            <!-- Invoice Type -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Invoice Type</h3>
-                </div>
-                <div class="payment-chart-wrapper">
-                    <div class="payment-chart-container">
-                        <canvas id="invoiceTypeChart"></canvas>
-                    </div>
-                    <div id="invoiceTypeLegend" class="custom-legend"></div>
-                </div>
-            </div>
-        </div>
         </div>
         <!-- Revenue Comparison Chart -->
         <div class="activity-section">
@@ -157,14 +159,14 @@
                 <div class="chart-header">
                     <h3 class="chart-title">Purchase Analytics</h3>
                     <div class="chart-summary-stats">
-                    <div class="stat-item">
-                        <span class="stat-label-small"><span class="legend-dot" style="background: var(--primary);"></span>Current</span>
-                        <span class="stat-value-small" id="revCurrentTotal">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label-small"><span class="legend-dot" style="background: var(--secondary);"></span>Previous</span>
-                        <span class="stat-value-small" id="revPreviousTotal">0</span>
-                    </div>
+                        <div class="stat-item">
+                            <span class="stat-label-small"><span class="legend-dot" style="background: var(--primary);"></span>Current</span>
+                            <span class="stat-value-small" id="revCurrentTotal">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label-small"><span class="legend-dot" style="background: var(--secondary);"></span>Previous</span>
+                            <span class="stat-value-small" id="revPreviousTotal">0</span>
+                        </div>
                         <div class="stat-item">
                             <span class="stat-label-small">Change</span>
                             <span class="stat-change" id="revChange">--</span>
@@ -200,7 +202,7 @@
         </div>
     </div>
     <!-- Error State -->
-    <div id="dashboardError" class="error-container" style="display: none;">
+    <div id="dashboardError" class="error-container hidden">
         <div class="error-message">
             <i class="fas fa-exclamation-triangle"></i>
             <h3>Failed to load dashboard data</h3>
@@ -230,9 +232,9 @@
         let supplierChart = ModernCharts.initDoughnut(supplierCtx);
         let typeChart = ModernCharts.initDoughnut(typeCtx);
 
-        updateCount('totalOutstanding', {{total_outstanding}});
-        updateCount('totalSuppliers', {{total_suppliers}});
-        updateCount('totalInvoices', {{total_invoices}});
+        updateCount('totalOutstanding', "{{total_outstanding}}");
+        updateCount('totalSuppliers', "{{total_suppliers}}");
+        updateCount('totalInvoices', "{{total_invoices}}");
 
         // Fetch Data Function
         async function fetchDashboardData(filter) {

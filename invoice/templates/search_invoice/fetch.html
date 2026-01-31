@@ -10,8 +10,8 @@
             <td>
                 <div>
                     <span class="font-weight-bold text-primary"><a style="text-decoration: none"
-                        href="{% url 'customer:detail' item.invoice.customer.id %} "
-                        target="_blank">{{ item.invoice.customer.name|default:"N/A" }}</a></span>
+   href="{% url 'customer:detail' item.invoice.customer.id %} "
+   target="_blank">{{ item.invoice.customer.name|default:"N/A" }}</a></span>
                     <br />
                     {% if item.invoice.customer.phone_number %}
                         <small class="text-muted">{{ item.invoice.customer.phone_number|phone_number }}</small>

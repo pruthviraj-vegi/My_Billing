@@ -1,6 +1,5 @@
 {% load custom_filters %}
 {% load static %}
-
 <!-- Table Body Content -->
 {% if page_obj %}
     {% for audit_table in page_obj %}
@@ -9,7 +8,8 @@
                 <div>
                     <span class="font-weight-bold text-primary">{{ audit_table.title }}</span>
                     {% if audit_table.description %}
-                        <br><small class="text-muted">{{ audit_table.description|truncatechars:50 }}</small>
+                        <br>
+                        <small class="text-muted">{{ audit_table.description|truncatechars:50 }}</small>
                     {% endif %}
                 </div>
             </td>
@@ -77,11 +77,11 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="9" class="text-center" style="padding: 3rem;">
+        <td colspan="9" class="text-center p-3">
             <div class="empty-state">
-                <i class="fas fa-clipboard-list" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
-                <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Audit Sessions Found</h4>
-                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">No audit sessions match your search criteria. Try adjusting your filters or create a new audit session.</p>
+                <i class="fas fa-clipboard-list"></i>
+                <h4>No Audit Sessions Found</h4>
+                <p>No audit sessions match your search criteria. Try adjusting your filters or create a new audit session.</p>
                 <a href="{% url 'invoice:audit_create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Create First Audit Session
@@ -90,5 +90,4 @@
         </td>
     </tr>
 {% endif %}
-
 <!-- Pagination separated from table content -->

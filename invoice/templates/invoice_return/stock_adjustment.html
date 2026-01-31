@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-
-{% block title %}{{ title }}{% endblock title %}
-
+{% block title %}
+    {{ title }}
+{% endblock title %}
 {% block content %}
     {% csrf_token %}
     <!-- Page Header -->
@@ -20,14 +20,12 @@
             </button>
         </div>
     </div>
-
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
         <a href="{% url 'invoice:return_home' %}" class="breadcrumb-item">Return Invoices</a>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Stock Adjustment</span>
     </nav>
-
     <!-- Return Invoice Summary -->
     <div class="form-section mb-3">
         <h5 class="section-title">Return Invoice Summary</h5>
@@ -66,11 +64,9 @@
             </div>
         </div>
     </div>
-
     <!-- Items Management Section -->
     <div class="form-section">
         <h5 class="section-title">Return Items Management</h5>
-        
         <!-- Summary Cards -->
         <div class="row mb-4">
             <div class="col-md-3">
@@ -88,17 +84,16 @@
             <div class="col-md-3">
                 <div class="summary-card">
                     <div class="summary-label">Original Invoice Amount</div>
-                    <div class="summary-value" id="totalAmount">{{return_invoice.invoice.amount|currency}}</div>
+                    <div class="summary-value" id="totalAmount">{{ return_invoice.invoice.amount|currency }}</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="summary-card">
                     <div class="summary-label">Refund Amount</div>
-                    <div class="summary-value" id="refundAmount">{{return_invoice.refund_amount|currency}}</div>
+                    <div class="summary-value" id="refundAmount">{{ return_invoice.refund_amount|currency }}</div>
                 </div>
             </div>
         </div>
-
         <!-- Items Table -->
         <div class="table-container">
             <table class="data-table">
@@ -120,12 +115,8 @@
                             <td>
                                 <div class="product-info">
                                     <div class="product-name">{{ item.product_variant.product.name }}</div>
-                                    {% if item.product_variant.name %}
-                                        <div class="product-variant">{{ item.product_variant.name }}</div>
-                                    {% endif %}
-                                    {% if item.product_variant.barcode %}
-                                        <div class="product-barcode">{{ item.product_variant.barcode }}</div>
-                                    {% endif %}
+                                    {% if item.product_variant.name %}<div class="product-variant">{{ item.product_variant.name }}</div>{% endif %}
+                                    {% if item.product_variant.barcode %}<div class="product-barcode">{{ item.product_variant.barcode }}</div>{% endif %}
                                 </div>
                             </td>
                             <td>
@@ -133,10 +124,10 @@
                             </td>
                             <td>
                                 <div class="quantity-input-group">
-                                    <input type="number" 
-                                           class="form-input quantity-input" 
+                                    <input type="number"
+                                           class="form-input quantity-input"
                                            value="{{ item.quantity_returned }}"
-                                           min="0" 
+                                           min="0"
                                            max="{{ item.quantity_original }}"
                                            step="0.01"
                                            data-item-id="{{ item.id }}"
@@ -150,10 +141,9 @@
                                 <div class="amount-display" id="amount-{{ item.id }}">{{ item.total_amount|currency }}</div>
                             </td>
                             <td>
-                                <select class="form-select condition-select" 
-                                        data-item-id="{{ item.id }}">
+                                <select class="form-select condition-select" data-item-id="{{ item.id }}">
                                     {% for value, label in item_condition_choices %}
-                                        <option value="{{ value }}" 
+                                        <option value="{{ value }}"
                                                 {% if item.condition == value %}selected{% endif %}>
                                             {{ label }}
                                         </option>
@@ -161,10 +151,9 @@
                                 </select>
                             </td>
                             <td>
-                                <select class="form-select reason-select" 
-                                        data-item-id="{{ item.id }}">
+                                <select class="form-select reason-select" data-item-id="{{ item.id }}">
                                     {% for value, label in item_return_reason_choices %}
-                                        <option value="{{ value }}" 
+                                        <option value="{{ value }}"
                                                 {% if item.return_reason == value %}selected{% endif %}>
                                             {{ label }}
                                         </option>
@@ -173,8 +162,8 @@
                             </td>
                             <td>
                                 <div class="action-buttons">
-                                    <button type="button" 
-                                            class="btn-action btn-update" 
+                                    <button type="button"
+                                            class="btn-action btn-update"
                                             data-item-id="{{ item.id }}"
                                             title="Update Item">
                                         <i class="fas fa-sync"></i>
@@ -184,11 +173,11 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center" style="padding: 3rem;">
+                            <td colspan="8" class="text-center p-3">
                                 <div class="empty-state">
-                                    <i class="fas fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
-                                    <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Items Found</h4>
-                                    <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">This return invoice has no items to manage.</p>
+                                    <i class="fas fa-box-open"></i>
+                                    <h4>No Items Found</h4>
+                                    <p>This return invoice has no items to manage.</p>
                                 </div>
                             </td>
                         </tr>
@@ -196,7 +185,6 @@
                 </tbody>
             </table>
         </div>
-
         <!-- Action Buttons -->
         <div class="form-actions mt-4">
             <button type="button" class="btn btn-primary" id="updateAllBtn">
@@ -218,9 +206,8 @@
         </div>
     </div>
 {% endblock content %}
-
 {% block extra_js %}
-<script>
+    <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Stock adjustment page loaded');
     
@@ -601,9 +588,8 @@ document.addEventListener('DOMContentLoaded', function() {
     storeOriginalValues();
     updateItemsToReturnCount();
 });
-</script>
-
-<style>
+    </script>
+    <style>
 .info-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
@@ -715,5 +701,5 @@ document.addEventListener('DOMContentLoaded', function() {
         opacity: 1;
     }
 }
-</style>
+    </style>
 {% endblock extra_js %}

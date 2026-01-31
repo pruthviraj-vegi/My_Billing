@@ -3,9 +3,7 @@
     {% for audit in page_obj %}
         <tr>
             <td>
-                <a href="{% url 'invoice:detail' audit.invoice.id %}" target="_blank" style=" text-decoration: none;">
-                    {{ audit.invoice.invoice_number }}
-                </a>
+                <a href="{% url 'invoice:detail' audit.invoice.id %}" target="_blank">{{ audit.invoice.invoice_number }}</a>
             </td>
             <td>{{ audit.old_invoice_no|default:"-" }}</td>
             <td>{{ audit.new_invoice_no }}</td>
@@ -19,7 +17,7 @@
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="6" class="text-center" style="padding: 2rem;">
+        <td colspan="6" class="text-center p-3">
             <div class="empty-state">
                 <i class="fas fa-file-invoice"></i>
                 <h4>No Audit Details Found</h4>

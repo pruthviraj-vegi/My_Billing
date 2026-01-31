@@ -2,111 +2,108 @@
 {% load static %}
 {% load custom_filters %}
 {% block title %}
-    Invoices Management
+  Invoices Management
 {% endblock title %}
 {% block content %}
-    <!-- Page Header -->
-    <div class="page-header">
-        <h2 class="heading page-title">Invoices Management</h2>
-        <div class="page-actions">
-            <a href="#" id="downloadBtn" class="btn btn-primary">
-                <i class="fas fa-download"></i>
-                Download
-            </a>
-            <button type="button" class="btn btn-info" id="downloadReportBtn">
-                <i class="fas fa-download"></i>
-                Download Report
-            </button>
-            <a href="{% url 'cart:main_page' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                New Invoice
-            </a>
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="heading page-title">Invoices Management</h2>
+    <div class="page-actions">
+      <a href="#" id="downloadBtn" class="btn btn-primary">
+        <i class="fas fa-download"></i>
+        Download
+      </a>
+      <button type="button" class="btn btn-info" id="downloadReportBtn">
+        <i class="fas fa-download"></i>
+        Download Report
+      </button>
+      <a href="{% url 'cart:main_page' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i>
+        New Invoice
+      </a>
+    </div>
+  </div>
+  <!-- Breadcrumb Navigation -->
+  <nav class="breadcrumb breadcrumb-right">
+    <a href="#" class="breadcrumb-item">Invoices</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">All Invoices</span>
+  </nav>
+  <!-- Search and Filter Section -->
+  <div class="search-filter-section">
+    <form method="#"
+          class="search-filter-form"
+          id="searchForm"
+          autocomplete="off">
+      <div class="search-group search-expanded">
+        <i class="fas fa-search search-icon"></i>
+        <div class="search-input-container">
+          <input type="search"
+                 name="search"
+                 class="search-input"
+                 placeholder="Search invoices by number, customer name, phone, or notes..."
+                 value=""
+                 id="searchInput"
+                 autofocus>
         </div>
-    </div>
-    <!-- Breadcrumb Navigation -->
-    <nav class="breadcrumb breadcrumb-right">
-        <a href="#" class="breadcrumb-item">Invoices</a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-active">All Invoices</span>
-    </nav>
-    <!-- Search and Filter Section -->
-    <div class="search-filter-section">
-        <form method="#" class="search-filter-form" id="searchForm" autocomplete="off">
-            <div class="search-group search-expanded">
-                <i class="fas fa-search search-icon"></i>
-                <div class="search-input-container">
-                    <input type="search"
-                            name="search"
-                            class="search-input"
-                            placeholder="Search invoices by number, customer name, phone, or notes..."
-                            value=""
-                            id="searchInput"
-                            autofocus>
-                </div>
-            </div>
-            <select name="payment_type" class="filter-select" id="paymentTypeFilter">
-                <option value="">All Types</option>
-                {% for value, label in payment_type_choices %}
-                    <option value="{{ value }}">{{ label }}</option>
-                {% endfor %}
-            </select>
-            <select name="bill_types" class="filter-select" id="billTypesFilter">
-                <option value="">Bill Types</option>
-                {% for value, label in bill_types %}
-                    <option value="{{ value }}">{{ label }}</option>
-                {% endfor %}
-            </select>
-            <select name="financial_year" class="filter-select" id="financialYearFilter">
-                <option value="">All Years</option>
-                {% for year in financial_years %}
-                    <option value="{{ year }}">{{ year }}</option>
-                {% endfor %}
-            </select>
-
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-search"></i>
-                Search
+      </div>
+      <select name="payment_type" class="filter-select" id="paymentTypeFilter">
+        <option value="">All Types</option>
+        {% for value, label in payment_type_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <select name="bill_types" class="filter-select" id="billTypesFilter">
+        <option value="">Bill Types</option>
+        {% for value, label in bill_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <select name="financial_year" class="filter-select" id="financialYearFilter">
+        <option value="">All Years</option>
+        {% for year in financial_years %}<option value="{{ year }}">{{ year }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-search"></i>
+        Search
+      </button>
+    </form>
+  </div>
+  <!-- Data Table -->
+  <div class="table-container">
+    <table class="data-table" id="data_table">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="invoice_number">Invoice #</th>
+          <th class="sortable" data-sort="customer__name">Customer</th>
+          <th class="sortable" data-sort="payment_type">Type</th>
+          <th class="sortable" data-sort="amount">Amount</th>
+          <th class="sortable" data-sort="payment_status">Status</th>
+          <th class="sortable" data-sort="invoice_date">Date</th>
+          <th class="sortable" data-sort="due_date">Due Date</th>
+          <th class="sortable" data-sort="created_by__username">Sold By</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="table_body">
+        <!-- Empty table body - data will be loaded via AJAX -->
+        <tr>
+          <td colspan="8" class="text-center p-3">
+            <i class="fas fa-spinner fa-spin"></i>
+            Loading invoices...
+            <br>
+            <br>
+            <button type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    onclick="window.retryTableLoad()">
+              <i class="fas fa-refresh"></i>
+              Retry
             </button>
-        </form>
-    </div>
-    
-    <!-- Data Table -->
-    <div class="table-container">
-            <table class="data-table" id="data_table">
-                <thead>
-                    <tr>
-                    <th class="sortable" data-sort="invoice_number">Invoice #</th>
-                    <th class="sortable" data-sort="customer__name">Customer</th>
-                    <th class="sortable" data-sort="payment_type">Type</th>
-                    <th class="sortable" data-sort="amount">Amount</th>
-                    <th class="sortable" data-sort="payment_status">Status</th>
-                    <th class="sortable" data-sort="invoice_date">Date</th>
-                    <th class="sortable" data-sort="due_date">Due Date</th>
-                    <th class="sortable" data-sort="created_by__username">Sold By</th>
-                    <th>Actions</th>
-                    </tr>
-                    </thead>
-                <tbody id="table_body">
-                    <!-- Empty table body - data will be loaded via AJAX -->
-                    <tr>
-                        <td colspan="8" class="text-center" style="padding: 2rem;">
-                            <i class="fas fa-spinner fa-spin" style="color: var(--primary); margin-right: 0.5rem;"></i>
-                            Loading invoices...
-                            <br><br>
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.retryTableLoad()">
-                                <i class="fas fa-refresh"></i>
-                                Retry
-                            </button>
-                                </td>
-                            </tr>
-                    </tbody>
-                    <tfoot id="table_footer">
-                        <!-- Pagination will be loaded here via AJAX -->
-                    </tfoot>
-            </table>
-    </div>
-
-     <div class="modal-overlay" id="downloadReportModal">
+          </td>
+        </tr>
+      </tbody>
+      <tfoot id="table_footer">
+        <!-- Pagination will be loaded here via AJAX -->
+      </tfoot>
+    </table>
+  </div>
+  <div class="modal-overlay" id="downloadReportModal">
     <div class="modal-content">
       <div class="modal-header">
         <h4 class="modal-title">Download Invoice Report</h4>
@@ -164,27 +161,21 @@
       </div>
     </div>
   </div>
-    
 {% endblock content %}
-
 {% block extra_js %}
-
-    <script>
+  <script>
         urls = {
             fetch: '{% url "invoice:fetch" %}',
             suggestions: '{% url "suggestions:invoice_all" %}',
             invoices_pdf: '{% url "report:invoices_pdf" %}',
             invoice_report_pdf: '{% url "report:invoices_pdf" %}',
         }
-    </script>
-
-    <!-- Load dependencies -->
-    <script src="{% static 'js/wordSuggestion.js' %}"></script>
-    <script src="{% static 'js/fetchData.js' %}"></script>
-    
+  </script>
+  <!-- Load dependencies -->
+  <script src="{% static 'js/wordSuggestion.js' %}"></script>
+  <script src="{% static 'js/fetchData.js' %}"></script>
   <script src="{% static 'js/dropdown_style.js' %}"></script>
-    
-    <script>
+  <script>
         // Simple, clean initialization - just like Select2!
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize word suggestion on search input - jQuery-like syntax!
@@ -214,9 +205,8 @@
             downloadTablePDF('searchForm', 'data_table', urls.invoices_pdf);
           });
         }
-    </script>
-
-    <script>
+  </script>
+  <script>
     // Download Report Modal functionality
     const downloadModal = document.getElementById('downloadReportModal')
     const downloadReportBtn = document.getElementById('downloadReportBtn')
@@ -449,6 +439,4 @@
     })
     }
   </script>
-
-    
 {% endblock extra_js %}

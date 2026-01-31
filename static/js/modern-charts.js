@@ -211,19 +211,20 @@
 
                     const color = bgColors[index];
                     const amount = item[keys.amount] || 0;
+                    const formattedAmount = amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+                    // New Design Structure
                     const itemHtml = `
                         <div class="legend-item">
-                            <div class="legend-header">
-                                <div class="legend-dot" style="background-color: ${color}"></div>
-                                <span>${item[keys.label]}</span>
+                            <div class="legend-dot" style="background-color: ${color}"></div>
+                            <div class="legend-content">
+                                <div class="legend-label">
+                                    ${item[keys.label]} — ${item[keys.count]} (${percentage})
+                                </div>
+                                <div class="legend-amount">${formattedAmount}</div>
                             </div>
-                            <div class="legend-stats">
-                                <span class="legend-count" style="color: ${color}">${item[keys.count]}</span>
-                                <span class="legend-percent">${percentage}</span>
-                            </div>
-                            <div class="legend-amount">${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </div>
+                        ${index < items.length - 1 ? '<hr class="legend-separator">' : ''}
                     `;
                     legendContainer.insertAdjacentHTML('beforeend', itemHtml);
                 });

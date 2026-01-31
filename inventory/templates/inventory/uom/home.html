@@ -27,13 +27,13 @@
             <div class="search-group search-expanded">
                 <i class="fas fa-search search-icon"></i>
                 <div class="search-input-container">
-                        <input type="search"
-                               name="search"
-                               class="search-input"
-                               placeholder="Search UOMs by name, code, category or description..."
-                               value=""
-                               id="searchInput"
-                               autofocus>
+                    <input type="search"
+                           name="search"
+                           class="search-input"
+                           placeholder="Search UOMs by name, code, category or description..."
+                           value=""
+                           id="searchInput"
+                           autofocus>
                 </div>
             </div>
             <select name="sort" class="filter-select" id="sortSelect">
@@ -53,7 +53,6 @@
             </button>
         </form>
     </div>
-    
     <!-- Data Table -->
     <div class="table-container">
         <table class="data-table" id="data_table">
@@ -73,12 +72,13 @@
             <tbody id="table_body">
                 <!-- Empty table body - data will be loaded via AJAX -->
                 <tr>
-                    <td colspan="9" class="text-center" style="padding: 2rem;">
+                    <td colspan="9" class="text-center p-3">
                         <div class="loading">
                             <i class="fas fa-spinner fa-spin"></i>
                             Loading UOMs...
                         </div>
-                        <br><br>
+                        <br>
+                        <br>
                         <button type="button" class="btn btn-sm" onclick="window.retryTableLoad()">
                             <i class="fas fa-refresh"></i>
                             Retry
@@ -88,21 +88,17 @@
             </tbody>
         </table>
     </div>
-    
 {% endblock content %}
 {% block extra_js %}
-
     <script>
         urls = {
             fetch: '{% url "inventory:uom_fetch" %}',
             suggestions: '{% url "inventory:uom_suggestions" %}',
         }
     </script>
-
     <!-- Load dependencies -->
     <script src="{% static 'js/wordSuggestion.js' %}"></script>
     <script src="{% static 'js/fetchData.js' %}"></script>
-    
     <script>
         // Simple, clean initialization - just like Select2!
         document.addEventListener('DOMContentLoaded', function() {
@@ -115,6 +111,4 @@
             });
         });
     </script>
-
-    
 {% endblock extra_js %}

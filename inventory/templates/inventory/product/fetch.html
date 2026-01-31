@@ -1,6 +1,5 @@
 {% load custom_filters %}
 {% load static %}
-
 <!-- Table Body Content -->
 {% if page_obj %}
     {% for product in page_obj %}
@@ -70,11 +69,11 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="11" class="text-center" style="padding: 3rem;">
+        <td colspan="11" class="text-center p-3">
             <div class="empty-state">
-                <i class="fas fa-boxes" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
-                <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Products Found</h4>
-                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">No products match your search criteria. Try adjusting your filters or add a new product.</p>
+                <i class="fas fa-boxes"></i>
+                <h4>No Products Found</h4>
+                <p>No products match your search criteria. Try adjusting your filters or add a new product.</p>
                 <a href="{% url 'inventory_products:create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Create First Product
@@ -83,5 +82,4 @@
         </td>
     </tr>
 {% endif %}
-
 <!-- Pagination separated from table content -->

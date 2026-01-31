@@ -1,6 +1,5 @@
 {% load custom_filters %}
 {% load static %}
-
 {% if page_obj %}
     {% for supplier in page_obj %}
         <tr>
@@ -9,7 +8,9 @@
                 <div>
                     <span class="font-weight-bold text-primary">{{ supplier.name }}</span>
                     {% if supplier.contact_person %}
-                        <div class="text-muted"><small>{{ supplier.contact_person }}</small></div>
+                        <div class="text-muted">
+                            <small>{{ supplier.contact_person }}</small>
+                        </div>
                     {% endif %}
                 </div>
             </td>
@@ -19,7 +20,9 @@
             <td>
                 <strong>{{ supplier.phone|phone_number }}</strong>
                 {% if supplier.email %}
-                    <div class="text-muted"><small>{{ supplier.email }}</small></div>
+                    <div class="text-muted">
+                        <small>{{ supplier.email }}</small>
+                    </div>
                 {% endif %}
             </td>
             <td>{{ supplier.gstin|default:"-" }}</td>
@@ -67,11 +70,11 @@
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="9" class="text-center" style="padding: 3rem;">
+        <td colspan="9" class="text-center p-2">
             <div class="empty-state">
-                <i class="fas fa-truck" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-secondary);"></i>
-                <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">No Suppliers Found</h4>
-                <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">No suppliers match your search criteria. Try adjusting your filters or add a new supplier.</p>
+                <i class="fas fa-truck"></i>
+                <h4>No Suppliers Found</h4>
+                <p>No suppliers match your search criteria. Try adjusting your filters or add a new supplier.</p>
                 <a href="{% url 'supplier:create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Add First Supplier
@@ -80,5 +83,3 @@
         </td>
     </tr>
 {% endif %}
-
-

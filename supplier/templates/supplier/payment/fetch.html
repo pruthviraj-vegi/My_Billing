@@ -1,5 +1,4 @@
 {% load custom_filters %}
-
 {% if page_obj %}
   {% for payment in page_obj %}
     <tr>
@@ -9,9 +8,19 @@
         </div>
       </td>
       <td>{{ payment.payment_date|date:'M j, Y' }}</td>
-      <td><strong>{{ payment.amount|currency }}</strong></td>
-      <td><span class="badge badge-info">{{ payment.get_method_display }}</span></td>
-      <td>{% if payment.transaction_id %}{{ payment.transaction_id }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+      <td>
+        <strong>{{ payment.amount|currency }}</strong>
+      </td>
+      <td>
+        <span class="badge badge-info">{{ payment.get_method_display }}</span>
+      </td>
+      <td>
+        {% if payment.transaction_id %}
+          {{ payment.transaction_id }}
+        {% else %}
+          <span class="text-muted">-</span>
+        {% endif %}
+      </td>
       <td>
         {% if payment.amount != payment.unallocated_amount %}
           <span class="text-success">{{ payment.amount|sub:payment.unallocated_amount|currency }}</span>
@@ -40,7 +49,7 @@
   {% endfor %}
 {% else %}
   <tr>
-    <td colspan="8" class="text-center" style="padding: 2rem;">
+    <td colspan="8" class="text-center p-2">
       <div class="empty-state">
         <i class="fas fa-credit-card"></i>
         <h4>No Payments Found</h4>
@@ -54,5 +63,3 @@
     </td>
   </tr>
 {% endif %}
-
-
