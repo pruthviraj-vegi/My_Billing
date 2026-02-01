@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const themeToggle = document.getElementById('themeToggle');
     const body = document.body;
 
+    // Disable autocomplete on all forms
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.setAttribute('autocomplete', 'off');
+    });
+
     // Check for saved theme preference or default to 'light'
     const currentTheme = localStorage.getItem('theme') || 'light';
     body.setAttribute('data-theme', currentTheme);

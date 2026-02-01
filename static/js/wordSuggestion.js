@@ -71,13 +71,17 @@ class WordSuggestion {
         this.input.setAttribute('aria-controls', this.dropdown.id);
 
         // Find the best container for the dropdown
-        // If inside a Bootstrap modal, append to modal-body for proper positioning
-        const modalBody = this.input.closest('.modal-body');
-        const container = modalBody || this.input.closest('.form-group') || this.input.parentNode;
+        // Prefer explicit containers or direct parent over modal body to keep it near the input
+        const container = this.input.closest('.search-input-container') ||
+            this.input.closest('.input-group') ||
+            this.input.parentNode;
 
-        // Set position relative on container if it's modal-body
-        if (modalBody) {
-            modalBody.style.position = 'relative';
+        // Set position relative on container to ensure dropdown is positioned correctly
+        if (container) {
+            const computedStyle = window.getComputedStyle(container);
+            if (computedStyle.position === 'static') {
+                container.style.position = 'relative';
+            }
         }
 
         container.appendChild(this.dropdown);

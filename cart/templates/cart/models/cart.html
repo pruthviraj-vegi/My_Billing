@@ -212,7 +212,7 @@
                 <!-- Search Form - Outside table for proper HTML structure -->
                 <form id="searchForm" method="get" class="p-3 border-bottom">
                     <div class="row g-2 align-items-end">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="searchInput" class="form-label small">Search</label>
                             <input type="search"
                                    id="searchInput"
@@ -245,15 +245,6 @@
                                    placeholder="Size">
                         </div>
                         <div class="col-md-2">
-                            <label for="stockFilter" class="form-label small">Stock</label>
-                            <select id="stockFilter" name="stock" class="form-input">
-                                <option value="">All</option>
-                                <option value="in_stock">In Stock</option>
-                                <option value="out_of_stock">Out of Stock</option>
-                                <option value="low_stock">Low Stock</option>
-                            </select>
-                        </div>
-                        <div class="col-md-1">
                             <button type="submit" class="btn btn-primary btn-sm w-100">
                                 <i class="fas fa-search"></i> Search
                             </button>
@@ -312,6 +303,7 @@
             clearCart: "{% url 'cart:clear_cart' cart.id %}",
             getFavorites: "{% url 'cart:get_favorites' %}",
             customSearch: "{% url 'cart:custom_search' %}",
+            suggestions: "{% url 'suggestions:product_all' %}",
         }
     };
     </script>
@@ -364,6 +356,7 @@
             if (searchModal) {
                 const searchModalInstance = bootstrap.Modal.getInstance(searchModal);
                 searchModalInstance?.hide();
+                document.getElementById('searchForm')?.reset();
             }
             
             // Submit form after modal animation
@@ -451,20 +444,47 @@
     
     // Load favorites table only when favorites modal is opened
     const favoritesModal = document.getElementById('favoritesModal');
+    let favoritesLoaded = false;
     if (favoritesModal) {
         favoritesModal.addEventListener('show.bs.modal', function() {
             // Load favorites data when modal opens
-            loadTableData(null, 'favorites_table', CART_DATA.urls.getFavorites, {});
+            if (!favoritesLoaded) {
+                loadTableData(null, 'favorites_table', CART_DATA.urls.getFavorites, {
+                    onSuccess: function() {
+                        favoritesLoaded = true;
+                    }
+                });
+            }
         });
     }
     
     // Load search table only when search modal is opened
     const searchModal = document.getElementById('searchModal');
+    let searchLoaded = false;
     if (searchModal) {
-        searchModal.addEventListener('show.bs.modal', function() {
+        searchModal.addEventListener('shown.bs.modal', function() {
             // Load search data when modal opens
-            loadTableData('searchForm', 'search_table', CART_DATA.urls.customSearch, {});
+            if (!searchLoaded) {
+                loadTableData('searchForm', 'search_table', CART_DATA.urls.customSearch, {
+                    onSuccess: function() {
+                        searchLoaded = true;
+                    }
+                });
+            }
             $("#searchInput").focus();
+            
+            // Initialize word suggestion if available
+            if ($.fn.wordSuggestion) {
+                 $('#searchInput').wordSuggestion({
+                    url: CART_DATA.urls.suggestions,
+                    placeholder: 'Type to search products...',
+                    minLength: 2,
+                    onSelect: function(suggestion, input) {
+                        // Auto-reload table when suggestion is selected
+                        reloadTable('search_table');
+                    }
+                });
+            }
         });
     }
     </script>

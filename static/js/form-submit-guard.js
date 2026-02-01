@@ -169,12 +169,27 @@
                     const buttonName = clickedButton.getAttribute('name');
                     const buttonValue = clickedButton.getAttribute('value');
 
-                    if (buttonName) {
-                        console.debug('FormSubmitGuard: Submit detected', {
-                            name: buttonName,
-                            value: buttonValue,
-                            hasHiddenField: !!form.querySelector(`input[type="hidden"][name="${buttonName}"]`)
-                        });
+                    if (buttonName && buttonValue !== null) {
+                        // CRITICAL FIX: Ensure hidden field exists before disabling buttons
+                        // If the click handler didn't catch it (e.g. form submitted via Enter key on input),
+                        // we must add it here or the value will be lost when button is disabled.
+                        if (!form.querySelector(`input[type="hidden"][name="${buttonName}"]`)) {
+                            const hiddenField = document.createElement('input');
+                            hiddenField.type = 'hidden';
+                            hiddenField.name = buttonName;
+                            hiddenField.value = buttonValue;
+                            form.insertBefore(hiddenField, form.firstChild);
+
+                            console.debug('FormSubmitGuard: Created fallback hidden field in submit handler', {
+                                name: buttonName,
+                                value: buttonValue
+                            });
+                        } else {
+                            console.debug('FormSubmitGuard: Submit detected (hidden field already exists)', {
+                                name: buttonName,
+                                value: buttonValue
+                            });
+                        }
                     }
                 }
 
