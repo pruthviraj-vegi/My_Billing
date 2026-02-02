@@ -15,6 +15,70 @@ logger = logging.getLogger(__name__)
 # Precompiled regex for speed
 TOKENIZER = re.compile(r"[a-zA-Z0-9]+")
 
+CUSTOMER_SEARCH_FIELDS = ("name", "phone_number", "email", "address")
+INVOICE_SEARCH_FIELDS = (
+    "invoice_number",
+    "customer__name",
+    "customer__phone_number",
+    "notes",
+)
+PRODUCT_SEARCH_FIELDS = ("brand", "name", "category__name")
+PRODUCT_VARIANT_SEARCH_FIELDS = (
+    "barcode",
+    "product__name",
+    "product__brand",
+    "product__category__name",
+)
+SUPPLIER_SEARCH_FIELDS = (
+    "name",
+    "phone",
+    "email",
+    "gstin",
+    "first_line",
+    "second_line",
+    "city",
+    "state",
+    "pincode",
+    "country",
+)
+
+
+def get_instance_tokens(instance, fields):
+    """
+    Helper to extract tokens from a single model instance.
+    Used by signals to check if cache invalidation is actually needed.
+    """
+    tokens = set()
+    for field_path in fields:
+        # Handle related fields (e.g., 'customer__name')
+        value = instance
+        parts = field_path.split("__")
+        try:
+            for part in parts:
+                if value is None:
+                    break
+                value = getattr(value, part)
+        except AttributeError:
+            continue  # Field might not exist or be accessible
+
+        if value:
+            # Tokenize
+            found = TOKENIZER.findall(str(value).lower())
+            tokens.update(t for t in found if len(t) > 2)
+    return tokens
+
+
+def invalidate_cache(cache_key):
+    """
+    Clears the specific cache key.
+    Used by signals to invalidate cache on model changes.
+    """
+    try:
+        cache.delete(cache_key)
+        logger.info(f"Cache invalidated for key: {cache_key}")
+    except Exception as e:
+        logger.error(f"Failed to invalidate cache for key {cache_key}: {e}")
+
 
 def get_related_words(query, list_of_words, limit=10, score_cutoff=60):
     """
@@ -45,16 +109,16 @@ def get_search_words(
     model,
     fields,
     cache_key,
-    cache_timeout=3600,
+    cache_timeout=None,
     max_words=50000,
 ):
     """
     Optimized helper to build/search word lists from model fields.
-    - Uses Redis cache (via Django cache framework) to avoid rebuilding.
+    - Uses Redis/DB cache to avoid rebuilding.
     - Minimizes memory overhead by streaming.
     - Tokenizes with set comprehension instead of nested loops.
     - Limits max_words to avoid huge cache payloads.
-    - Handles Redis connection errors gracefully.
+    - Handles cache connection errors gracefully.
     """
 
     # 1. Try cache first (Redis-compatible)
@@ -112,9 +176,8 @@ def customer_all_suggestions(request):
     suggestions = get_search_words(
         query=query,
         model=Customer,
-        fields=("name", "phone_number", "email", "address"),
+        fields=CUSTOMER_SEARCH_FIELDS,
         cache_key="customer_search_words",
-        cache_timeout=3600,
     )
 
     return JsonResponse({"success": True, "data": suggestions})
@@ -129,9 +192,8 @@ def invoice_all_suggestions(request):
     suggestions = get_search_words(
         query=query,
         model=Invoice,
-        fields=("invoice_number", "customer__name", "customer__phone_number", "notes"),
+        fields=INVOICE_SEARCH_FIELDS,
         cache_key="invoice_search_words",
-        cache_timeout=3600,
     )
 
     return JsonResponse({"success": True, "data": suggestions})
@@ -147,9 +209,8 @@ def product_all_suggestions(request):
     suggestions = get_search_words(
         query=query,
         model=Product,
-        fields=("brand", "name", "category__name"),
+        fields=PRODUCT_SEARCH_FIELDS,
         cache_key="product_search_words",
-        cache_timeout=3600,
     )
 
     return JsonResponse({"success": True, "data": suggestions})
@@ -164,14 +225,8 @@ def product_variant_all_suggestions(request):
     suggestions = get_search_words(
         query=query,
         model=ProductVariant,
-        fields=(
-            "barcode",
-            "product__name",
-            "product__brand",
-            "product__category__name",
-        ),
+        fields=PRODUCT_VARIANT_SEARCH_FIELDS,
         cache_key="product_variant_search_words",
-        cache_timeout=3600,
     )
 
     return JsonResponse({"success": True, "data": suggestions})
@@ -186,20 +241,8 @@ def supplier_all_suggestions(request):
     suggestions = get_search_words(
         query=query,
         model=Supplier,
-        fields=(
-            "name",
-            "phone",
-            "email",
-            "gstin",
-            "first_line",
-            "second_line",
-            "city",
-            "state",
-            "pincode",
-            "country",
-        ),
+        fields=SUPPLIER_SEARCH_FIELDS,
         cache_key="supplier_search_words",
-        cache_timeout=3600,
     )
 
     return JsonResponse({"success": True, "data": suggestions})

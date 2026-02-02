@@ -50,7 +50,7 @@ SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_NAME = "billing_sessionid"  # Obscure default name
 
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_CACHE_ALIAS = "default"
 
 
@@ -126,18 +126,8 @@ WSGI_APPLICATION = "Billing.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/topics/cache/
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": config(
-            "REDIS_URL",
-            default="redis://127.0.0.1:6379/1",
-        ),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "SOCKET_CONNECT_TIMEOUT": 5,
-            "SOCKET_TIMEOUT": 5,
-            "IGNORE_EXCEPTIONS": True,  # Fail silently if Redis is down
-        },
-        "KEY_PREFIX": "billing",
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "my_cache_table",
     }
 }
 # Database
@@ -179,8 +169,6 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
-DJANGO_REDIS_CONNECTION_FACTORY = "django_redis.pool.ConnectionFactory"
 
 
 # Internationalization

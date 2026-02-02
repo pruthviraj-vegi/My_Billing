@@ -156,9 +156,7 @@ def get_favorites(request):
 def custom_search(request):
     variants = get_variants_data(request)
     return render_paginated_response(
-        request,
-        variants,
-        "cart/models/variants_fetch.html",
+        request, variants, "cart/models/variants_fetch.html", 15
     )
 
 
