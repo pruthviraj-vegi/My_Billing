@@ -2,15 +2,15 @@
 {% if page_obj %}
   {% for data in page_obj %}
     <tr>
-      <td>{{ data.date|date:"M d, Y" }}</td>
+      <td>{{ data.invoice.invoice_date|date:"M d, Y" }}</td>
       <td>
         <a href="{% url 'invoice:detail' data.invoice.id %}"
            class="text-primary">{{ data.invoice.invoice_number }}</a>
       </td>
-      <td>{{ data.product_name }}</td>
+      <td>{{ data.product_variant.product.name }}</td>
       <td>{{ data.quantity|floatformat:2 }}</td>
       <td>{{ data.unit_price|currency }}</td>
-      <td>{{ data.item_amount|currency }}</td>
+      <td>{{ data.discounted_amount|currency }}</td>
       <td>{{ data.commission_percentage|floatformat:2 }}%</td>
       <td>
         <strong class="text-success">{{ data.commission_amount|currency }}</strong>

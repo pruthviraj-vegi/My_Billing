@@ -44,6 +44,7 @@
             <td>
                 <strong>{{ variant.final_price|currency }}</strong>
             </td>
+            <td>{{ variant.commission_percentage|floatformat:2 }}%</td>
             <td>{{ variant.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
@@ -52,17 +53,11 @@
                        title="View Variant Details">
                         <i class="fas fa-eye"></i>
                     </a>
-                    <a href="#" class="btn-action btn-edit" title="Edit Variant">
-                        <i class="fas fa-edit"></i>
-                    </a>
                     <a href="{% url 'report:barcode' variant.id %}"
                        class="btn-action btn-barcode"
                        target="_blank"
                        title="Generate Barcode">
                         <i class="fas fa-barcode"></i>
-                    </a>
-                    <a href="#" class="btn-action btn-delete" title="Delete Variant">
-                        <i class="fas fa-trash"></i>
                     </a>
                 </div>
             </td>

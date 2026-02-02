@@ -554,75 +554,9 @@ def user_commission(request, user_id):
     user = get_object_or_404(User, id=user_id)
     current_salary = user.current_salary
 
-    # Get date range using getDates utility (now accepts date_range and start_date/end_date directly)
-    start_datetime, end_datetime = getDates(request)
-
-    # Get invoices created by this user and filter by date range
-    invoices = Invoice.objects.filter(sold_by=user).filter(
-        invoice_date__gte=start_datetime, invoice_date__lte=end_datetime
-    )
-
-    # Format dates for template
-    start_date = start_datetime.strftime("%Y-%m-%d")
-    end_date = end_datetime.strftime("%Y-%m-%d")
-
-    # Get invoice items with commission
-    invoice_items_all = InvoiceItem.objects.filter(
-        invoice__in=invoices, commission_percentage__gt=0
-    ).select_related("invoice", "product_variant__product")
-
-    # Calculate commission by month
-    monthly_totals = defaultdict(
-        lambda: {
-            "total_sales": Decimal("0"),
-            "total_commission": Decimal("0"),
-            "invoice_count": 0,
-            "item_count": 0,
-        }
-    )
-
-    # Calculate totals from all items (for summary, not for display)
-    for item in invoice_items_all:
-        # Calculate commission amount on discounted amount (after invoice-level discount)
-        item_amount = item.discounted_amount  # Uses discounted_amount property
-        commission_amount = (item.commission_percentage / Decimal("100")) * item_amount
-
-        # Get month/year
-        invoice_date = item.invoice.invoice_date
-        month_key = invoice_date.strftime("%Y-%m")
-
-        # Update totals
-        monthly_totals[month_key]["total_sales"] += item_amount
-        monthly_totals[month_key]["total_commission"] += commission_amount
-        monthly_totals[month_key]["item_count"] += 1
-
-    # Convert monthly totals to list and sort
-    monthly_summary = []
-    for month_key, totals in sorted(monthly_totals.items(), reverse=True):
-        # Count unique invoices for this month
-        month_invoices = invoices.filter(
-            invoice_date__year=int(month_key.split("-")[0]),
-            invoice_date__month=int(month_key.split("-")[1]),
-        )
-        totals["invoice_count"] = month_invoices.count()
-        totals["month_key"] = month_key
-        totals["month_label"] = datetime(
-            int(month_key.split("-")[0]), int(month_key.split("-")[1]), 1
-        ).strftime("%B %Y")
-        monthly_summary.append(totals)
-
-    # Calculate overall totals
-    total_sales = sum(data["total_sales"] for data in monthly_totals.values())
-    total_commission = sum(data["total_commission"] for data in monthly_totals.values())
-
     context = {
         "user": user,
         "current_salary": current_salary,
-        "monthly_summary": monthly_summary,
-        "total_sales": total_sales,
-        "total_commission": total_commission,
-        "selected_start_date": start_date,
-        "selected_end_date": end_date,
     }
 
     return render(request, "user/commission/home.html", context)
@@ -662,31 +596,9 @@ def fetch_user_commission(request, user_id):
         .order_by(order_by)
     )
 
-    # Convert to list for pagination (since we need to calculate commission)
-    commission_list = []
-    for item in invoice_items:
-        item_amount = item.discounted_amount  # Uses discounted_amount property
-        commission_amount = (item.commission_percentage / Decimal("100")) * item_amount
-
-        commission_list.append(
-            {
-                "invoice": item.invoice,
-                "invoice_item": item,
-                "product_name": (
-                    item.product_variant.product.name if item.product_variant else "N/A"
-                ),
-                "quantity": item.quantity,
-                "unit_price": item.unit_price,
-                "item_amount": item_amount,
-                "commission_percentage": item.commission_percentage,
-                "commission_amount": commission_amount,
-                "date": item.invoice.invoice_date,
-            }
-        )
-
     return render_paginated_response(
         request,
-        commission_list,
+        invoice_items,
         "user/commission/fetch.html",
         per_page=20,
     )
@@ -696,7 +608,7 @@ def fetch_commission_summary(request, user_id):
     """AJAX: fetch commission summary data (totals and monthly summary)."""
     user = get_object_or_404(User, id=user_id)
 
-    # Get date range using getDates utility (now accepts date_range and start_date/end_date directly)
+    # Get date range using getDates utility
     start_datetime, end_datetime = getDates(request)
 
     # Get invoices created by this user and filter by date range
@@ -707,42 +619,39 @@ def fetch_commission_summary(request, user_id):
     # Get invoice items with commission
     invoice_items_all = InvoiceItem.objects.filter(
         invoice__in=invoices, commission_percentage__gt=0
-    ).select_related("invoice", "product_variant__product")
+    ).select_related("invoice")
 
     # Calculate commission by month
     monthly_totals = defaultdict(
         lambda: {
             "total_sales": Decimal("0"),
             "total_commission": Decimal("0"),
-            "invoice_count": 0,
+            "invoice_ids": set(),
             "item_count": 0,
         }
     )
 
     # Calculate totals from all items
     for item in invoice_items_all:
-        item_amount = item.discounted_amount  # Uses discounted_amount property
-        commission_amount = (item.commission_percentage / Decimal("100")) * item_amount
+        # Use model properties for calculations
+        item_amount = item.discounted_amount
+        commission_amount = item.commission_amount
 
         invoice_date = item.invoice.invoice_date
         month_key = invoice_date.strftime("%Y-%m")
 
         monthly_totals[month_key]["total_sales"] += item_amount
         monthly_totals[month_key]["total_commission"] += commission_amount
+        monthly_totals[month_key]["invoice_ids"].add(item.invoice.id)
         monthly_totals[month_key]["item_count"] += 1
 
     # Convert monthly totals to list and sort
     monthly_summary = []
     for month_key, totals in sorted(monthly_totals.items(), reverse=True):
-        month_invoices = invoices.filter(
-            invoice_date__year=int(month_key.split("-")[0]),
-            invoice_date__month=int(month_key.split("-")[1]),
-        )
-        totals["invoice_count"] = month_invoices.count()
+        year, month = map(int, month_key.split("-"))
+        totals["invoice_count"] = len(totals["invoice_ids"])
         totals["month_key"] = month_key
-        totals["month_label"] = datetime(
-            int(month_key.split("-")[0]), int(month_key.split("-")[1]), 1
-        ).strftime("%B %Y")
+        totals["month_label"] = datetime(year, month, 1).strftime("%B %Y")
         monthly_summary.append(totals)
 
     # Calculate overall totals

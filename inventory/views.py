@@ -40,7 +40,6 @@ from .models import Product, ProductVariant, InventoryLog
 from supplier.models import SupplierInvoice, Supplier
 from base.getDates import getDates
 from base.utility import render_paginated_response
-from base.decorators import timed, query_debugger
 
 import logging, json
 
@@ -478,51 +477,6 @@ class CreateProduct(View):
         if isinstance(value, Decimal):
             return str(value)
         return value
-
-
-class DeleteProductVariant(DeleteView):
-    template_name = "inventory/product_variant/delete.html"
-    title = "Delete Product Variant"
-    model = ProductVariant
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["title"] = self.title
-        context["variant"] = self.get_object()
-        return context
-
-    def get_success_url(self):
-        # Store product ID before deletion
-        product_id = (
-            self.object.product.id if self.object and self.object.product else None
-        )
-        if product_id:
-            return reverse_lazy("inventory:product_details", kwargs={"id": product_id})
-        else:
-            return reverse_lazy("inventory:product_home")
-
-    def form_valid(self, form):
-        # Store product ID before deletion
-        product_id = (
-            self.object.product.id if self.object and self.object.product else None
-        )
-
-        # Let Django handle the deletion properly
-        result = super().form_valid(form)
-
-        # Add success message
-        messages.success(self.request, "Product variant deleted successfully")
-
-        # Redirect to appropriate page
-        if product_id:
-            return redirect("inventory:product_details", id=product_id)
-        else:
-            return redirect("inventory:product_home")
-
-    def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
-        messages.error(self.request, "Please correct the errors below.")
-        return super().form_invalid(form)
 
 
 def variant_update(request, pk):

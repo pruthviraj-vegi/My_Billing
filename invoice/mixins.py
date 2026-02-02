@@ -210,6 +210,18 @@ class InvoiceItemFinancialMixin:
         """
         return round(self.discounted_amount - self.tax_value, 2)
 
+    @property
+    def commission_amount(self):
+        """
+        Commission amount for this line item.
+        Calculated as (commission_percentage / 100) * discounted_amount.
+        """
+        if self.commission_percentage and self.commission_percentage > 0:
+            return (
+                self.commission_percentage / Decimal("100")
+            ) * self.discounted_amount
+        return Decimal("0.00")
+
     # @property
     # def cgst(self):
     #     return round(self.gst_amount / 2, 2)

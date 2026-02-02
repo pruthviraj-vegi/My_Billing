@@ -10,11 +10,6 @@ urlpatterns = [
     path("low-stock/", views.low_stock_page, name="low_stock"),
     path("full-product/create/", views.CreateProduct.as_view(), name="product_create"),
     path(
-        "variant/<int:pk>/delete/",
-        views.DeleteProductVariant.as_view(),
-        name="variant_delete",
-    ),
-    path(
         "variant/<int:pk>/update/",
         views.variant_update,
         name="variant_update",

@@ -221,10 +221,6 @@ class CartManager {
 
         if (remainingStock < 0) {
             this.notify(`Warning: ${productName} is oversold (stock: ${remainingStock})`, 'warning');
-        } else if (remainingStock === 0) {
-            this.notify(`Warning: ${productName} is out of stock`, 'warning');
-        } else if (remainingStock < 10) {
-            this.notify(`Warning: ${productName} stock is low (${remainingStock} remaining)`, 'warning');
         }
     }
 

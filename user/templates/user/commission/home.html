@@ -349,80 +349,36 @@
         }, 100);
       }
 
-      // Set the original select value BEFORE conversion to ensure correct initial value
-      const originalSelect = document.getElementById('dateFilter');
-      if (originalSelect && currentFilter) {
-        originalSelect.value = currentFilter;
-      }
-
-      // Use common waitForDropdownReady if available, otherwise define locally
-      const waitForDropdownReady = window.DashboardCommon?.waitForDropdownReady || function(callback, maxAttempts = 10) {
-        let attempts = 0;
-        const checkReady = () => {
-          const styledRef = window.dateFilter_styled;
-          if (styledRef?.hiddenSelect) {
-            callback(styledRef);
-          } else if (attempts < maxAttempts) {
-            attempts++;
-            requestAnimationFrame(checkReady);
-          } else {
-            console.warn('Dropdown not ready after max attempts, using fallback');
-            const dateFilter = document.getElementById('dateFilter');
-            if (dateFilter) {
-              callback({ hiddenSelect: dateFilter, label: null });
-            } else {
-              console.error('Could not find date filter element');
-            }
-          }
-        };
-        requestAnimationFrame(checkReady);
-      };
-
-      // Convert select to styled dropdown with onChange callback
+      // Initialize styled dropdown for date filter
       if (typeof convertSelectToStyledDropdown !== 'undefined') {
-        convertSelectToStyledDropdown('dateFilter', {
-          onChange: function(data) {
-            // Skip callback on initial load (will be handled separately)
-            if (isInitialLoad) return;
-            
-            // Update summary and reload table when date filter changes
-            debouncedUpdate();
-          }
-        });
-      }
-
-      // Wait for dropdown to be ready, then set initial value and load data
-      waitForDropdownReady((styledRef) => {
-        const dateFilter = styledRef.hiddenSelect;
-        
-        // Set initial value (JS will auto-update the label)
-        if (dateFilter && currentFilter) {
-          // Clear any existing selection first
-          Array.from(dateFilter.options).forEach(opt => opt.selected = false);
+        setTimeout(() => {
+          const dateFilterSelect = document.getElementById('dateFilter');
           
-          // Set the desired value
-          const targetOption = Array.from(dateFilter.options).find(opt => opt.value === currentFilter);
-          if (targetOption) {
-            targetOption.selected = true;
-            dateFilter.value = currentFilter;
-            
-            // Update visual label if converted
-            if (styledRef.label) {
-              styledRef.label.textContent = targetOption.text;
-            }
-          } else {
-            // Fallback: set by value directly
-            dateFilter.value = currentFilter;
+          // Ensure initial value is set on original select before conversion
+          if (dateFilterSelect && currentFilter) {
+             dateFilterSelect.value = currentFilter;
           }
-        }
-        
-        // Load initial data (only once)
-        updateCommissionSummary();
-        reloadCommissionTable();
-        
-        // Mark initial load as complete
-        isInitialLoad = false;
-      });
+
+          if (dateFilterSelect && !window.dateFilter_styled) {
+             window.dateFilter_styled = convertSelectToStyledDropdown('dateFilter', {
+              onChange: function(data) {
+                // Skip callback on initial load logic if handled manually, 
+                // but here 'isInitialLoad' flag helps prevent double-firing if the lib fires on init.
+                if (isInitialLoad) return;
+                
+                debouncedUpdate();
+              }
+            });
+            
+            // Initial data load
+            updateCommissionSummary();
+            reloadCommissionTable();
+            isInitialLoad = false;
+          } else if (!dateFilterSelect) {
+             console.warn('Date filter element not found');
+          }
+        }, 100);
+      }
     })
   </script>
 {% endblock extra_js %}
