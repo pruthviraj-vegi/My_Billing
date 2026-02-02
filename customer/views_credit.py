@@ -22,7 +22,6 @@ from django.db.models import (
     Q,
 )
 from django.db.models.functions import Coalesce
-from django.core.cache import cache
 import hashlib
 import json
 
@@ -140,27 +139,7 @@ def credit_customers_data(request):
 
 
 def fetch_credits(request):
-    """AJAX endpoint to fetch credit customers with search, filter, and pagination.
-    Cached for 2 minutes (120 seconds) using Redis.
-    """
-    # Get cache key parameters
-    search_query = request.GET.get("search", "").strip()
-    sort_by = request.GET.get("sort", "-created_at")
-
-    # # Create a unique cache key based on search and sort parameters
-    # cache_key_data = {
-    #     "search": search_query,
-    #     "sort": sort_by,
-    # }
-    # cache_key_string = json.dumps(cache_key_data, sort_keys=True)
-    # cache_key_hash = hashlib.md5(cache_key_string.encode()).hexdigest()
-    # cache_key = f"credit_customers_data:{cache_key_hash}"
-
-    # # Get from cache or compute and cache for 2 minutes
-    # customers = cache.get_or_set(
-    #     cache_key, lambda: credit_customers_data(request), timeout=120  # 2 minutes
-    # )
-
+    """AJAX endpoint to fetch credit customers with search, filter, and pagination."""
     customers = credit_customers_data(request)
 
     return render_paginated_response(

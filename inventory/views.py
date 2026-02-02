@@ -225,11 +225,6 @@ def _calculate_total_stock_by_supplier():
     2. Database-level aggregation instead of Python loops
     3. Reduced memory footprint by not loading all variant/log data
     """
-    cache_key = "inventory_total_stock_by_supplier"
-    cached_result = cache.get(cache_key)
-
-    # if cached_result is not None:
-    #     return cached_result
 
     # Subquery to get the latest supplier for each variant
     # This gets the supplier name from the most recent STOCK_IN/INITIAL log
@@ -287,8 +282,6 @@ def _calculate_total_stock_by_supplier():
         "percentages": percentages,
     }
 
-    # Cache for 5 minutes (300 seconds)
-    cache.set(cache_key, result, 300)
     return result
 
 
