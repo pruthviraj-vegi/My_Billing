@@ -15,7 +15,7 @@ from .models import ReturnInvoice, Invoice, InvoiceItem, ReturnInvoiceItem
 from .form import ReturnInvoiceForm
 from .choices import ItemConditionChoices, ItemReturnReasonChoices, RefundStatusChoices
 from inventory.services import InventoryService
-from base.utility import render_paginated_response
+from base.utility import render_paginated_response, table_sorting
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,6 @@ def fetch_return_invoices(request):
     refund_type_filter = request.GET.get("refund_type", "")
     date_from = request.GET.get("date_from", "")
     date_to = request.GET.get("date_to", "")
-    sort_by = request.GET.get("sort", "-created_at")
 
     # Apply search filter
     filters = Q()
@@ -94,10 +93,8 @@ def fetch_return_invoices(request):
     ).filter(filters)
 
     # Apply sorting
-    if sort_by not in valid_sort_fields and not sort_by.startswith("-"):
-        sort_by = "-created_at"
-
-    return_invoices = return_invoices.order_by(sort_by)
+    valid_sorts = table_sorting(request, valid_sort_fields, "-created_at")
+    return_invoices = return_invoices.order_by(*valid_sorts)
 
     return render_paginated_response(
         request,

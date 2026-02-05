@@ -376,11 +376,39 @@ function initTableSorting(id) {
         th.setAttribute("role", "button");
         th.setAttribute("tabindex", "0");
         th.setAttribute("aria-label", `Sort by ${th.dataset.sort}`);
+        if (!th.getAttribute("title")) { // Add tooltip hint if not present
+            th.setAttribute("title", "Click to sort. Shift+Click to add multiple columns.");
+        }
 
-        const clickHandler = () => {
-            const f = th.dataset.sort;
-            const s = table.dataset.sort;
-            table.dataset.sort = s === f ? `-${f}` : s === `-${f}` ? "" : f;
+        const clickHandler = (e) => {
+            const field = th.dataset.sort;
+            let currentSorts = (table.dataset.sort || "").split(',').filter(s => s.trim());
+
+            // Function to find if field is already sorted and get its direction
+            // Returns: 'asc', 'desc', or null
+            const getSortState = (f) => {
+                const match = currentSorts.find(s => s === f || s === `-${f}`);
+                if (!match) return null;
+                return match.startsWith('-') ? 'desc' : 'asc';
+            };
+
+            // Always use accumulative/multi-column sort logic (No Shift key required)
+            // Interaction: Asc -> Desc -> Remove -> (Not Sorted)
+            const state = getSortState(field);
+
+            // Remove existing sort for this field if present (to re-add or remove)
+            currentSorts = currentSorts.filter(s => s !== field && s !== `-${field}`);
+
+            if (state === null) {
+                // Not currently sorted -> Add as Asc
+                currentSorts.push(field);
+            } else if (state === 'asc') {
+                // Currently Asc -> Change to Desc
+                currentSorts.push(`-${field}`);
+            }
+            // If state was 'desc', we simply removed it (Cycle: Asc -> Desc -> Off)
+
+            table.dataset.sort = currentSorts.join(',');
             updateSortIndicators(table);
             reloadTable(id);
         };
@@ -389,20 +417,72 @@ function initTableSorting(id) {
         th.addEventListener("keydown", (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                clickHandler();
+                // Simulate click (no shift key support for keyboard easily without more logic, defaulting to single sort)
+                const event = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    shiftKey: e.shiftKey // Pass shift key if user holds it while pressing Enter
+                });
+                th.dispatchEvent(event);
             }
         });
 
         table._sortListeners.push({ element: th, handler: clickHandler });
     });
+
+    // Initial indicator update
+    updateSortIndicators(table);
 }
 
 function updateSortIndicators(table) {
-    const s = table.dataset.sort;
+    const sortString = table.dataset.sort || "";
+    const currentSorts = sortString.split(',').filter(s => s.trim());
+
     table.querySelectorAll("th[data-sort]").forEach(th => {
-        const f = th.dataset.sort;
-        th.classList.toggle("asc", s === f);
-        th.classList.toggle("desc", s === `-${f}`);
+        const field = th.dataset.sort;
+
+        // Check if this field is in the sort list
+        const sortItem = currentSorts.find(s => s === field || s === `-${field}`);
+
+        th.classList.remove("asc", "desc");
+
+        // Remove prior priority indicators if any
+        let badge = th.querySelector('.sort-priority');
+        if (badge) badge.remove();
+
+        // Icon management
+        let icon = th.querySelector('.sort-icon');
+        if (!icon) {
+            icon = document.createElement('i');
+            icon.classList.add('fas', 'fa-sort', 'sort-icon');
+            icon.style.marginLeft = '5px';
+            th.appendChild(icon);
+        }
+
+        if (sortItem) {
+            const isDesc = sortItem.startsWith('-');
+            th.classList.add(isDesc ? "desc" : "asc");
+
+            // Update icon
+            icon.className = isDesc ? 'fas fa-sort-down sort-icon' : 'fas fa-sort-up sort-icon';
+            icon.style.opacity = '1';
+
+            // Show priority number if multiple sorts exist
+            if (currentSorts.length > 1) {
+                const priority = currentSorts.indexOf(sortItem) + 1;
+                badge = document.createElement('span');
+                badge.className = 'sort-priority';
+                badge.innerText = priority;
+                badge.style.fontSize = '0.7em';
+                badge.style.verticalAlign = 'super';
+                badge.style.marginLeft = '2px';
+                th.appendChild(badge);
+            }
+        } else {
+            // Default state (unsorted)
+            icon.className = 'fas fa-sort sort-icon';
+            icon.style.opacity = '0.3';
+        }
     });
 }
 

@@ -5,10 +5,6 @@
       <td>
         <div class="invoice-number">
           <strong>{{ invoice.invoice_number }}</strong>
-          {% if invoice.notes %}
-            <br />
-            <small class="text-muted">{{ invoice.notes|truncatechars:30 }}</small>
-          {% endif %}
         </div>
       </td>
       <td>{{ invoice.invoice_date|date:'M j, Y' }}</td>

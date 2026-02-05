@@ -17,7 +17,7 @@ from django.contrib.sessions.models import Session
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_POST
 from .models import LoginEvent
-from base.utility import render_paginated_response
+from base.utility import render_paginated_response, table_sorting
 from base.getDates import getDates
 from invoice.models import Invoice, InvoiceItem
 from collections import defaultdict
@@ -31,15 +31,10 @@ User = get_user_model()
 
 VALID_SORT_FIELDS = {
     "full_name",
-    "-full_name",
     "date_joined",
-    "-date_joined",
     "phone_number",
-    "-phone_number",
     "email",
-    "-email",
     "role",
-    "-role",
 }
 
 USERS_PER_PAGE = 20
@@ -61,7 +56,6 @@ def get_data(request):
     role_filter = request.GET.get("role", "")
     status_filter = request.GET.get("status", "")
     commission_filter = request.GET.get("commission", "")
-    sort_by = request.GET.get("sort", "-date_joined")
 
     # Apply search filter
     filters = Q()
@@ -97,12 +91,8 @@ def get_data(request):
         )
         filters &= ~Exists(has_commission)
 
-    users = User.objects.filter(filters)
-
-    # Apply sorting
-    if sort_by not in VALID_SORT_FIELDS:
-        sort_by = "-date_joined"
-    users = users.order_by(sort_by)
+    valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-date_joined")
+    users = User.objects.filter(filters).order_by(*valid_sorts)
 
     return users
 
@@ -590,10 +580,12 @@ def fetch_user_commission(request, user_id):
     else:
         order_by = "-invoice__invoice_date"
 
+    valid_sorts = table_sorting(request, valid_sort_fields, "-invoice__invoice_date")
+
     invoice_items = (
         InvoiceItem.objects.filter(invoice__in=invoices, commission_percentage__gt=0)
         .select_related("invoice", "product_variant__product")
-        .order_by(order_by)
+        .order_by(*valid_sorts)
     )
 
     return render_paginated_response(

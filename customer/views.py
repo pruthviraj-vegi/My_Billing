@@ -12,7 +12,12 @@ from datetime import timedelta
 from decimal import Decimal
 from base.getDates import getDates
 import logging
-from base.utility import get_periodic_data, get_period_label, render_paginated_response
+from base.utility import (
+    get_periodic_data,
+    get_period_label,
+    render_paginated_response,
+    table_sorting,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -362,17 +367,11 @@ def dashboard_fetch(request):
 
 VALID_SORT_FIELDS = {
     "id",
-    "-id",
     "name",
-    "-name",
     "email",
-    "-email",
     "created_at",
-    "-created_at",
     "phone_number",
-    "-phone_number",
     "address",
-    "-address",
 }
 
 CUSTOMERS_PER_PAGE = 20
@@ -388,7 +387,6 @@ def get_data(request):
     # Get search and filter parameters
     search_query = request.GET.get("search", "")
     status_filter = request.GET.get("status", "")
-    sort_by = request.GET.get("sort", "-created_at")
 
     # Apply search filter
     filters = Q()
@@ -400,18 +398,12 @@ def get_data(request):
             | Q(address__icontains=search_query)
         )
 
-    # Apply status filter (active/inactive based on soft delete)
-    if status_filter == "active":
-        filters &= Q(is_deleted=False)
-    elif status_filter == "inactive":
-        filters &= Q(is_deleted=True)
-
     customers = Customer.objects.filter(filters)
 
-    # Apply sorting
-    if sort_by not in VALID_SORT_FIELDS:
-        sort_by = "-id"
-    customers = customers.order_by(sort_by)
+    # Apply sorting (Multi-column support)
+    valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
+
+    customers = customers.order_by(*valid_sorts)
 
     return customers
 
@@ -518,21 +510,16 @@ def fetch_customer_invoices(request, pk):
     """AJAX: fetch invoices for a customer with pagination and optional sorting."""
     customer = get_object_or_404(Customer, id=pk)
 
-    sort_by = (request.GET.get("sort") or "-invoice_date").strip()
     valid_sort_fields = {
         "invoice_date",
-        "-invoice_date",
         "invoice_number",
-        "-invoice_number",
         "amount",
-        "-amount",
         "total_payable",
-        "-total_payable",
     }
-    if sort_by not in valid_sort_fields:
-        sort_by = "-invoice_date"
 
-    queryset = Invoice.objects.filter(customer=customer).order_by(sort_by)
+    valid_sorts = table_sorting(request, valid_sort_fields, "-invoice_date")
+
+    queryset = Invoice.objects.filter(customer=customer).order_by(*valid_sorts)
 
     return render_paginated_response(
         request,

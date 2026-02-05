@@ -21,25 +21,17 @@ from django.views.generic.edit import CreateView, DeleteView, View
 from django.urls import reverse_lazy
 from datetime import datetime, time
 
-from base.utility import render_paginated_response
+from base.utility import render_paginated_response, table_sorting
 
 VALID_SORT_FIELDS = {
     "id",
-    "-id",
     "title",
-    "-title",
     "audit_type",
-    "-audit_type",
     "status",
-    "-status",
     "financial_year",
-    "-financial_year",
     "created_at",
-    "-created_at",
     "start_date",
-    "-start_date",
     "end_date",
-    "-end_date",
 }
 
 
@@ -212,7 +204,6 @@ def get_data(request):
     audit_type = request.GET.get("audit_type", "")
     status = request.GET.get("status", "")
     financial_year = request.GET.get("financial_year", "")
-    sort_by = request.GET.get("sort", "-created_at")
 
     # Build queryset
     queryset = AuditTable.objects.select_related("created_by").all()
@@ -241,9 +232,8 @@ def get_data(request):
     queryset = queryset.filter(filters)
 
     # Apply sorting
-    if sort_by not in VALID_SORT_FIELDS:
-        sort_by = "-created_at"
-    queryset = queryset.order_by(sort_by)
+    valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
+    queryset = queryset.order_by(*valid_sorts)
 
     return queryset
 
@@ -554,8 +544,6 @@ def audit_detail(request, pk):
 def fetch_audit_details(request, pk):
     audit_table = get_object_or_404(AuditTable, pk=pk)
 
-    sort_by = request.GET.get("sort", "-created_at")
-
     sort_fields = [
         "id",
         "-id",
@@ -572,12 +560,11 @@ def fetch_audit_details(request, pk):
     ]
 
     # Apply sorting
-    if sort_by not in sort_fields:
-        sort_by = "-id"
 
+    valid_sorts = table_sorting(request, sort_fields, "-id")
     invoice_audits = audit_table.invoice_audits.select_related(
         "invoice", "changed_by"
-    ).order_by(sort_by)
+    ).order_by(*valid_sorts)
 
     return render_paginated_response(
         request,

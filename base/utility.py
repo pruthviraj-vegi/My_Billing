@@ -285,3 +285,44 @@ def render_paginated_response(
             "success": True,
         }
     )
+
+
+def table_sorting(request, valid_sorts=None, default_sort="-id"):
+    """
+    Generalized sorting helper for multi-column sort.
+    """
+    is_mapping = isinstance(valid_sorts, dict)
+    if valid_sorts is None:
+        valid_keys = set()
+    elif is_mapping:
+        valid_keys = set(valid_sorts.keys())
+    else:
+        valid_keys = set(valid_sorts)
+
+    sort_param = request.GET.get("sort", "")
+    if not sort_param:
+        return [default_sort]
+
+    sort_fields = [f.strip() for f in sort_param.split(",") if f.strip()]
+    final_sorts = []
+
+    for field in sort_fields:
+        is_desc = field.startswith("-")
+        clean_field = field.lstrip("-")
+
+        if clean_field in valid_keys:
+            if is_mapping:
+                # Get the DB field from the map
+                db_field = valid_sorts[clean_field]
+                # Apply direction to the DB field
+                if is_desc:
+                    final_sorts.append(f"-{db_field}")
+                else:
+                    final_sorts.append(db_field)
+            else:
+                final_sorts.append(field)
+
+    if not final_sorts:
+        return [default_sort]
+
+    return final_sorts

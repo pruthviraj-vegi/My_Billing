@@ -57,7 +57,11 @@
           <div class="detail-name-compact">
             <h4>{{ supplier.name }}</h4>
             <span class="detail-status {% if not supplier.is_deleted %}status-active{% else %}status-inactive{% endif %}">
-              {% if supplier.is_deleted %}Inactive{% else %}Active{% endif %}
+              {% if supplier.is_deleted %}
+                Inactive
+              {% else %}
+                Active
+              {% endif %}
             </span>
           </div>
           <div class="detail-contact-compact">
@@ -101,15 +105,21 @@
           <h4>Invoice Summary</h4>
           <div class="summary-stats-compact">
             <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number" id="invoice_count" data-count="{{ invoices.count }}">0</span>
+              <span class="stat-number-compact counting-number"
+                    id="invoice_count"
+                    data-count="{{ invoices.count }}">0</span>
               <span class="stat-label-compact">Total</span>
             </div>
             <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number" id="invoice_amount" data-count="{{ total_invoice_amount}}">0</span>
+              <span class="stat-number-compact counting-number"
+                    id="invoice_amount"
+                    data-count="{{ total_invoice_amount }}">0</span>
               <span class="stat-label-compact">Amount</span>
             </div>
             <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number" id="unpaid_invoice_count" data-count="{{ unpaid_invoices_count }}">0</span>
+              <span class="stat-number-compact counting-number"
+                    id="unpaid_invoice_count"
+                    data-count="{{ unpaid_invoices_count }}">0</span>
               <span class="stat-label-compact">Unpaid</span>
             </div>
           </div>
@@ -123,15 +133,21 @@
           <h4>Payment Summary</h4>
           <div class="summary-stats-compact">
             <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number" id="payment_count" data-count="{{ payments.count }}">0</span>
+              <span class="stat-number-compact counting-number"
+                    id="payment_count"
+                    data-count="{{ payments.count }}">0</span>
               <span class="stat-label-compact">Total</span>
             </div>
             <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number" id="payment_amount" data-count="{{ total_payment_amount}}">0</span>
+              <span class="stat-number-compact counting-number"
+                    id="payment_amount"
+                    data-count="{{ total_payment_amount }}">0</span>
               <span class="stat-label-compact">Amount</span>
             </div>
             <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number" id="outstanding_amount" data-count="{{ outstanding_amount}}">0</span>
+              <span class="stat-number-compact counting-number"
+                    id="outstanding_amount"
+                    data-count="{{ outstanding_amount }}">0</span>
               <span class="stat-label-compact">Outstanding</span>
             </div>
           </div>
@@ -168,7 +184,7 @@
             </thead>
             <tbody id="invoices_table_body">
               <tr>
-                <td colspan="8" class="text-center" style="padding: 2rem;">
+                <td colspan="8" class="text-center p-2">
                   <div class="loading">
                     <i class="fas fa-spinner fa-spin"></i>
                     Loading invoices...

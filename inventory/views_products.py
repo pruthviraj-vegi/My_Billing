@@ -6,32 +6,21 @@ from django.views.generic import CreateView, UpdateView
 from .models import Product, ProductVariant, InventoryLog
 from .forms import ProductForm, CategoryForm, ClothTypeForm, UOMForm, GSTHsnCodeForm
 import logging
-from base.utility import render_paginated_response
+
+from base.utility import render_paginated_response, table_sorting
 
 logger = logging.getLogger(__name__)
 
 VALID_SORT_FIELDS = {
     "id",
-    "-id",
     "brand",
-    "-brand",
     "name",
-    "-name",
     "category__name",
-    "-category__name",
     "status",
-    "-status",
     "hsn_code__gst_percentage",
-    "-hsn_code__gst_percentage",
-    "-hsn_code",
     "cloth_type",
-    "-cloth_type",
     "hsn_code",
-    "-hsn_code",
     "created_at",
-    "-created_at",
-    "updated_at",
-    "-updated_at",
 }
 
 
@@ -55,7 +44,6 @@ def fetch_products(request):
     search_query = request.GET.get("search", "")
     category_filter = request.GET.get("category", "")
     status_filter = request.GET.get("status", "")
-    sort_by = request.GET.get("sort", "")
 
     # Apply search filter
     filters = Q()
@@ -84,9 +72,8 @@ def fetch_products(request):
     ).filter(filters)
 
     # Apply sorting
-    if sort_by not in VALID_SORT_FIELDS:
-        sort_by = "-id"
-    products = products.order_by(sort_by)
+    valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-id")
+    products = products.order_by(*valid_sorts)
 
     return render_paginated_response(
         request,
@@ -136,15 +123,6 @@ def product_details(request, product_id):
         or 0
     )
 
-    # Get recent inventory logs for this product (only for active variants)
-    recent_logs = (
-        InventoryLog.objects.filter(variant__product=product, variant__is_deleted=False)
-        .select_related(
-            "variant", "created_by", "supplier_invoice", "supplier_invoice__supplier"
-        )
-        .order_by("-timestamp")[:10]
-    )
-
     context = {
         "product": product,
         "variants": variants,
@@ -156,7 +134,6 @@ def product_details(request, product_id):
         "total_damaged": total_damaged,
         "total_inventory_value": total_inventory_value,
         "total_damaged_value": total_damaged_value,
-        "recent_logs": recent_logs,
     }
 
     return render(request, "inventory/product/details.html", context)

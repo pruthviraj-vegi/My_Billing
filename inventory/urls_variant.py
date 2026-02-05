@@ -8,6 +8,11 @@ urlpatterns = [
     path("fetch/", views_variant.fetch_variants, name="fetch"),
     path("<int:variant_id>/", views_variant.variant_details, name="details"),
     path(
+        "<int:variant_id>/recent-logs/",
+        views_variant.recent_variants_logs,
+        name="recent_logs",
+    ),
+    path(
         "create/<int:product_id>/",
         views_variant.CreateProductVariant.as_view(),
         name="create",

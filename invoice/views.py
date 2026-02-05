@@ -14,7 +14,12 @@ from datetime import timedelta
 from customer.forms import CustomerForm
 from decimal import Decimal
 from base.getDates import getDates
-from base.utility import get_periodic_data, get_period_label, render_paginated_response
+from base.utility import (
+    get_periodic_data,
+    get_period_label,
+    render_paginated_response,
+    table_sorting,
+)
 from customer.signals import reallocate_customer_payments
 
 import logging
@@ -558,23 +563,15 @@ def get_period_data_with_zeros(invoices, start_date, end_date, period_type):
 
 VALID_SORT_FIELDS = {
     "id",
-    "-id",
     "invoice_number",
-    "-invoice_number",
     "customer__name",
-    "-customer__name",
     "amount",
-    "-amount",
     "payment_status",
-    "-payment_status",
     "payment_type",
-    "-payment_type",
     "invoice_date",
-    "-invoice_date",
     "due_date",
-    "-due_date",
     "created_at",
-    "-created_at",
+    "created_by__first_name",
 }
 
 
@@ -626,7 +623,7 @@ def get_data(request):
     if bill_types_filter:
         filters &= Q(invoice_type=bill_types_filter)
 
-    invoices = Invoice.objects.select_related("customer", "sold_by").filter(filters)
+    invoices = Invoice.objects.select_related("customer").filter(filters)
 
     # ---------------- SORTING MAP ----------------
     SORT_MAP = {
@@ -640,11 +637,8 @@ def get_data(request):
         invoices = invoices.filter(**{field: value}).order_by("-invoice_date")
 
     # Validate sort field
-    elif sort_by in VALID_SORT_FIELDS:
-        invoices = invoices.order_by(sort_by)
-
-    else:
-        invoices = invoices.order_by("-invoice_date")
+    final_order_by = table_sorting(request, VALID_SORT_FIELDS, "-invoice_date")
+    invoices = invoices.order_by(*final_order_by)
 
     return invoices
 

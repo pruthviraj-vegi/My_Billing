@@ -24,44 +24,29 @@ from .forms import (
     SizeForm,
     ColorForm,
 )
-from base.utility import render_paginated_response
 from .services import InventoryService
 import logging
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
+from base.utility import table_sorting, render_paginated_response
 import json
 
 logger = logging.getLogger(__name__)
 
 VALID_SORT_FIELDS = {
     "id",
-    "-id",
     "barcode",
-    "-barcode",
     "product__brand",
-    "-product__brand",
     "product__name",
-    "-product__name",
     "product__category__name",
-    "-product__category__name",
     "size__name",
-    "-size__name",
     "color__name",
-    "-color__name",
     "quantity",
-    "-quantity",
     "mrp",
-    "-mrp",
     "commission_percentage",
-    "-commission_percentage",
     "discount_percentage",
-    "-discount_percentage",
     "status",
-    "-status",
     "created_at",
-    "-created_at",
-    "updated_at",
-    "-updated_at",
 }
 
 VARIANTS_PER_PAGE = 20
@@ -92,7 +77,6 @@ def get_variants_data(request):
     size_filter = request.GET.get("size", "")
     status_filter = request.GET.get("status", "")
     stock_filter = request.GET.get("stock", "")
-    sort_by = request.GET.get("sort", "")
 
     # Start with all variants
     variants = (
@@ -159,9 +143,8 @@ def get_variants_data(request):
     variants = variants.filter(filters)
 
     # Apply sorting
-    if sort_by not in VALID_SORT_FIELDS:
-        sort_by = "-created_at"
-    variants = variants.order_by(sort_by)
+    valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
+    variants = variants.order_by(*valid_sorts)
 
     return variants
 
@@ -207,6 +190,20 @@ def variant_details(request, variant_id):
     }
 
     return render(request, "inventory/product_variant/details.html", context)
+
+
+def recent_variants_logs(request, variant_id):
+    """AJAX endpoint to fetch recent inventory logs for a variant"""
+    variant = get_object_or_404(ProductVariant, id=variant_id)
+    recent_logs = variant.inventory_logs.select_related(
+        "supplier_invoice", "supplier_invoice__supplier"
+    ).order_by("-timestamp")
+    return render_paginated_response(
+        request,
+        recent_logs,
+        "inventory/product_variant/recent_logs.html",
+        7,
+    )
 
 
 class CreateProductVariant(CreateView):

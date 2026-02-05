@@ -39,7 +39,7 @@ from .models import Product, ProductVariant, InventoryLog
 
 from supplier.models import SupplierInvoice, Supplier
 from base.getDates import getDates
-from base.utility import render_paginated_response
+from base.utility import render_paginated_response, table_sorting
 
 import logging, json
 
@@ -535,7 +535,6 @@ def variant_update(request, pk):
 def _supplier_invoice_tracking_queryset(request):
     search_query = request.GET.get("search", "").strip()
     supplier_filter = request.GET.get("supplier", "").strip()
-    sort_by = (request.GET.get("sort") or "-invoice_date").strip()
 
     supplier_invoices = (
         SupplierInvoice.objects.select_related("supplier")
@@ -659,26 +658,18 @@ def _supplier_invoice_tracking_queryset(request):
 
     ordering_map = {
         "invoice_number": "invoice_number",
-        "-invoice_number": "-invoice_number",
         "supplier_name": "supplier__name",
-        "-supplier_name": "-supplier__name",
         "invoice_date": "invoice_date",
-        "-invoice_date": "-invoice_date",
         "invoice_amount": "total_amount",
-        "-invoice_amount": "-total_amount",
         "stock_in_quantity": "stock_in_quantity",
-        "-stock_in_quantity": "-stock_in_quantity",
         "sales_quantity": "sales_quantity",
-        "-sales_quantity": "-sales_quantity",
         "remaining_quantity": "remaining_quantity",
-        "-remaining_quantity": "-remaining_quantity",
         "remaining_percentage": "remaining_percentage",
-        "-remaining_percentage": "-remaining_percentage",
         "stock_amount": "stock_amount",
-        "-stock_amount": "-stock_amount",
     }
 
-    return supplier_invoices.order_by(ordering_map.get(sort_by, "-invoice_date"))
+    final_sorts = table_sorting(request, ordering_map, "-invoice_date")
+    return supplier_invoices.order_by(*final_sorts)
 
 
 def supplier_invoice_tracking(request):

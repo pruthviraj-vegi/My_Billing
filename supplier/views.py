@@ -21,7 +21,12 @@ from decimal import Decimal
 from base.getDates import getDates
 from .models import Supplier, SupplierInvoice, SupplierPayment
 from .forms import SupplierForm, SupplierInvoiceForm, SupplierPaymentForm
-from base.utility import get_periodic_data, get_period_label, render_paginated_response
+from base.utility import (
+    get_periodic_data,
+    get_period_label,
+    render_paginated_response,
+    table_sorting,
+)
 import logging
 import json
 
@@ -501,7 +506,6 @@ def fetch_supplier_invoices(request, pk):
     """AJAX: fetch invoices for a supplier with pagination and optional sorting."""
     supplier = get_object_or_404(Supplier, id=pk)
 
-    sort_by = (request.GET.get("sort") or "-invoice_date").strip()
     valid_sort_fields = {
         "invoice_date",
         "-invoice_date",
@@ -514,10 +518,10 @@ def fetch_supplier_invoices(request, pk):
         "invoice_number",
         "-invoice_number",
     }
-    if sort_by not in valid_sort_fields:
-        sort_by = "-invoice_date"
 
-    queryset = supplier.invoices.filter(is_deleted=False).order_by(sort_by)
+    valid_sorts = table_sorting(request, valid_sort_fields, "-invoice_date")
+
+    queryset = supplier.invoices.filter(is_deleted=False).order_by(*valid_sorts)
 
     return render_paginated_response(
         request,
@@ -532,23 +536,17 @@ def fetch_supplier_payments(request, pk):
     """AJAX: fetch payments for a supplier with pagination and optional sorting."""
     supplier = get_object_or_404(Supplier, id=pk)
 
-    sort_by = (request.GET.get("sort") or "-payment_date").strip()
     valid_sort_fields = {
         "payment_date",
-        "-payment_date",
         "amount",
-        "-amount",
         "unallocated_amount",
-        "-unallocated_amount",
         "id",
-        "-id",
         "method",
-        "-method",
     }
-    if sort_by not in valid_sort_fields:
-        sort_by = "-payment_date"
 
-    queryset = supplier.payments_made.filter(is_deleted=False).order_by(sort_by)
+    valid_sorts = table_sorting(request, valid_sort_fields, "-payment_date")
+
+    queryset = supplier.payments_made.filter(is_deleted=False).order_by(*valid_sorts)
 
     return render_paginated_response(
         request,

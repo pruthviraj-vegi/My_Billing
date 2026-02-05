@@ -32,31 +32,21 @@ from django.utils import timezone
 import logging
 
 
-from base.utility import render_paginated_response
+from base.utility import render_paginated_response, table_sorting
 
 logger = logging.getLogger(__name__)
 
 VALID_SORT_FIELDS = {
     "id",
-    "-id",
     "name",
-    "-name",
     "email",
-    "-email",
     "created_at",
-    "-created_at",
     "phone_number",
-    "-phone_number",
     "address",
-    "-address",
     "credit_amount",
-    "-credit_amount",
     "debit_amount",
-    "-debit_amount",
     "balance_amount",
-    "-balance_amount",
     "last_date",
-    "-last_date",
 }
 
 
@@ -81,8 +71,6 @@ def credit_customers_data(request):
     """
 
     search_query = request.GET.get("search", "").strip()
-    sort_by = request.GET.get("sort", "-created_at")
-
     # ===== BASE QUERYSET =====
     # Only customers with credit activity
     qs = (
@@ -101,25 +89,26 @@ def credit_customers_data(request):
         )
 
     # ===== SORTING (All in database!) =====
-    sort_map = {
+    # ===== SORTING (All in database!) =====
+    # Map frontend sort keys to database fields
+    sort_fields_map = {
+        "id": "id",
+        "name": "name",
+        "email": "email",
+        "created_at": "created_at",
+        "phone_number": "phone_number",
+        "address": "address",
         "credit_amount": "credit_summary__credit_amount",
-        "-credit_amount": "-credit_summary__credit_amount",
         "debit_amount": "credit_summary__debit_amount",
-        "-debit_amount": "-credit_summary__debit_amount",
         "balance_amount": "credit_summary__balance_amount",
-        "-balance_amount": "-credit_summary__balance_amount",
         "last_date": "credit_summary__last_invoice_date",
-        "-last_date": "-credit_summary__last_invoice_date",
     }
 
-    if sort_by in sort_map:
-        qs = qs.order_by(sort_map[sort_by])
-    else:
-        # Fallback to valid field
-        valid_fields = {"id", "-id", "name", "-name", "created_at", "-created_at"}
-        if sort_by not in valid_fields:
-            sort_by = "-created_at"
-        qs = qs.order_by(sort_by)
+    # Get valid sort fields (supports multi-column, e.g. "credit_amount, -name")
+    # table_sorting will now handle the mapping and direction logic automatically
+    final_order_by = table_sorting(request, sort_fields_map, "-created_at")
+
+    qs = qs.order_by(*final_order_by)
 
     # ===== EXECUTE =====
     customers = list(qs)
