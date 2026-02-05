@@ -266,25 +266,6 @@ def scan_barcode(request):
         )
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def create_cart(request):
-    """Create a new cart"""
-    cart_name = request.data.get("name", f"Cart {Cart.objects.count() + 1}")
-
-    cart = Cart.objects.create(name=cart_name, created_by=request.user)
-
-    serializer = CartSerializer(cart)
-    return Response(
-        {
-            "status": "success",
-            "message": "Cart created successfully",
-            "cart": serializer.data,
-        },
-        status=status.HTTP_201_CREATED,
-    )
-
-
 @api_view(["PUT", "DELETE"])
 @permission_classes([IsAuthenticated])
 def manage_cart_item(request, item_id):

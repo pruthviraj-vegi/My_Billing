@@ -82,27 +82,6 @@ class Customer(SoftDeleteModel):
         """Check if customer has store credit."""
         return self.store_credit_balance > 0
 
-    @property
-    def credit_status(self):
-        """Return credit status as string."""
-        if self.store_credit_balance > 0:
-            return f"Credit: ₹{self.store_credit_balance}"
-        return "No Credit"
-
-    def add_credit(self, amount):
-        """Add credit to customer's balance."""
-        if amount > 0:
-            self.store_credit_balance += amount
-            self.save(update_fields=["store_credit_balance", "updated_at"])
-
-    def deduct_credit(self, amount):
-        """Deduct credit from customer's balance."""
-        if amount > 0 and self.store_credit_balance >= amount:
-            self.store_credit_balance -= amount
-            self.save(update_fields=["store_credit_balance", "updated_at"])
-            return True
-        return False
-
     class Meta:
         indexes = [
             models.Index(fields=["name"], name="customer_name_idx"),

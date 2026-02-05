@@ -12,7 +12,6 @@ urlpatterns = [
     path("<int:pk>/edit/", views.EditCart.as_view(), name="edit_cart"),
     # API endpoints
     path("api/scan-barcode/", views.scan_barcode, name="scan_barcode"),
-    # path("api/create-cart/", views.create_cart, name="create_cart"),
     path(
         "api/cart-item/<int:item_id>/", views.manage_cart_item, name="manage_cart_item"
     ),
