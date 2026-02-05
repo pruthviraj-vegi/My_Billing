@@ -90,8 +90,10 @@
                     <i class="fas fa-chart-line"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalProfit" data-count="0">0</h3>
-                    <p class="stat-label">Amount</p>
+                    <h3 class="stat-number">
+                        <span class="counting-number" id="totalProfit" data-count="0">0</span> <span id="marginPercentage" class="margin-badge"></span>
+                    </h3>
+                    <p class="stat-label">Profit</p>
                 </div>
             </div>
             <div class="stat-card">
@@ -264,6 +266,12 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCount('totalProfit', data.stats.total_profit);
         updateCount('totalDiscount', data.stats.total_discount);
         updateCount('totalReturnAmount', data.stats.total_return_amount);
+
+        // Update margin percentage beside profit
+        const marginEl = document.getElementById('marginPercentage');
+        if (marginEl && data.stats.margin_percentage !== undefined) {
+            marginEl.textContent = `(${data.stats.margin_percentage}%)`;
+        }
 
         // Update Revenue Chart
         if (data.comparison_data) {

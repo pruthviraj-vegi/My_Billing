@@ -122,6 +122,11 @@ def invoice_dashboard_fetch(request):
     )
     outstanding_amount = net_amount - total_paid
 
+    # Calculate margin percentage (Profit / Net Revenue * 100)
+    margin_percentage = (
+        round((total_profit / net_amount) * 100, 2) if net_amount > 0 else Decimal("0")
+    )
+
     # Get comparison data for line chart
     comparison_data = get_comparison_data(date_filter, start_date, end_date)
 
@@ -166,6 +171,7 @@ def invoice_dashboard_fetch(request):
         "net_amount": float(net_amount),
         "outstanding_amount": float(outstanding_amount),
         "total_profit": float(total_profit),
+        "margin_percentage": float(margin_percentage),
         "total_return_amount": float(total_return_amount + total_cancelled_amount),
     }
 

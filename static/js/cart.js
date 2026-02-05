@@ -888,7 +888,7 @@ class CartManager {
             </td>
             <td class="discount-cell">${calculatedDiscount.toFixed(2)}%</td>
             <td class="amount-cell">${this.format(amount)}</td>
-            <td>
+            <td class="text-center">
                 <button type="button" class="btn btn-primary update-item-btn" data-item-id="${id}" 
                         title="Save changes" aria-label="Save item changes">
                     <i class="fas fa-save" aria-hidden="true"></i>

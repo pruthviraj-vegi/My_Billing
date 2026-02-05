@@ -1,27 +1,18 @@
 from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 from .models import Cart, CartItem
 from .forms import CartForm
 from django.contrib import messages
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from .serializers import (
-    CartSerializer,
-    CartItemSerializer,
-    BarcodeScanSerializer,
-    CartItemUpdateSerializer,
-)
 from inventory.models import ProductVariant, FavoriteVariant, BarcodeMapping
 from inventory.views_variant import get_variants_data
-from django.views.generic import CreateView, UpdateView
-
+from django.views.generic import CreateView, UpdateView, TemplateView
 from django.urls import reverse
 from base.utility import render_paginated_response
-
-# Template view for the main cart page
-from django.views.generic import TemplateView
-import logging, json
+from decimal import Decimal
+import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -161,40 +152,44 @@ def custom_search(request):
 
 
 # API Views for Cart Operations
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
 def scan_barcode(request):
     """Scan barcode and add product to cart"""
-    type = "Create"
+    action_type = "Create"
     try:
-        # Handle both JSON and form data
-        if request.content_type == "application/json":
-            data = request.data
-        else:
-            # Parse JSON from request body if needed
-            data = json.loads(request.body.decode("utf-8"))
+        data = json.loads(request.body.decode("utf-8"))
 
-        barcode_mapping = BarcodeMapping.objects.filter(barcode=data["barcode"]).first()
+        # Validate required fields
+        barcode = data.get("barcode")
+        cart_id = data.get("cart_id")
+        quantity = data.get("quantity", 1)
+
+        if not barcode:
+            return JsonResponse(
+                {"status": "error", "message": "Barcode is required"}, status=400
+            )
+        if not cart_id:
+            return JsonResponse(
+                {"status": "error", "message": "Cart ID is required"}, status=400
+            )
+
+        # Convert quantity to Decimal
+        try:
+            quantity = Decimal(str(quantity))
+            if quantity <= 0:
+                return JsonResponse(
+                    {"status": "error", "message": "Quantity must be greater than 0"},
+                    status=400,
+                )
+        except:
+            return JsonResponse(
+                {"status": "error", "message": "Invalid quantity"}, status=400
+            )
+
+        # Check for barcode mapping
+        barcode_mapping = BarcodeMapping.objects.filter(barcode=barcode).first()
         if barcode_mapping:
             barcode = barcode_mapping.variant.barcode
-            cart_id = data["cart_id"]
-            quantity = data["quantity"]
-        else:
-
-            serializer = BarcodeScanSerializer(data=data)
-            if not serializer.is_valid():
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Invalid data",
-                        "errors": serializer.errors,
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            barcode = serializer.validated_data["barcode"]
-            cart_id = serializer.validated_data["cart_id"]
-            quantity = serializer.validated_data["quantity"]
 
         try:
             cart = Cart.objects.get(id=cart_id, status="OPEN")
@@ -211,163 +206,191 @@ def scan_barcode(request):
             )
 
             if not created:
-                # Update quantity if item already exists
-                type = "Update"
+                action_type = "Update"
                 cart_item.quantity += quantity
                 cart_item.save()
 
-            # Refresh the cart item to get updated data
             cart_item.refresh_from_db()
 
-            # Ensure related data is loaded
-            cart_item.product_variant.refresh_from_db()
-            if hasattr(cart_item.product_variant, "product"):
-                cart_item.product_variant.product.refresh_from_db()
+            # Build cart item data for response
+            cart_item_data = {
+                "id": cart_item.id,
+                "quantity": float(cart_item.quantity),
+                "price": float(cart_item.price),
+                "amount": float(cart_item.amount_property),
+                "discount_percentage": (
+                    float(cart_item.discount_percentage)
+                    if cart_item.discount_percentage
+                    else 0
+                ),
+                "product_variant": {
+                    "id": product_variant.id,
+                    "barcode": product_variant.barcode,
+                    "full_name": product_variant.full_name,
+                    "mrp": float(product_variant.mrp),
+                    "simple_name": product_variant.simple_name,
+                },
+            }
 
-            # Serialize the cart item for response
-            item_serializer = CartItemSerializer(cart_item)
-
-            return Response(
+            return JsonResponse(
                 {
                     "status": "success",
                     "message": f"Product {product_variant.full_name} added to cart",
-                    "cart_item": item_serializer.data,
-                    "cart_total": cart.total_amount,
-                    "remaining_stock": product_variant.billing_stock,
-                    "type": type,
-                },
-                status=status.HTTP_200_OK,
+                    "cart_item": cart_item_data,
+                    "cart_total": float(cart.total_amount),
+                    "remaining_stock": float(product_variant.billing_stock),
+                    "type": action_type,
+                }
             )
 
-        except Cart.DoesNotExist as e:
-            logger.error(f"Cart not found or not open: {e}")
-            return Response(
-                {"status": "error", "message": "Cart not found or not open"},
-                status=status.HTTP_404_NOT_FOUND,
+        except Cart.DoesNotExist:
+            logger.error(f"Cart not found or not open: {cart_id}")
+            return JsonResponse(
+                {"status": "error", "message": "Cart not found or not open"}, status=404
             )
-        except ProductVariant.DoesNotExist as e:
-            logger.error(f"Product not found or inactive: {e}")
-            return Response(
+        except ProductVariant.DoesNotExist:
+            logger.error(f"Product not found or inactive: {barcode}")
+            return JsonResponse(
                 {"status": "error", "message": "Product not found or inactive"},
-                status=status.HTTP_404_NOT_FOUND,
+                status=404,
             )
 
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON data: {e}")
-        return Response(
-            {"status": "error", "message": "Invalid JSON data"},
-            status=status.HTTP_400_BAD_REQUEST,
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON data")
+        return JsonResponse(
+            {"status": "error", "message": "Invalid JSON data"}, status=400
         )
     except Exception as e:
         logger.error(f"Server error: {e}")
-        return Response(
-            {"status": "error", "message": "Server error occurred"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        return JsonResponse(
+            {"status": "error", "message": "Server error occurred"}, status=500
         )
 
 
-@api_view(["PUT", "DELETE"])
-@permission_classes([IsAuthenticated])
+@require_http_methods(["PUT", "DELETE"])
 def manage_cart_item(request, item_id):
     """Update or delete cart item"""
     try:
         cart_item = CartItem.objects.get(id=item_id)
 
         if request.method == "PUT":
-            serializer = CartItemUpdateSerializer(
-                cart_item, data=request.data, partial=True
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Update quantity if provided
+            if "quantity" in data:
+                try:
+                    quantity = Decimal(str(data["quantity"]))
+                    if quantity <= 0:
+                        return JsonResponse(
+                            {
+                                "status": "error",
+                                "message": "Quantity must be greater than 0",
+                            },
+                            status=400,
+                        )
+                    cart_item.quantity = quantity
+                except:
+                    return JsonResponse(
+                        {"status": "error", "message": "Invalid quantity"}, status=400
+                    )
+
+            # Update price if provided
+            if "price" in data:
+                try:
+                    price = Decimal(str(data["price"]))
+                    if price < 0:
+                        return JsonResponse(
+                            {"status": "error", "message": "Price cannot be negative"},
+                            status=400,
+                        )
+                    cart_item.price = price
+                except:
+                    return JsonResponse(
+                        {"status": "error", "message": "Invalid price"}, status=400
+                    )
+
+            cart_item.save()
+            cart_item.refresh_from_db()
+
+            cart_item_data = {
+                "id": cart_item.id,
+                "quantity": float(cart_item.quantity),
+                "price": float(cart_item.price),
+                "amount": float(cart_item.amount_property),
+                "discount_percentage": (
+                    float(cart_item.discount_percentage)
+                    if cart_item.discount_percentage
+                    else 0
+                ),
+            }
+
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": "Cart item updated successfully",
+                    "cart_item": cart_item_data,
+                    "cart_total": float(cart_item.cart.total_amount),
+                    "remaining_stock": float(cart_item.product_variant.billing_stock),
+                }
             )
-            if serializer.is_valid():
-                # Update the item
-                serializer.save()
-
-                # Refresh the cart_item to get updated data
-                cart_item.refresh_from_db()
-
-                return Response(
-                    {
-                        "status": "success",
-                        "message": "Cart item updated successfully",
-                        "cart_item": CartItemSerializer(cart_item).data,
-                        "cart_total": cart_item.cart.total_amount,
-                        "remaining_stock": cart_item.product_variant.billing_stock,
-                    },
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "Invalid data",
-                        "errors": serializer.errors,
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
 
         elif request.method == "DELETE":
             cart = cart_item.cart
             cart_item.delete()
-            return Response(
+            return JsonResponse(
                 {
                     "status": "success",
                     "message": "Cart item removed successfully",
-                    "cart_total": cart.total_amount,
-                },
-                status=status.HTTP_200_OK,
+                    "cart_total": float(cart.total_amount),
+                }
             )
 
-    except CartItem.DoesNotExist as e:
-        logger.error(f"Cart item not found: {e}")
-        return Response(
-            {"status": "error", "message": "Cart item not found"},
-            status=status.HTTP_404_NOT_FOUND,
+    except CartItem.DoesNotExist:
+        logger.error(f"Cart item not found: {item_id}")
+        return JsonResponse(
+            {"status": "error", "message": "Cart item not found"}, status=404
+        )
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"status": "error", "message": "Invalid JSON data"}, status=400
         )
     except Exception as e:
         logger.error(f"Server error: {e}")
-        return Response(
-            {"status": "error", "message": f"Server error: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        return JsonResponse(
+            {"status": "error", "message": f"Server error: {str(e)}"}, status=500
         )
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
 def archive_cart(request, cart_id):
     """Archive a cart"""
     try:
         cart = Cart.objects.get(id=cart_id, status="OPEN")
         cart.status = "ARCHIVED"
         cart.save()
-
-        return Response(
-            {"status": "success", "message": "Cart archived successfully"},
-            status=status.HTTP_200_OK,
+        return JsonResponse(
+            {"status": "success", "message": "Cart archived successfully"}
         )
 
-    except Cart.DoesNotExist as e:
-        logger.error(f"Cart not found: {e}")
-        return Response(
-            {"status": "error", "message": "Cart not found"},
-            status=status.HTTP_404_NOT_FOUND,
+    except Cart.DoesNotExist:
+        logger.error(f"Cart not found: {cart_id}")
+        return JsonResponse(
+            {"status": "error", "message": "Cart not found"}, status=404
         )
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
 def clear_cart(request, cart_id):
     """Clear all items from a cart"""
     try:
         cart = Cart.objects.get(id=cart_id, status="OPEN")
         cart.cart_items.all().delete()
-
-        return Response(
-            {"status": "success", "message": "Cart cleared successfully"},
-            status=status.HTTP_200_OK,
+        return JsonResponse(
+            {"status": "success", "message": "Cart cleared successfully"}
         )
 
-    except Cart.DoesNotExist as e:
-        logger.error(f"Cart not found: {e}")
-        return Response(
-            {"status": "error", "message": "Cart not found"},
-            status=status.HTTP_404_NOT_FOUND,
+    except Cart.DoesNotExist:
+        logger.error(f"Cart not found: {cart_id}")
+        return JsonResponse(
+            {"status": "error", "message": "Cart not found"}, status=404
         )
