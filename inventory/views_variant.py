@@ -420,9 +420,8 @@ class EditProductVariant(UpdateView):
         context = super().get_context_data(**kwargs)
         context["title"] = self.title
         context["variant"] = self.object
-        context["sizes_form"] = SizeForm()
-        context["colors_form"] = ColorForm()
-        context["gst_rate"] = self.object.product.hsn_code.gst_percentage
+        context["size_form"] = SizeForm()
+        context["color_form"] = ColorForm()
         return context
 
     def form_valid(self, form):

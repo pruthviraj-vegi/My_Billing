@@ -183,9 +183,14 @@
                                         </td>
                                         <td>
                                             {% if product.variant__color__name %}
-                                                <div class="color-display">
-                                                    <div class="color-swatch"></div>
-                                                    <span>{{ product.variant__color__name }}</span>
+                                                <div class="d-inline-flex align-items-center gap-2">
+                                                    <div class="color-swatch"
+                                                         style="background-color: {{ product.variant__color__hex_code|default:'#ccc' }};
+                                                                width: 16px;
+                                                                height: 16px;
+                                                                border-radius: 50%;
+                                                                border: 1px solid var(--border-color)"></div>
+                                                    {{ product.variant__color__name }}
                                                 </div>
                                             {% else %}
                                                 <span class="text-muted">-</span>
