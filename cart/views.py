@@ -230,6 +230,7 @@ def scan_barcode(request):
                     "mrp": float(product_variant.mrp),
                     "simple_name": product_variant.simple_name,
                     "purchase_price": float(product_variant.purchase_price),
+                    "product_name": product_variant.product.brand,
                 },
             }
 

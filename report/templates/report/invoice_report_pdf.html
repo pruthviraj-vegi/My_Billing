@@ -111,26 +111,26 @@
                 </table>
             </div>
             <!-- Cancelled Invoices Table -->
-            <div class="table-container">
-                <div class="table-header">Cancelled Invoices</div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Sl.</th>
-                            <th>Date</th>
-                            <th>Invoice No.</th>
-                            <th>Customer</th>
-                            <th>Invoice Type</th>
-                            <th>Net Amount</th>
-                            <th>CGST</th>
-                            <th>SGST</th>
-                            <th>IGST</th>
-                            <th>Total GST</th>
-                            <th>Total Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if invoices_cancelled.data %}
+            {% if invoices_cancelled.data %}
+                <div class="table-container">
+                    <div class="table-header">Cancelled Invoices</div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Sl.</th>
+                                <th>Date</th>
+                                <th>Invoice No.</th>
+                                <th>Customer</th>
+                                <th>Invoice Type</th>
+                                <th>Net Amount</th>
+                                <th>CGST</th>
+                                <th>SGST</th>
+                                <th>IGST</th>
+                                <th>Total GST</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                             {% for item in invoices_cancelled.data %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
@@ -155,37 +155,31 @@
                                 <td>{{ invoices_cancelled.total_gst|currency }}</td>
                                 <td>{{ invoices_cancelled.total_amount|currency }}</td>
                             </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="11" class="py-5">
-                                    <p class="text-muted">No cancelled invoices found.</p>
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
             <!-- Return Invoices Table -->
-            <div class="table-container">
-                <div class="table-header">Return Invoices</div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Sl.</th>
-                            <th>Date</th>
-                            <th>Invoice No.</th>
-                            <th>Customer</th>
-                            <th>Invoice Type</th>
-                            <th>Net Amount</th>
-                            <th>CGST</th>
-                            <th>SGST</th>
-                            <th>IGST</th>
-                            <th>Total GST</th>
-                            <th>Refund Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if invoices_return.data %}
+            {% if invoices_return.data %}
+                <div class="table-container">
+                    <div class="table-header">Return Invoices</div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Sl.</th>
+                                <th>Date</th>
+                                <th>Invoice No.</th>
+                                <th>Customer</th>
+                                <th>Invoice Type</th>
+                                <th>Net Amount</th>
+                                <th>CGST</th>
+                                <th>SGST</th>
+                                <th>IGST</th>
+                                <th>Total GST</th>
+                                <th>Refund Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                             {% for item in invoices_return.data %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
@@ -210,16 +204,10 @@
                                 <td>{{ invoices_return.total_gst|currency }}</td>
                                 <td>{{ invoices_return.total_amount|currency }}</td>
                             </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="11" class="py-5">
-                                    <p class="text-muted">No return invoices found.</p>
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
             <!-- Summary Section -->
             <div class="table-container">
                 <div class="table-header">Summary</div>
