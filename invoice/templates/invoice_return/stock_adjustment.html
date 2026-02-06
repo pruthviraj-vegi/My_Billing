@@ -209,7 +209,6 @@
 {% block extra_js %}
     <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Stock adjustment page loaded');
     
     const updateItemBtn = document.querySelectorAll('.btn-update');
     const quantityInputs = document.querySelectorAll('.quantity-input');
@@ -280,7 +279,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateItem(itemId) {
         // Check if item has changes before updating
         if (!hasItemChanged(itemId)) {
-            console.log(`No changes detected for item ${itemId}, skipping update`);
             showMessage('No changes detected for this item', 'info');
             return;
         }
@@ -354,8 +352,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        console.log(`Updating ${changedItems.length} changed items:`, changedItems);
-        
         const promises = changedItems.map(itemId => updateItemAsync(itemId));
         
         try {
@@ -372,7 +368,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return new Promise((resolve, reject) => {
             // Check if item has changes before updating
             if (!hasItemChanged(itemId)) {
-                console.log(`No changes detected for item ${itemId}, skipping update`);
                 resolve({ success: true, skipped: true });
                 return;
             }
@@ -499,8 +494,6 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Use the return invoice ID from template context
             const returnId = {{ return_invoice.id }};
-            
-            console.log('Return ID:', returnId);
             
             const response = await fetch(`/invoice/returns/submit/${returnId}/`, {
                 method: 'POST',

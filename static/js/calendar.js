@@ -422,8 +422,6 @@ class CalendarControl {
             setTimeout(() => {
                 this._adjustPosition(calendarEl);
             }, 10);
-
-            console.log('Calendar shown');
         } else {
             console.error('Calendar element not found in container:', this.container);
         }
@@ -477,7 +475,6 @@ class CalendarControl {
         const calendarEl = this._getCalendarElement();
         if (calendarEl) {
             calendarEl.classList.toggle("show");
-            console.log('Calendar toggled, is visible:', calendarEl.classList.contains('show'));
         }
     }
 }
@@ -535,20 +532,17 @@ function initDateInputCalendar(inputSelector, options = {}) {
     input.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Input clicked, showing calendar');
         calendar.show();
     });
 
     input.addEventListener('focus', (e) => {
         e.preventDefault();
-        console.log('Input focused, showing calendar');
         calendar.show();
     });
 
     // Also add mousedown to ensure it works
     input.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        console.log('Input mousedown, showing calendar');
         calendar.show();
     });
 

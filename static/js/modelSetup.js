@@ -51,7 +51,6 @@ function setupModal(id_input, name, model_link, form_id, create_url) { // 1. Add
             method: "POST",
             data: formData,
             success: function (response) {
-                console.log('AJAX Response:', response);
                 if (response.success) {
                     var item = response.data;
                     if (item && item.id && item.name) {

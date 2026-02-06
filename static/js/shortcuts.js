@@ -18,9 +18,9 @@
             { keys: 'Ctrl+8', action: 'focusMenu', target: 7, label: 'Settings', icon: 'fa-cog' }
         ],
         direct: [
-            { keys: 'Ctrl+Shift+N', action: 'navigate', url: '{% url "cart:create_cart" %}', label: 'Create New Cart', icon: 'fa-plus-circle', target: '_blank' },
-            { keys: 'Ctrl+Shift+C', action: 'navigate', url: '{% url "customer:create" %}', label: 'Add Customer', icon: 'fa-user-plus', target: '_blank' },
-            { keys: 'Ctrl+Shift+S', action: 'navigate', url: '{% url "supplier:create" %}', label: 'Add Supplier', icon: 'fa-truck-loading', target: '_blank' }
+            { keys: 'Ctrl+Shift+1', action: 'navigate', url: window.SHORTCUTS_CONFIG?.urls?.createCart || '/cart/auto-create/', label: 'Create New Cart', icon: 'fa-plus-circle', target: '_blank' },
+            { keys: 'Ctrl+Shift+2', action: 'navigate', url: window.SHORTCUTS_CONFIG?.urls?.createCustomer || '/customer/create/', label: 'Add Customer', icon: 'fa-user-plus', target: '_blank' },
+            { keys: 'Ctrl+Shift+3', action: 'navigate', url: window.SHORTCUTS_CONFIG?.urls?.createSupplier || '/supplier/create/', label: 'Add Supplier', icon: 'fa-truck-loading', target: '_blank' }
         ],
         help: [
             { keys: 'Ctrl+Shift+?', action: 'showHelp', label: 'Show Shortcuts Help', icon: 'fa-question-circle' }
@@ -190,14 +190,12 @@
         }
 
         const combination = key.join('+');
-        console.log('Key combination pressed:', combination, '| e.key:', e.key, '| e.code:', e.code);
 
         // Check all shortcuts
         const allShortcuts = [...shortcuts.navigation, ...shortcuts.direct, ...shortcuts.help];
         const matchedShortcut = allShortcuts.find(s => s.keys === combination);
 
         if (matchedShortcut) {
-            console.log('Shortcut matched:', matchedShortcut);
             e.preventDefault();
             e.stopPropagation();
             executeShortcut(matchedShortcut);
@@ -222,7 +220,6 @@
     // Focus on menu item and open dropdown
     function focusMenuItem(index) {
         const navItems = document.querySelectorAll('.nav-menu > .nav-item');
-        console.log(`Focusing menu item at index ${index}, found ${navItems.length} nav items`);
 
         if (navItems[index]) {
             const navItem = navItems[index];
@@ -230,7 +227,6 @@
             const dropdown = navItem.querySelector('.dropdown-menu');
 
             if (!navLink) {
-                console.log('No nav link found');
                 return;
             }
 
@@ -251,11 +247,9 @@
 
             // Handle dropdown or direct navigation
             if (dropdown) {
-                console.log('Dropdown found, opening...');
                 // Has dropdown - open it
                 openDropdown(navItem, dropdown);
             } else {
-                console.log('No dropdown found, navigating directly');
                 // No dropdown - navigate directly
                 const href = navLink.getAttribute('href');
                 if (href && href !== '#') {
@@ -264,14 +258,11 @@
                     }, 300); // Small delay for visual feedback
                 }
             }
-        } else {
-            console.log(`Nav item at index ${index} not found`);
         }
     }
 
     // Open dropdown properly (for keyboard shortcuts)
     function openDropdown(navItem, dropdown) {
-        console.log('Opening dropdown for:', navItem);
 
         // Add a class to force the dropdown to show
         navItem.classList.add('dropdown-shortcut-open');
@@ -286,10 +277,7 @@
         setTimeout(() => {
             const firstItem = dropdown.querySelector('.dropdown-item:not(.dropdown-divider)');
             if (firstItem) {
-                console.log('Focusing first dropdown item');
                 firstItem.focus();
-            } else {
-                console.log('No dropdown items found');
             }
         }, 150);
     }

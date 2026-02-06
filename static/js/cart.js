@@ -176,7 +176,6 @@ class CartManager {
      */
     queueRequest(url, method, body) {
         this.requestQueue.push({ url, method, body, timestamp: Date.now() });
-        console.log(`[CartManager] Request queued (${this.requestQueue.length} in queue)`);
     }
 
     /**
@@ -321,8 +320,6 @@ class CartManager {
 
             // Exponential backoff: 1s, 2s, 4s
             const delay = CartManager.RETRY_DELAY * Math.pow(2, attempt - 1);
-            console.log(`[CartManager] Retry attempt ${attempt}/${CartManager.RETRY_ATTEMPTS} after ${delay}ms`);
-
             await new Promise(resolve => setTimeout(resolve, delay));
             return this.retryWithBackoff(fn, attempt + 1);
         }
@@ -375,7 +372,6 @@ class CartManager {
                 return data;
             } catch (err) {
                 if (err.name === 'AbortError') {
-                    console.log('[CartManager] Request cancelled');
                     throw new Error('Request cancelled');
                 }
                 console.error('[CartManager] API Error:', err);
@@ -414,8 +410,6 @@ class CartManager {
     notify(msg, type = 'info') {
         if (typeof showNotification === 'function') {
             showNotification(msg, type);
-        } else {
-            console.log(`[CartManager ${type.toUpperCase()}] ${msg}`);
         }
     }
 
@@ -524,7 +518,6 @@ class CartManager {
 
         // Prevent rapid successive scans (race condition fix)
         if (this.isProcessingBarcode) {
-            console.log('[CartManager] Barcode scan in progress, ignoring duplicate request');
             return;
         }
 
@@ -788,7 +781,6 @@ class CartManager {
                 // Update totals
                 this.updateTotals(data.cart_total);
                 this.notify('Item removed successfully', 'success');
-                console.log(`[CartManager] Item ${id} deleted`);
             } else {
                 this.notify(data.message || 'Failed to delete item', 'error');
             }
@@ -846,13 +838,16 @@ class CartManager {
             amount,
             product_variant: {
                 barcode = 'N/A',
-                brand = 'N/A',
+                product = "N/A",
                 simple_name: variantName = 'N/A',
                 mrp: sellingPrice = data.price || '0.00',
                 purchase_price: purchasePrice = '0.00',
                 discount_percentage: discount = 0,
             } = {},
         } = data;
+
+        // Extract brand from nested product object
+        const brand = product || 'N/A';
 
         // Calculate discount if not provided
         let calculatedDiscount = discount;
