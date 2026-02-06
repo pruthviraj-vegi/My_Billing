@@ -368,3 +368,17 @@ body {
 .no-break {
   page-break-inside: avoid;
 }
+
+/* ========================================
+   PDF BOOKMARKS/OUTLINE NAVIGATION
+   ======================================== */
+/* These properties create clickable navigation in PDF viewers */
+.report-title {
+  bookmark-level: 1;
+  bookmark-label: content();
+}
+
+.table-header {
+  bookmark-level: 1;
+  bookmark-label: content();
+}
