@@ -39,9 +39,9 @@
                     </span>
                 {% endif %}
             </td>
-            <td>{{ supplier.balance_due|currency }}</td>
+            <td>{{ supplier.annotated_balance_due|currency }}</td>
             <td>{{ supplier.created_at|date:"M d, Y" }}</td>
-            <td>{{ supplier.last_invoice|date:"M d, Y" }}</td>
+            <td>{{ supplier.annotated_last_invoice|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
                     <a href="{% url 'supplier:detail' supplier.id %}"

@@ -107,7 +107,7 @@
             <div class="stat-item-compact">
               <span class="stat-number-compact counting-number"
                     id="invoice_count"
-                    data-count="{{ invoices.count }}">0</span>
+                    data-count="{{ invoice_count }}">0</span>
               <span class="stat-label-compact">Total</span>
             </div>
             <div class="stat-item-compact">
@@ -135,7 +135,7 @@
             <div class="stat-item-compact">
               <span class="stat-number-compact counting-number"
                     id="payment_count"
-                    data-count="{{ payments.count }}">0</span>
+                    data-count="{{ payment_count }}">0</span>
               <span class="stat-label-compact">Total</span>
             </div>
             <div class="stat-item-compact">
@@ -223,7 +223,7 @@
             </thead>
             <tbody id="payments_table_body">
               <tr>
-                <td colspan="8" class="text-center" style="padding: 2rem;">
+                <td colspan="8" class="text-center p-2">
                   <div class="loading">
                     <i class="fas fa-spinner fa-spin"></i>
                     Loading payments...
