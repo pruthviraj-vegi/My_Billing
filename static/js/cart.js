@@ -838,7 +838,7 @@ class CartManager {
             amount,
             product_variant: {
                 barcode = 'N/A',
-                product = "N/A",
+                product_name = "N/A",
                 simple_name: variantName = 'N/A',
                 mrp: sellingPrice = data.price || '0.00',
                 purchase_price: purchasePrice = '0.00',
@@ -847,7 +847,7 @@ class CartManager {
         } = data;
 
         // Extract brand from nested product object
-        const brand = product || 'N/A';
+        const brand = product_name || 'N/A';
 
         // Calculate discount if not provided
         let calculatedDiscount = discount;
