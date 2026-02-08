@@ -32,8 +32,6 @@
     </div>
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
-        <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
-        <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Supplier Dashboard</span>
     </nav>
     <!-- Loading State - Hidden for seamless updates -->
@@ -160,11 +158,11 @@
                     <h3 class="chart-title">Purchase Analytics</h3>
                     <div class="chart-summary-stats">
                         <div class="stat-item">
-                            <span class="stat-label-small"><span class="legend-dot" style="background: var(--primary);"></span>Current</span>
+                            <span class="stat-label-small"><span class="legend-dot bg-primary"></span>Current</span>
                             <span class="stat-value-small" id="revCurrentTotal">0</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label-small"><span class="legend-dot" style="background: var(--secondary);"></span>Previous</span>
+                            <span class="stat-label-small"><span class="legend-dot bg-secondary"></span>Previous</span>
                             <span class="stat-value-small" id="revPreviousTotal">0</span>
                         </div>
                         <div class="stat-item">

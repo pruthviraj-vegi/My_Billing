@@ -9,7 +9,6 @@
   <div class="page-header">
     <h2 class="page-title">Suppliers</h2>
     <div class="page-actions">
-      
       <a href="{% url 'supplier:dashboard' %}" class="btn btn-info">
         <i class="fas fa-chart-line"></i>
         Dashboard
@@ -30,9 +29,7 @@
   </div>
   <!-- Breadcrumb Navigation -->
   <nav class="breadcrumb breadcrumb-right">
-    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
-    <span class="breadcrumb-separator">/</span>
-    <a href="{% url 'supplier:dashboard' %}" class="breadcrumb-item">Supplier Dashboard</a>
+    <a href="{% url 'supplier:dashboard' %}" class="breadcrumb-item">Dashboard</a>
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">All Suppliers</span>
   </nav>
@@ -64,37 +61,40 @@
   </div>
   <!-- Suppliers Table -->
   <div class="table-container">
-      <table class="data-table" id="data_table" data-sort="">
-        <thead>
-          <tr>
-            <th class="sortable" data-sort="id">ID</th>
-            <th class="sortable" data-sort="name">Supplier Name</th>
-            <th>Address</th>
-            <th class="sortable" data-sort="phone">Phone</th>
-            <th class="sortable" data-sort="gstin">GSTIN</th>
-            <th>Status</th>
-            <th class="sortable" data-sort="balance_due">Balance Due</th>
-            <th class="sortable" data-sort="created_at">Created</th>
-            <th >Last Invoice</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="table_body">
-          <tr>
-            <td colspan="9" class="text-center" style="padding: 2rem;">
-              <div class="loading">
-                <i class="fas fa-spinner fa-spin"></i>
-                Loading suppliers...
-              </div>
-              <br><br>
-              <button type="button" class="btn btn-sm" onclick="document.dispatchEvent(new Event('reloadTable'))">
-                <i class="fas fa-refresh"></i>
-                Retry
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <table class="data-table" id="data_table" data-sort="">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="id">ID</th>
+          <th class="sortable" data-sort="name">Supplier Name</th>
+          <th>Address</th>
+          <th class="sortable" data-sort="phone">Phone</th>
+          <th class="sortable" data-sort="gstin">GSTIN</th>
+          <th>Status</th>
+          <th class="sortable" data-sort="balance_due">Balance Due</th>
+          <th class="sortable" data-sort="created_at">Created</th>
+          <th>Last Invoice</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="table_body">
+        <tr>
+          <td colspan="9" class="text-center p-2">
+            <div class="loading">
+              <i class="fas fa-spinner fa-spin"></i>
+              Loading suppliers...
+            </div>
+            <br>
+            <br>
+            <button type="button"
+                    class="btn btn-sm"
+                    onclick="document.dispatchEvent(new Event('reloadTable'))">
+              <i class="fas fa-refresh"></i>
+              Retry
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
   <!-- Download Report Modal -->
   <div class="modal-overlay" id="downloadReportModal">
@@ -156,7 +156,6 @@
     </div>
   </div>
 {% endblock content %}
-
 {% block extra_js %}
   <script>
     urls = {
@@ -166,11 +165,9 @@
       purchase_orders_pdf: '{% url "report:purchase_orders_pdf" %}',
     }
   </script>
-
   <script src="{% static 'js/wordSuggestion.js' %}"></script>
   <script src="{% static 'js/fetchData.js' %}"></script>
   <script src="{% static 'js/dropdown_style.js' %}"></script>
-
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       $('#searchInput').wordSuggestion({

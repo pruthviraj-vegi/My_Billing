@@ -11,7 +11,7 @@
          </a>
       </li>
       <li class="nav-item">
-         <a href="{% url 'cart:main_page' %}"
+         <a href="#"
             class="nav-link {% if 'cart' in request.resolver_match.namespace %}active{% endif %}">
             <i class="fas fa-shopping-cart"></i>
             <span>Carts</span>
@@ -50,7 +50,7 @@
          </div>
       </li>
       <li class="nav-item">
-         <a href="{% url 'inventory:dashboard' %}"
+         <a href="#"
             class="nav-link {% if 'inventory' in request.resolver_match.namespace %}active{% endif %}">
             <i class="fas fa-boxes"></i>
             <span>Inventory</span>
@@ -69,20 +69,23 @@
             <div class="dropdown-divider"></div>
             <a href="{% url 'inventory:category_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'category_home' %}active{% endif %}">Categories</a>
-            {% comment %} <a href="{% url 'inventory:color_home' %}" class="dropdown-item {% if request.resolver_match.url_name == 'color_home' %}active{% endif %}">Colors</a> {% endcomment %}
+            <a href="{% url 'inventory:color_home' %}"
+               class="dropdown-item {% if request.resolver_match.url_name == 'color_home' %}active{% endif %}">Colors</a>
             <a href="{% url 'inventory:size_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'size_home' %}active{% endif %}">Sizes</a>
-            {% comment %} <a href="{% url 'inventory:cloth_home' %}" class="dropdown-item {% if request.resolver_match.url_name == 'cloth_home' %}active{% endif %}">Cloth Types</a> {% endcomment %}
+            <a href="{% url 'inventory:cloth_home' %}"
+               class="dropdown-item {% if request.resolver_match.url_name == 'cloth_home' %}active{% endif %}">Cloth Types</a>
             <a href="{% url 'inventory:uom_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'uom_home' %}active{% endif %}">UOMs</a>
             <a href="{% url 'inventory:gst_hsn_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'gst_hsn_home' %}active{% endif %}">GST HSN Codes</a>
+            <div class="dropdown-divider"></div>
             <a href="{% url 'inventory:favorites_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'favorites_home' %}active{% endif %}">Favorites</a>
          </div>
       </li>
       <li class="nav-item">
-         <a href="{% url 'customer:home' %}"
+         <a href="#"
             class="nav-link {% if 'customer' in request.resolver_match.namespace %}active{% endif %}">
             <i class="fas fa-users"></i>
             <span>Customers</span>
@@ -99,7 +102,7 @@
          </div>
       </li>
       <li class="nav-item">
-         <a href="{% url 'supplier:home' %}"
+         <a href="#"
             class="nav-link {% if 'supplier' in request.resolver_match.namespace %}active{% endif %}">
             <i class="fas fa-truck"></i>
             <span>Suppliers</span>
@@ -111,11 +114,10 @@
                class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Supplier List</a>
             <a href="{% url 'supplier:create' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add Supplier</a>
-            {% comment %} <a href="#" class="dropdown-item">Purchase Orders</a> {% endcomment %}
          </div>
       </li>
       <li class="nav-item">
-         <a href="{% url 'user:home' %}"
+         <a href="#"
             class="nav-link {% if 'user' in request.resolver_match.namespace %}active{% endif %}">
             <i class="fas fa-users-cog"></i>
             <span>Users</span>
@@ -132,7 +134,8 @@
          </div>
       </li>
       <li class="nav-item">
-         <a href="#" class="nav-link">
+         <a href="#"
+            class="nav-link {% if 'setting' in request.resolver_match.namespace %}active{% endif %}">
             <i class="fas fa-cog"></i>
             <span>Settings</span>
          </a>
@@ -147,8 +150,6 @@
                class="dropdown-item {% if request.resolver_match.url_name == 'payment_details_list' %}active{% endif %}">Payment Methods</a>
             <a href="{% url 'setting:barcode_config_list' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'barcode_config_list' %}active{% endif %}">Barcode Configs</a>
-            {% comment %} <a href="#" class="dropdown-item">General Settings</a>
-            <a href="#" class="dropdown-item">System Preferences</a> {% endcomment %}
          </div>
       </li>
    </ul>

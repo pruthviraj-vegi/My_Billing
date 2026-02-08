@@ -19,8 +19,6 @@
     </div>
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
-        <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
-        <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Shop & Report Settings</span>
     </nav>
     <!-- Loading State -->
@@ -198,7 +196,7 @@
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             {% if not config.is_default %}
-                                                <button onclick="setDefault({{ config.pk }})"
+                                                <button onclick="setDefault('{{ config.pk }}')"
                                                         class="btn-action btn-download"
                                                         title="Set as Default">
                                                     <i class="fas fa-star"></i>

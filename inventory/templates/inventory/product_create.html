@@ -22,8 +22,12 @@
   </nav>
   <!-- Product Creation Form -->
   <div class="form-container">
-    <div class="form-card">
-      <form method="post" class="details-form row" novalidate autocomplete="off" data-prevent-double-submit>
+    <form method="post"
+          class="details-form row"
+          novalidate
+          autocomplete="off"
+          data-prevent-double-submit>
+      <div class="form-card">
         {% csrf_token %}
         <!-- Form Errors -->
         {% if form.non_field_errors %}
@@ -64,7 +68,7 @@
         <div class="form-section">
           <h5 class="section-title">Product Details</h5>
           <div class="row">
-          <!-- Row 1: Brand and Name -->
+            <!-- Row 1: Brand and Name -->
             <div class="col-md-4">
               <div class="form-group {% if product_form.brand.errors %}has-error{% endif %}">
                 <label for="{{ product_form.brand.id_for_label }}" class="form-label">{{ product_form.brand.label }}</label>
@@ -100,13 +104,10 @@
               </div>
             </div>
             <!-- Row 2: Category and Cloth Type -->
-          
             <div class="col-md-4">
               <div class="form-group {% if product_form.category.errors %}has-error{% endif %}">
                 <label for="{{ product_form.category.id_for_label }}" class="form-label">{{ product_form.category.label }}</label>
-                <div class="input-group">
-                  {{ product_form.category }}
-                </div>
+                <div class="input-group">{{ product_form.category }}</div>
                 <small class="form-help {% if product_form.category.errors %}has-error{% endif %}">
                   {% if product_form.category.errors %}
                     {% for error in product_form.category.errors %}
@@ -120,12 +121,10 @@
                 </small>
               </div>
             </div>
-             <div class="col-md-4">
+            <div class="col-md-4">
               <div class="form-group {% if product_form.cloth_type.errors %}has-error{% endif %}">
                 <label for="{{ product_form.cloth_type.id_for_label }}" class="form-label">{{ product_form.cloth_type.label }}</label>
-                <div class="input-group">
-                  {{ product_form.cloth_type }}
-                </div>
+                <div class="input-group">{{ product_form.cloth_type }}</div>
                 <small class="form-help {% if product_form.cloth_type.errors %}has-error{% endif %}">
                   {% if product_form.cloth_type.errors %}
                     {% for error in product_form.cloth_type.errors %}
@@ -138,7 +137,7 @@
                   <span class="form-help-text">e.g., Cotton, Silk, Polyester, Denim</span>
                 </small>
               </div>
-            </div> 
+            </div>
             <!-- Row 3: HSN Code and GST Percentage -->
             <div class="col-md-4">
               <div class="form-group {% if product_form.hsn_code.errors %}has-error{% endif %}">
@@ -159,8 +158,7 @@
             </div>
             <div class="col-md-4">
               <div class="form-group {% if product_form.uom.errors %}has-error{% endif %}">
-                <label for="{{ product_form.uom.id_for_label }}"
-                        class="form-label">{{ product_form.uom.label }}</label>
+                <label for="{{ product_form.uom.id_for_label }}" class="form-label">{{ product_form.uom.label }}</label>
                 {{ product_form.uom }}
                 <small class="form-help {% if product_form.uom.errors %}has-error{% endif %}">
                   {% if product_form.uom.errors %}
@@ -201,7 +199,7 @@
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.purchase_price.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.purchase_price.id_for_label }}"
-                          class="form-label">{{ variant_form.purchase_price.label }}</label>
+                         class="form-label">{{ variant_form.purchase_price.label }}</label>
                   {{ variant_form.purchase_price }}
                   <small class="form-help {% if variant_form.purchase_price.errors %}has-error{% endif %}">
                     {% if variant_form.purchase_price.errors %}
@@ -234,11 +232,10 @@
                 </div>
               </div>
               <!-- Row 4: Discount Percentage -->
-            
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.discount_percentage.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.discount_percentage.id_for_label }}"
-                          class="form-label">{{ variant_form.discount_percentage.label }}</label>
+                         class="form-label">{{ variant_form.discount_percentage.label }}</label>
                   {{ variant_form.discount_percentage }}
                   <small class="form-help {% if variant_form.discount_percentage.errors %}has-error{% endif %}">
                     {% if variant_form.discount_percentage.errors %}
@@ -256,7 +253,7 @@
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.commission_percentage.id_for_label }}"
-                        class="form-label">{{ variant_form.commission_percentage.label }}</label>
+                         class="form-label">{{ variant_form.commission_percentage.label }}</label>
                   {{ variant_form.commission_percentage }}
                   <small class="form-help {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
                     {% if variant_form.commission_percentage.errors %}
@@ -274,9 +271,7 @@
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.size.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.size.id_for_label }}" class="form-label">{{ variant_form.size.label }}</label>
-                  <div class="input-group">
-                    {{ variant_form.size }}
-                  </div>
+                  <div class="input-group">{{ variant_form.size }}</div>
                   <small class="form-help {% if variant_form.size.errors %}has-error{% endif %}">
                     {% if variant_form.size.errors %}
                       {% for error in variant_form.size.errors %}
@@ -293,9 +288,7 @@
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.color.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.color.id_for_label }}" class="form-label">{{ variant_form.color.label }}</label>
-                  <div class="input-group">
-                    {{ variant_form.color }}
-                  </div>
+                  <div class="input-group">{{ variant_form.color }}</div>
                   <small class="form-help {% if variant_form.color.errors %}has-error{% endif %}">
                     {% if variant_form.color.errors %}
                       {% for error in variant_form.color.errors %}
@@ -308,12 +301,11 @@
                     <span class="form-help-text">e.g., Red, Blue, Black, White</span>
                   </small>
                 </div>
-              </div> 
-              
+              </div>
               <div class="col-md-3">
                 <div class="form-group {% if variant_form.minimum_quantity.errors %}has-error{% endif %}">
                   <label for="{{ variant_form.minimum_quantity.id_for_label }}"
-                          class="form-label">{{ variant_form.minimum_quantity.label }}</label>
+                         class="form-label">{{ variant_form.minimum_quantity.label }}</label>
                   {{ variant_form.minimum_quantity }}
                   <small class="form-help {% if variant_form.minimum_quantity.errors %}has-error{% endif %}">
                     {% if variant_form.minimum_quantity.errors %}
@@ -333,53 +325,54 @@
           <!-- Calculations Section -->
           <div class="form-section">
             <h5 class="section-title">Calculations</h5>
-                <div class="total-amount-display">
-                  <div class="total-row">
-                    <span class="total-label">GST Amount:</span>
-                    <span class="total-value" id="gst-amount-display">0.00</span>
-                  </div>
-                  <div class="total-row">
-                    <span class="total-label">Purchase Price (with GST):</span>
-                    <span class="total-value" id="purchase-with-gst-display">0.00</span>
-                  </div>
-                  <div class="total-row">
-                    <span class="total-label">Profit Margin (%):</span>
-                    <span class="total-value" id="profit-margin-percentage">0.00%</span>
-                  </div>
-                  <div class="total-row">
-                    <span class="total-label">Total Value:</span>
-                    <span class="total-value" id="total-value">0.00</span>
-                  </div>
-                  <div class="total-row">
-                    <span class="total-label">After Discount:</span>
-                    <span class="total-value" id="after-discount">0.00</span>
-                  </div>
-                  <div class="total-row total-final">
-                    <span class="total-label">Final Price:</span>
-                    <span class="total-value" id="final-price">0.00</span>
-                  </div>
-                </div>
+            <div class="total-amount-display">
+              <div class="total-row">
+                <span class="total-label">GST Amount:</span>
+                <span class="total-value" id="gst-amount-display">0.00</span>
               </div>
+              <div class="total-row">
+                <span class="total-label">Purchase Price (with GST):</span>
+                <span class="total-value" id="purchase-with-gst-display">0.00</span>
+              </div>
+              <div class="total-row">
+                <span class="total-label">Profit Margin (%):</span>
+                <span class="total-value" id="profit-margin-percentage">0.00%</span>
+              </div>
+              <div class="total-row">
+                <span class="total-label">Total Value:</span>
+                <span class="total-value" id="total-value">0.00</span>
+              </div>
+              <div class="total-row">
+                <span class="total-label">After Discount:</span>
+                <span class="total-value" id="after-discount">0.00</span>
+              </div>
+              <div class="total-row total-final">
+                <span class="total-label">Final Price:</span>
+                <span class="total-value" id="final-price">0.00</span>
+              </div>
+            </div>
           </div>
         </div>
-        
-        <!-- Form Actions -->
-        <div class="form-actions">
-          <button type="submit" name="action" value="create_add" class="btn btn-outline-primary">
-            <i class="fas fa-plus-circle"></i>
-            Create & Add Another
-          </button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i>
-            Create Product & Variant
-          </button>
-          <a href="{% url 'inventory:dashboard' %}" class="btn btn-secondary">
-            <i class="fas fa-times"></i>
-            Cancel
-          </a>
-        </div>
-      </form>
-    </div>
+      </div>
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button type="submit"
+                name="action"
+                value="create_add"
+                class="btn btn-outline-primary">
+          <i class="fas fa-plus-circle"></i>
+          Create & Add Another
+        </button>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save"></i>
+          Create Product & Variant
+        </button>
+        <a href="{% url 'inventory:dashboard' %}" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Cancel
+        </a>
+      </div>
+    </form>
   </div>
   <!-- Simple Modals -->
   {% include "model_forms/sizes.html" %}
@@ -389,7 +382,6 @@
   {% include "model_forms/uom.html" %}
   {% include "model_forms/hsncode.html" %}
 {% endblock content %}
-
 <!-- Simple Modal System -->
 {% block extra_js %}
   <script src="{% static 'js/modelSetup.js' %}"></script>
@@ -426,7 +418,6 @@
       });
     });
   </script>
-
   <script>
     // Real-time calculations
     document.addEventListener('DOMContentLoaded', function () {
@@ -482,5 +473,4 @@
 
     })
   </script>
-  
 {% endblock extra_js %}

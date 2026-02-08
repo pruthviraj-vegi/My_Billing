@@ -32,12 +32,12 @@
     </div>
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
-        <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+        <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Inventory Dashboard</span>
     </nav>
     <!-- Loading State - Hidden for seamless updates -->
-    <div id="dashboardLoading" class="loading-container" style="display: none">
+    <div id="dashboardLoading" class="loading-container hidden">
         <div class="loading">
             <i class="fas fa-spinner fa-spin"></i>
             Loading dashboard data...

@@ -8,7 +8,8 @@
   <div class="page-header">
     <h2 class="page-title">{{ title }}</h2>
     <div class="page-actions">
-      <a href="{% url 'inventory:stock_management_home' %}" class="btn btn-secondary">
+      <a href="{% url 'inventory:stock_management_home' %}"
+         class="btn btn-secondary">
         <i class="fas fa-arrow-left"></i>
         Back to Stock Management
       </a>
@@ -35,7 +36,6 @@
         <h4>{{ subtitle }}</h4>
         <p>Add stock to existing variants and optionally update their pricing information.</p>
       </div>
-      
       <form method="post" class="details-form" novalidate autocomplete="off">
         {% csrf_token %}
         {% if form.non_field_errors %}
@@ -48,7 +48,6 @@
             {% endfor %}
           </div>
         {% endif %}
-        
         <!-- Product Variant Selection -->
         <div class="form-section">
           <h5 class="section-title">Product Variant</h5>
@@ -70,7 +69,7 @@
             </div>
           </div>
           <!-- Current Variant Info (will be populated via JavaScript) -->
-          <div id="variant-info" class="variant-info field-disabled" style="display: none;">
+          <div id="variant-info" class="variant-info field-disabled hidden">
             <div class="info-grid">
               <div class="info-item">
                 <strong>Current Stock:</strong>
@@ -87,7 +86,6 @@
             </div>
           </div>
         </div>
-        
         <!-- Stock Details -->
         <div class="form-section">
           <h5 class="section-title">Stock Details</h5>
@@ -109,7 +107,6 @@
             </div>
           </div>
         </div>
-        
         <!-- Price Update Options -->
         <div class="form-section">
           <h5 class="section-title">Price Update Options</h5>
@@ -124,7 +121,7 @@
               </small>
             </div>
           </div>
-          <div id="price-update-fields" class="field-disabled" style="display: none;">
+          <div id="price-update-fields" class="field-disabled hidden">
             <div class="row">
               <div class="form-group {% if form.new_purchase_price.errors %}has-error{% endif %}">
                 <label for="{{ form.new_purchase_price.id_for_label }}" class="form-label">{{ form.new_purchase_price.label }}</label>
@@ -161,7 +158,6 @@
             </div>
           </div>
         </div>
-        
         <!-- Notes -->
         <div class="form-section">
           <h5 class="section-title">Additional Information</h5>
@@ -183,7 +179,6 @@
             </div>
           </div>
         </div>
-        
         <!-- Form Actions -->
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">

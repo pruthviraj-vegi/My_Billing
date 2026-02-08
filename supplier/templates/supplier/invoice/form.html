@@ -18,7 +18,7 @@
   </div>
   <!-- Breadcrumb Navigation -->
   <nav class="breadcrumb breadcrumb-right">
-    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
+    <a href="{% url 'supplier:dashboard' %}" class="breadcrumb-item">Dashboard</a>
     <span class="breadcrumb-separator">/</span>
     <a href="{% url 'supplier:home' %}" class="breadcrumb-item">Suppliers</a>
     <span class="breadcrumb-separator">/</span>
@@ -37,7 +37,11 @@
           {% if supplier.email %}• {{ supplier.email }}{% endif %}
         </p>
       </div>
-      <form method="post" class="details-form" novalidate autocomplete="off" id="invoiceForm">
+      <form method="post"
+            class="details-form"
+            novalidate
+            autocomplete="off"
+            id="invoiceForm">
         {% csrf_token %}
         <!-- Invoice Details Section -->
         <div class="form-section">
@@ -57,7 +61,7 @@
                     {% endfor %}
                   {% endif %}
                   <span class="form-help-text">Enter Invoice No (e.g., 4578, 1425)</span>
-                </small>  
+                </small>
               </div>
             </div>
             <div class="col-md-6">
@@ -136,8 +140,6 @@
                 </small>
               </div>
             </div>
-            
-          
             <div class="col-md-4" id="cgstGroup">
               <div class="form-group {% if form.cgst_amount.errors %}has-error{% endif %}">
                 <label for="{{ form.cgst_amount.id_for_label }}" class="form-label">{{ form.cgst_amount.label }}</label>
@@ -189,40 +191,37 @@
                 </small>
               </div>
             </div>
+          </div>
         </div>
-      </div>
-
         <div class="form-section">
           <h5 class="section-title">Amount Summary</h5>
-            <div class="total-amount-display">
-              <div class="total-row">
-                <span class="total-label">Sub Total:</span>
-                <span class="total-value" id="subTotalDisplay">₹0.00</span>
-              </div>
-              <div class="total-row hidden" id="cgstDisplayRow">
-                <span class="total-label">CGST:</span>
-                <span class="total-value" id="cgstDisplay">₹0.00</span>
-              </div>
-              <div class="total-row hidden" id="sgstDisplayRow">
-                <span class="total-label">SGST:</span>
-                <span class="total-value" id="sgstDisplay">₹0.00</span>
-              </div>
-              <div class="total-row hidden" id="igstDisplayRow">
-                <span class="total-label">IGST:</span>
-                <span class="total-value" id="igstDisplay">₹0.00</span>
-              </div>
-              <div class="total-row">
-                <span class="total-label">Adjustment:</span>
-                <span class="total-value" id="adjustmentDisplay">₹0.00</span>
-              </div>
-              <div class="total-row total-final">
-                <span class="total-label">Total Amount:</span>
-                <span class="total-value" id="totalAmountDisplay">₹0.00</span>
-              </div>
+          <div class="total-amount-display">
+            <div class="total-row">
+              <span class="total-label">Sub Total:</span>
+              <span class="total-value" id="subTotalDisplay">₹0.00</span>
             </div>
-
+            <div class="total-row hidden" id="cgstDisplayRow">
+              <span class="total-label">CGST:</span>
+              <span class="total-value" id="cgstDisplay">₹0.00</span>
+            </div>
+            <div class="total-row hidden" id="sgstDisplayRow">
+              <span class="total-label">SGST:</span>
+              <span class="total-value" id="sgstDisplay">₹0.00</span>
+            </div>
+            <div class="total-row hidden" id="igstDisplayRow">
+              <span class="total-label">IGST:</span>
+              <span class="total-value" id="igstDisplay">₹0.00</span>
+            </div>
+            <div class="total-row">
+              <span class="total-label">Adjustment:</span>
+              <span class="total-value" id="adjustmentDisplay">₹0.00</span>
+            </div>
+            <div class="total-row total-final">
+              <span class="total-label">Total Amount:</span>
+              <span class="total-value" id="totalAmountDisplay">₹0.00</span>
+            </div>
+          </div>
         </div>
-
         <!-- Notes Section -->
         <div class="form-section">
           <h5 class="section-title">Additional Information</h5>
@@ -238,9 +237,7 @@
                   </span>
                 {% endfor %}
               {% endif %}
-              {% if form.notes.help_text %}
-                <span class="form-help-text">{{ form.notes.help_text }}</span>
-              {% endif %}
+              {% if form.notes.help_text %}<span class="form-help-text">{{ form.notes.help_text }}</span>{% endif %}
             </small>
           </div>
         </div>
