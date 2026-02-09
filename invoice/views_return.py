@@ -117,6 +117,16 @@ class ReturnInvoiceCreateView(CreateView):
     @transaction.atomic
     def form_valid(self, form):
         try:
+            # Check if a pending return invoice already exists for this invoice
+            invoice = form.cleaned_data.get("invoice")
+            if invoice:
+                existing_return = ReturnInvoice.objects.filter(
+                    invoice=invoice, status=RefundStatusChoices.PENDING
+                ).first()
+
+                if existing_return:
+                    return redirect(existing_return.get_absolute_url())
+
             # Set the created_by user
             form.instance.created_by = self.request.user
 
@@ -261,6 +271,15 @@ def create_auto_return_invoice(request, invoice_id):
             return JsonResponse(
                 {"success": False, "error": "No items found for this invoice."}
             )
+
+        # Check if a pending return invoice already exists for this invoice
+        existing_return = ReturnInvoice.objects.filter(
+            invoice=invoice, status=RefundStatusChoices.PENDING
+        ).first()
+
+        if existing_return:
+            # Redirect to the existing return invoice instead of creating a new one
+            return redirect(existing_return.get_absolute_url())
 
         return_invoice = ReturnInvoice(
             invoice=invoice,
