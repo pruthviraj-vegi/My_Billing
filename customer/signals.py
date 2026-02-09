@@ -7,6 +7,7 @@ from decimal import Decimal
 from .models import Customer, Payment
 from invoice.models import Invoice, PaymentAllocation
 from collections import defaultdict
+from customer.models import CustomerCreditSummary
 import logging
 
 logger = logging.getLogger(__name__)
@@ -144,13 +145,12 @@ def reallocate_on_invoice_change(sender, instance, created, **kwargs):
             or customer_changed
             or payment_type_changed  # CASH → CREDIT conversion
         ):
+            reallocate_customer_payments(instance.customer)
+
             if customer_changed:
                 reallocate_customer_payments(old_customer)
 
-    if payment_type_changed:
-
-        from customer.models import CustomerCreditSummary
-
+    if payment_type_changed and old_payment_type != Invoice.PaymentType.CASH:
         CustomerCreditSummary.recalculate_for_customer(instance.customer, save=True)
 
 
@@ -184,7 +184,6 @@ def reallocate_customer_payments(customer, skip_signals=False):
     """
     # Get all CREDIT invoices
     # Note: Invoice model doesn't have is_deleted field (not a SoftDeleteModel)
-    from customer.models import CustomerCreditSummary
 
     CustomerCreditSummary.recalculate_for_customer(customer, save=True)
 
@@ -413,7 +412,6 @@ def queue_customer_update(customer_id):
 
 def process_queued_updates():
     """Process all queued updates in a single batch"""
-    from customer.models import Customer, CustomerCreditSummary
 
     connection_alias = transaction.get_connection().alias
     customer_ids = _pending_updates.pop(connection_alias, set())
@@ -442,6 +440,5 @@ def handle_return_change(sender, instance, **kwargs):
 def create_summary_for_new_customer(sender, instance, created, **kwargs):
     """Create empty summary when customer is created"""
     if created:
-        from customer.models import CustomerCreditSummary
 
         CustomerCreditSummary.objects.get_or_create(customer=instance)
