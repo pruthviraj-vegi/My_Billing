@@ -133,7 +133,7 @@ class Payment(SoftDeleteModel):
         ONLINE_PAYMENT = "ONLINE_PAYMENT", "Online Payment"
 
     customer = models.ForeignKey(
-        Customer, on_delete=models.PROTECT, related_name="credit_payment"
+        Customer, on_delete=models.PROTECT, related_name="credit_payments"
     )
     payment_type = models.TextField(
         max_length=20, choices=PaymentType.choices, default=PaymentType.Paid
@@ -168,7 +168,7 @@ class Payment(SoftDeleteModel):
     created_by = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
-        related_name="credit_payment",
+        related_name="created_credit_payments",
     )
     payment_date = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -385,7 +385,7 @@ class CustomerCreditSummary(models.Model):
             )
 
             # ===== SINGLE AGGREGATION QUERY for payments =====
-            payment_stats = customer.credit_payment.aggregate(
+            payment_stats = customer.credit_payments.aggregate(
                 purchased=Coalesce(
                     Sum("amount", filter=Q(payment_type=Payment.PaymentType.Purchased)),
                     Decimal("0"),
