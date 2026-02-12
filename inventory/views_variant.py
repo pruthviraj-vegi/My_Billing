@@ -194,13 +194,14 @@ def variant_details(request, variant_id):
 
 def recent_variants_logs(request, variant_id):
     """AJAX endpoint to fetch recent inventory logs for a variant"""
-    variant = get_object_or_404(ProductVariant, id=variant_id)
-    recent_logs = variant.inventory_logs.select_related(
-        "supplier_invoice", "supplier_invoice__supplier"
-    ).order_by("-timestamp")
+    variant_logs = (
+        get_object_or_404(ProductVariant, id=variant_id)
+        .inventory_logs.select_related("supplier_invoice", "supplier_invoice__supplier")
+        .order_by("-timestamp")
+    )
     return render_paginated_response(
         request,
-        recent_logs,
+        variant_logs,
         "inventory/product_variant/recent_logs.html",
         7,
     )

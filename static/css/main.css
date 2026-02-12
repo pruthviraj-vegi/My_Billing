@@ -1704,38 +1704,13 @@ form.submitting * {
   color: var(--text-on-primary);
 }
 
-/* --- Empty State Component --- */
-.empty-state {
-  text-align: center;
-  padding: 2rem 1rem;
-}
-
-.empty-state i {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  color: var(--text-secondary);
-  display: block;
-}
-
-.empty-state h4 {
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.empty-state p {
-  margin-bottom: 1.5rem;
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
 /* --- Action Buttons Component --- */
 .action-buttons {
   display: flex;
   gap: 0.25rem;
   align-items: center;
+  flex-direction: row;
+  margin-top: 0;
 }
 
 .btn-action {
@@ -1807,7 +1782,7 @@ form.submitting * {
 
 .empty-state i,
 .empty-state-icon {
-  font-size: 1rem;
+  font-size: 3rem;
   opacity: 0.5;
   color: var(--text-primary);
 }
@@ -1864,11 +1839,6 @@ form.submitting * {
 
   .data-table {
     min-width: 600px;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    gap: 0.125rem;
   }
 
   .btn-action {
@@ -3309,10 +3279,6 @@ form.submitting * {
   color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: bold;
-}
-
-.action-buttons {
-  margin-top: 0;
 }
 
 /* Responsive adjustments for cart */
@@ -6413,6 +6379,11 @@ WORD SUGGESTION SYSTEM STYLES
 .data-table tbody td.loading-cell > * {
   max-width: 100%;
   overflow: hidden;
+}
+
+/* Favorites keyboard navigation highlight */
+.data-table tbody tr.fav-highlighted td {
+  background: var(--bg-surface-hover, #f1f5f9);
 }
 
 .error-container {

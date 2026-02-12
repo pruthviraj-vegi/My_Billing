@@ -689,6 +689,7 @@ def supplier_invoice_tracking(request):
 def supplier_invoice_tracking_fetch(request):
     """AJAX endpoint powering supplier invoice tracking table."""
     invoices = _supplier_invoice_tracking_queryset(request)
+    invoices = ()
     return render_paginated_response(
         request,
         invoices,
@@ -710,6 +711,7 @@ def supplier_invoice_details(request, invoice_id):
             "variant__product__name",
             "variant__size__name",
             "variant__color__name",
+            "variant__color__hex_code",
             "variant__barcode",
             "variant__id",
         )
@@ -728,7 +730,21 @@ def supplier_invoice_details(request, invoice_id):
                 ),
                 Value(0),
                 output_field=models.DecimalField(),
-            )
+            ),
+            selling_price=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            transaction_type__in=["STOCK_IN", "INITIAL"],
+                            then=F("mrp"),
+                        ),
+                        default=Value(0),
+                        output_field=models.DecimalField(),
+                    )
+                ),
+                Value(0),
+                output_field=models.DecimalField(),
+            ),
         )
     )
 

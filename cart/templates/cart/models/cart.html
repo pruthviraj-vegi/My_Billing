@@ -161,6 +161,16 @@
                         aria-label="Close"></button>
             </div>
             <div class="modal-body p-0 m-0" id="favoritesModalBody">
+                <div class="p-2 border-bottom">
+                    <div class="search-group search-expanded">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="search"
+                               id="favoritesSearchInput"
+                               class="search-input"
+                               placeholder="Search favorites..."
+                               autocomplete="off">
+                    </div>
+                </div>
                 <div class="table-container">
                     <table class="data-table" id="favorites_table" data-sort="">
                         <thead>
@@ -456,7 +466,99 @@
                 });
             }
         });
+        
+        // Focus search input when modal is fully shown
+        favoritesModal.addEventListener('shown.bs.modal', function() {
+            const searchInput = document.getElementById('favoritesSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
+        });
     }
+    
+    // Favorites search & keyboard navigation
+    (function() {
+        'use strict';
+        
+        const searchInput = document.getElementById('favoritesSearchInput');
+        const tableBody = document.getElementById('table_body');
+        if (!searchInput || !tableBody) return;
+        
+        let highlightedIndex = -1;
+        
+        function getVisibleRows() {
+            return Array.from(tableBody.querySelectorAll('tr[data-value]')).filter(
+                row => row.style.display !== 'none'
+            );
+        }
+        
+        function clearHighlight() {
+            tableBody.querySelectorAll('tr.fav-highlighted').forEach(row => {
+                row.classList.remove('fav-highlighted');
+            });
+        }
+        
+        function setHighlight(index) {
+            const rows = getVisibleRows();
+            clearHighlight();
+            if (rows.length === 0) { highlightedIndex = -1; return; }
+            highlightedIndex = Math.max(0, Math.min(index, rows.length - 1));
+            const row = rows[highlightedIndex];
+            row.classList.add('fav-highlighted');
+            row.scrollIntoView({ block: 'nearest' });
+        }
+        
+        // Filter rows based on search text
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            const allRows = tableBody.querySelectorAll('tr[data-value]');
+            
+            allRows.forEach(row => {
+                if (!query) {
+                    row.style.display = '';
+                } else {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(query) ? '' : 'none';
+                }
+            });
+            
+            // Reset highlight to first visible row
+            highlightedIndex = -1;
+            clearHighlight();
+            const visible = getVisibleRows();
+            if (visible.length > 0 && query) {
+                setHighlight(0);
+            }
+        });
+        
+        // Arrow key navigation + Enter to select
+        searchInput.addEventListener('keydown', function(e) {
+            const rows = getVisibleRows();
+            if (rows.length === 0) return;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setHighlight(highlightedIndex + 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setHighlight(highlightedIndex - 1);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (highlightedIndex >= 0 && highlightedIndex < rows.length) {
+                    const btn = rows[highlightedIndex].querySelector('.add-to-cart-btn');
+                    if (btn) {
+                        // Clear search and reset rows before closing
+                        searchInput.value = '';
+                        tableBody.querySelectorAll('tr[data-value]').forEach(row => row.style.display = '');
+                        clearHighlight();
+                        highlightedIndex = -1;
+                        btn.click();
+                    }
+                }
+            }
+        });
+    })();
     
     // Load search table only when search modal is opened
     const searchModal = document.getElementById('searchModal');

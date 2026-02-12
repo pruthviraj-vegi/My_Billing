@@ -585,10 +585,6 @@ class BarcodeConfiguration(models.Model):
 
         return super().save(*args, **kwargs)
 
-    @property
-    def labels_per_page(self):
-        return self.labels_per_row * self.labels_per_column
-
     @classmethod
     def get_active_barcodes(cls, shop):
         """Get all active payment methods for a shop."""
