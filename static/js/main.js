@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', function () {
         body.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
         updateThemeIcon(newTheme);
+
+        // Notify other components (e.g. charts) that the theme changed
+        document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
     });
 
     function updateThemeIcon(theme) {

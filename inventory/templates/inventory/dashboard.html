@@ -192,7 +192,7 @@
     let supplierOutChart = ModernCharts.initDoughnut(supplierOutCtx);
 
     // Total stock data from initial page load (cached, date-independent)
-    const initialTotalStockData = {{ total_stock_data_json|safe }};
+    const initialTotalStockData = JSON.parse('{{ total_stock_data_json|escapejs }}' || '{}');
 
     updateCount('totalInventoryValue', "{{total_inventory_value}}");
     updateCount('totalVariants', "{{total_variants}}");
@@ -283,6 +283,42 @@
             { label: 'label', count: 'count', amount: 'amount', percentage: 'percentage' }
         );
     }
+
+    // Re-render charts when theme changes
+    document.addEventListener('themeChanged', function() {
+        requestAnimationFrame(function() {
+            // Destroy existing chart instances
+            supplierTotalChart.destroy();
+            supplierInChart.destroy();
+            supplierOutChart.destroy();
+
+            // Re-initialize with fresh theme colors
+            supplierTotalChart = ModernCharts.initDoughnut(supplierTotalCtx);
+            supplierInChart = ModernCharts.initDoughnut(supplierInCtx);
+            supplierOutChart = ModernCharts.initDoughnut(supplierOutCtx);
+
+            // Re-fetch data to populate the dynamic chart instances
+            fetchDashboardData(dateFilter ? dateFilter.value : 'today');
+
+            // Re-apply cached data for the total stock chart
+            if (initialTotalStockData && initialTotalStockData.labels && initialTotalStockData.values) {
+                const totalStockData = initialTotalStockData.labels.map((label, idx) => ({
+                    label: label,
+                    value: initialTotalStockData.values[idx],
+                    amount: initialTotalStockData.values[idx],
+                    count: 1,
+                    percentage: initialTotalStockData.percentages ? initialTotalStockData.percentages[idx] : 0
+                }));
+                
+                ModernCharts.updateDoughnut(
+                    supplierTotalChart, 
+                    'supplierTotalLegend', 
+                    totalStockData, 
+                    { label: 'label', count: 'count', amount: 'amount', percentage: 'percentage' }
+                );
+            }
+        });
+    });
 
     // Initial Load
     fetchDashboardData('today');

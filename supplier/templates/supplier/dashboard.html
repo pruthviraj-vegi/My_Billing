@@ -328,6 +328,26 @@
             });
         }
 
+        // Re-render charts when theme changes
+        document.addEventListener('themeChanged', function() {
+            requestAnimationFrame(function() {
+                // Destroy existing chart instances
+                comparisonChart.destroy();
+                statusChart.destroy();
+                supplierChart.destroy();
+                typeChart.destroy();
+
+                // Re-initialize with fresh theme colors
+                comparisonChart = ModernCharts.initRevenueChart(comparisonCtx);
+                statusChart = ModernCharts.initDoughnut(statusCtx);
+                supplierChart = ModernCharts.initDoughnut(supplierCtx);
+                typeChart = ModernCharts.initDoughnut(typeCtx);
+
+                // Re-fetch data to populate the new chart instances
+                fetchDashboardData(dateFilter ? dateFilter.value : 'this_month');
+            });
+        });
+
         // Initial Load
         fetchDashboardData('this_month');
     });

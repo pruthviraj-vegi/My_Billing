@@ -325,6 +325,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Re-render charts when theme changes
+    document.addEventListener('themeChanged', function() {
+        // Wait for CSS variables to settle after theme attribute change
+        requestAnimationFrame(function() {
+            // Destroy existing chart instances
+            revenueChart.destroy();
+            paymentChart.destroy();
+            paymentTypeChart.destroy();
+            categoryChart.destroy();
+
+            // Re-initialize with fresh theme colors
+            revenueChart = ModernCharts.initRevenueChart(revenueCtx);
+            paymentChart = ModernCharts.initDoughnut(paymentCtx);
+            paymentTypeChart = ModernCharts.initDoughnut(paymentTypeCtx);
+            categoryChart = ModernCharts.initDoughnut(categoryCtx);
+
+            // Re-fetch data to populate the new chart instances
+            fetchDashboardData(dateFilter ? dateFilter.value : 'today');
+        });
+    });
+
     // Initial Load
     fetchDashboardData('today');
 });

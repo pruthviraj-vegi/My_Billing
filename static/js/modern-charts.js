@@ -13,7 +13,7 @@
             const bgSurface = style.getPropertyValue('--bg-surface').trim() || '#1e293b';
 
             // Detect dark mode - check multiple sources
-            const hasDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+            const hasDarkTheme = document.body.getAttribute('data-theme') === 'dark';
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const isDarkColor = bgSurface === '#1e293b' || bgSurface.toLowerCase().includes('1e293b') ||
                 bgSurface === '#334155' || bgSurface.toLowerCase().includes('334155');
@@ -237,7 +237,7 @@
 
             // Detect dark mode for gradient opacity
             const bgSurface = colors.tooltipBg;
-            const hasDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+            const hasDarkTheme = document.body.getAttribute('data-theme') === 'dark';
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const isDarkColor = bgSurface === '#1e293b' || bgSurface.toLowerCase().includes('1e293b') ||
                 bgSurface === '#334155' || bgSurface.toLowerCase().includes('334155');
@@ -345,7 +345,7 @@
                                 label: function (context) {
                                     const label = context.dataset.label || '';
                                     if (context.dataset.yAxisID === 'y1') {
-                                        const value = context.parsed.y.toFixed(1) + '%';
+                                        const value = context.parsed.y.toFixed(2) + '%';
                                         return label + ':  ' + value;
                                     } else {
                                         // Show full amount in tooltip with Indian format - highlighted
@@ -386,7 +386,7 @@
                             grid: { drawOnChartArea: false },
                             ticks: {
                                 color: colors.green,
-                                callback: function (value) { return value + '%'; }
+                                callback: function (value) { return value.toFixed(2) + '%'; }
                             }
                         },
                         x: {
@@ -407,7 +407,7 @@
 
             // Detect dark mode for gradient opacity
             const bgSurface = colors.tooltipBg;
-            const hasDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+            const hasDarkTheme = document.body.getAttribute('data-theme') === 'dark';
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const isDarkColor = bgSurface === '#1e293b' || bgSurface.toLowerCase().includes('1e293b') ||
                 bgSurface === '#334155' || bgSurface.toLowerCase().includes('334155');
@@ -489,7 +489,7 @@
 
             const changeEl = document.getElementById(elementIds.change);
             if (changeEl) {
-                changeEl.textContent = (totalChange >= 0 ? '+' : '') + totalChange.toFixed(1) + '%';
+                changeEl.textContent = (totalChange >= 0 ? '+' : '') + totalChange.toFixed(2) + '%';
                 changeEl.className = 'stat-change ' + (totalChange >= 0 ? 'text-success' : 'text-danger');
             }
         },
