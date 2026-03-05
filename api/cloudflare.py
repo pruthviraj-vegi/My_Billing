@@ -1,3 +1,5 @@
+"""Cloudflare R2 storage integration module."""
+
 import logging
 from functools import lru_cache
 from typing import BinaryIO, Tuple
@@ -22,8 +24,6 @@ class BucketType(Enum):
 class R2StorageError(Exception):
     """Custom exception for R2 storage operations."""
 
-    pass
-
 
 @lru_cache(maxsize=1)
 def get_r2_client() -> boto3.client:
@@ -44,7 +44,7 @@ def get_r2_client() -> boto3.client:
     except Exception as e:
         raise R2StorageError(
             f"Missing required R2 credentials in environment: {str(e)}"
-        )
+        ) from e
 
     # Configure retry strategy
     boto_config = Config(
@@ -89,25 +89,25 @@ def get_bucket_info(
 
     try:
         bucket_name = config(bucket_env)
-    except Exception:
-        raise R2StorageError(f"Missing environment variable: {bucket_env}")
+    except Exception as exc:
+        raise R2StorageError(f"Missing environment variable: {bucket_env}") from exc
 
     if use_custom_domain:
         domain_env = f"{bucket_type_upper}_DOMAIN"
         try:
             domain_url = config(domain_env)
-        except Exception:
-            raise R2StorageError(f"Missing environment variable: {domain_env}")
+        except Exception as exc:
+            raise R2StorageError(f"Missing environment variable: {domain_env}") from exc
     else:
         # Use Cloudflare R2.dev public domain
         r2_dev_url_env = f"R2_{bucket_type_upper}_PUBLIC_URL"
         try:
             domain_url = config(r2_dev_url_env)
-        except Exception:
+        except Exception as exc:
             raise R2StorageError(
                 f"Missing environment variable: {r2_dev_url_env}. "
                 f"This should be your R2 bucket's public URL (e.g., https://pub-xxxxx.r2.dev)"
-            )
+            ) from exc
 
     return bucket_name, domain_url
 
@@ -163,7 +163,9 @@ def delete_from_r2(
 
         client.delete_object(Bucket=bucket_name, Key=filename)
         logger.info(
-            f"Successfully deleted file '{filename}' from '{bucket_type.value}' bucket"
+            "Successfully deleted file '%s' from '%s' bucket",
+            filename,
+            bucket_type.value,
         )
         return True
 
@@ -172,25 +174,32 @@ def delete_from_r2(
 
         if error_code == "404" or error_code == "NoSuchKey":
             logger.warning(
-                f"File '{filename}' not found in '{bucket_type.value}' bucket "
-                "(already deleted or never existed)"
+                "File '%s' not found in '%s' bucket "
+                "(already deleted or never existed)",
+                filename,
+                bucket_type.value,
             )
             return True
 
         logger.error(
-            f"AWS error deleting file '{filename}' from '{bucket_type.value}': "
-            f"{error_code} - {str(e)}"
+            "AWS error deleting file '%s' from '%s': %s - %s",
+            filename,
+            bucket_type.value,
+            error_code,
+            str(e),
         )
         return False
 
     except R2StorageError as e:
-        logger.error(f"R2 configuration error: {str(e)}")
+        logger.error("R2 configuration error: %s", str(e))
         return False
 
-    except Exception as e:
+    except (ValueError, botocore.exceptions.BotoCoreError) as e:
         logger.error(
-            f"Unexpected error deleting file from '{bucket_type.value}' bucket: "
-            f"{type(e).__name__}: {str(e)}"
+            "Unexpected error deleting file from '%s' bucket: %s: %s",
+            bucket_type.value,
+            type(e).__name__,
+            str(e),
         )
         return False
 
@@ -223,7 +232,7 @@ def upload_pdf_to_r2(
         raise ValueError("filename cannot be empty")
 
     if not filename.lower().endswith(".pdf"):
-        logger.warning(f"Filename '{filename}' doesn't end with .pdf")
+        logger.warning("Filename '%s' doesn't end with .pdf", filename)
 
     try:
         client = get_r2_client()
@@ -248,7 +257,9 @@ def upload_pdf_to_r2(
 
         file_url = f"{domain_url.rstrip('/')}/{filename}"
         logger.info(
-            f"Successfully uploaded '{filename}' to '{bucket_type.value}' bucket"
+            "Successfully uploaded '%s' to '%s' bucket",
+            filename,
+            bucket_type.value,
         )
         return file_url
 
@@ -292,30 +303,36 @@ def check_file_exists(
         filename = extract_filename_from_url(file_url)
 
         client.head_object(Bucket=bucket_name, Key=filename)
-        logger.info(f"File '{filename}' exists in '{bucket_type.value}' bucket")
+        logger.info("File '%s' exists in '%s' bucket", filename, bucket_type.value)
         return True
 
     except botocore.exceptions.ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
 
         if error_code == "404" or error_code == "NoSuchKey":
-            logger.debug(f"File '{filename}' not found in '{bucket_type.value}' bucket")
+            logger.debug(
+                "File '%s' not found in '%s' bucket", filename, bucket_type.value
+            )
             return False
 
         logger.error(
-            f"Error checking file '{filename}' in '{bucket_type.value}': "
-            f"{error_code} - {str(e)}"
+            "Error checking file '%s' in '%s': %s - %s",
+            filename,
+            bucket_type.value,
+            error_code,
+            str(e),
         )
         return False
 
     except R2StorageError as e:
-        logger.error(f"R2 configuration error: {str(e)}")
+        logger.error("R2 configuration error: %s", str(e))
         return False
 
-    except Exception as e:
+    except (ValueError, botocore.exceptions.BotoCoreError) as e:
         logger.error(
-            f"Unexpected error checking file existence: "
-            f"{type(e).__name__}: {str(e)}"
+            "Unexpected error checking file existence: %s: %s",
+            type(e).__name__,
+            str(e),
         )
         return False
 
@@ -351,17 +368,17 @@ def get_file_metadata(
             "etag": response.get("ETag", "").strip('"'),
         }
 
-        logger.info(f"Retrieved metadata for '{filename}'")
+        logger.info("Retrieved metadata for '%s'", filename)
         return metadata
 
     except botocore.exceptions.ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code == "404" or error_code == "NoSuchKey":
-            logger.warning(f"File '{filename}' not found")
+            logger.warning("File '%s' not found", filename)
         else:
-            logger.error(f"Error getting metadata: {str(e)}")
+            logger.error("Error getting metadata: %s", str(e))
         return {}
 
-    except Exception as e:
-        logger.error(f"Unexpected error getting metadata: {str(e)}")
+    except (ValueError, botocore.exceptions.BotoCoreError) as e:
+        logger.error("Unexpected error getting metadata: %s", str(e))
         return {}

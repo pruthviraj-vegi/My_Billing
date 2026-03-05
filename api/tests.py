@@ -1,16 +1,19 @@
+"""
+Unit tests for the API application.
+"""
+
+from unittest.mock import Mock, patch
+
 from django.test import TestCase
-
-# Create your tests here.
-
-from unittest.mock import patch, Mock
-import json
-from django.conf import settings
 
 
 class SendTestTestCase(TestCase):
+    """Test cases for WhatsApp message sending functionality."""
+
     @patch("api.views.requests.post")
     @patch("api.views.config")
     def test_send_test(self, mock_config, mock_post):
+        """Test sending a test WhatsApp message."""
         # Setup mocks
         mock_config.return_value = "http://test-whatsapp-url"
 
@@ -44,6 +47,7 @@ class SendTestTestCase(TestCase):
     @patch("api.views.requests.post")
     @patch("api.views.config")
     def test_send_test_already_prefixed(self, mock_config, mock_post):
+        """Test sending a WhatsApp message with an already prefixed number."""
         # Setup mocks
         mock_config.return_value = "http://test-whatsapp-url"
 
@@ -65,8 +69,10 @@ class SendTestTestCase(TestCase):
         expected_url = "http://test-whatsapp-url/external/send-text"
         expected_json = {"to": "919876543210", "text": text}
         mock_post.assert_called_once_with(expected_url, json=expected_json)
+        self.assertEqual(result, expected_response)
 
     def test_number_format_invalid_non_digit(self):
+        """Test number_format with invalid non-digit characters."""
         from api.views import number_format
 
         with self.assertRaises(Exception) as cm:
@@ -74,6 +80,7 @@ class SendTestTestCase(TestCase):
         self.assertEqual(str(cm.exception), "Phone number must contain only digits")
 
     def test_number_format_invalid_length(self):
+        """Test number_format with an invalid phone number length."""
         from api.views import number_format
 
         with self.assertRaises(Exception) as cm:
