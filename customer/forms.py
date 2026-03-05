@@ -1,8 +1,22 @@
+"""
+Form definitions for the customer application.
+
+This module provides forms to manage customers and their payments, ensuring
+proper validation for fields such as phone numbers, emails, and payment amounts.
+"""
+
 from django import forms
 from .models import Customer, Payment
 
 
 class CustomerForm(forms.ModelForm):
+    """
+    Form for creating and updating Customer instances.
+
+    Handles customer details such as name, phone number, email, address, and
+    referral, providing comprehensive validations for unique field constraints.
+    """
+
     class Meta:
         model = Customer
         fields = ["name", "phone_number", "email", "address", "referred_by"]
@@ -33,10 +47,16 @@ class CustomerForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        """
+        Initializes the CustomerForm with appropriate widget attributes and logic.
+
+        Sets required indicators, applies CSS classes, and manipulates the
+        referral choices based on whether the customer is being edited or created.
+        """
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             if field.required:
                 field.label = f"{field.label} *"
 
@@ -57,6 +77,15 @@ class CustomerForm(forms.ModelForm):
             self.fields["referred_by"].queryset = Customer.objects.all()
 
     def clean_phone_number(self):
+        """
+        Validates the phone_number field for proper format and uniqueness.
+
+        Returns:
+            str: The validated 10-digit phone number.
+
+        Raises:
+            ValidationError: If the phone number is not 10 digits or is already used.
+        """
         phone_number = self.cleaned_data.get("phone_number")
         if not phone_number:
             raise forms.ValidationError("Phone number is required.")
@@ -80,6 +109,15 @@ class CustomerForm(forms.ModelForm):
         return phone_number
 
     def clean_email(self):
+        """
+        Validates the email and ensures it's stored in lowercase.
+
+        Returns:
+            str: The validated lowercase email, if provided.
+
+        Raises:
+            ValidationError: If the provided email format is invalid.
+        """
         email = self.cleaned_data.get("email")
         if email:
             # Additional validation (Django's EmailField already validates basic format)
@@ -90,6 +128,13 @@ class CustomerForm(forms.ModelForm):
 
 
 class PaymentForm(forms.ModelForm):
+    """
+    Form for processing and logging customer Payments.
+
+    Handles fields like customer, payment type, amount, method, and transaction
+    details. Enforces validation to ensure payment amounts are strictly positive.
+    """
+
     class Meta:
         model = Payment
         fields = [
@@ -144,16 +189,23 @@ class PaymentForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        """
+        Initializes the PaymentForm by parsing custom arguments and applying styling.
+
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments. Target argument is `customer`.
+        """
         self.customer = kwargs.pop("customer", None)
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             if field.required:
                 field.label = f"{field.label} *"
 
         # Apply appropriate classes to fields
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             widget = field.widget
             if isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
@@ -169,6 +221,15 @@ class PaymentForm(forms.ModelForm):
             self.fields["customer"].widget.attrs["readonly"] = True
 
     def clean_amount(self):
+        """
+        Validates the payment amount to ensure it is positive.
+
+        Returns:
+            Decimal: The validated, positive payment amount.
+
+        Raises:
+            ValidationError: If the amount is zero or negative.
+        """
         amount = self.cleaned_data.get("amount")
         if amount is None or amount <= 0:
             raise forms.ValidationError("Amount must be greater than zero.")

@@ -1,38 +1,37 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q, Sum
-from django.contrib import messages
-from .models import Customer, Payment
-from invoice.models import Invoice, PaymentAllocation, ReturnInvoice
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from .forms import PaymentForm
-from django.urls import reverse_lazy
+"""
+Views for customer credit management, ledger display, and payment CRUD operations.
+
+Handles credit customer listing with search/sort/pagination, credit ledger
+construction with opening balance calculations, and payment create/update/delete
+flows using Django class-based views.
+"""
+
+import logging
+from datetime import datetime
 from decimal import Decimal
-from django.http import HttpResponse
-from datetime import datetime, timedelta
+
+from django.contrib import messages
 from django.db.models import (
-    Sum,
-    F,
-    Value,
     Case,
-    When,
     DecimalField,
+    F,
     OuterRef,
-    Subquery,
-    Prefetch,
     Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
 )
 from django.db.models.functions import Coalesce
-import hashlib
-import json
-
-from invoice.models import Invoice
-from customer.models import Payment
-from django.db.models import DateTimeField
-from django.utils import timezone
-import logging
-
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 from base.utility import render_paginated_response, table_sorting
+from invoice.models import Invoice, ReturnInvoice
+
+from .forms import PaymentForm
+from .models import Customer, Payment
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +56,7 @@ def home(request):
 
 
 def total_credit_customers_data(request):
+    """Return the aggregate balance amount across all active credit customers."""
     return Customer.objects.filter(is_deleted=False).aggregate(
         total=Coalesce(Sum("credit_summary__balance_amount"), Value(Decimal("0")))
     )["total"]
@@ -409,6 +409,7 @@ def fetch_credit_ledger(request, customer_id: int):
 
 
 def credit_detail(request, customer_id: int):
+    """Render the credit detail page for a customer with ledger totals and allocation summary."""
     template = "credit/detail.html"
     customer = get_object_or_404(Customer, pk=customer_id)
     # Build all ledger rows for totals calculation
@@ -445,6 +446,8 @@ def credit_detail(request, customer_id: int):
 
 
 class PaymentCreateView(CreateView):
+    """CBV to create a new payment record for a customer, with auto-allocation via signals."""
+
     template_name = "credit/form.html"
     form_class = PaymentForm
     model = Payment
@@ -488,12 +491,14 @@ class PaymentCreateView(CreateView):
         return response
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class PaymentUpdateView(UpdateView):
+    """CBV to update an existing payment record for a customer."""
+
     template_name = "credit/form.html"
     form_class = PaymentForm
     model = Payment
@@ -521,12 +526,14 @@ class PaymentUpdateView(UpdateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class PaymentDeleteView(DeleteView):
+    """CBV to delete a payment record and redirect back to the credit detail page."""
+
     model = Payment
     template_name = "credit/delete.html"
     success_url = reverse_lazy("customer:credit_home")
@@ -547,7 +554,7 @@ class PaymentDeleteView(DeleteView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -571,8 +578,8 @@ def auto_reallocate(request, customer_id):
             request,
             f"Successfully reallocated payments for {customer.name} using FIFO method.",
         )
-    except Exception as e:
-        logger.error(f"Reallocation failed for customer {customer_id}: {str(e)}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Reallocation failed for customer %s: %s", customer_id, e)
         messages.error(
             request,
             f"Reallocation failed: {str(e)}",

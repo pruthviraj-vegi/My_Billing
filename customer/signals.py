@@ -1,20 +1,25 @@
-# signals.py for customer payment allocation
+"""Django signals for customer payment allocation, invoice tracking, and credit summary updates."""
 
-from django.db.models.signals import post_save, post_delete, pre_save, m2m_changed
-from django.dispatch import receiver
-from django.db import transaction
-from decimal import Decimal
-from .models import Customer, Payment
-from invoice.models import Invoice, PaymentAllocation
-from collections import defaultdict
-from customer.models import CustomerCreditSummary
 import logging
+from collections import defaultdict
+from decimal import Decimal
+
+from django.db import transaction
+from django.db.models.signals import post_delete, post_save, pre_save
+from django.dispatch import receiver
+
+from customer.models import CustomerCreditSummary
+from invoice.models import Invoice, PaymentAllocation
+
+from .models import Customer, Payment
 
 logger = logging.getLogger(__name__)
 
 
 @receiver(pre_save, sender=Payment)
-def track_payment_changes(sender, instance, **kwargs):
+def track_payment_changes(
+    sender, instance, **kwargs
+):  # pylint: disable=unused-argument
     """
     Track payment changes before saving to detect amount and is_deleted changes.
     """
@@ -22,21 +27,29 @@ def track_payment_changes(sender, instance, **kwargs):
         try:
             # Use all_objects to get the instance even if it's soft-deleted
             old_instance = Payment.all_objects.get(pk=instance.pk)
-            instance._old_amount = old_instance.amount
-            instance._old_is_deleted = old_instance.is_deleted
-            instance._old_payment_type = old_instance.payment_type
+            instance._old_amount = (
+                old_instance.amount
+            )  # pylint: disable=protected-access
+            instance._old_is_deleted = (
+                old_instance.is_deleted
+            )  # pylint: disable=protected-access
+            instance._old_payment_type = (
+                old_instance.payment_type
+            )  # pylint: disable=protected-access
         except Payment.DoesNotExist:
-            instance._old_amount = None
-            instance._old_is_deleted = None
-            instance._old_payment_type = None
+            instance._old_amount = None  # pylint: disable=protected-access
+            instance._old_is_deleted = None  # pylint: disable=protected-access
+            instance._old_payment_type = None  # pylint: disable=protected-access
     else:
-        instance._old_amount = None
-        instance._old_is_deleted = None
-        instance._old_payment_type = None
+        instance._old_amount = None  # pylint: disable=protected-access
+        instance._old_is_deleted = None  # pylint: disable=protected-access
+        instance._old_payment_type = None  # pylint: disable=protected-access
 
 
 @receiver(post_save, sender=Payment)
-def reallocate_on_payment_change(sender, instance, created, **kwargs):
+def reallocate_on_payment_change(
+    sender, instance, created, **kwargs
+):  # pylint: disable=unused-argument
     """
     When a payment is created, updated, or soft-deleted, reallocate all payments for this customer.
     """
@@ -73,34 +86,46 @@ def reallocate_on_payment_change(sender, instance, created, **kwargs):
 
 
 @receiver(pre_save, sender=Invoice)
-def track_invoice_changes(sender, instance, **kwargs):
-    """
-    Track old values before saving to detect changes.
-    """
+def track_invoice_changes(
+    sender, instance, **kwargs
+):  # pylint: disable=unused-argument
+    """Track old values before saving to detect changes."""
     if instance.pk:
         try:
             old_instance = Invoice.objects.get(pk=instance.pk)
-            instance._old_payment_type = old_instance.payment_type
-            instance._old_amount = old_instance.amount
-            instance._old_discount_amount = old_instance.discount_amount
-            instance._old_advance_amount = old_instance.advance_amount
-            instance._old_customer = old_instance.customer
+            instance._old_payment_type = (
+                old_instance.payment_type
+            )  # pylint: disable=protected-access
+            instance._old_amount = (
+                old_instance.amount
+            )  # pylint: disable=protected-access
+            instance._old_discount_amount = (
+                old_instance.discount_amount
+            )  # pylint: disable=protected-access
+            instance._old_advance_amount = (
+                old_instance.advance_amount
+            )  # pylint: disable=protected-access
+            instance._old_customer = (
+                old_instance.customer
+            )  # pylint: disable=protected-access
         except Invoice.DoesNotExist:
-            instance._old_payment_type = None
-            instance._old_amount = None
-            instance._old_discount_amount = None
-            instance._old_advance_amount = None
-            instance._old_customer = None
+            instance._old_payment_type = None  # pylint: disable=protected-access
+            instance._old_amount = None  # pylint: disable=protected-access
+            instance._old_discount_amount = None  # pylint: disable=protected-access
+            instance._old_advance_amount = None  # pylint: disable=protected-access
+            instance._old_customer = None  # pylint: disable=protected-access
     else:
-        instance._old_payment_type = None
-        instance._old_amount = None
-        instance._old_discount_amount = None
-        instance._old_advance_amount = None
-        instance._old_customer = None
+        instance._old_payment_type = None  # pylint: disable=protected-access
+        instance._old_amount = None  # pylint: disable=protected-access
+        instance._old_discount_amount = None  # pylint: disable=protected-access
+        instance._old_advance_amount = None  # pylint: disable=protected-access
+        instance._old_customer = None  # pylint: disable=protected-access
 
 
 @receiver(post_save, sender=Invoice)
-def reallocate_on_invoice_change(sender, instance, created, **kwargs):
+def reallocate_on_invoice_change(
+    sender, instance, created, **kwargs
+):  # pylint: disable=unused-argument
     """
     When a CREDIT invoice is created/updated, or payment_type changes, reallocate.
     """
@@ -121,7 +146,9 @@ def reallocate_on_invoice_change(sender, instance, created, **kwargs):
 
     # Determine if we need to reallocate
     is_credit_now = instance.payment_type == Invoice.PaymentType.CREDIT
-    was_credit_before = old_payment_type == Invoice.PaymentType.CREDIT
+    _ = (
+        old_payment_type == Invoice.PaymentType.CREDIT
+    )  # was_credit_before (reserved for future use)
 
     # Case 1: Invoice is CREDIT now (either new or existing)
     if is_credit_now:
@@ -155,7 +182,9 @@ def reallocate_on_invoice_change(sender, instance, created, **kwargs):
 
 
 @receiver(post_delete, sender=Invoice)
-def reallocate_on_invoice_delete(sender, instance, **kwargs):
+def reallocate_on_invoice_delete(
+    sender, instance, **kwargs
+):  # pylint: disable=unused-argument
     """
     When a CREDIT invoice is deleted, reallocate remaining invoices.
     """
@@ -164,7 +193,9 @@ def reallocate_on_invoice_delete(sender, instance, **kwargs):
 
 
 @receiver(post_delete, sender=PaymentAllocation)
-def reallocate_on_allocation_delete(sender, instance, **kwargs):
+def reallocate_on_allocation_delete(
+    sender, instance, **kwargs
+):  # pylint: disable=unused-argument
     """
     When an allocation is deleted, reallocate payments for the customer.
     """
@@ -256,18 +287,20 @@ def reallocate_customer_payments(customer, skip_signals=False):
             invoice.paid_amount = Decimal("0")
             invoice.payment_status = Invoice.PaymentStatus.UNPAID
             if skip_signals:
-                invoice._skip_reallocation = True
+                invoice._skip_reallocation = True  # pylint: disable=protected-access
 
         # Reset payment states
         for payment in paid_payments:
             payment.unallocated_amount = payment.amount
             if skip_signals:
-                payment._skip_reallocation = True
+                payment._skip_reallocation = True  # pylint: disable=protected-access
 
         for purchased_payment in purchased_payments:
             purchased_payment.unallocated_amount = purchased_payment.amount
             if skip_signals:
-                purchased_payment._skip_reallocation = True
+                purchased_payment._skip_reallocation = (
+                    True  # pylint: disable=protected-access
+                )
 
         # Prepare batch allocations
         allocations_to_create = []
@@ -346,8 +379,11 @@ def reallocate_customer_payments(customer, skip_signals=False):
                         item["amount_owed"] = invoice.remaining_amount
 
                     logger.debug(
-                        f"Allocated {allocation_amount} from payment {paid_payment.id} "
-                        f"to invoice {invoice.id} (date: {invoice.invoice_date})"
+                        "Allocated %s from payment %s to invoice %s (date: %s)",
+                        allocation_amount,
+                        paid_payment.id,
+                        invoice.id,
+                        invoice.invoice_date,
                     )
 
                 elif item["type"] == "purchased_payment":
@@ -365,9 +401,11 @@ def reallocate_customer_payments(customer, skip_signals=False):
                         item_idx += 1
 
                     logger.debug(
-                        f"Covered purchased payment {purchased_payment.id} "
-                        f"(date: {purchased_payment.payment_date}) "
-                        f"with {allocation_amount} from paid payment {paid_payment.id}"
+                        "Covered purchased payment %s (date: %s) with %s from paid payment %s",
+                        purchased_payment.id,
+                        purchased_payment.payment_date,
+                        allocation_amount,
+                        paid_payment.id,
                     )
 
                 # Update payment
@@ -424,12 +462,12 @@ def process_queued_updates():
     for customer in customers:
         try:
             CustomerCreditSummary.recalculate_for_customer(customer)
-        except Exception as e:
-            logger.error(f"Failed to update summary for customer {customer.id}: {e}")
+        except (ValueError, TypeError, CustomerCreditSummary.DoesNotExist) as e:
+            logger.error("Failed to update summary for customer %s: %s", customer.id, e)
 
 
 @receiver([post_save, post_delete], sender="invoice.ReturnInvoice")
-def handle_return_change(sender, instance, **kwargs):
+def handle_return_change(sender, instance, **kwargs):  # pylint: disable=unused-argument
     """Queue credit summary update when return changes"""
     if instance.status in ["APPROVED", "COMPLETED"]:
         queue_customer_update(instance.customer_id)
@@ -437,7 +475,9 @@ def handle_return_change(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender="customer.Customer")
-def create_summary_for_new_customer(sender, instance, created, **kwargs):
+def create_summary_for_new_customer(
+    sender, instance, created, **kwargs
+):  # pylint: disable=unused-argument
     """Create empty summary when customer is created"""
     if created:
 

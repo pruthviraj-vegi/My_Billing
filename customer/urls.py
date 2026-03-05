@@ -1,3 +1,5 @@
+"""URL patterns for the customer app."""
+
 from django.urls import path
 from . import views, views_credit
 

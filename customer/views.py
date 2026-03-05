@@ -1,30 +1,40 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
-from django.db.models import Q, Sum, Count, Case, When, DecimalField, Value, F
-from django.db.models.functions import Coalesce, TruncDate, TruncWeek, TruncMonth
-from django.contrib import messages
-from .models import Customer, Payment
-from invoice.models import Invoice
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from .forms import CustomerForm
-from django.urls import reverse_lazy
-from datetime import timedelta
-from decimal import Decimal
-from base.getDates import getDates
+"""
+Views for customer management, dashboard analytics, and CRUD operations.
+
+Provides the customer dashboard with sales analytics and comparison charts,
+customer listing with search/sort/pagination, and customer create/update/delete
+flows using Django class-based views.
+"""
+
 import logging
+from decimal import Decimal
+
+from django.contrib import messages
+from django.db.models import Case, Count, DecimalField, F, Q, Sum, When
+from django.db.models.functions import Coalesce, TruncDate, TruncMonth, TruncWeek
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
+
+from base.decorators import (
+    ALL_ROLES,
+    MANAGEMENT,
+    OWNER_ONLY,
+    RoleRequiredMixin,
+    require_role,
+)
+from base.getDates import getDates
 from base.utility import (
-    get_periodic_data,
     get_period_label,
+    get_periodic_data,
     render_paginated_response,
     table_sorting,
 )
-from base.decorators import (
-    require_role,
-    RoleRequiredMixin,
-    ALL_ROLES,
-    OWNER_ONLY,
-    MANAGEMENT,
-)
+from invoice.models import Invoice
+
+from .forms import CustomerForm
+from .models import Customer, Payment
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +100,7 @@ def get_comparison_data(date_filter, current_start, current_end):
     }
 
 
-def get_period_data(invoices, start_date, end_date, period_type):
+def get_period_data(invoices, start_date, _end_date, period_type):
     """
     Get aggregated data for a specific period using database-level grouping
 
@@ -394,9 +404,10 @@ def home(request):
 
 
 def get_data(request):
+    """Build and return a filtered, sorted queryset of customers based on request params."""
     # Get search and filter parameters
     search_query = request.GET.get("search", "")
-    status_filter = request.GET.get("status", "")
+    _status_filter = request.GET.get("status", "")  # Reserved for future use
 
     # Apply search filter
     filters = Q()
@@ -431,6 +442,8 @@ def fetch_customers(request):
 
 
 class CreateCustomer(RoleRequiredMixin, CreateView):
+    """CBV to create a new customer record."""
+
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
@@ -449,7 +462,7 @@ class CreateCustomer(RoleRequiredMixin, CreateView):
         return context
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -458,6 +471,8 @@ class CreateCustomer(RoleRequiredMixin, CreateView):
 
 
 class EditCustomer(RoleRequiredMixin, UpdateView):
+    """CBV to update an existing customer record."""
+
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
@@ -477,12 +492,14 @@ class EditCustomer(RoleRequiredMixin, UpdateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class DeleteCustomer(RoleRequiredMixin, DeleteView):
+    """CBV to delete a customer record with confirmation."""
+
     model = Customer
     template_name = "customer/delete.html"
     allowed_roles = MANAGEMENT
@@ -505,7 +522,7 @@ class DeleteCustomer(RoleRequiredMixin, DeleteView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -545,6 +562,7 @@ def fetch_customer_invoices(request, pk):
 
 
 def get_calculations(pk):
+    """Return aggregated invoice totals (count, amount, cash, credit) for a customer."""
     customer = get_object_or_404(Customer, id=pk)
     invoices = Invoice.objects.filter(customer=customer)
 
@@ -601,5 +619,5 @@ def create_customer_ajax(request):
                     "data": {"id": customer.id, "name": customer.name},
                 }
             )
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return JsonResponse({"success": False, "message": str(e)})

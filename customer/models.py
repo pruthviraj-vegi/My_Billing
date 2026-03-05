@@ -1,14 +1,15 @@
-from django.db import models
-from django.conf import settings
-from base.utility import StringProcessor
-from base.manager import SoftDeleteModel, phone_regex
+"""Models for the customer app, including Customer, Payment, and CustomerCreditSummary."""
+
 from decimal import Decimal
-from django.core.validators import MinValueValidator
-from django.utils import timezone
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Value
-from django.db.models.functions import Coalesce
-from django.utils.functional import cached_property
+from django.core.validators import MinValueValidator
+from django.db import models
+from django.utils import timezone
+
+from base.manager import SoftDeleteModel, phone_regex
+from base.utility import StringProcessor
 
 User = settings.AUTH_USER_MODEL
 
@@ -119,11 +120,17 @@ class Customer(SoftDeleteModel):
 
 
 class Payment(SoftDeleteModel):
+    """Records payments associated with a customer, including paid and purchased types."""
+
     class PaymentType(models.TextChoices):
-        Paid = "PAID", "Paid"
-        Purchased = "PURCHASED", "Purchased"
+        """Enumeration of payment types: Paid (received) or Purchased (owed)."""
+
+        Paid = "PAID", "Paid"  # pylint: disable=C0103
+        Purchased = "PURCHASED", "Purchased"  # pylint: disable=C0103
 
     class PaymentMethod(models.TextChoices):
+        """Enumeration of accepted payment methods (Cash, UPI, Bank Transfer, etc.)."""
+
         CASH = "CASH", "Cash"
         BANK_TRANSFER = "BANK_TRANSFER", "Bank Transfer"
         UPI = "UPI", "UPI"
@@ -175,6 +182,7 @@ class Payment(SoftDeleteModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
+        """Clean notes text and initialise unallocated_amount for new payments."""
         self.notes = StringProcessor(self.notes).toTitle()
         if not self.pk:
             # For both Paid and Purchased payments, initialize unallocated_amount
@@ -352,8 +360,8 @@ class CustomerCreditSummary(models.Model):
         OPTIMIZED recalculation with minimal queries.
         Uses select_for_update to prevent race conditions.
         """
-        from django.db.models import Sum, F, Q, Count, Max
-        from django.db.models.functions import Coalesce
+        from django.db.models import Sum, F, Q, Count, Max  # pylint: disable=C0415
+        from django.db.models.functions import Coalesce  # pylint: disable=C0415
         from django.db import transaction
         from invoice.models import Invoice
 

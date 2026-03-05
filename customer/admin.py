@@ -1,13 +1,20 @@
-from django.contrib import admin
-from django.utils.html import format_html
-from django.urls import reverse
-from django.utils.safestring import mark_safe
-from django.db.models import Sum, Count
-from django.contrib.admin import SimpleListFilter
-from django.utils import timezone
+"""
+Django admin configuration for Customer models.
+
+This module provides the admin interface configuration for the Customer, Payment,
+and CustomerCreditSummary models, enabling custom views, filters, and actions.
+"""
+
 from datetime import timedelta
-from .models import Customer, Payment, CustomerCreditSummary
-from invoice.models import PaymentAllocation
+
+from django.contrib import admin
+from django.contrib.admin import SimpleListFilter
+from django.db.models import Sum
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import format_html
+
+from .models import Customer, CustomerCreditSummary, Payment
 
 
 class CustomerStatusFilter(SimpleListFilter):
@@ -169,6 +176,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     # Custom admin site title
     def get_admin_site_title(self):
+        """Return a custom title string for the customer admin site header."""
         return "Customer Management"
 
     # Custom methods for list display
@@ -198,8 +206,6 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def payment_allocation_info(self, obj):
         """Display payment allocation information."""
-        from invoice.models import Invoice, PaymentAllocation
-
         # Count payments and allocations
         payments = Payment.objects.filter(
             customer=obj, payment_type=Payment.PaymentType.Paid, is_deleted=False
@@ -301,7 +307,7 @@ class CustomerAdmin(admin.ModelAdmin):
                 # Use signal-based reallocation (skips signals to avoid recursion)
                 reallocate_customer_payments(customer, skip_signals=True)
                 total_customers += 1
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 self.message_user(
                     request,
                     f"Error reallocating for {customer.name}: {str(e)}",
@@ -333,7 +339,7 @@ class CustomerAdmin(admin.ModelAdmin):
             # Call the auto_reallocate view function
             response = auto_reallocate(request, customer_id)
             return response
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             messages.error(request, f"Error during auto reallocation: {str(e)}")
             return redirect("admin:customer_customer_change", customer_id)
 
@@ -369,6 +375,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
 # Inline payments on customer detail for quick entry/visibility
 class PaymentInline(admin.TabularInline):
+    """Inline admin for Customer Payments."""
+
     model = Payment
     fields = [
         "payment_date",
@@ -471,7 +479,7 @@ class PaymentAdmin(admin.ModelAdmin):
                 # This ensures proper FIFO ordering across all payments
                 reallocate_customer_payments(customer, skip_signals=True)
                 total_customers += 1
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 self.message_user(
                     request,
                     f"Error reallocating for {customer.name}: {str(e)}",
@@ -498,6 +506,8 @@ class PaymentAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerCreditSummary)
 class CustommerySummery(admin.ModelAdmin):
+    """Admin configuration for the Customer Credit Summary representation."""
+
     list_display = [
         "customer",
         "credit_amount",
