@@ -1,3 +1,5 @@
+"""URL patterns for product-related views."""
+
 from django.urls import path
 from . import views_products
 

@@ -1,35 +1,32 @@
-from django.shortcuts import render, get_object_or_404, redirect, reverse
-from django.contrib import messages
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, UpdateView
-from django.db import transaction
-from django.db.utils import IntegrityError
-from django.db.models import Q, F
+"""
+Views for handling product variant creation, editing, and stock operations.
+"""
+
+import logging
 from decimal import Decimal
 from typing import Optional, Union
-from .models import (
-    ProductVariant,
-    InventoryLog,
-    Product,
-    Category,
-    Color,
-    Size,
-)
+
+from django.contrib import messages
+from django.db import transaction
+from django.db.models import F, Q
+from django.db.utils import IntegrityError
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse, reverse_lazy
+from django.views.generic import CreateView, UpdateView
+
+from base.utility import render_paginated_response, table_sorting
+
 from .forms import (
-    VariantForm,
-    StockInForm,
     AdjustmentInForm,
     AdjustmentOutForm,
+    ColorForm,
     DamageForm,
     SizeForm,
-    ColorForm,
+    StockInForm,
+    VariantForm,
 )
+from .models import Category, Color, InventoryLog, Product, ProductVariant, Size
 from .services import InventoryService
-import logging
-from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
-from base.utility import table_sorting, render_paginated_response
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +66,7 @@ def variant_home(request):
 
 
 def get_variants_data(request):
+    """Retrieve and filter variants based on request parameters."""
 
     # Get search and filter parameters
     search_query = request.GET.get("search", "")
@@ -208,6 +206,8 @@ def recent_variants_logs(request, variant_id):
 
 
 class CreateProductVariant(CreateView):
+    """View to create a new product variant"""
+
     template_name = "inventory/product_variant/form.html"
     form_class = VariantForm
     model = ProductVariant
@@ -217,6 +217,7 @@ class CreateProductVariant(CreateView):
     ACTION_CREATE_ADD = "create_add"
 
     def get_context_data(self, **kwargs):
+        """Prepare context data for the variant creation form."""
         context = super().get_context_data(**kwargs)
         context["title"] = self.title
         context["size_form"] = SizeForm()
@@ -277,6 +278,7 @@ class CreateProductVariant(CreateView):
         return initial
 
     def form_valid(self, form):
+        """Handle valid variant creation form submission."""
         # Get the product
         product = Product.objects.get(id=self.kwargs["product_id"])
         action = self.request.POST.get("action")
@@ -327,7 +329,7 @@ class CreateProductVariant(CreateView):
                     self.request, "A variant with similar details already exists."
                 )
                 return self.form_invalid(form)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.exception(
                 "Variant creation failed unexpectedly",
                 extra={"user_id": self.request.user.id, "error": str(e)},
@@ -358,7 +360,8 @@ class CreateProductVariant(CreateView):
         return redirect("inventory_products:details", product_id=product.id)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors.as_text()}")
+        """Handle invalid variant creation form submission."""
+        logger.error("Form invalid: %s", form.errors.as_text())
         if form.non_field_errors():
             for error in form.non_field_errors():
                 messages.error(self.request, error)
@@ -367,6 +370,7 @@ class CreateProductVariant(CreateView):
         return super().form_invalid(form)
 
     def get_success_url(self):
+        """Return the URL to redirect to upon successful variant creation."""
         # This method is only called if form_valid doesn't return a redirect
         # The actual redirect is handled in form_valid based on action
         return reverse_lazy(
@@ -412,12 +416,15 @@ class CreateProductVariant(CreateView):
 
 
 class EditProductVariant(UpdateView):
+    """View to edit an existing product variant"""
+
     template_name = "inventory/product_variant/form.html"
     form_class = VariantForm
     model = ProductVariant
     title = "Edit Product Variant"
 
     def get_context_data(self, **kwargs):
+        """Prepare context data for the variant editing form."""
         context = super().get_context_data(**kwargs)
         context["title"] = self.title
         context["variant"] = self.object
@@ -426,6 +433,7 @@ class EditProductVariant(UpdateView):
         return context
 
     def form_valid(self, form):
+        """Handle valid variant edit form submission."""
 
         try:
             with transaction.atomic():
@@ -465,6 +473,7 @@ class EditProductVariant(UpdateView):
                 raise
 
     def form_invalid(self, form):
+        """Handle invalid variant edit form submission."""
         if form.non_field_errors():
             for error in form.non_field_errors():
                 messages.error(self.request, error)
@@ -473,12 +482,15 @@ class EditProductVariant(UpdateView):
         return super().form_invalid(form)
 
     def get_success_url(self):
+        """Return the URL to redirect to upon successful variant edit."""
         return reverse_lazy(
             "inventory_products:details", kwargs={"product_id": self.object.product.id}
         )
 
 
 class StockInCreate(CreateView):
+    """View to process stock in operations for a variant"""
+
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = StockInForm
     model = InventoryLog
@@ -512,6 +524,7 @@ class StockInCreate(CreateView):
         return kwargs
 
     def get_initial(self):
+        """Set initial values for the Stock In form."""
         initial = super().get_initial()
         variant_id = self.kwargs.get("variant_id")
         if variant_id:
@@ -568,28 +581,34 @@ class StockInCreate(CreateView):
                 if inventory_log:
                     messages.success(
                         self.request,
-                        f"Stock in entry created successfully. {form.cleaned_data.get('quantity_change')} units added to {variant.full_name}",
+                        "Stock in entry created successfully. "
+                        f"{form.cleaned_data.get('quantity_change')} units "
+                        f"added to {variant.full_name}",
                     )
                     return redirect(self.get_success_url())
                 else:
                     messages.error(self.request, "Failed to create stock in entry.")
                     return self.form_invalid(form)
-        except Exception as e:
-            messages.error(self.request, f"Error creating stock in entry: {str(e)}")
+        except Exception as e:  # pylint: disable=broad-except
+            messages.error(self.request, f"Error creating stock in entry: {e}")
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form validation error: {form.errors}")
+        """Handle invalid Stock In form submission."""
+        logger.error("Form validation error: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class AdjustmentInCreate(CreateView):
+    """View to process adjustment in operations for a variant"""
+
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = AdjustmentInForm
     model = InventoryLog
 
     def get_context_data(self, **kwargs):
+        """Prepare context data for the Adjustment In form."""
         context = super().get_context_data(**kwargs)
         context["title"] = "Adjustment In"
         context["operation_type"] = "adjustment_in"
@@ -618,6 +637,7 @@ class AdjustmentInCreate(CreateView):
         return kwargs
 
     def get_success_url(self):
+        """Return the URL to redirect to upon successful Adjustment In."""
         variant_id = self.kwargs.get("variant_id")
         if variant_id:
             return reverse_lazy(
@@ -626,6 +646,7 @@ class AdjustmentInCreate(CreateView):
         return reverse_lazy("inventory:product_home")
 
     def form_valid(self, form):
+        """Handle valid Adjustment In form submission."""
         try:
             with transaction.atomic():
                 # Get the variant
@@ -652,28 +673,32 @@ class AdjustmentInCreate(CreateView):
 
                 messages.success(
                     self.request,
-                    f"Adjustment in entry created successfully. {form.cleaned_data.get('quantity_change')} units added to {variant.full_name}",
+                    "Adjustment in entry created successfully. "
+                    f"{form.cleaned_data.get('quantity_change')} units "
+                    f"added to {variant.full_name}",
                 )
                 return redirect(self.get_success_url())
-        except Exception as e:
-            logger.error(f"Error creating adjustment out entry: {str(e)}")
-            messages.error(
-                self.request, f"Error creating adjustment in entry: {str(e)}"
-            )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error creating adjustment in entry: %s", e)
+            messages.error(self.request, f"Error creating adjustment in entry: {e}")
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        """Handle invalid Adjustment In form submission."""
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class AdjustmentOutCreate(CreateView):
+    """View to process adjustment out operations for a variant"""
+
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = AdjustmentOutForm
     model = InventoryLog
 
     def get_context_data(self, **kwargs):
+        """Prepare context data for the Adjustment Out form."""
         context = super().get_context_data(**kwargs)
         context["title"] = "Adjustment Out"
         context["operation_type"] = "adjustment_out"
@@ -702,6 +727,7 @@ class AdjustmentOutCreate(CreateView):
         return kwargs
 
     def get_success_url(self):
+        """Return the URL to redirect to upon successful Adjustment Out."""
         variant_id = self.kwargs.get("variant_id")
         if variant_id:
             return reverse_lazy(
@@ -710,6 +736,7 @@ class AdjustmentOutCreate(CreateView):
         return reverse_lazy("inventory:product_home")
 
     def form_valid(self, form):
+        """Handle valid Adjustment Out form submission."""
         try:
             with transaction.atomic():
                 # Get the variant
@@ -736,27 +763,31 @@ class AdjustmentOutCreate(CreateView):
 
                 messages.success(
                     self.request,
-                    f"Adjustment out entry created successfully. {form.cleaned_data.get('quantity_change')} units removed from {variant.full_name}",
+                    "Adjustment out entry created successfully. "
+                    f"{form.cleaned_data.get('quantity_change')} units "
+                    f"removed from {variant.full_name}",
                 )
                 return redirect(self.get_success_url())
-        except Exception as e:
-            logger.error(f"Error creating adjustment out entry: {e}")
-            messages.error(
-                self.request, f"Error creating adjustment out entry: {str(e)}"
-            )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error creating adjustment out entry: %s", e)
+            messages.error(self.request, f"Error creating adjustment out entry: {e}")
             return self.form_invalid(form)
 
     def form_invalid(self, form):
+        """Handle invalid Adjustment Out form submission."""
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class DamageCreate(CreateView):
+    """View to process damage out operations for a variant"""
+
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = DamageForm
     model = InventoryLog
 
     def get_context_data(self, **kwargs):
+        """Prepare context data for the Damage Out form."""
         context = super().get_context_data(**kwargs)
         context["title"] = "Mark as Damaged"
         context["operation_type"] = "damage"
@@ -768,7 +799,7 @@ class DamageCreate(CreateView):
                 variant = ProductVariant.objects.get(id=variant_id)
                 context["selected_variant"] = variant
             except ProductVariant.DoesNotExist as e:
-                logger.error(f"Selected variant not found: {e}")
+                logger.error("Selected variant not found: %s", e)
                 messages.error(self.request, "Selected variant not found.")
 
         return context
@@ -782,11 +813,12 @@ class DamageCreate(CreateView):
                 variant = ProductVariant.objects.get(id=variant_id)
                 kwargs["variant"] = variant
             except ProductVariant.DoesNotExist as e:
-                logger.error(f"Selected variant not found: {e}")
+                logger.error("Selected variant not found: %s", e)
                 messages.error(self.request, "Selected variant not found.")
         return kwargs
 
     def get_success_url(self):
+        """Return the URL to redirect to upon successful Damage Out."""
         variant_id = self.kwargs.get("variant_id")
         if variant_id:
             return reverse_lazy(
@@ -795,6 +827,7 @@ class DamageCreate(CreateView):
         return reverse_lazy("inventory:product_home")
 
     def form_valid(self, form):
+        """Handle valid Damage form submission."""
         try:
             with transaction.atomic():
                 # Get the variant
@@ -820,15 +853,18 @@ class DamageCreate(CreateView):
 
                 messages.success(
                     self.request,
-                    f"Damage entry created successfully. {form.cleaned_data.get('quantity_change')} units marked as damaged for {variant.full_name}",
+                    "Damage entry created successfully. "
+                    f"{form.cleaned_data.get('quantity_change')} units "
+                    f"marked as damaged for {variant.full_name}",
                 )
                 return redirect(self.get_success_url())
-        except Exception as e:
-            logger.error(f"Error creating damage entry: {str(e)}")
-            messages.error(self.request, f"Error creating damage entry: {str(e)}")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error creating damage entry: %s", e)
+            messages.error(self.request, f"Error creating damage entry: {e}")
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        """Handle invalid Damage form submission."""
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)

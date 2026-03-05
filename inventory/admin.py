@@ -1,3 +1,10 @@
+"""Django admin configuration for the Inventory app.
+
+Registers all inventory models (Category, Product, ProductVariant, etc.)
+with the Django admin site and configures list displays, filters, search,
+fieldsets, inlines, and custom admin actions.
+"""
+
 from django.contrib import admin
 
 from .models import (
@@ -16,6 +23,8 @@ from .models import (
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
+    """Admin configuration for the Category model."""
+
     list_display = ["name", "description", "created_at", "updated_at"]
     list_filter = ["created_at", "updated_at"]
     search_fields = ["name", "description"]
@@ -25,6 +34,8 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(GSTHsnCode)
 class GSTHsnCodeAdmin(admin.ModelAdmin):
+    """Admin configuration for the GSTHsnCode model."""
+
     list_display = ["code", "description", "created_at", "updated_at"]
     list_filter = ["created_at", "updated_at"]
     search_fields = ["code", "description"]
@@ -34,6 +45,8 @@ class GSTHsnCodeAdmin(admin.ModelAdmin):
 
 @admin.register(ClothType)
 class ClothTypeAdmin(admin.ModelAdmin):
+    """Admin configuration for the ClothType model."""
+
     list_display = ["name", "description", "created_at", "updated_at"]
     list_filter = ["created_at", "updated_at"]
     search_fields = ["name", "description"]
@@ -43,6 +56,8 @@ class ClothTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Color)
 class ColorAdmin(admin.ModelAdmin):
+    """Admin configuration for the Color model."""
+
     list_display = ["name", "hex_code", "created_at", "updated_at"]
     list_filter = ["created_at", "updated_at"]
     search_fields = ["name"]
@@ -52,6 +67,8 @@ class ColorAdmin(admin.ModelAdmin):
 
 @admin.register(Size)
 class SizeAdmin(admin.ModelAdmin):
+    """Admin configuration for the Size model."""
+
     list_display = ["name", "description", "created_at", "updated_at"]
     list_filter = ["created_at", "updated_at"]
     search_fields = ["name", "description"]
@@ -60,6 +77,8 @@ class SizeAdmin(admin.ModelAdmin):
 
 
 class ProductImageInline(admin.TabularInline):
+    """Inline admin for ProductImage within ProductAdmin."""
+
     model = ProductImage
     extra = 1
     fields = ["image", "image_url", "color", "alt_text", "is_featured"]
@@ -67,6 +86,8 @@ class ProductImageInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+    """Admin configuration for the Product model."""
+
     list_display = [
         "display_name",
         "brand",
@@ -101,6 +122,8 @@ class ProductAdmin(admin.ModelAdmin):
 
 
 class InventoryLogInline(admin.TabularInline):
+    """Inline admin for InventoryLog within ProductVariantAdmin."""
+
     model = InventoryLog
     extra = 0
     readonly_fields = [
@@ -123,11 +146,14 @@ class InventoryLogInline(admin.TabularInline):
     max_num = 10
 
     def has_add_permission(self, request, obj=None):
+        """Prevent adding inventory logs directly via inline."""
         return False
 
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):
+    """Admin configuration for the ProductVariant model."""
+
     list_display = [
         "get_product_name",
         "barcode",
@@ -212,12 +238,14 @@ class ProductVariantAdmin(admin.ModelAdmin):
     )
 
     def get_product_name(self, obj):
+        """Return the display name for the product variant."""
         return obj.get_name(include_barcode=False, include_variants=True)
 
     get_product_name.short_description = "Product Name"
     get_product_name.admin_order_field = "product__name"
 
     def get_queryset(self, request):
+        """Optimize queryset with select_related for list display."""
         return (
             super()
             .get_queryset(request)
@@ -229,19 +257,21 @@ class ProductVariantAdmin(admin.ModelAdmin):
     actions = ["mark_as_active", "mark_as_discontinued", "adjust_quantities"]
 
     def mark_as_active(self, request, queryset):
+        """Bulk-mark selected variants as active."""
         updated = queryset.update(status=ProductVariant.VariantStatus.ACTIVE)
         self.message_user(request, f"{updated} variants marked as active.")
 
     mark_as_active.short_description = "Mark selected variants as active"
 
     def mark_as_discontinued(self, request, queryset):
+        """Bulk-mark selected variants as discontinued."""
         updated = queryset.update(status=ProductVariant.VariantStatus.DISCONTINUED)
         self.message_user(request, f"{updated} variants marked as discontinued.")
 
     mark_as_discontinued.short_description = "Mark selected variants as discontinued"
 
-    def adjust_quantities(self, request, queryset):
-        # This would typically redirect to a custom form
+    def adjust_quantities(self, request, _queryset):
+        """Placeholder action for bulk quantity adjustment."""
         self.message_user(
             request, "Quantity adjustment feature would be implemented here."
         )
@@ -251,6 +281,8 @@ class ProductVariantAdmin(admin.ModelAdmin):
 
 @admin.register(InventoryLog)
 class InventoryLogAdmin(admin.ModelAdmin):
+    """Admin configuration for the InventoryLog model."""
+
     list_display = [
         "variant",
         "transaction_type",
@@ -305,6 +337,7 @@ class InventoryLogAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
+        """Optimize queryset with select_related for list display."""
         return (
             super()
             .get_queryset(request)
@@ -314,11 +347,14 @@ class InventoryLogAdmin(admin.ModelAdmin):
         )
 
     def has_add_permission(self, request):
-        return False  # Inventory logs should be created through the application logic
+        """Prevent manual creation; logs are created via application logic."""
+        return False
 
 
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):
+    """Admin configuration for the ProductImage model."""
+
     list_display = ["product", "color", "is_featured", "alt_text"]
     list_filter = ["is_featured", "color"]
     search_fields = ["product__name", "product__brand", "alt_text"]
@@ -327,6 +363,8 @@ class ProductImageAdmin(admin.ModelAdmin):
 
 @admin.register(FavoriteVariant)
 class FavoriteVariantAdmin(admin.ModelAdmin):
+    """Admin configuration for the FavoriteVariant model."""
+
     list_display = ["user", "variant", "created_at"]
     list_filter = ["created_at"]
     search_fields = [
@@ -347,7 +385,7 @@ admin.site.index_title = "Welcome to Inventory Management"
 # Add custom admin actions and statistics
 def get_inventory_stats():
     """Get inventory statistics for admin dashboard."""
-    from django.db.models import Sum, Count, Q
+    from django.db.models import Sum, F
     from django.utils import timezone
     from datetime import timedelta
 
@@ -366,21 +404,21 @@ def get_inventory_stats():
         quantity=0, status=ProductVariant.VariantStatus.ACTIVE
     ).count()
     low_stock = ProductVariant.objects.filter(
-        quantity__lte=models.F("minimum_quantity"),
+        quantity__lte=F("minimum_quantity"),
         status=ProductVariant.VariantStatus.ACTIVE,
     ).count()
 
     # Financial statistics
     total_inventory_value = (
         ProductVariant.objects.aggregate(
-            total=Sum(models.F("quantity") * models.F("purchase_price"))
+            total=Sum(F("quantity") * F("purchase_price"))
         )["total"]
         or 0
     )
 
     total_damaged_value = (
         ProductVariant.objects.aggregate(
-            total=Sum(models.F("damaged_quantity") * models.F("purchase_price"))
+            total=Sum(F("damaged_quantity") * F("purchase_price"))
         )["total"]
         or 0
     )

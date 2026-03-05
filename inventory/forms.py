@@ -1,17 +1,21 @@
+"""Forms for the Inventory app."""
+
+import logging
+
 from django import forms
+
 from .models import (
+    Category,
+    ClothType,
+    Color,
+    GSTHsnCode,
+    InventoryLog,
     Product,
     ProductVariant,
-    Category,
-    Color,
     Size,
-    ClothType,
-    UOM,
-    GSTHsnCode,
     SupplierInvoice,
-    InventoryLog,
+    UOM,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +25,15 @@ class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        exclude = ["status"]
+        fields = [
+            "brand",
+            "name",
+            "description",
+            "category",
+            "cloth_type",
+            "uom",
+            "hsn_code",
+        ]
 
         widgets = {
             "name": forms.TextInput(
@@ -74,7 +86,7 @@ class ProductForm(forms.ModelForm):
                 self.fields[field_name].help_text = (
                     f"Add an active {model_name} before assigning it to a product."
                 )
-        except Exception as e:
+        except Exception:  # pylint: disable=broad-except
             pass
 
     def clean_brand(self):
@@ -110,13 +122,15 @@ class VariantForm(forms.ModelForm):
 
     class Meta:
         model = ProductVariant
-        exclude = [
-            "product",
-            "barcode",
-            "damaged_quantity",
-            "status",
-            "created_by",
-            "extra_attributes",
+        fields = [
+            "size",
+            "color",
+            "quantity",
+            "minimum_quantity",
+            "purchase_price",
+            "mrp",
+            "discount_percentage",
+            "commission_percentage",
         ]
         widgets = {
             "supplier": forms.Select(attrs={"placeholder": "Select supplier"}),
@@ -154,10 +168,10 @@ class VariantForm(forms.ModelForm):
         try:
             if not self.instance.pk:
                 self.fields["commission_percentage"].initial = 1
-        except Exception as e:
-            logger.error(f"Failed to set initial commission percentage: {e}")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Failed to set initial commission percentage: %s", e)
 
-    def _validate_positive_number(self, value, field_name, error_message):
+    def _validate_positive_number(self, value, _field_name, error_message):
         """Helper method to validate positive numbers"""
         if value is not None and value <= 0:
             raise forms.ValidationError(error_message)
@@ -433,7 +447,7 @@ class UOMForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Add form-input class to text/number fields, form-check-input to checkboxes
-        for field_name, field in self.fields.items():
+        for _field_name, field in self.fields.items():
             widget = field.widget
             if isinstance(widget, forms.CheckboxInput):
                 widget.attrs["class"] = "form-check-input"
@@ -520,7 +534,7 @@ class GSTHsnCodeForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Add form-input class to text/number/date fields, form-check-input to checkboxes
-        for field_name, field in self.fields.items():
+        for _field_name, field in self.fields.items():
             widget = field.widget
             if isinstance(widget, forms.CheckboxInput):
                 widget.attrs["class"] = "form-check-input"
@@ -596,7 +610,7 @@ class StockInForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Standardize widget styling using a CSS class (see main.css theming)
-        for name, field in self.fields.items():
+        for _name, field in self.fields.items():
             if isinstance(field.widget, forms.Textarea):
                 field.widget.attrs.setdefault("class", "form-input multiline")
             elif isinstance(field.widget, forms.Select):
@@ -625,18 +639,21 @@ class StockInForm(forms.ModelForm):
         self.fields["purchase_price"].required = True
 
     def clean_quantity_change(self):
+        """Validate quantity change is greater than 0"""
         quantity_change = self.cleaned_data.get("quantity_change")
         if quantity_change is not None and quantity_change <= 0:
             raise forms.ValidationError("Stock in quantity must be greater than zero.")
         return quantity_change
 
     def clean_purchase_price(self):
+        """Validate purchase price is non-negative"""
         purchase_price = self.cleaned_data.get("purchase_price")
         if purchase_price is not None and purchase_price < 0:
             raise forms.ValidationError("Purchase price cannot be negative.")
         return purchase_price
 
     def clean_mrp(self):
+        """Validate MRP is greater than 0"""
         mrp = self.cleaned_data.get("mrp")
         if mrp is not None and mrp <= 0:
             raise forms.ValidationError("MRP cannot be negative.")

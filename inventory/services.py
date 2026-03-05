@@ -1,8 +1,15 @@
-from django.db import transaction
-from .models import InventoryLog
-from decimal import Decimal
-from django.db.models import F
+"""
+Services module for complex inventory operations like stock in, out, sale, return,
+cancellation, and damage tracking.
+"""
+
 import logging
+from decimal import Decimal
+
+from django.db import transaction
+from django.db.models import F
+
+from .models import InventoryLog
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +96,7 @@ class InventoryService:
 
     @staticmethod
     def create_initial_log(variant, user=None, notes="", supplier_invoice=None):
+        """Create initial log entry for a new variant"""
         try:
             with transaction.atomic():
                 inventory_log = InventoryLog.objects.create(
@@ -106,12 +114,13 @@ class InventoryService:
                 )
                 return inventory_log
 
-        except Exception as e:
-            logger.error(f"Failed to create initial log: {e}")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Failed to create initial log: %s", e)
             return None
 
     @staticmethod
     def update_initial_log(variant, user=None, notes="", supplier_invoice=None):
+        """Update the initial inventory log entry for a variant"""
         log_data = InventoryLog.objects.filter(
             variant=variant,
             transaction_type=InventoryLog.TransactionTypes.INITIAL,
@@ -138,6 +147,7 @@ class InventoryService:
         purchase_price=None,
         mrp=None,
     ):
+        """Update stock in log for a variant"""
         try:
             with transaction.atomic():
                 new_quantity = variant.quantity + quantity_change
@@ -168,13 +178,24 @@ class InventoryService:
 
                 return inventory_log
 
-        except Exception as e:
-            logger.error(f"Error updating stock in log: {e}")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error updating stock in log: %s", e)
             return None
 
     @staticmethod
     def sale(variant, quantity_sold, user=None, invoice_item="", notes=""):
-        """Process a sale and automatically update inventory"""
+        """Process a sale and automatically update inventory
+
+        Args:
+            variant: The variant being sold
+            quantity_sold: Amount sold
+            user: User performing sale
+            invoice_item: Associated invoice item
+            notes: Sale notes
+
+        Returns:
+            dict: Result of sale process
+        """
         with transaction.atomic():
             if quantity_sold <= 0:
                 raise ValueError("Sale quantity must be positive")
@@ -222,7 +243,19 @@ class InventoryService:
         user=None,
         notes="",
     ):
-        """Internal method to perform FIFO allocation"""
+        """Internal method to perform FIFO allocation
+
+        Args:
+            variant: The product variant to allocate stock from
+            quantity_to_allocate: Amount of stock to allocate
+            invoice_item: The associated invoice item (optional)
+            unit_price: Selling price per unit (optional)
+            user: The user performing the action (optional)
+            notes: Additional notes for the log (optional)
+
+        Returns:
+            dict: Allocation results including logs, COGS, and insufficient stock flag
+        """
         remaining_to_allocate = Decimal(str(quantity_to_allocate))
         allocation_logs = []
         total_cogs = Decimal("0")
@@ -319,7 +352,18 @@ class InventoryService:
         invoice_item=None,
         notes="",
     ):
-        """Process a customer return and restore inventory"""
+        """Process a customer return and restore inventory
+
+        Args:
+            variant: The returned variant
+            quantity_returned: Amount returned
+            user: User processing return
+            invoice_item: Associated invoice item
+            notes: Return notes
+
+        Returns:
+            dict: Return processing results
+        """
         with transaction.atomic():
             if quantity_returned <= 0:
                 raise ValueError("Return quantity must be positive")
@@ -370,7 +414,18 @@ class InventoryService:
         invoice_item=None,
         notes="",
     ):
-        """Process a customer return and restore inventory"""
+        """Process a customer cancellation and restore inventory
+
+        Args:
+            variant: The cancelled variant
+            quantity_cancelled: Amount cancelled
+            user: User processing cancellation
+            invoice_item: Associated invoice item
+            notes: Cancellation notes
+
+        Returns:
+            dict: Cancellation processing results
+        """
         with transaction.atomic():
             if quantity_cancelled <= 0:
                 raise ValueError("Return quantity must be positive")

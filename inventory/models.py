@@ -1,19 +1,25 @@
-from django.db import models, transaction
-from django.conf import settings
-from supplier.models import SupplierInvoice
-from base.manager import SoftDeleteModel
-from django.core.validators import MinValueValidator, MaxValueValidator
-from decimal import Decimal
-from .manager import ProductVariantManager, InventoryLogManager
+"""Inventory models: products, variants, stock tracking, and related masters."""
 
-from base.utility import StringProcessor
-from django.urls import reverse
+from decimal import Decimal
+
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models, transaction
 from django.db.models import Sum
+from django.urls import reverse
+
+from base.manager import SoftDeleteModel
+from base.utility import StringProcessor
+from supplier.models import SupplierInvoice
+
+from .manager import InventoryLogManager, ProductVariantManager
 
 User = settings.AUTH_USER_MODEL
 
 
 class Category(models.Model):
+    """Product category for grouping products (e.g. Shirts, Trousers)."""
+
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -32,6 +38,8 @@ class Category(models.Model):
 
 
 class ClothType(models.Model):
+    """Fabric / cloth type master (e.g. Cotton, Silk)."""
+
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -71,6 +79,8 @@ class Color(models.Model):
 
 
 class Size(models.Model):
+    """Size master for product variants (e.g. S, M, L, XL)."""
+
     name = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True, null=True)
 
@@ -86,6 +96,7 @@ class Size(models.Model):
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
+        """Return the URL for the size listing page."""
         return reverse("inventory:size_home")
 
 
@@ -137,10 +148,13 @@ class UOM(models.Model):
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
+        """Return the URL for the UOM listing page."""
         return reverse("inventory:uom_home")
 
 
 class GSTHsnCode(models.Model):
+    """GST HSN code with tax rates for product classification."""
+
     code = models.CharField(max_length=8, unique=True, db_index=True)
     gst_percentage = models.DecimalField(
         max_digits=5,
@@ -176,6 +190,7 @@ class GSTHsnCode(models.Model):
         super().save(*args, **kwargs)
 
     def get_applicable_rate(self, transaction_type="intrastate"):
+        """Return CGST/SGST/IGST/cess breakdown for the given transaction type."""
         if transaction_type == "interstate":
             return {
                 "cgst": Decimal("0.00"),
@@ -196,7 +211,11 @@ class GSTHsnCode(models.Model):
 
 
 class Product(SoftDeleteModel):
+    """Master product record (brand + name + HSN + category)."""
+
     class ProductStatus(models.TextChoices):
+        """Lifecycle statuses for a product."""
+
         DRAFT = "DRAFT", "Draft"
         ACTIVE = "ACTIVE", "Active"
         DISCONTINUED = "DISCONTINUED", "Discontinued"
@@ -254,13 +273,18 @@ class Product(SoftDeleteModel):
 
     @property
     def display_name(self):
+        """Return 'Brand - Name' or just Brand if name is blank."""
         if self.name:
             return f"{self.brand} - {self.name}"
         return self.brand
 
 
 class ProductVariant(SoftDeleteModel):
+    """Specific SKU of a product with size, colour, pricing, and stock."""
+
     class VariantStatus(models.TextChoices):
+        """Active / discontinued status for a variant."""
+
         ACTIVE = "ACTIVE", "Active"
         DISCONTINUED = "DISCONTINUED", "Discontinued"
 
@@ -421,7 +445,7 @@ class ProductVariant(SoftDeleteModel):
             barcode = getattr(self, "barcode", "No Barcode")
             return f"{product_name}{variant_info} - {barcode}"
 
-        except Exception:
+        except (AttributeError, TypeError):
             # Fallback if anything goes wrong
             return f"Product Variant #{self.id}"
 
@@ -463,7 +487,7 @@ class ProductVariant(SoftDeleteModel):
 
             return product_name
 
-        except Exception:
+        except (AttributeError, TypeError):
             return f"Product Variant #{self.id}"
 
     @property
@@ -512,6 +536,9 @@ class ProductVariant(SoftDeleteModel):
 
     @property
     def is_low_stock(self):
+        """Check if the stock is low"""
+        if self.minimum_quantity == 0:
+            return False
         return self.quantity <= self.minimum_quantity
 
     @property
@@ -533,6 +560,7 @@ class ProductVariant(SoftDeleteModel):
 
     @property
     def stock_status(self):
+        """Return a human-readable stock status label."""
         if self.quantity == 0:
             return "Out of Stock"
         elif self.is_low_stock:
@@ -681,6 +709,8 @@ class ProductVariant(SoftDeleteModel):
 
 
 class ProductImage(models.Model):
+    """Image associated with a product, optionally linked to a colour."""
+
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="images"
     )
@@ -717,7 +747,11 @@ class ProductImage(models.Model):
 
 
 class InventoryLog(SoftDeleteModel):
+    """Audit trail for every stock movement (in, out, adjustment, damage)."""
+
     class TransactionTypes(models.TextChoices):
+        """Types of inventory transactions."""
+
         STOCK_IN = "STOCK_IN", "Stock In"
         SALE = "SALE", "Sale"
         RETURN = "RETURN", "Customer Return"
@@ -829,7 +863,10 @@ class InventoryLog(SoftDeleteModel):
         ]
 
     def __str__(self):
-        return f"{self.variant} changed by {self.quantity_change} on {self.timestamp.strftime('%Y-%m-%d')}"
+        date_str = (
+            self.timestamp.strftime("%Y-%m-%d") if self.timestamp else "N/A"
+        )  # pylint: disable=no-member
+        return f"{self.variant} changed by {self.quantity_change} on {date_str}"
 
     def save(self, *args, **kwargs):
         # Auto-calculate total value
@@ -850,6 +887,8 @@ class InventoryLog(SoftDeleteModel):
 
 
 class FavoriteVariant(models.Model):
+    """Track user-favourited product variants for quick access."""
+
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="favorite_variants"
     )
@@ -873,6 +912,8 @@ class FavoriteVariant(models.Model):
 
 
 class BarcodeMapping(models.Model):
+    """Maps external/custom barcodes to product variants."""
+
     barcode = models.CharField(max_length=100, unique=True)
     variant = models.OneToOneField(
         ProductVariant, on_delete=models.CASCADE, related_name="barcode_mappings"

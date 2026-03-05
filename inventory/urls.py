@@ -1,3 +1,5 @@
+"""URL patterns for the Inventory app."""
+
 from django.urls import path
 from . import views, _views
 

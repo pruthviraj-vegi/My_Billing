@@ -1,31 +1,43 @@
-from .forms import (
-    ClothTypeForm,
-    ColorForm,
-    CategoryForm,
-    SizeForm,
-    UOMForm,
-    GSTHsnCodeForm,
-)
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from .models import (
-    ClothType,
-    Category,
-    Color,
-    Size,
-    UOM,
-    GSTHsnCode,
-    FavoriteVariant,
-    ProductVariant,
-)
-from django.urls import reverse
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.http import JsonResponse
-from django.db.models import Q, F
-from django.views.decorators.http import require_http_methods
+"""
+Views for inventory management including CRUD operations for cloth types, colors,
+sizes, categories, UOMs, GST HSN codes, and product variant favorites.
+
+Provides list/create/update/delete views for each inventory entity along with
+AJAX endpoints for search suggestions, paginated fetching, and modal-based creation.
+"""
+
+# pylint: disable=too-many-lines
+
 import logging
 
+from django.contrib import messages
+from django.db.models import F, Q
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.urls import reverse
+from django.views.decorators.http import require_http_methods
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
+
 from base.utility import render_paginated_response
+
+from .forms import (
+    CategoryForm,
+    ClothTypeForm,
+    ColorForm,
+    GSTHsnCodeForm,
+    SizeForm,
+    UOMForm,
+)
+from .models import (
+    Category,
+    ClothType,
+    Color,
+    FavoriteVariant,
+    GSTHsnCode,
+    ProductVariant,
+    Size,
+    UOM,
+)
 
 try:
     from rapidfuzz import process, fuzz
@@ -63,11 +75,14 @@ def cloth_home(request):
 
 
 class CreateClothType(CreateView):
+    """CBV to create a new cloth type record."""
+
     model = ClothType
     form_class = ClothTypeForm
     template_name = "inventory/cloth/form.html"
 
-    def get_success_url_name(self):
+    def get_success_url_name(self):  # noqa: D102
+        """Return the URL name to redirect to after successful creation."""
         return "inventory:cloth_create"
 
     def get_context_data(self, **kwargs):
@@ -80,12 +95,14 @@ class CreateClothType(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class UpdateClothType(UpdateView):
+    """CBV to update an existing cloth type record."""
+
     model = ClothType
     form_class = ClothTypeForm
     template_name = "inventory/cloth/form.html"
@@ -102,11 +119,10 @@ class UpdateClothType(UpdateView):
         context["title"] = "Update Cloth Type"
         return context
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
 
 class DeleteClothType(DeleteView):
+    """CBV to delete a cloth type record with confirmation."""
+
     model = ClothType
     template_name = "inventory/cloth/delete.html"
 
@@ -122,9 +138,6 @@ class DeleteClothType(DeleteView):
         messages.success(self.request, "Cloth type deleted successfully")
         return super().form_valid(form)
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
 
 def color_home(request):
     """List all colors"""
@@ -138,11 +151,14 @@ def color_home(request):
 
 
 class CreateColor(CreateView):
+    """CBV to create a new color record."""
+
     model = Color
     form_class = ColorForm
     template_name = "inventory/color/form.html"
 
-    def get_success_url_name(self):
+    def get_success_url_name(self):  # noqa: D102
+        """Return the URL name to redirect to after successful creation."""
         return "inventory:color_create"
 
     def get_context_data(self, **kwargs):
@@ -155,12 +171,14 @@ class CreateColor(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class UpdateColor(UpdateView):
+    """CBV to update an existing color record."""
+
     model = Color
     form_class = ColorForm
     template_name = "inventory/color/form.html"
@@ -177,11 +195,10 @@ class UpdateColor(UpdateView):
         context["title"] = "Update Color"
         return context
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
 
 class DeleteColor(DeleteView):
+    """CBV to delete a color record with confirmation."""
+
     model = Color
     template_name = "inventory/color/delete.html"
 
@@ -197,9 +214,6 @@ class DeleteColor(DeleteView):
         messages.success(self.request, "Color deleted successfully")
         return super().form_valid(form)
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
 
 def size_home(request):
     """List all sizes"""
@@ -213,11 +227,14 @@ def size_home(request):
 
 
 class CreateSize(CreateView):
+    """CBV to create a new size record."""
+
     model = Size
     form_class = SizeForm
     template_name = "inventory/size/form.html"
 
-    def get_success_url_name(self):
+    def get_success_url_name(self):  # noqa: D102
+        """Return the URL name to redirect to after successful creation."""
         return "inventory:size_create"
 
     def get_context_data(self, **kwargs):
@@ -230,12 +247,14 @@ class CreateSize(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class UpdateSize(UpdateView):
+    """CBV to update an existing size record."""
+
     model = Size
     form_class = SizeForm
     template_name = "inventory/size/form.html"
@@ -252,11 +271,10 @@ class UpdateSize(UpdateView):
         context["title"] = "Update Size"
         return context
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
 
 class DeleteSize(DeleteView):
+    """CBV to delete a size record with confirmation."""
+
     model = Size
     template_name = "inventory/size/delete.html"
 
@@ -271,9 +289,6 @@ class DeleteSize(DeleteView):
     def form_valid(self, form):
         messages.success(self.request, "Size deleted successfully")
         return super().form_valid(form)
-
-    def form_invalid(self, form):
-        return super().form_invalid(form)
 
 
 # Constants for category management
@@ -374,6 +389,8 @@ def category_home(request):
 
 
 class CreateCategory(CreateView):
+    """CBV to create a new category record."""
+
     model = Category
     form_class = CategoryForm
     template_name = "inventory/category/form.html"
@@ -392,11 +409,13 @@ class CreateCategory(CreateView):
 
     def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below.")
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         return super().form_invalid(form)
 
 
 class UpdateCategory(UpdateView):
+    """CBV to update an existing category record."""
+
     model = Category
     form_class = CategoryForm
     template_name = "inventory/category/form.html"
@@ -413,11 +432,10 @@ class UpdateCategory(UpdateView):
         context["title"] = "Update Category"
         return context
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
 
 class DeleteCategory(DeleteView):
+    """CBV to delete a category record with confirmation."""
+
     model = Category
     template_name = "inventory/category/delete.html"
 
@@ -433,9 +451,6 @@ class DeleteCategory(DeleteView):
         messages.success(self.request, "Category deleted successfully")
         return super().form_valid(form)
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
 
 # ========================================
 # UOM MANAGEMENT VIEWS
@@ -450,11 +465,14 @@ def uom_home(request):
 
 
 class CreateUOM(CreateView):
+    """CBV to create a new unit of measurement record."""
+
     model = UOM
     form_class = UOMForm
     template_name = "inventory/uom/form.html"
 
-    def get_success_url_name(self):
+    def get_success_url_name(self):  # noqa: D102
+        """Return the URL name to redirect to after successful creation."""
         return "inventory:uom_create"
 
     def get_context_data(self, **kwargs):
@@ -467,12 +485,14 @@ class CreateUOM(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class UpdateUOM(UpdateView):
+    """CBV to update an existing unit of measurement record."""
+
     model = UOM
     form_class = UOMForm
     template_name = "inventory/uom/form.html"
@@ -489,11 +509,10 @@ class UpdateUOM(UpdateView):
         context["title"] = "Update UOM"
         return context
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
 
 class DeleteUOM(DeleteView):
+    """CBV to delete a unit of measurement record with confirmation."""
+
     model = UOM
     template_name = "inventory/uom/delete.html"
 
@@ -508,9 +527,6 @@ class DeleteUOM(DeleteView):
     def form_valid(self, form):
         messages.success(self.request, "UOM deleted successfully")
         return super().form_valid(form)
-
-    def form_invalid(self, form):
-        return super().form_invalid(form)
 
 
 # Constants for UOM management
@@ -652,7 +668,7 @@ def gst_hsn_search_suggestions(request):
 
     # Combine codes and descriptions for matching
     combined_items = []
-    for i, (code, desc) in enumerate(zip(codes, descriptions)):
+    for code, desc in zip(codes, descriptions):
         combined_items.append(f"{code} - {desc}" if desc else code)
 
     # Fuzzy match against combined items
@@ -721,6 +737,8 @@ def gst_hsn_home(request):
 
 
 class CreateGSTHsnCode(CreateView):
+    """CBV to create a new GST HSN code record."""
+
     model = GSTHsnCode
     form_class = GSTHsnCodeForm
     template_name = "inventory/gst_hsn/form.html"
@@ -738,12 +756,14 @@ class CreateGSTHsnCode(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class UpdateGSTHsnCode(UpdateView):
+    """CBV to update an existing GST HSN code record."""
+
     model = GSTHsnCode
     form_class = GSTHsnCodeForm
     template_name = "inventory/gst_hsn/form.html"
@@ -753,6 +773,8 @@ class UpdateGSTHsnCode(UpdateView):
 
 
 class DeleteGSTHsnCode(DeleteView):
+    """CBV to delete a GST HSN code record with confirmation."""
+
     model = GSTHsnCode
     template_name = "inventory/gst_hsn/delete.html"
 
@@ -851,10 +873,10 @@ def fetch_favorites(request):
 
         # Sort variants
         if sort_by.startswith("-"):
-            reverse = True
+            reverse_sort = True
             field = sort_by[1:]
         else:
-            reverse = False
+            reverse_sort = False
             field = sort_by
 
         # Create a mapping for favorite created_at dates
@@ -871,18 +893,18 @@ def fetch_favorites(request):
                     if value is None:
                         return ""
                 return value
-            except:
+            except Exception:  # pylint: disable=broad-except
                 return ""
 
-        variants.sort(key=get_sort_key, reverse=reverse)
+        variants.sort(key=get_sort_key, reverse=reverse_sort)
 
         return render_paginated_response(
             request,
             variants,
             "inventory/favorites/fetch.html",
         )
-    except Exception as e:
-        logger.error(f"Error fetching favorites: {str(e)}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error fetching favorites: %s", e)
         return JsonResponse(
             {"status": "error", "message": "Failed to fetch favorites"}, status=500
         )
@@ -949,8 +971,8 @@ def get_variants_for_favorites(request):
                 "count": len(variants_data),
             }
         )
-    except Exception as e:
-        logger.error(f"Error getting variants for favorites: {str(e)}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error getting variants for favorites: %s", e)
         return JsonResponse(
             {"status": "error", "message": "Failed to get variants"}, status=500
         )
@@ -964,7 +986,7 @@ def add_favorite(request, variant_id):
         variant = ProductVariant.objects.get(id=variant_id, status="ACTIVE")
 
         # Check if already favorited
-        favorite, created = FavoriteVariant.objects.get_or_create(
+        _favorite, created = FavoriteVariant.objects.get_or_create(
             user=request.user, variant=variant
         )
 
@@ -986,8 +1008,8 @@ def add_favorite(request, variant_id):
         return JsonResponse(
             {"status": "error", "message": "Product variant not found"}, status=404
         )
-    except Exception as e:
-        logger.error(f"Error adding favorite: {str(e)}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error adding favorite: %s", e)
         return JsonResponse(
             {"status": "error", "message": "Failed to add favorite"}, status=500
         )
@@ -1010,8 +1032,8 @@ def remove_favorite(request, variant_id):
         return JsonResponse(
             {"status": "error", "message": "Favorite not found"}, status=404
         )
-    except Exception as e:
-        logger.error(f"Error removing favorite: {str(e)}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error removing favorite: %s", e)
         return JsonResponse(
             {"status": "error", "message": "Failed to remove favorite"}, status=500
         )
@@ -1064,7 +1086,7 @@ def create_category_ajax(request):
                 }
             )
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return JsonResponse(
             {
                 "success": False,
@@ -1121,7 +1143,7 @@ def create_cloth_type_ajax(request):
                 }
             )
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return JsonResponse(
             {
                 "success": False,
@@ -1175,7 +1197,7 @@ def create_uom_ajax(request):
                     "data": str(form.errors),
                 }
             )
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return JsonResponse(
             {
                 "success": False,
@@ -1233,7 +1255,7 @@ def create_gst_hsn_code_ajax(request):
                     "data": str(form.errors),
                 }
             )
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return JsonResponse(
             {
                 "success": False,
@@ -1284,7 +1306,7 @@ def create_size_ajax(request):
                     "data": str(form.errors),
                 }
             )
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return JsonResponse(
             {
                 "success": False,
@@ -1319,7 +1341,7 @@ def create_color_ajax(request):
                     "data": str(form.errors),
                 }
             )
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return JsonResponse(
             {
                 "success": False,

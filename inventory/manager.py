@@ -1,3 +1,5 @@
+"""Custom model managers for the Inventory app."""
+
 from django.db import models
 from django.db.models import Sum, Case, When, F, Value, DecimalField
 from django.db.models.functions import Coalesce
@@ -132,5 +134,3 @@ class InventoryLogQuerySet(models.QuerySet):
 
 class InventoryLogManager(SoftDeleteManager.from_queryset(InventoryLogQuerySet)):
     """Manager that keeps soft-delete filtering while exposing queryset helpers."""
-
-    pass

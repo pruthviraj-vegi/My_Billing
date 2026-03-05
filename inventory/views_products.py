@@ -1,13 +1,19 @@
+"""
+Views for managing products, including creation, listing, editing, and detailed viewing.
+"""
+
+import logging
+
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Sum, F, Q
 from django.contrib import messages
 from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
-from .models import Product, ProductVariant, InventoryLog
-from .forms import ProductForm, CategoryForm, ClothTypeForm, UOMForm, GSTHsnCodeForm
-import logging
 
 from base.utility import render_paginated_response, table_sorting
+
+from .models import Product, ProductVariant
+from .forms import ProductForm, CategoryForm, ClothTypeForm, UOMForm, GSTHsnCodeForm
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +146,14 @@ def product_details(request, product_id):
 
 
 class CreateProduct(CreateView):
+    """
+    View for creating a new product.
+
+    Handles the rendering of the product creation form and the processing
+    of valid and invalid form submissions. Also provides forms for linked
+    entities like categories and cloth types.
+    """
+
     template_name = "inventory/product/form.html"
     form_class = ProductForm
     model = Product
@@ -159,7 +173,7 @@ class CreateProduct(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -170,6 +184,13 @@ class CreateProduct(CreateView):
 
 
 class EditProduct(UpdateView):
+    """
+    View for editing an existing product.
+
+    Handles the updating of product attributes and provides additional
+    forms for managing related fields such as category and units.
+    """
+
     template_name = "inventory/product/form.html"
     form_class = ProductForm
     model = Product
@@ -189,7 +210,7 @@ class EditProduct(UpdateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 

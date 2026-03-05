@@ -1,47 +1,48 @@
-from django.shortcuts import render, redirect, get_object_or_404, reverse
-from django.db.models import (
-    Sum,
-    F,
-    Q,
-    Case,
-    When,
-    Count,
-    Value,
-    DecimalField,
-    ExpressionWrapper,
-    FloatField,
-)
-from django.db.models.functions import Abs, Coalesce
-from django.db import models, transaction
+"""
+Views for handling inventory operations such as product creation, updates, and tracking.
+"""
+
+import json
+import logging
 from decimal import Decimal
-from django.contrib import messages
-from django.views.generic import View, DeleteView
-from django.http import JsonResponse
-
-from django.urls import reverse_lazy
-from .services import InventoryService
-
-from django.db.utils import IntegrityError
-from django.core.cache import cache
 from typing import Optional, Union
 
-from .forms import (
-    ProductForm,
-    VariantForm,
-    SizeForm,
-    ColorForm,
-    CategoryForm,
-    ClothTypeForm,
-    UOMForm,
-    GSTHsnCodeForm,
+from django.contrib import messages
+from django.db import models, transaction
+from django.db.models import (
+    Case,
+    Count,
+    DecimalField,
+    ExpressionWrapper,
+    F,
+    FloatField,
+    Q,
+    Sum,
+    Value,
+    When,
 )
-from .models import Product, ProductVariant, InventoryLog
+from django.db.models.functions import Abs, Coalesce
+from django.db.utils import IntegrityError
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render, reverse
+from django.views.generic import View
 
-from supplier.models import SupplierInvoice, Supplier
 from base.getDates import getDates
 from base.utility import render_paginated_response, table_sorting
+from supplier.models import Supplier, SupplierInvoice
 
-import logging, json
+from .forms import (
+    CategoryForm,
+    ClothTypeForm,
+    ColorForm,
+    GSTHsnCodeForm,
+    ProductForm,
+    SizeForm,
+    UOMForm,
+    VariantForm,
+)
+from .models import InventoryLog, Product, ProductVariant
+from .services import InventoryService
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,6 @@ def inventory_dashboard(request):
         ),
     )
 
-    # Calculate and cache total_stock_by_supplier (date-independent, loaded once)
     total_stock_data = _calculate_total_stock_by_supplier()
 
     context = {
@@ -328,6 +328,8 @@ def low_stock_page(request):
 
 
 class CreateProduct(View):
+    """View to handle product creation."""
+
     template_name = "inventory/product_create.html"
     title = "Create Product"
     session_initial_key = "create_product_initial"
@@ -335,10 +337,12 @@ class CreateProduct(View):
     ACTION_CREATE_ADD = "create_add"
 
     def get(self, request):
+        """Handle GET requests to render the product creation forms."""
         product_form, variant_form = self._get_initial_forms(request)
         return self._render_response(request, product_form, variant_form)
 
     def post(self, request):
+        """Handle POST requests to process the product creation forms."""
         product_form = ProductForm(request.POST)
         variant_form = VariantForm(request.POST)
         action = request.POST.get("action")
@@ -376,7 +380,7 @@ class CreateProduct(View):
             )
             messages.error(request, "A product with similar details already exists.")
             return self._render_response(request, product_form, variant_form)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.exception(
                 "Product creation failed unexpectedly",
                 extra={"user_id": request.user.id, "error": str(e)},
@@ -409,6 +413,7 @@ class CreateProduct(View):
         )
 
     def get_context_data(self, request, product_form=None, variant_form=None, **kwargs):
+        """Prepare context data for the product creation view."""
         context = {
             "title": self.title,
             "product_form": product_form or ProductForm(),
@@ -507,7 +512,8 @@ def variant_update(request, pk):
                             new_quantity=variant.quantity,
                             purchase_price=variant.purchase_price,
                             mrp=variant.mrp,
-                            notes=f"Price update: Purchase {old_purchase_price}→{variant.purchase_price}, Selling {old_mrp}→{variant.mrp}",
+                            notes=f"Price update: Purchase {old_purchase_price}→{variant.purchase_price}, "
+                            f"Selling {old_mrp}→{variant.mrp}",
                             created_by=request.user,
                         )
 
@@ -515,12 +521,12 @@ def variant_update(request, pk):
                         request, f"Successfully updated {variant.full_name}"
                     )
                     return redirect("inventory:variant_details", pk=pk)
-            except Exception as e:
-                logger.error(f"Error updating variant: {str(e)}")
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error("Error updating variant: %s", str(e))
                 messages.error(request, f"Error updating variant: {str(e)}")
     else:
         form = VariantForm(instance=variant)
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(request, "Please correct the errors below.")
 
     context = {
@@ -796,9 +802,9 @@ def supplier_invoice_details(request, invoice_id):
         "remaining_quantity",
         "-remaining_quantity",
     ]:
-        reverse = sort_by.startswith("-")
+        is_reverse = sort_by.startswith("-")
         field = sort_by.lstrip("-")
-        products_in_invoice.sort(key=lambda x: x[field], reverse=reverse)
+        products_in_invoice.sort(key=lambda x: x[field], reverse=is_reverse)
 
     # Single query for totals using aggregation
     totals = InventoryLog.objects.filter(supplier_invoice__id=invoice_id).aggregate(
