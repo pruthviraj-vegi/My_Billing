@@ -1,8 +1,24 @@
+"""
+Form definitions for the cart application.
+
+This module contains forms used to create, edit, and validate shopping carts
+before proceeding to checkout. It handles inputs such as advance payments and
+status changes.
+"""
+
 from django import forms
 from .models import Cart
 
 
 class CartForm(forms.ModelForm):
+    """
+    ModelForm for creating and updating Cart instances.
+
+    This form manages fields for the cart name, status, notes, and advance
+    payment. It also provides validation to ensure advance payments are
+    always non-negative.
+    """
+
     class Meta:
         model = Cart
         fields = ["name", "status", "notes", "advance_payment"]
@@ -35,12 +51,29 @@ class CartForm(forms.ModelForm):
         }
 
     def clean_advance_payment(self):
+        """
+        Validates the advance_payment field to ensure it is not negative.
+
+        Returns:
+            Decimal: The validated advance payment amount.
+
+        Raises:
+            ValidationError: If the advance payment is less than zero.
+        """
         advance_payment = self.cleaned_data.get("advance_payment")
         if advance_payment is not None and advance_payment < 0:
             raise forms.ValidationError("Advance payment cannot be negative")
         return advance_payment
 
     def __init__(self, *args, **kwargs):
+        """
+        Initializes the CartForm with custom labels, placeholders, and help text.
+
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments. May contain 'user' which is
+                      popped before passing to the model form initialization.
+        """
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
