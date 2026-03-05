@@ -1,9 +1,14 @@
-from django import template
-import locale
+"""
+Custom template filters for formatting currency, dates, and other utilities.
+"""
+
 import base64
-from datetime import datetime, timedelta
-from django.conf import settings
+import locale
 import logging
+from datetime import datetime, timedelta
+
+from django import template
+from django.conf import settings
 from num2words import num2words
 
 logger = logging.getLogger(__name__)
@@ -86,12 +91,12 @@ def _convert_to_numeric(value):
         return numeric_value
 
     except (ValueError, OverflowError) as e:
-        logger.warning(f"Failed to convert '{value}' to numeric: {e}")
+        logger.warning("Failed to convert '%s' to numeric: %s", value, e)
         return None
 
 
 @register.filter(name="currency")
-def currency(value, arg=None):
+def currency(value, _arg=None):
     """
     Bulletproof currency formatter that handles strings, integers, floats, and None values.
     Converts string inputs to appropriate numeric types before formatting.
@@ -104,23 +109,23 @@ def currency(value, arg=None):
         numeric_value = _convert_to_numeric(value)
 
         if numeric_value is None:
-            logger.warning(f"Could not convert value '{value}' to numeric format")
+            logger.warning("Could not convert value '%s' to numeric format", value)
             return "0.00"
 
         data = locale.format_string(
-            "%%.%df" % formate["frac_digits"],
+            f"%%.{formate['frac_digits']}f",
             numeric_value,
             grouping=formate["grouping"],
             monetary=False,
         )
         return data
     except (TypeError, ValueError, locale.Error) as e:
-        logger.error(f"Currency formatting error for value '{value}': {e}")
+        logger.error("Currency formatting error for value '%s': %s", value, e)
         return "0.00"
 
 
 @register.filter(name="currency_nonDecimal")
-def currency_nonDecimal(value, arg=None):
+def currency_non_decimal(value, _arg=None):
     """
     Bulletproof non-decimal currency formatter for integer values.
     """
@@ -132,7 +137,7 @@ def currency_nonDecimal(value, arg=None):
         numeric_value = _convert_to_numeric(value)
 
         if numeric_value is None:
-            logger.warning(f"Could not convert value '{value}' to numeric format")
+            logger.warning("Could not convert value '%s' to numeric format", value)
             return "0"
 
         # Convert to integer
@@ -145,7 +150,9 @@ def currency_nonDecimal(value, arg=None):
             monetary=False,
         )
     except (TypeError, ValueError, locale.Error) as e:
-        logger.error(f"Currency non-decimal formatting error for value '{value}': {e}")
+        logger.error(
+            "Currency non-decimal formatting error for value '%s': %s", value, e
+        )
         return "0"
 
 
@@ -167,7 +174,7 @@ def currency_abbreviation(value):
         numeric_value = _convert_to_numeric(value)
 
         if numeric_value is None:
-            logger.warning(f"Could not convert value '{value}' to numeric format")
+            logger.warning("Could not convert value '%s' to numeric format", value)
             return "0.00"
 
         # Check for 'k', 'M', 'B' abbreviations
@@ -189,22 +196,26 @@ def currency_abbreviation(value):
         return locale.format_string("%.2f", numeric_value, grouping=True)
 
     except (TypeError, ValueError, locale.Error) as e:
-        logger.error(f"Currency abbreviation formatting error for value '{value}': {e}")
+        logger.error(
+            "Currency abbreviation formatting error for value '%s': %s", value, e
+        )
         return "0.00"
 
 
 @register.filter(name="currencyToWord")
-def currencyToyWord(value, arg=None):
+def currency_to_word(value, _arg=None):
+    """Convert currency value to Indian Rupess text format."""
     try:
         amount = float(value)
         return num2words(amount, lang="en_IN", to="currency", currency="INR").title()
-    except BaseException as e:
-        logger.error(f"Currency to word formatting error for value '{value}': {e}")
+    except (ValueError, TypeError) as e:
+        logger.error("Currency to word formatting error for value '%s': %s", value, e)
         return value
 
 
 @register.filter(name="phone_number")
 def phone_number(value):
+    """Format a 10-digit phone number with a space in the middle."""
     if value is None:
         return ""
     try:
@@ -217,6 +228,7 @@ def phone_number(value):
 
 @register.filter(name="b64encode")
 def base64_encode(value):
+    """Encode a string or bytes using base64 and return a UTF-8 string."""
     return base64.b64encode(value).decode("utf-8")
 
 
@@ -229,13 +241,13 @@ def sub(value, arg):
 
         if numeric_value is None or numeric_arg is None:
             logger.warning(
-                f"Could not convert values '{value}' or '{arg}' to numeric format"
+                "Could not convert values '%s' or '%s' to numeric format", value, arg
             )
             return 0
 
         return numeric_value - numeric_arg
     except (TypeError, ValueError) as e:
-        logger.error(f"Subtraction error for values '{value}' and '{arg}': {e}")
+        logger.error("Subtraction error for values '%s' and '%s': %s", value, arg, e)
         return 0
 
 
@@ -248,19 +260,19 @@ def div(value, arg):
 
         if numeric_value is None or numeric_arg is None:
             logger.warning(
-                f"Could not convert values '{value}' or '{arg}' to numeric format"
+                "Could not convert values '%s' or '%s' to numeric format", value, arg
             )
             return 0
 
         if numeric_arg == 0:
             logger.warning(
-                f"Division by zero attempted with values '{value}' and '{arg}'"
+                "Division by zero attempted with values '%s' and '%s'", value, arg
             )
             return 0
 
         return numeric_value / numeric_arg
     except (TypeError, ValueError, ZeroDivisionError) as e:
-        logger.error(f"Division error for values '{value}' and '{arg}': {e}")
+        logger.error("Division error for values '%s' and '%s': %s", value, arg, e)
         return 0
 
 
@@ -273,18 +285,19 @@ def mul(value, arg):
 
         if numeric_value is None or numeric_arg is None:
             logger.warning(
-                f"Could not convert values '{value}' or '{arg}' to numeric format"
+                "Could not convert values '%s' or '%s' to numeric format", value, arg
             )
             return 0
 
         return numeric_value * numeric_arg
     except (TypeError, ValueError) as e:
-        logger.error(f"Multiplication error for values '{value}' and '{arg}': {e}")
+        logger.error("Multiplication error for values '%s' and '%s': %s", value, arg, e)
         return 0
 
 
 @register.filter(name="status_badge")
 def status_badge(value):
+    """Return a bootstrap badge color class based on status string value."""
     if str(value).lower() in ["active", "success", "true", "accepted"]:
         return "badge bg-success"
     elif str(value).lower() in ["inactive", "error", "danger", "false", "rejected"]:
@@ -319,8 +332,8 @@ def to_datetime(value):
             text = text[:-1]
         try:
             return datetime.fromisoformat(text)
-        except Exception as e:
-            logger.error(e)
+        except ValueError as e:
+            logger.error("Error parsing datetime '%s': %s", text, e)
             return None
     return None
 

@@ -1,6 +1,10 @@
-from django.urls import path
-from . import suggestions
+"""
+URL patterns for the suggestions app.
+"""
 
+from django.urls import path
+
+from . import suggestions
 
 app_name = "suggestions"
 

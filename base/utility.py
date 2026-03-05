@@ -1,5 +1,9 @@
-from datetime import datetime, date, timedelta
-from functools import wraps
+"""
+Utility functions for the base app.
+"""
+
+from datetime import date, datetime, timedelta
+
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.template.loader import render_to_string
@@ -81,7 +85,7 @@ class StringProcessor:
         )
         self.cleaned_string = cleaned_string.upper()
 
-    def toUppercase(self):
+    def toUppercase(self):  # pylint: disable=invalid-name
         """
         Returns the cleaned string in uppercase.
 
@@ -90,7 +94,7 @@ class StringProcessor:
         """
         return self.cleaned_string
 
-    def toLowercase(self):
+    def toLowercase(self):  # pylint: disable=invalid-name
         """
         Returns the cleaned string in lowercase.
 
@@ -99,7 +103,7 @@ class StringProcessor:
         """
         return self.cleaned_string.lower()
 
-    def toTitle(self):
+    def toTitle(self):  # pylint: disable=invalid-name
         """
         Returns the cleaned string in title case (first letter of each word capitalized).
 
@@ -108,7 +112,7 @@ class StringProcessor:
         """
         return self.cleaned_string.title()
 
-    def toCapitalize(self):
+    def toCapitalize(self):  # pylint: disable=invalid-name
         """
         Returns the cleaned string with only the first letter capitalized.
 
@@ -225,6 +229,9 @@ def get_periodic_data(date_filter, current_start, current_end):
 
 
 def get_period_label(start_date, end_date, period_type):
+    """
+    Format a readable label for a given date range and period type.
+    """
     if period_type == "daily":
         return start_date.strftime("%B %d, %Y")
     elif period_type == "monthly":

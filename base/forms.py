@@ -1,12 +1,17 @@
-# ------------------------------------------------------------------
-# File: accounts/forms.py
-# ------------------------------------------------------------------
+"""
+Authentication and user management forms.
+"""
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate
 
 
 class CustomLoginForm(AuthenticationForm):
+    """
+    Custom login form that uses phone number instead of a username for authentication.
+    """
+
     username = forms.CharField(
         max_length=15,
         widget=forms.TextInput(

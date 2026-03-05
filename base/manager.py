@@ -1,8 +1,7 @@
-# ==================================================================
-# File: core/models.py (or any central/utility app)
-# This file contains a reusable manager and an abstract model
-# for implementing soft delete functionality across your project.
-# ==================================================================
+"""
+Module containing a reusable softly-deleting Model manager and an abstract model
+for implementing soft delete functionality across the project.
+"""
 
 from django.db import models
 from django.utils import timezone
@@ -18,18 +17,22 @@ class SoftDeleteManager(models.Manager):
     """
 
     def get_queryset(self):
+        """Return a queryset that filters out soft-deleted items."""
         # By default, only return objects that are not deleted.
         return super().get_queryset().filter(is_deleted=False)
 
     def all_objects(self):
+        """Return a queryset encompassing ALL objects, including soft-deleted ones."""
         # Use this method to get ALL objects, including soft-deleted ones.
         return super().get_queryset()
 
     def deleted_objects(self):
+        """Return a queryset of ONLY soft-deleted objects."""
         # Use this method to get ONLY soft-deleted objects.
         return super().get_queryset().filter(is_deleted=True)
 
     def hard_delete(self):
+        """Permanently delete all objects in the current queryset."""
         # Use this for permanent deletion. Use with caution!
         return self.get_queryset().delete()
 

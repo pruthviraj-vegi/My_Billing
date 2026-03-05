@@ -1,7 +1,13 @@
+"""
+Decorators and mixins for the application.
+"""
+
 import time
 from functools import wraps
-from django.db import connection
+
 from django.conf import settings
+from django.db import connection
+from django.shortcuts import render
 
 
 def timed(fn):
@@ -19,10 +25,10 @@ def timed(fn):
         print(f"Time taken: {elapsed} seconds")
 
         # Store timing on the function itself
-        wrapper._last_elapsed_time = elapsed
+        wrapper.last_elapsed_time = elapsed
         return result
 
-    wrapper._last_elapsed_time = None  # init attribute
+    wrapper.last_elapsed_time = None  # init attribute
     return wrapper
 
 
@@ -54,8 +60,6 @@ def query_debugger(func):
 
     return wrapper
 
-
-from django.shortcuts import render
 
 # ── Role group constants ─────────────────────────────────────────
 ALL_ROLES = ["OWNER", "MANAGER", "CASHIER", "STAFF", "SALESPERSON"]
@@ -129,6 +133,7 @@ class RoleRequiredMixin:
     allowed_roles = []
 
     def dispatch(self, request, *args, **kwargs):
+        """Check if user role is in allowed roles before dispatching request."""
         if request.user.role not in self.allowed_roles:
             _log_unauthorized_access(
                 request, self.__class__.__name__, self.allowed_roles

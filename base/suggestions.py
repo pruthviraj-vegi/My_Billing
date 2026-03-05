@@ -1,17 +1,20 @@
-import re
+"""
+Provides search and autosuggestion logic for customers, invoices, products, and suppliers.
+"""
+
 import logging
+import re
+
 from django.core.cache import cache
-from django.core.cache.backends.base import InvalidCacheBackendError
 from django.http import JsonResponse
+from rapidfuzz import fuzz, process
+
 from customer.models import Customer
-from invoice.models import Invoice
 from inventory.models import Product, ProductVariant
-from rapidfuzz import process, fuzz
+from invoice.models import Invoice
 from supplier.models import Supplier
 
 logger = logging.getLogger(__name__)
-
-
 # Precompiled regex for speed
 TOKENIZER = re.compile(r"[a-zA-Z0-9]+")
 
@@ -75,9 +78,12 @@ def invalidate_cache(cache_key):
     """
     try:
         cache.delete(cache_key)
-        logger.info(f"Cache invalidated for key: {cache_key}")
-    except Exception as e:
-        logger.error(f"Failed to invalidate cache for key {cache_key}: {e}")
+        logger.info("Cache invalidated for key: %s", cache_key)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # We catch Exception here because cache backends can raise various
+        # underlying backend-specific errors (e.g., redis.exceptions.ConnectionError,
+        # memcache.Client.MemcachedKeyError) that aren't wrapped by Django.
+        logger.error("Failed to invalidate cache for key %s: %s", cache_key, e)
 
 
 def get_related_words(query, list_of_words, limit=10, score_cutoff=60):
@@ -126,10 +132,13 @@ def get_search_words(
         searchable_items = cache.get(cache_key)
         if searchable_items is not None:
             return get_related_words(query, searchable_items)
-    except (InvalidCacheBackendError, Exception) as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Cache backends can raise various underlying backend-specific errors not wrapped by Django
         # Redis might be down or misconfigured - log and continue without cache
         logger.warning(
-            f"Cache read failed for key '{cache_key}': {e}. Proceeding without cache."
+            "Cache read failed for key '%s': %s. Proceeding without cache.",
+            cache_key,
+            e,
         )
 
     # 2. Stream from DB efficiently (iterator avoids full memory load)
@@ -157,10 +166,13 @@ def get_search_words(
     # 4. Save in cache (Redis-compatible - Django handles serialization)
     try:
         cache.set(cache_key, searchable_items, cache_timeout)
-    except (InvalidCacheBackendError, Exception) as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Cache backends can raise various underlying backend-specific errors not wrapped by Django
         # Redis might be down - log but don't fail the request
         logger.warning(
-            f"Cache write failed for key '{cache_key}': {e}. Results returned without caching."
+            "Cache write failed for key '%s': %s. Results returned without caching.",
+            cache_key,
+            e,
         )
 
     # 5. Get suggestions
@@ -168,6 +180,7 @@ def get_search_words(
 
 
 def customer_all_suggestions(request):
+    """View to return JSON suggestions for customers."""
     query = request.GET.get("q", "").strip()
 
     if not query or len(query) < 2:
@@ -184,6 +197,7 @@ def customer_all_suggestions(request):
 
 
 def invoice_all_suggestions(request):
+    """View to return JSON suggestions for invoices."""
     query = request.GET.get("q", "").strip()
 
     if not query or len(query) < 2:
@@ -200,7 +214,7 @@ def invoice_all_suggestions(request):
 
 
 def product_all_suggestions(request):
-
+    """View to return JSON suggestions for products."""
     query = request.GET.get("q", "").strip()
 
     if not query or len(query) < 2:
@@ -217,6 +231,7 @@ def product_all_suggestions(request):
 
 
 def product_variant_all_suggestions(request):
+    """View to return JSON suggestions for product variants."""
     query = request.GET.get("q", "").strip()
 
     if not query or len(query) < 2:
@@ -233,6 +248,7 @@ def product_variant_all_suggestions(request):
 
 
 def supplier_all_suggestions(request):
+    """View to return JSON suggestions for suppliers."""
     query = request.GET.get("q", "").strip()
 
     if not query or len(query) < 2:

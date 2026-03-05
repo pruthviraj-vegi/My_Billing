@@ -1,3 +1,7 @@
+"""
+URL patterns for the base app.
+"""
+
 from django.urls import path
 from . import views
 
