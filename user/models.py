@@ -10,7 +10,6 @@ from base.utility import StringProcessor
 from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MinValueValidator
-from django.utils import timezone
 
 from base.manager import SoftDeleteModel
 
@@ -319,3 +318,31 @@ class LoginEvent(models.Model):
 
     def __str__(self):
         return f"{self.user_id} {self.event_type} {self.occurred_at.isoformat()}"
+
+
+class UnauthorizedAccess(models.Model):
+    user = models.ForeignKey(
+        "CustomUser",  # or 'yourapp.CustomUser' if in different app
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="User who attempted unauthorized access",
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+    view_name = models.CharField(max_length=255, help_text="Name of the view/function")
+    user_role = models.CharField(
+        max_length=20, help_text="Role of the user at time of attempt"
+    )
+    required_roles = models.CharField(
+        max_length=255, help_text="Roles that were required"
+    )
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    url_path = models.CharField(max_length=500, null=True, blank=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+        verbose_name = "Unauthorized Access Attempt"
+        verbose_name_plural = "Unauthorized Access Attempts"
+
+    def __str__(self):
+        return f"{self.user} - {self.view_name} at {self.timestamp}"

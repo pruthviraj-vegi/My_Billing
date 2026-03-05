@@ -18,10 +18,18 @@ from base.utility import (
     render_paginated_response,
     table_sorting,
 )
+from base.decorators import (
+    require_role,
+    RoleRequiredMixin,
+    ALL_ROLES,
+    OWNER_ONLY,
+    MANAGEMENT,
+)
 
 logger = logging.getLogger(__name__)
 
 
+@require_role(MANAGEMENT)
 def dashboard(request):
     """
     Customer management dashboard with analytics and insights.
@@ -194,6 +202,7 @@ def get_period_data(invoices, start_date, end_date, period_type):
         ]
 
 
+@require_role(MANAGEMENT)
 def dashboard_fetch(request):
     """
     AJAX endpoint to fetch customer dashboard data
@@ -377,6 +386,7 @@ VALID_SORT_FIELDS = {
 CUSTOMERS_PER_PAGE = 20
 
 
+@require_role(ALL_ROLES)
 def home(request):
     """Customer management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -408,6 +418,7 @@ def get_data(request):
     return customers
 
 
+@require_role(ALL_ROLES)
 def fetch_customers(request):
     """AJAX endpoint to fetch customers with search, filter, and pagination."""
     customers = get_data(request)
@@ -419,11 +430,12 @@ def fetch_customers(request):
     )
 
 
-class CreateCustomer(CreateView):
+class CreateCustomer(RoleRequiredMixin, CreateView):
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
     success_url = reverse_lazy("customer:home")
+    allowed_roles = ALL_ROLES
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -445,11 +457,12 @@ class CreateCustomer(CreateView):
         return reverse_lazy("customer:home")
 
 
-class EditCustomer(UpdateView):
+class EditCustomer(RoleRequiredMixin, UpdateView):
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
     success_url = reverse_lazy("customer:home")
+    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -469,9 +482,10 @@ class EditCustomer(UpdateView):
         return super().form_invalid(form)
 
 
-class DeleteCustomer(DeleteView):
+class DeleteCustomer(RoleRequiredMixin, DeleteView):
     model = Customer
     template_name = "customer/delete.html"
+    allowed_roles = MANAGEMENT
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -496,6 +510,7 @@ class DeleteCustomer(DeleteView):
         return super().form_invalid(form)
 
 
+@require_role(MANAGEMENT)
 def customer_detail(request, pk):
     """View customer details."""
     customer = get_object_or_404(Customer, id=pk)
@@ -506,6 +521,7 @@ def customer_detail(request, pk):
     return render(request, "customer/detail.html", context)
 
 
+@require_role(MANAGEMENT)
 def fetch_customer_invoices(request, pk):
     """AJAX: fetch invoices for a customer with pagination and optional sorting."""
     customer = get_object_or_404(Customer, id=pk)
@@ -559,6 +575,7 @@ def get_calculations(pk):
     }
 
 
+@require_role(OWNER_ONLY)
 def customer_delete(request, customer_id):
     """Delete customer (soft delete)."""
     if request.method == "POST":
@@ -570,6 +587,7 @@ def customer_delete(request, customer_id):
     return redirect("customer:home")
 
 
+@require_role(ALL_ROLES)
 def create_customer_ajax(request):
     """AJAX endpoint for creating customers via modal"""
     try:

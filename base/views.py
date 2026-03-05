@@ -6,6 +6,7 @@ from django.shortcuts import redirect, render
 from .forms import CustomLoginForm
 from django.contrib.auth import logout
 from django.utils.http import url_has_allowed_host_and_scheme
+from base.decorators import RoleRequiredMixin, ALL_ROLES
 
 
 class CustomLoginView(LoginView):
@@ -59,12 +60,14 @@ class CustomLoginView(LoginView):
         messages.error(
             self.request, "Invalid phone number or password. Please try again."
         )
+
         return super().form_invalid(form)
 
 
-class HomeView(TemplateView):
+class HomeView(RoleRequiredMixin, TemplateView):
     template_name = "base/home.html"
     login_url = "base:login"
+    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

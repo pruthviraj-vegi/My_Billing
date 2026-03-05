@@ -345,3 +345,76 @@ def range_filter(value):
         return range(int(value))
     except (ValueError, TypeError):
         return range(0)
+
+
+@register.filter(name="sale_percentage")
+def get_sale_percentage(remaining_quantity, total_quantity):
+    """
+    Calculate sold percentage and return status badge class.
+
+    Args:
+        remaining_quantity: Units still in stock
+        total_quantity: Total units received
+
+    Returns:
+        - "active" (green): >90% sold - Excellent!
+        - "warning" (yellow): 50-90% sold - OK
+        - "danger" (red): <50% sold - Poor/Slow moving
+        - "secondary" (gray): No stock/invalid
+    """
+    if total_quantity == 0:
+        return "secondary"
+    try:
+        # Calculate SOLD percentage
+        sold_quantity = total_quantity - remaining_quantity
+        sold_percentage = (sold_quantity / total_quantity) * 100
+
+        if sold_percentage >= 90:
+            return "active"  # Green - Awesome! Almost sold out
+        elif sold_percentage >= 50:
+            return "warning"  # Yellow - OK, decent sales
+        else:
+            return "danger"  # Red - Poor, slow moving stock
+    except (ValueError, TypeError):
+        return "secondary"
+
+
+# ── Role-based template visibility ────────────────────────────────
+
+
+@register.filter(name="has_role")
+def has_role(user, roles_string):
+    """
+    Check if user's role matches any of the given roles.
+
+    Usage:
+        {% if user|has_role:"OWNER,MANAGER" %}
+            <a href="...">Delete</a>
+        {% endif %}
+
+    Args:
+        user: The user object (must have a `role` attribute)
+        roles_string: Comma-separated role names (e.g. "OWNER,MANAGER")
+    """
+    if not hasattr(user, "role"):
+        return False
+    allowed = [r.strip() for r in roles_string.split(",")]
+    return user.role in allowed
+
+
+@register.simple_tag
+def role_is(user, roles_string):
+    """
+    Assignment tag to check user role — use with `as` for reusable variables.
+
+    Usage:
+        {% role_is user "OWNER,MANAGER" as is_management %}
+        {% if is_management %}
+            <a href="...">Delete</a>
+            <a href="...">Dashboard</a>
+        {% endif %}
+    """
+    if not hasattr(user, "role"):
+        return False
+    allowed = [r.strip() for r in roles_string.split(",")]
+    return user.role in allowed

@@ -13,14 +13,16 @@ from base.utility import render_paginated_response
 from decimal import Decimal
 import logging
 import json
+from base.decorators import require_role, RoleRequiredMixin, ALL_ROLES, OWNER_ONLY
 
 logger = logging.getLogger(__name__)
 
 
-class CartMainPageView(TemplateView):
+class CartMainPageView(RoleRequiredMixin, TemplateView):
     """Template view to render the main cart management page"""
 
     template_name = "cart/main_page.html"
+    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         """Add carts data to context with optimized queries"""
@@ -35,6 +37,7 @@ class CartMainPageView(TemplateView):
         return context
 
 
+@require_role(ALL_ROLES)
 def getCartData(request, pk):
     template_name = "cart/main_page.html"
 
@@ -82,10 +85,11 @@ def getCartData(request, pk):
     return render(request, template_name, context)
 
 
-class CreateCart(CreateView):
+class CreateCart(RoleRequiredMixin, CreateView):
     model = Cart
     template_name = "cart/form.html"
     form_class = CartForm
+    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -103,10 +107,11 @@ class CreateCart(CreateView):
         return super().form_invalid(form)
 
 
-class EditCart(UpdateView):
+class EditCart(RoleRequiredMixin, UpdateView):
     model = Cart
     template_name = "cart/form.html"
     form_class = CartForm
+    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -118,6 +123,7 @@ class EditCart(UpdateView):
         return reverse("cart:getCartData", kwargs={"pk": self.object.id})
 
 
+@require_role(ALL_ROLES)
 def auto_cart_create(request):
     """Auto create cart"""
 
@@ -135,6 +141,7 @@ def auto_cart_create(request):
     return redirect("cart:getCartData", pk=cart.id)
 
 
+@require_role(ALL_ROLES)
 def get_favorites(request):
     favorites = (
         FavoriteVariant.objects.filter(user=request.user)
@@ -144,6 +151,7 @@ def get_favorites(request):
     return render_paginated_response(request, favorites, "cart/models/favorites.html")
 
 
+@require_role(ALL_ROLES)
 def custom_search(request):
     variants = get_variants_data(request)
     return render_paginated_response(
@@ -152,6 +160,7 @@ def custom_search(request):
 
 
 # API Views for Cart Operations
+@require_role(ALL_ROLES)
 @require_http_methods(["POST"])
 def scan_barcode(request):
     """Scan barcode and add product to cart"""
@@ -269,6 +278,7 @@ def scan_barcode(request):
         )
 
 
+@require_role(ALL_ROLES)
 @require_http_methods(["PUT", "DELETE"])
 def manage_cart_item(request, item_id):
     """Update or delete cart item"""
@@ -363,6 +373,7 @@ def manage_cart_item(request, item_id):
         )
 
 
+@require_role(OWNER_ONLY)
 @require_http_methods(["POST"])
 def archive_cart(request, cart_id):
     """Archive a cart"""
@@ -381,6 +392,7 @@ def archive_cart(request, cart_id):
         )
 
 
+@require_role(ALL_ROLES)
 @require_http_methods(["POST"])
 def clear_cart(request, cart_id):
     """Clear all items from a cart"""
