@@ -1,18 +1,19 @@
-from report.models import InvoicePDF, CustomerStatementPDF
-from invoice.models import InvoiceItem
-from setting.models import ShopDetails, ReportConfiguration, PaymentDetails
-from report.views import generatePdf
-from customer.models import Customer
-from customer.views_credit import _build_ledger_rows, get_opening_balance
-from base.getDates import getDates
-from datetime import datetime
-import qrcode
-import io
+"""Service layer for generating and caching PDF reports (invoices, statements)."""
+
 import base64
+import io
 import logging
+from datetime import datetime
+
+import qrcode
 import requests
 from django.contrib.auth.views import login_not_required
+
 from customer.views_credit import _build_ledger_rows, get_opening_balance
+from invoice.models import InvoiceItem
+from report.models import InvoicePDF, CustomerStatementPDF
+from report.views import generate_pdf
+from setting.models import ShopDetails, ReportConfiguration, PaymentDetails
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def generate_invoice_pdf(invoice, request):
             - filename: PDF filename
 
     Raises:
-        Exception: If PDF generation or upload fails
+        RuntimeError: If PDF generation or upload fails
     """
     # Check if valid PDF exists (not outdated)
     existing_pdf = InvoicePDF.get_valid_pdf(invoice)
@@ -49,7 +50,7 @@ def generate_invoice_pdf(invoice, request):
                     "pdf_status": "cached",
                     "filename": existing_pdf.filename,
                 }
-        except Exception as e:
+        except (requests.RequestException, OSError):
             pass
 
     # PDF doesn't exist, is outdated, or URL is invalid; generate new one
@@ -94,17 +95,23 @@ def generate_invoice_pdf(invoice, request):
         and payment_details.upi_id
     ):
         try:
-            qr_data = f"upi://pay?pa={payment_details.upi_id}&pn={shop_details.shop_name}&am={invoice.net_amount_due}&tn=for bill no {invoice.invoice_number}&cu=INR"
+            qr_data = (
+                f"upi://pay?pa={payment_details.upi_id}"
+                f"&pn={shop_details.shop_name}"
+                f"&am={invoice.net_amount_due}"
+                f"&tn=for bill no {invoice.invoice_number}"
+                f"&cu=INR"
+            )
             qr_code = qrcode.make(qr_data)
             image_bytes = io.BytesIO()
             qr_code.save(image_bytes, format="PNG")
             context["qrcode"] = base64.b64encode(image_bytes.getvalue()).decode()
-        except Exception as e:
-            logger.error(f"Error generating QR code: {e}")
+        except (ValueError, OSError) as exc:
+            logger.error("Error generating QR code: %s", exc)
 
     filename = f"{invoice.invoice_number}"
 
-    pdf_response = generatePdf(
+    pdf_response = generate_pdf(
         template, filename, context, request, report_type="INVOICE", upload_to_r2=True
     )
 
@@ -115,10 +122,10 @@ def generate_invoice_pdf(invoice, request):
         r2_url = pdf_response.r2_url
     else:
         logger.error("Failed to upload PDF to R2")
-        raise Exception("Failed to upload PDF to cloud storage")
+        raise RuntimeError("Failed to upload PDF to cloud storage")
 
     # Create new PDF record with current invoice timestamp
-    invoice_pdf = InvoicePDF.create_pdf_record(
+    pdf_record = InvoicePDF.create_pdf_record(
         invoice=invoice,
         pdf_url=r2_url,
         filename=f"{filename}.pdf",
@@ -126,10 +133,10 @@ def generate_invoice_pdf(invoice, request):
     )
 
     data = {
-        "url": invoice_pdf.pdf_url,
-        "generated_at": invoice_pdf.generated_at.isoformat(),
+        "url": pdf_record.pdf_url,
+        "generated_at": pdf_record.generated_at.isoformat(),
         "pdf_status": "newly_generated",
-        "filename": invoice_pdf.filename,
+        "filename": pdf_record.filename,
     }
 
     return data
@@ -154,7 +161,7 @@ def generate_statement_pdf(customer, start_date, end_date, request):
             - filename: PDF filename
 
     Raises:
-        Exception: If PDF generation or upload fails
+        RuntimeError: If PDF generation or upload fails
     """
     # Build ledger data
     existing_pdf = CustomerStatementPDF.get_valid_pdf(
@@ -171,7 +178,7 @@ def generate_statement_pdf(customer, start_date, end_date, request):
                     "pdf_status": "cached",
                     "filename": existing_pdf.filename,
                 }
-        except Exception as e:
+        except (requests.RequestException, OSError):
             pass
 
     ledger = _build_ledger_rows(customer, start_date, end_date)
@@ -196,10 +203,13 @@ def generate_statement_pdf(customer, start_date, end_date, request):
     }
 
     template = "customer_credit_ind.html"
-    filename = f"statement ({start_date.strftime('%d-%m-%Y')} - {end_date.strftime('%d-%m-%Y')})"
+    filename = (
+        f"statement ({start_date.strftime('%d-%m-%Y')}"
+        f" - {end_date.strftime('%d-%m-%Y')})"
+    )
 
     # Generate PDF with R2 upload enabled
-    pdf_response = generatePdf(
+    pdf_response = generate_pdf(
         template,
         filename,
         context,
@@ -215,10 +225,10 @@ def generate_statement_pdf(customer, start_date, end_date, request):
         r2_url = pdf_response.r2_url
     else:
         logger.error("Failed to upload PDF to R2")
-        raise Exception("Failed to upload PDF to cloud storage")
+        raise RuntimeError("Failed to upload PDF to cloud storage")
 
     # Create new PDF record with current invoice timestamp
-    invoice_pdf = CustomerStatementPDF.create_pdf_record(
+    CustomerStatementPDF.create_pdf_record(
         customer=customer,
         pdf_url=r2_url,
         from_date=start_date,

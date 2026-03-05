@@ -1,18 +1,18 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
+"""Invoice views for dashboard, CRUD operations, and search."""
+
+import logging
+from datetime import timedelta
+from decimal import Decimal
+
+from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q, Sum, Count, F, DecimalField, OuterRef, Subquery
 from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, Coalesce
-from django.contrib import messages
-from django.views import View
-from cart.models import Cart
-from .form import InvoiceForm
-from .models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceItem
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
-from django.db import transaction
-from inventory.services import InventoryService
-from datetime import timedelta
-from customer.forms import CustomerForm
-from decimal import Decimal
+from django.views import View
+
 from base.getDates import getDates
 from base.utility import (
     get_periodic_data,
@@ -20,9 +20,12 @@ from base.utility import (
     render_paginated_response,
     table_sorting,
 )
-from customer.signals import reallocate_customer_payments
+from cart.models import Cart
+from customer.forms import CustomerForm
+from inventory.services import InventoryService
 
-import logging
+from invoice.form import InvoiceForm
+from invoice.models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceItem
 
 
 logger = logging.getLogger(__name__)
@@ -72,7 +75,6 @@ def invoice_dashboard_fetch(request):
     # Calculate profit from invoice items in a single query
     # Note: We need to account for returned items when calculating profit
     # actual_quantity = quantity - returned_quantity
-    from .models import ReturnInvoiceItem
 
     returned_subquery = (
         ReturnInvoiceItem.objects.filter(
@@ -315,7 +317,7 @@ def get_comparison_data(date_filter, current_start, current_end):
     }
 
 
-def get_period_data(invoices, start_date, end_date, period_type):
+def get_period_data(invoices, start_date, _end_date, period_type):
     """
     Get aggregated data for a specific period using database-level grouping
 
@@ -581,7 +583,7 @@ VALID_SORT_FIELDS = {
 }
 
 
-def invoiceHome(request):
+def invoice_home(request):
     """Invoice management main page - initial load only."""
     # For initial page load, just render the template with empty data
 
@@ -600,6 +602,7 @@ def invoiceHome(request):
 
 
 def get_data(request):
+    """Build filtered and sorted invoice queryset from request params."""
     # Get search and filter parameters
     search_query = request.GET.get("search", "")
     status_filter = request.GET.get("status", "")
@@ -632,14 +635,14 @@ def get_data(request):
     invoices = Invoice.objects.select_related("customer").filter(filters)
 
     # ---------------- SORTING MAP ----------------
-    SORT_MAP = {
+    sort_map = {
         "gst_bills": ("invoice_type", Invoice.Invoice_type.GST),
         "cash_bills": ("invoice_type", Invoice.Invoice_type.CASH),
     }
 
     # Special type sorting
-    if sort_by in SORT_MAP:
-        field, value = SORT_MAP[sort_by]
+    if sort_by in sort_map:
+        field, value = sort_map[sort_by]
         invoices = invoices.filter(**{field: value}).order_by("-invoice_date")
 
     # Validate sort field
@@ -661,10 +664,13 @@ def fetch_invoices(request):
 
 
 class CreateInvoice(View):
+    """Create a new invoice from a cart."""
+
     template_name = "invoice/form.html"
     form_class = InvoiceForm
 
     def get(self, request, pk):
+        """Display the invoice creation form for a given cart."""
         cart = get_object_or_404(Cart, id=pk)
         if int(cart.total_amount) <= 0:
             messages.error(request, "Cart is empty")
@@ -685,6 +691,7 @@ class CreateInvoice(View):
         return render(request, self.template_name, context)
 
     def post(self, request, pk):
+        """Process invoice creation from cart items."""
         cart = get_object_or_404(Cart, id=pk)
         if int(cart.total_amount) <= 0:
             messages.error(request, "Cart is empty")
@@ -713,7 +720,10 @@ class CreateInvoice(View):
                         variant=item.product_variant,
                         quantity_sold=item.quantity,
                         user=request.user,
-                        notes=f"Invoice {invoice.invoice_number} - {item.product_variant.product.name}",
+                        notes=(
+                            f"Invoice {invoice.invoice_number}"
+                            f" - {item.product_variant.product.name}"
+                        ),
                         invoice_item=invoice_item,
                     )
 
@@ -725,14 +735,17 @@ class CreateInvoice(View):
 
         else:
             context = {"cart": cart, "form": form, "title": "Create Invoice"}
-            logger.error(f"Form invalid: {form.errors}")
+            logger.error("Form invalid: %s", form.errors)
             return render(request, self.template_name, context)
 
 
 class InvoiceDetail(View):
+    """Display detailed view of a single invoice."""
+
     template_name = "invoice/detail.html"
 
     def get(self, request, pk):
+        """Render invoice detail page with return history."""
         invoice = get_object_or_404(Invoice, id=pk)
 
         # Get return invoices for this invoice
@@ -796,10 +809,13 @@ class InvoiceDetail(View):
 
 
 class InvoiceEdit(View):
+    """Edit an existing invoice."""
+
     template_name = "invoice/form.html"
     form_class = InvoiceForm
 
     def get(self, request, pk):
+        """Display the edit form for an existing invoice."""
         invoice = get_object_or_404(Invoice, id=pk)
         form = self.form_class(instance=invoice)
         context = {
@@ -811,6 +827,7 @@ class InvoiceEdit(View):
         return render(request, self.template_name, context)
 
     def post(self, request, pk):
+        """Process invoice update with payment type change handling."""
         invoice = get_object_or_404(Invoice, id=pk)
         form = self.form_class(request.POST, instance=invoice)
 
@@ -837,7 +854,7 @@ class InvoiceEdit(View):
             messages.success(request, "Invoice updated successfully")
             return redirect("invoice:detail", pk=invoice.id)
 
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
 
         context = {
             "invoice": invoice,
@@ -848,7 +865,10 @@ class InvoiceEdit(View):
 
 
 class InvoiceDelete(View):
+    """Delete an invoice."""
+
     def get(self, request, pk):
+        """Delete the specified invoice and redirect to home."""
         invoice = get_object_or_404(Invoice, id=pk)
         invoice.delete()
         messages.success(request, "Invoice deleted successfully")
@@ -856,10 +876,12 @@ class InvoiceDelete(View):
 
 
 def search_invoices_home(request):
+    """Render the invoice search page."""
     return render(request, "search_invoice/home.html")
 
 
 def fetch_search_invoices(request):
+    """AJAX endpoint to search invoices by barcode."""
     search_query = request.GET.get("search", "")
     invoice_items = (
         InvoiceItem.objects.filter(product_variant__barcode__iexact=search_query)

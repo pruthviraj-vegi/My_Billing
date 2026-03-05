@@ -17,10 +17,8 @@
                     {{ invoice.remaining_percentage|floatformat:2 }}%
                 </span>
             </td>
+            <td>{{ invoice.products_count }}</td>
             <td>
-                <span class="badge bg-secondary">{{ invoice.products_count }}</span>
-            </td>
-            <td class="text-right">
                 <div class="action-buttons">
                     <a href="{% url 'inventory:supplier_invoice_details' invoice.id %}"
                        class="btn-action btn-view"
@@ -33,7 +31,7 @@
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="11" class="text-center empty-state-container p-3">
+        <td colspan="100" class="text-center p-3">
             <div class="empty-state">
                 <i class="fas fa-inbox"></i>
                 <h4>No Supplier Invoices Found</h4>

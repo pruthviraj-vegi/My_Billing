@@ -1,36 +1,47 @@
-from decimal import Decimal
-import logging
-from weasyprint import HTML
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse
-from django.template.loader import get_template
+"""Report views for generating PDFs, invoices, barcodes, and reports."""
+
+import base64
 import io
+import logging
+from datetime import datetime
+from decimal import Decimal
+from io import BytesIO
+
 import qrcode
 from barcode import Code128
 from barcode.base import Barcode
 from barcode.writer import SVGWriter
-import base64
-from PIL import Image
+from django.conf import settings
+from django.db.models import Sum
+from django.db.models.functions import Coalesce
+from django.http import HttpResponse
+from django.shortcuts import render, get_object_or_404
+from django.template.loader import get_template
+from weasyprint import HTML
+
+from base.getDates import getDates
+from cart.models import Cart, CartItem
+from customer.models import Customer
+from customer.views import get_data as get_customers_data
+from customer.views_credit import (
+    _build_ledger_rows,
+    credit_customers_data,
+    total_credit_customers_data,
+    get_opening_balance,
+)
 from inventory.models import ProductVariant
+from inventory.views_variant import get_variants_data
 from invoice.models import Invoice, InvoiceItem
+from invoice.views_report import (
+    get_invoice_report_data,
+    get_invoice_cancled_data,
+    get_invoice_return_data,
+)
 from setting.models import (
     ShopDetails,
     ReportConfiguration,
     PaymentDetails,
     BarcodeConfiguration,
-)
-from cart.models import Cart, CartItem
-from customer.models import Customer
-from customer.views_credit import _build_ledger_rows
-from datetime import datetime
-from django.db.models import Sum
-from django.db.models.functions import Coalesce
-from base.getDates import getDates
-from customer.views import get_data as get_customers_data
-from customer.views_credit import (
-    credit_customers_data,
-    total_credit_customers_data,
-    get_opening_balance,
 )
 from supplier.views import (
     get_suppliers_data,
@@ -39,42 +50,35 @@ from supplier.views import (
     SupplierInvoice,
     get_supplier_report_data,
 )
-from inventory.views_variant import get_variants_data
-from invoice.views_report import (
-    get_invoice_report_data,
-    get_invoice_cancled_data,
-    get_invoice_return_data,
-)
-from django.conf import settings
-
-
-from io import BytesIO
 
 Barcode.default_writer_options["write_text"] = False
 
 logger = logging.getLogger(__name__)
 
 try:
-    from api.cloudflare import upload_pdf_to_r2, BucketType
-except Exception as e:
-    logger.error(f"Failed to import R2 modules: {e}")
+    from api.cloudflare import upload_pdf_to_r2, BucketType, R2StorageError
+except Exception:  # pylint: disable=broad-exception-caught
+    logger.error("Failed to import R2 modules")
     raise
 
 
-# general pdf creation values for all data
-def generatePdf(
+def generate_pdf(
     template_name,
-    file_name,
+    _file_name,
     context,
     request,
     report_type="INVOICE",
     upload_to_r2=False,
 ):
-    """
-    Generate PDF and optionally upload to R2 storage.
+    """Generate PDF and optionally upload to R2 storage.
 
     Args:
-        upload_to_r2: Set to True when you want to upload this specific PDF
+        template_name: Name of the template to render.
+        _file_name: Reserved for future use (filename hint).
+        context: Template context dictionary.
+        request: The HTTP request object.
+        report_type: Type of report (INVOICE or STATEMENT).
+        upload_to_r2: Set to True when you want to upload this specific PDF.
     """
     # Get shop details
     shop_details = ShopDetails.objects.filter(is_active=True).first()
@@ -113,11 +117,11 @@ def generatePdf(
                 file_obj=pdf_buffer, filename=filename, bucket_type=bucket_type
             )
 
-            logger.info(f"PDF uploaded to R2: {r2_url}")
+            logger.info("PDF uploaded to R2: %s", r2_url)
             return r2_url
 
-        except R2StorageError as e:
-            logger.error(f"Failed to upload PDF to R2: {str(e)}")
+        except R2StorageError as exc:
+            logger.error("Failed to upload PDF to R2: %s", exc)
             return None
 
     # Return HTTP response
@@ -127,8 +131,8 @@ def generatePdf(
     return response
 
 
-# create invoice page
-def createInvoice(request, pk):
+def create_invoice(request, pk):
+    """Create and render an invoice page for the given invoice ID."""
     template = None
 
     invoice = Invoice.objects.select_related("customer", "created_by").get(id=pk)
@@ -154,7 +158,7 @@ def createInvoice(request, pk):
         .first()
     )
 
-    if report_config.paper_size == ReportConfiguration.PaperSize._58mm:
+    if report_config.paper_size == "58mm":
         template = "report/58mm.html"
     else:
         template = "report/A5.html"
@@ -176,18 +180,25 @@ def createInvoice(request, pk):
     ):
         try:
             # Create UPI payment QR code
-            qr_data = f"upi://pay?pa={payment_details.upi_id}&pn={shop_details.shop_name}&am={invoice.net_amount_due}&tn=for bill no {invoice.invoice_number}&cu=INR"
+            qr_data = (
+                f"upi://pay?pa={payment_details.upi_id}"
+                f"&pn={shop_details.shop_name}"
+                f"&am={invoice.net_amount_due}"
+                f"&tn=for bill no {invoice.invoice_number}"
+                f"&cu=INR"
+            )
             qr_code = qrcode.make(qr_data)
             image_bytes = io.BytesIO()
             qr_code.save(image_bytes, format="PNG")
             context["qrcode"] = base64.b64encode(image_bytes.getvalue()).decode()
-        except Exception as e:
-            logger.error(f"Error generating QR code: {e}")
+        except (ValueError, OSError) as exc:
+            logger.error("Error generating QR code: %s", exc)
 
     return render(request, template, context)
 
 
 def estimate_invoice(request, pk):
+    """Render an estimate invoice page for the given estimate ID."""
     template = "report/estimate.html"
     estimate = Cart.objects.get(id=pk)
     values = CartItem.objects.filter(cart__id=pk)
@@ -204,8 +215,8 @@ def estimate_invoice(request, pk):
     return render(request, template, context)
 
 
-# crate barcode
 def generate_barcode(request, pk):
+    """Generate and render a barcode page for the given product variant."""
     template = "report/barcode.html"
     variant = ProductVariant.objects.get(id=pk)
     shop_details = ShopDetails.objects.filter(is_active=True).first()
@@ -229,6 +240,7 @@ def generate_barcode(request, pk):
 
 
 def generate_invoices_pdf(request):
+    """Generate a PDF report of GST invoices for the selected date range."""
     start_date, end_date = getDates(request)
     invoices = Invoice.objects.filter(
         invoice_type=Invoice.Invoice_type.GST,
@@ -270,7 +282,7 @@ def generate_invoices_pdf(request):
 
     template = "invoice_report.html"
     filename = f"invoices_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)
 
 
 def generate_customers_pdf(request):
@@ -290,7 +302,7 @@ def generate_customers_pdf(request):
 
     filename = "customers"
 
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)
 
 
 def generate_credit_pdf(request):
@@ -314,7 +326,7 @@ def generate_credit_pdf(request):
     template = "customer_credit.html"
     filename = "credit_customers"
 
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)
 
 
 def generate_credit_ind_pdf(request, pk):
@@ -340,7 +352,7 @@ def generate_credit_ind_pdf(request, pk):
     }
     template = "customer_credit_ind.html"
     filename = "credit_individual_customer"
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)
 
 
 def generate_suppliers_pdf(request):
@@ -364,7 +376,7 @@ def generate_suppliers_pdf(request):
     template = "suppliers_pdf.html"
     filename = "suppliers"
 
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)
 
 
 def generate_variants_pdf(request):
@@ -382,7 +394,7 @@ def generate_variants_pdf(request):
     template = "variants_pdf.html"
     filename = "variants"
 
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)
 
 
 def generate_purchase_orders_pdf(request):
@@ -421,7 +433,7 @@ def generate_purchase_orders_pdf(request):
 
     template = "supplier_purchased_pdf.html"
     filename = "purchase_orders"
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)
 
 
 def generate_supplier_ind_pdf(request, pk):
@@ -444,10 +456,11 @@ def generate_supplier_ind_pdf(request, pk):
     template = "supplier_ind_report_pdf.html"
     filename = "supplier_individual_report"
 
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)
 
 
 def generate_invoice_report_pdf(request):
+    """Generate a comprehensive invoice report PDF including cancelled and returned invoices."""
     context = {}
     start_date, end_date = getDates(request)
     date_range = [start_date, end_date]
@@ -552,4 +565,4 @@ def generate_invoice_report_pdf(request):
     filename = (
         f"invoice_report_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
     )
-    return generatePdf(template, filename, context, request)
+    return generate_pdf(template, filename, context, request)

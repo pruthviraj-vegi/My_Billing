@@ -4,6 +4,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description"
+          content="Admin login page for the Billing System. Sign in to manage invoices, inventory, and job cards." />
+    <meta name="keywords"
+          content="billing system, admin login, invoice management, inventory" />
     <title>Login - Billing System</title>
     <link rel="shortcut icon"
           type="image/ico"
@@ -333,6 +337,15 @@
           font-size: 24px;
         }
       }
+
+      .contact-info {
+        text-align: center;
+      }
+
+      .contact-info p {
+        color: var(--secondary);
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
@@ -341,7 +354,10 @@
       <div class="login-sidebar">
         <div class="logo-container">
           <div class="logo">
-            <img src="{% static 'images/logo.svg' %}" alt="Billing System Logo" />
+            <img src="{% static 'images/logo.svg' %}"
+                 alt="Billing System Logo"
+                 width="60"
+                 height="60" />
           </div>
           <h1 class="brand-name">Billing System</h1>
           <p class="brand-tagline">Admin Access Only</p>
@@ -385,7 +401,7 @@
           </div>
           <div class="form-row">
             <div class="checkbox-group">
-              <input type="checkbox" id="remember" name="remember" />
+              <input type="checkbox" id="remember" name="remember" checked />
               <label for="remember">Remember me</label>
             </div>
             <a href="#" class="forgot-password">Forgot password?</a>
@@ -395,8 +411,8 @@
         <div class="divider">
           <span>Need Access?</span>
         </div>
-        <div style="text-align: center;">
-          <p style="color: var(--secondary); font-size: 14px;">Contact your system administrator for login credentials</p>
+        <div class="contact-info">
+          <p>Contact your system administrator for login credentials</p>
         </div>
       </div>
     </div>

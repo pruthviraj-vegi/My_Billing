@@ -1,33 +1,37 @@
-from django.contrib.auth.views import login_not_required
-from customer.models import Customer
-from invoice.models import Invoice, InvoiceItem
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_not_required
-from datetime import datetime
-from base.getDates import getDates
-from report.views import generatePdf
-from customer.views_credit import _build_ledger_rows, get_opening_balance
-import io
-import qrcode
-import base64
-import logging
-import requests
-from setting.models import ReportConfiguration
-from setting.models import PaymentDetails
-from setting.models import ShopDetails
-from api.services import generate_invoice_pdf, generate_statement_pdf
-from decouple import config
+"""API views for customer balance, invoices, statements, and WhatsApp messaging."""
 
+import logging
+from datetime import datetime
+
+import requests
+from decouple import config
+from django.contrib.auth.decorators import login_not_required
+from django.http import JsonResponse
+
+from api.services import generate_invoice_pdf, generate_statement_pdf
+from base.getDates import getDates
+from customer.models import Customer
+from invoice.models import Invoice
 
 logger = logging.getLogger(__name__)
 
 
-# Create your views here.
 def number_format(phone_number):
+    """Validate and normalize a phone number to 10 digits.
+
+    Args:
+        phone_number: Raw phone number string.
+
+    Returns:
+        str: Normalized 10-digit phone number.
+
+    Raises:
+        ValueError: If the phone number is invalid.
+    """
     if not phone_number.isdigit():
-        raise Exception("Phone number must contain only digits")
+        raise ValueError("Phone number must contain only digits")
     if len(phone_number) > 13 or len(phone_number) < 10:
-        raise Exception("Issue With Phone No, Provide a Valid Phone No")
+        raise ValueError("Issue With Phone No, Provide a Valid Phone No")
     if len(phone_number) == 12 and phone_number.startswith("91"):
         phone_number = phone_number[2:]
     return phone_number
@@ -35,10 +39,11 @@ def number_format(phone_number):
 
 @login_not_required
 def get_balance(request, phone_number):
+    """Return the current credit balance for a customer by phone number."""
     try:
         phone_number = number_format(phone_number)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
 
     customer = Customer.objects.filter(phone_number=phone_number).first()
     if not customer:
@@ -57,10 +62,11 @@ def get_balance(request, phone_number):
 
 @login_not_required
 def get_last_invoice(request, phone_number):
+    """Return the last invoice PDF for a customer by phone number."""
     try:
         phone_number = number_format(phone_number)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
 
     customer = Customer.objects.filter(phone_number=phone_number).first()
 
@@ -84,8 +90,8 @@ def get_last_invoice(request, phone_number):
             },
             status=200,
         )
-    except Exception as e:
-        logger.error(f"Error generating invoice PDF: {e}")
+    except RuntimeError:
+        logger.error("Error generating invoice PDF for invoice %s", invoice.pk)
         return JsonResponse(
             {"error": "Failed to generate or retrieve invoice PDF"}, status=500
         )
@@ -93,10 +99,11 @@ def get_last_invoice(request, phone_number):
 
 @login_not_required
 def get_statement(request, phone_number):
+    """Return a credit statement PDF for a customer by phone number and date range."""
     try:
         phone_number = number_format(phone_number)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
 
     customer = Customer.objects.filter(phone_number=phone_number).first()
     if not customer:
@@ -117,8 +124,8 @@ def get_statement(request, phone_number):
             },
             status=200,
         )
-    except Exception as e:
-        logger.error(f"Error generating statement PDF: {e}")
+    except RuntimeError:
+        logger.error("Error generating statement PDF for customer %s", customer.pk)
         return JsonResponse(
             {"error": "Failed to generate or retrieve statement PDF"}, status=500
         )
@@ -126,6 +133,7 @@ def get_statement(request, phone_number):
 
 @login_not_required
 def get_last_5_invoices(request, phone_number):
+    """Return the last 5 invoices summary for a customer by phone number."""
     phone_number = number_format(phone_number)
 
     customer = Customer.objects.filter(phone_number=phone_number).first()
@@ -136,7 +144,11 @@ def get_last_5_invoices(request, phone_number):
 
     invoices_data = ""
     for invoice in invoices:
-        invoices_data += f"{invoice.invoice_number} - {invoice.invoice_date.strftime('%d-%m-%Y')} - {invoice.amount} \n"
+        invoices_data += (
+            f"{invoice.invoice_number} - "
+            f"{invoice.invoice_date.strftime('%d-%m-%Y')} - "
+            f"{invoice.amount} \n"
+        )
 
     return JsonResponse(
         {
@@ -149,12 +161,13 @@ def get_last_5_invoices(request, phone_number):
 
 @login_not_required
 def send_template(request, phone, template_name, params, url, file_name):
+    """Send a WhatsApp template message with a document attachment."""
     # Ensure phone number has 91 prefix
     if not phone.startswith("91"):
         phone = f"91{phone}"
 
     response = requests.post(
-        f"{config("WHATSAPP_URL")}/external/send-template",
+        f"{config('WHATSAPP_URL')}/external/send-template",
         json={
             "to": phone,
             "template_name": template_name,
@@ -162,19 +175,22 @@ def send_template(request, phone, template_name, params, url, file_name):
             "document_url": url,
             "document_filename": file_name,
         },
+        timeout=30,
     )
     return response.json()
 
 
 @login_not_required
 def send_test(request, phone_number, text=""):
+    """Send a plain text WhatsApp message to the given phone number."""
     phone_number = number_format(phone_number)
 
     if not phone_number.startswith("91"):
         phone_number = f"91{phone_number}"
 
     response = requests.post(
-        f"{config("WHATSAPP_URL")}/external/send-text",
+        f"{config('WHATSAPP_URL')}/external/send-text",
         json={"to": phone_number, "text": text},
+        timeout=30,
     )
     return response.json()

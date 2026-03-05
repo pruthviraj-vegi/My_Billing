@@ -1,18 +1,23 @@
-# Create your models here.
-from django.db import models
+"""Cart models for managing temporary item collections and estimates."""
+
+from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MinValueValidator
-from inventory.models import ProductVariant
-from base.utility import StringProcessor
-from django.db.models import Sum, F, ExpressionWrapper, DecimalField
-from decimal import Decimal
+from django.db import models
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
 
+from base.utility import StringProcessor
+from inventory.models import ProductVariant
 
 User = settings.AUTH_USER_MODEL
 
 
 class Cart(models.Model):
+    """Model for managing temporary item collections and estimates."""
+
     class CartStatus(models.TextChoices):
+        """Status choices for a cart."""
+
         OPEN = "OPEN", "Open"
         ARCHIVED = "ARCHIVED", "Archived"
 
@@ -84,7 +89,7 @@ class Cart(models.Model):
 
     def get_cart_summary(self):
         """Get cart summary in a single query"""
-        from django.db.models import Sum, Count
+        # Uses top-level Sum and Count imports
 
         summary = self.cart_items.aggregate(
             total_items=Count("id"), total_amount=Sum("price")
@@ -95,8 +100,15 @@ class Cart(models.Model):
             "total_amount": summary["total_amount"] or 0,
         }
 
+    @property
+    def net_amount(self):
+        """Calculate net amount using database aggregation for better performance"""
+        return self.total_amount - self.advance_payment
+
 
 class CartItem(models.Model):
+    """Model for storing individual items within a cart."""
+
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="cart_items")
     product_variant = models.ForeignKey(
         ProductVariant, on_delete=models.PROTECT, related_name="cart_items"

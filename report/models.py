@@ -1,12 +1,12 @@
+"""Models for storing generated PDF records (invoices and customer statements)."""
+
+import logging
+
+from django.contrib.auth import get_user_model
 from django.db import models
 
-# Create your models here.
-from django.db import models
-from django.utils import timezone
-from django.contrib.auth import get_user_model
-import logging
-from invoice.models import Invoice
 from customer.models import Customer
+from invoice.models import Invoice
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class InvoicePDF(models.Model):
 
             # Check if PDF is outdated
             if pdf.is_pdf_outdated():
-                logger.info(f"PDF for invoice {invoice.invoice_number} is outdated")
+                logger.info("PDF for invoice %s is outdated", invoice.invoice_number)
                 return None
 
             return pdf
@@ -115,7 +115,7 @@ class InvoicePDF(models.Model):
         )
 
         action = "Created" if created else "Updated"
-        logger.info(f"{action} PDF record for invoice {invoice.invoice_number}")
+        logger.info("%s PDF record for invoice %s", action, invoice.invoice_number)
 
         return pdf_record
 
@@ -207,16 +207,21 @@ class CustomerStatementPDF(models.Model):
             # Check if balance has changed
             if pdf.is_balance_outdated(current_balance):
                 logger.info(
-                    f"Statement PDF for customer {customer.id} is outdated "
-                    f"(balance changed from {pdf.closing_balance} to {current_balance})"
+                    "Statement PDF for customer %s is outdated "
+                    "(balance changed from %s to %s)",
+                    customer.id,
+                    pdf.closing_balance,
+                    current_balance,
                 )
                 # Delete ALL cached PDFs for this customer since balance changed
                 cls.invalidate_all_customer_pdfs(customer)
                 return None
 
             logger.info(
-                f"Using cached statement PDF for customer {customer.id} "
-                f"({from_date} to {to_date})"
+                "Using cached statement PDF for customer %s (%s to %s)",
+                customer.id,
+                from_date,
+                to_date,
             )
             return pdf
 
@@ -232,7 +237,9 @@ class CustomerStatementPDF(models.Model):
         deleted_count = cls.objects.filter(customer=customer).delete()[0]
         if deleted_count > 0:
             logger.info(
-                f"Invalidated {deleted_count} cached statement PDFs for customer {customer.id}"
+                "Invalidated %s cached statement PDFs for customer %s",
+                deleted_count,
+                customer.id,
             )
         return deleted_count
 
@@ -268,8 +275,12 @@ class CustomerStatementPDF(models.Model):
 
         action = "Created" if created else "Updated"
         logger.info(
-            f"{action} statement PDF record for customer {customer.id} "
-            f"({from_date} to {to_date}, balance: {closing_balance})"
+            "%s statement PDF record for customer %s (%s to %s, balance: %s)",
+            action,
+            customer.id,
+            from_date,
+            to_date,
+            closing_balance,
         )
 
         return pdf_record

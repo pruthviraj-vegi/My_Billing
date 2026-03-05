@@ -1,10 +1,16 @@
 from django.urls import path
-from . import views, views_, views_return, views_report, views_cancellation
+from . import (
+    views,
+    views_,
+    views_return,
+    views_report,
+    views_cancellation,
+)
 
 app_name = "invoice"
 
 urlpatterns = [
-    path("", views.invoiceHome, name="home"),
+    path("", views.invoice_home, name="home"),
     path("dashboard/", views.invoice_dashboard, name="dashboard"),
     path("dashboard/fetch/", views.invoice_dashboard_fetch, name="dashboard_fetch"),
     path("fetch/", views.fetch_invoices, name="fetch"),

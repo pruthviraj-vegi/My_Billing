@@ -159,6 +159,7 @@
                                     <th>Sales</th>
                                     <th>Remaining</th>
                                     <th>Purchase Price</th>
+                                    <th>Selling Price</th>
                                     <th>Stock Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -205,14 +206,19 @@
                                         <td>{{ product.sales_quantity|floatformat:0 }}</td>
                                         <td>{{ product.remaining_quantity|floatformat:0 }}</td>
                                         <td>{{ product.purchase_price|currency }}</td>
+                                        <td>{{ product.selling_price|currency }}</td>
                                         <td>
-                                            {% if product.remaining_quantity > 5 %}
-                                                <span class="status-badge status-active">In Stock</span>
-                                            {% elif product.remaining_quantity > 0 %}
-                                                <span class="status-badge status-warning">Low Stock</span>
-                                            {% else %}
-                                                <span class="status-badge status-danger">Sold Out</span>
-                                            {% endif %}
+                                            <span class="status-badge status-{{ product.remaining_quantity|sale_percentage:product.sales_quantity }}">
+                                                {% if product.remaining_quantity == 0 %}
+                                                    Sold Out!
+                                                {% elif product.remaining_quantity < product.total_quantity|floatformat:0|mul:0.1 %}
+                                                    Almost Sold!
+                                                {% elif product.remaining_quantity < product.total_quantity|floatformat:0|mul:0.5 %}
+                                                    Selling Well
+                                                {% else %}
+                                                    Slow Moving
+                                                {% endif %}
+                                            </span>
                                         </td>
                                         <td>
                                             <div class="action-buttons">
