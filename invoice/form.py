@@ -1,15 +1,23 @@
-from django import forms
-from .models import Invoice, AuditTable, InvoiceAudit, ReturnInvoice
-from django.utils import timezone
-from datetime import timedelta
-from user.models import CustomUser
-from customer.models import Customer
+"""
+Forms for creating and managing invoices, returns, and audit trails.
+"""
+
 import logging
+from datetime import timedelta
+
+from django import forms
+from django.utils import timezone
+
+from customer.models import Customer
+from invoice.models import AuditTable, Invoice, InvoiceAudit, ReturnInvoice
+from user.models import CustomUser
 
 logger = logging.getLogger(__name__)
 
 
 class InvoiceForm(forms.ModelForm):
+    """Form for creating and editing standard invoices."""
+
     class Meta:
         model = Invoice
         fields = [
@@ -66,7 +74,7 @@ class InvoiceForm(forms.ModelForm):
                 field.label = f"{field.label} *"
 
         # Add appropriate classes based on widget type
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             widget = field.widget
             if isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
@@ -84,8 +92,8 @@ class InvoiceForm(forms.ModelForm):
                 customer = Customer.objects.order_by("id").first()
                 if customer:
                     self.fields["customer"].initial = customer
-        except Exception as e:
-            logger.error(f"Error setting initial customer: {e}")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error setting initial customer: %s", e)
 
         # Filter sold_by queryset to show only commission users or admins as fallback
         try:
@@ -107,8 +115,8 @@ class InvoiceForm(forms.ModelForm):
                 if first_user:
                     self.fields["sold_by"].initial = first_user
 
-        except Exception as e:
-            logger.error(f"Error setting sold_by field: {e}")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error setting sold_by field: %s", e)
 
     def clean_amount(self):
         """Validate amount is not negative"""
@@ -151,7 +159,7 @@ class InvoiceForm(forms.ModelForm):
         cleaned_data = super().clean()
         amount = cleaned_data.get("amount")
         discount_amount = cleaned_data.get("discount_amount", 0)
-        advance_amount = cleaned_data.get("advance_amount", 0)
+        discount_amount = cleaned_data.get("discount_amount", 0)
         payment_type = cleaned_data.get("payment_type")
         due_date = cleaned_data.get("due_date")
         customer = cleaned_data.get("customer")
@@ -222,7 +230,7 @@ class AuditTableForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             if field.required:
                 field.label = f"{field.label} *"
 
@@ -350,7 +358,7 @@ class ReturnInvoiceForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             if field.required:
                 field.label = f"{field.label} *"
 
@@ -382,12 +390,14 @@ class ReturnInvoiceForm(forms.ModelForm):
         return cleaned_data
 
     def clean_total_amount(self):
+        """Clean and validate the total amount field."""
         total_amount = self.cleaned_data.get("total_amount")
         if total_amount and total_amount < 0:
             raise forms.ValidationError("Total amount cannot be negative")
         return total_amount
 
     def clean_refund_amount(self):
+        """Clean and validate the refund amount field."""
         refund_amount = self.cleaned_data.get("refund_amount")
         if refund_amount is None or refund_amount == "":
             return 0
@@ -396,6 +406,7 @@ class ReturnInvoiceForm(forms.ModelForm):
         return refund_amount
 
     def clean_restocking_fee(self):
+        """Clean and validate the restocking fee field."""
         restocking_fee = self.cleaned_data.get("restocking_fee")
         if restocking_fee is None or restocking_fee == "":
             return 0
@@ -442,6 +453,7 @@ class InvoiceCancellationForm(forms.Form):
         self.invoice = invoice
 
     def clean_cancellation_reason(self):
+        """Clean and validate the cancellation reason field."""
         reason = self.cleaned_data.get("cancellation_reason")
         if reason and len(reason.strip()) < 10:
             raise forms.ValidationError(

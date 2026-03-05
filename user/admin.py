@@ -1,15 +1,23 @@
+"""
+Admin configurations for the user app.
+"""
+
+import json
+
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
-from django.utils.translation import gettext_lazy as _
-from .models import CustomUser, LoginEvent
 from django.contrib.sessions.models import Session
 from django.utils import timezone
-from django.contrib.auth import get_user_model
-import json
+from django.utils.translation import gettext_lazy as _
+
+from .models import CustomUser, LoginEvent
 
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
+    """Admin interface for CustomUser model."""
+
     # Define the fields to display in the list view
     list_display = (
         "full_name",
@@ -134,6 +142,8 @@ User = get_user_model()
 
 
 class ActiveSessionFilter(admin.SimpleListFilter):
+    """Filter sessions by active/expired status."""
+
     title = "Session status"
     parameter_name = "active"
 
@@ -155,6 +165,8 @@ class ActiveSessionFilter(admin.SimpleListFilter):
 
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
+    """Admin interface for managing user sessions."""
+
     list_display = (
         "session_key_short",
         "user_display",
@@ -173,11 +185,13 @@ class SessionAdmin(admin.ModelAdmin):
     )
 
     def session_key_short(self, obj):
+        """Display a shortened version of the session key."""
         return (obj.session_key or "")[:8]
 
     session_key_short.short_description = "Session"
 
     def is_active_display(self, obj):
+        """Check if the session is currently active."""
         return obj.expire_date > timezone.now()
 
     is_active_display.boolean = True
@@ -190,10 +204,11 @@ class SessionAdmin(admin.ModelAdmin):
             if not user_id:
                 return None
             return User.objects.filter(id=user_id).first()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             return None
 
     def user_display(self, obj):
+        """Display the user's full name or username."""
         user = self._get_user(obj)
         if not user:
             return "-"
@@ -202,27 +217,31 @@ class SessionAdmin(admin.ModelAdmin):
     user_display.short_description = "User"
 
     def user_username(self, obj):
+        """Display the user's username."""
         user = self._get_user(obj)
         return user.get_username() if user else "-"
 
     user_username.short_description = "Username"
 
     def user_last_login(self, obj):
+        """Display the user's last login time."""
         user = self._get_user(obj)
         return user.last_login if user else None
 
     user_last_login.short_description = "Last login"
 
     def session_data_pretty(self, obj):
+        """Display a pretty-printed version of the session data."""
         try:
             data = obj.get_decoded()
             return json.dumps(data, indent=2, sort_keys=True)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             return "<unreadable>"
 
     session_data_pretty.short_description = "Decoded data"
 
     def invalidate_sessions(self, request, queryset):
+        """Invalidate selected sessions."""
         count = queryset.count()
         queryset.delete()
         self.message_user(request, f"{count} session(s) invalidated.")
@@ -232,6 +251,8 @@ class SessionAdmin(admin.ModelAdmin):
 
 @admin.register(LoginEvent)
 class LoginEventAdmin(admin.ModelAdmin):
+    """Admin interface for viewing login events."""
+
     list_display = ("occurred_at", "user", "event_type", "ip_address", "session_key")
     list_filter = ("event_type", "occurred_at")
     search_fields = (

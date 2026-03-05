@@ -1,5 +1,9 @@
+"""
+Admin interface for ShopDetails and ReportConfiguration models.
+"""
+
 from django.contrib import admin
-from .models import ShopDetails, ReportConfiguration
+from .models import ReportConfiguration, ShopDetails
 
 
 @admin.register(ShopDetails)

@@ -1,14 +1,20 @@
-# signals.py in your supplier app
+"""
+Signals for the supplier app to handle automatic reallocation of payments.
+"""
 
-from django.db.models.signals import post_save, post_delete, pre_save
-from django.dispatch import receiver
-from django.db import transaction
 from decimal import Decimal
+
+from django.db import transaction
+from django.db.models.signals import post_delete, post_save, pre_save
+from django.dispatch import receiver
+
 from .models import SupplierInvoice, SupplierPayment, SupplierPaymentAllocation
 
 
 @receiver(pre_save, sender=SupplierPayment)
-def track_payment_changes(sender, instance, **kwargs):
+def track_payment_changes(
+    sender, instance, **kwargs
+):  # pylint: disable=unused-argument
     """
     Track payment changes before saving to detect amount and is_deleted changes.
     """
@@ -16,35 +22,27 @@ def track_payment_changes(sender, instance, **kwargs):
         try:
             # Use all_objects to get the instance even if it's soft-deleted
             old_instance = SupplierPayment.all_objects.get(pk=instance.pk)
-            instance._old_amount = old_instance.amount
-            instance._old_is_deleted = old_instance.is_deleted
+            instance._old_amount = (
+                old_instance.amount
+            )  # pylint: disable=protected-access
+            instance._old_is_deleted = (
+                old_instance.is_deleted
+            )  # pylint: disable=protected-access
         except SupplierPayment.DoesNotExist:
-            instance._old_amount = None
-            instance._old_is_deleted = None
+            instance._old_amount = None  # pylint: disable=protected-access
+            instance._old_is_deleted = None  # pylint: disable=protected-access
     else:
-        instance._old_amount = None
-        instance._old_is_deleted = None
+        instance._old_amount = None  # pylint: disable=protected-access
+        instance._old_is_deleted = None  # pylint: disable=protected-access
 
 
 @receiver(post_save, sender=SupplierPayment)
-def reallocate_on_payment_change(sender, instance, created, **kwargs):
+def reallocate_on_payment_change(
+    sender, instance, created, **kwargs
+):  # pylint: disable=unused-argument
     """
     When a payment is created, updated, or soft-deleted, reallocate all payments for this supplier.
     """
-
-    """
-    for multiple or bulk 
-    # In bulk import view
-        def bulk_import_payments(request):
-            for payment_data in data:
-                payment = SupplierPayment(**payment_data)
-                payment._skip_reallocation = True  # Skip signal
-                payment.save()
-            
-            # Reallocate once after all imports
-            reallocate_supplier_payments(supplier)
-    """
-
     if getattr(instance, "_skip_reallocation", False):
         return
 
@@ -56,11 +54,6 @@ def reallocate_on_payment_change(sender, instance, created, **kwargs):
     old_amount = getattr(instance, "_old_amount", None)
     old_is_deleted = getattr(instance, "_old_is_deleted", None)
 
-    # Reallocate if:
-    # 1. New payment created (created=True)
-    # 2. Amount changed (for existing payments)
-    # 3. Payment was soft-deleted (is_deleted changed from False to True)
-    # 4. Payment was restored (is_deleted changed from True to False)
     amount_changed = old_amount is not None and old_amount != instance.amount
     deleted_changed = (
         old_is_deleted is not None and old_is_deleted != instance.is_deleted
@@ -73,24 +66,32 @@ def reallocate_on_payment_change(sender, instance, created, **kwargs):
 
 
 @receiver(pre_save, sender=SupplierInvoice)
-def track_invoice_changes(sender, instance, **kwargs):
+def track_invoice_changes(
+    sender, instance, **kwargs
+):  # pylint: disable=unused-argument
     """
     Track old total_amount before saving to detect changes.
     """
     if instance.pk:  # Only for existing invoices
         try:
             old_instance = SupplierInvoice.objects.get(pk=instance.pk)
-            instance._old_total_amount = old_instance.total_amount
+            instance._old_total_amount = (
+                old_instance.total_amount
+            )  # pylint: disable=protected-access
         except SupplierInvoice.DoesNotExist:
-            instance._old_total_amount = None
+            instance._old_total_amount = None  # pylint: disable=protected-access
 
 
 @receiver(post_save, sender=SupplierInvoice)
-def reallocate_on_invoice_change(sender, instance, created, **kwargs):
+def reallocate_on_invoice_change(
+    sender, instance, created, **kwargs
+):  # pylint: disable=unused-argument
     """
     When an invoice is created or its total_amount changes, reallocate.
     """
-    old_total = getattr(instance, "_old_total_amount", None)
+    old_total = getattr(
+        instance, "_old_total_amount", None
+    )  # pylint: disable=protected-access
 
     # Reallocate if:
     # 1. New invoice created
@@ -100,7 +101,9 @@ def reallocate_on_invoice_change(sender, instance, created, **kwargs):
 
 
 @receiver(post_delete, sender=SupplierInvoice)
-def reallocate_on_invoice_delete(sender, instance, **kwargs):
+def reallocate_on_invoice_delete(
+    sender, instance, **kwargs
+):  # pylint: disable=unused-argument
     """
     When an invoice is deleted, reallocate remaining invoices.
     """
@@ -108,7 +111,9 @@ def reallocate_on_invoice_delete(sender, instance, **kwargs):
 
 
 @receiver(post_delete, sender=SupplierPaymentAllocation)
-def reallocate_on_allocation_delete(sender, instance, **kwargs):
+def reallocate_on_allocation_delete(
+    sender, instance, **kwargs
+):  # pylint: disable=unused-argument
     """
     When an allocation is deleted, reallocate payments for the supplier.
     """

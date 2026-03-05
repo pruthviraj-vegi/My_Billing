@@ -1,19 +1,24 @@
-# ------------------------------------------------------------------
-# File: accounts/managers.py
-# ------------------------------------------------------------------
+"""
+Custom user manager for the user app.
+"""
+
 from django.contrib.auth.models import BaseUserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.utils.translation import gettext_lazy as _
+
 from base.manager import SoftDeleteManager
 
 
 class CustomUserManager(SoftDeleteManager, BaseUserManager):
+    """Manager for CustomUser model, providing custom user creation methods."""
+
     def email_validator(self, email):
+        """Validate the given email address."""
         try:
             validate_email(email)
-        except ValidationError:
-            raise ValueError(_("Please provide a valid email address"))
+        except ValidationError as exc:
+            raise ValueError(_("Please provide a valid email address")) from exc
 
     def create_user(
         self,
@@ -24,6 +29,7 @@ class CustomUserManager(SoftDeleteManager, BaseUserManager):
         email=None,
         **extra_fields
     ):
+        """Create and save a regular User with the given details."""
         if not first_name:
             raise ValueError(_("Users must submit a first name"))
         if not phone_number:
@@ -53,6 +59,7 @@ class CustomUserManager(SoftDeleteManager, BaseUserManager):
         email=None,
         **extra_fields
     ):
+        """Create and save a SuperUser with the given details."""
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)

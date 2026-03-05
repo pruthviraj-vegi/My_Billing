@@ -1,29 +1,31 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
-from django.db.models import (
-    Q,
-    Sum,
-    Exists,
-    OuterRef,
-)
-from django.contrib import messages
-from django.urls import reverse_lazy
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.contrib.auth import get_user_model
-from .forms import CustomUserForm, PasswordResetForm, SalaryForm, TransactionForm
-from .models import LoginEvent, Salary, Transaction
-from django.utils import timezone
-from django.contrib.sessions.models import Session
-from django.contrib.admin.views.decorators import staff_member_required
-from django.views.decorators.http import require_POST
-from .models import LoginEvent
-from base.utility import render_paginated_response, table_sorting
-from base.getDates import getDates
-from invoice.models import Invoice, InvoiceItem
+"""
+Views for the user app, handling user management, authentication,
+sessions, and related data like salaries and transactions.
+"""
+
+import logging
 from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
-import logging
+
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import get_user_model
+from django.contrib.sessions.models import Session
+from django.db.models import Exists, OuterRef, Q, Sum
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
+
+from base.getDates import getDates
+from base.utility import render_paginated_response, table_sorting
+from invoice.models import Invoice, InvoiceItem
+
+from .forms import CustomUserForm, PasswordResetForm, SalaryForm, TransactionForm
+from .models import LoginEvent, Salary, Transaction
 
 logger = logging.getLogger(__name__)
 
@@ -84,9 +86,11 @@ def get_data(request):
     elif commission_filter == "no":
         # Users with no current salary OR current salary with commission=False
         # Exclude users who have current salary with commission=True
-        from .models import Salary
+        from .models import (
+            Salary as SalaryModel,
+        )  # pylint: disable=redefined-outer-name
 
-        has_commission = Salary.objects.filter(
+        has_commission = SalaryModel.objects.filter(
             user=OuterRef("pk"), effective_to__isnull=True, commission=True
         )
         filters &= ~Exists(has_commission)
@@ -109,6 +113,8 @@ def fetch_users(request):
 
 
 class CreateUser(CreateView):
+    """View to create a new user."""
+
     model = User
     form_class = CustomUserForm
     template_name = "user/form.html"
@@ -129,12 +135,14 @@ class CreateUser(CreateView):
         return context
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class EditUser(UpdateView):
+    """View to edit an existing user."""
+
     model = User
     form_class = CustomUserForm
     template_name = "user/form.html"
@@ -151,12 +159,14 @@ class EditUser(UpdateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class DeleteUser(DeleteView):
+    """View to delete a user."""
+
     model = User
     template_name = "user/delete.html"
 
@@ -178,7 +188,7 @@ class DeleteUser(DeleteView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -297,6 +307,7 @@ def change_user_status(request, user_id):
 
 
 def logins_overview(request):
+    """View an overview of recent login events."""
     events = LoginEvent.objects.select_related("user").all()[:500]
     return render(request, "user/logins.html", {"events": events})
 
@@ -556,9 +567,6 @@ def fetch_user_commission(request, user_id):
     """AJAX: fetch commission data for a user with pagination and optional sorting."""
     user = get_object_or_404(User, id=user_id)
 
-    # Get filter parameters
-    sort_by = request.GET.get("sort", "-invoice_date")
-
     # Get date range using getDates utility (now accepts date_range and start_date/end_date directly)
     start_datetime, end_datetime = getDates(request)
 
@@ -567,18 +575,12 @@ def fetch_user_commission(request, user_id):
         invoice_date__gte=start_datetime, invoice_date__lte=end_datetime
     )
 
-    # Get invoice items with commission, ordered by invoice date
     valid_sort_fields = {
         "invoice_date": "invoice__invoice_date",
         "-invoice_date": "-invoice__invoice_date",
         "commission_amount": "commission_percentage",  # Approximate sort
         "-commission_amount": "-commission_percentage",
     }
-
-    if sort_by in valid_sort_fields:
-        order_by = valid_sort_fields[sort_by]
-    else:
-        order_by = "-invoice__invoice_date"
 
     valid_sorts = table_sorting(request, valid_sort_fields, "-invoice__invoice_date")
 

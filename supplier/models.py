@@ -1,20 +1,21 @@
-# ==================================================================
-# File: supplier_management/models.py
-# This file contains the complete models for managing suppliers,
-# their invoices (both GST and Local), and their payments.
-# ==================================================================
+"""
+Models for managing suppliers, their invoices, and payments.
+"""
 
-from django.db import models
-from django.conf import settings
-from base.manager import SoftDeleteModel, phone_regex
-from django.utils import timezone
-from base.utility import StringProcessor
-from django.utils.text import slugify
 from datetime import datetime
-from django.db.models import Sum, DecimalField, Value
-from django.db.models.functions import Coalesce
 from decimal import Decimal
+
+from django.conf import settings
+from django.db import models
+from django.db.models import DecimalField, Sum, Value
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+from django.utils.text import slugify
+
 from model_utils import FieldTracker
+
+from base.manager import SoftDeleteModel, phone_regex
+from base.utility import StringProcessor
 
 User = settings.AUTH_USER_MODEL
 
@@ -69,6 +70,7 @@ class Supplier(SoftDeleteModel):
 
     @property
     def balance_due(self):
+        """Calculate total balance due for this supplier."""
         total_invoiced = self.invoices.filter(is_deleted=False).aggregate(
             total=Coalesce(
                 Sum("total_amount"),
@@ -87,6 +89,7 @@ class Supplier(SoftDeleteModel):
 
     @property
     def last_invoice(self):
+        """Get the date of the last unpaid or partially paid invoice."""
         invoice = (
             self.invoices.filter(
                 is_deleted=False,
@@ -108,14 +111,20 @@ class SupplierInvoice(SoftDeleteModel):
     """
 
     class InvoiceType(models.TextChoices):
+        """Types of invoices."""
+
         GST_APPLICABLE = "GST_APPLICABLE", "GST Applicable"
         LOCAL_PURCHASE = "LOCAL_PURCHASE", "Local Purchase"
 
     class GstType(models.TextChoices):
+        """Types of GST applied."""
+
         CGST_SGST = "CGST_SGST", "CGST/SGST"
         IGST = "IGST", "IGST"
 
     class InvoiceStatus(models.TextChoices):
+        """Status of the invoice."""
+
         UNPAID = "UNPAID", "Unpaid"
         PARTIALLY_PAID = "PARTIALLY_PAID", "Partially Paid"
         PAID = "PAID", "Paid"
@@ -190,7 +199,15 @@ class SupplierInvoice(SoftDeleteModel):
         ordering = ["-invoice_date"]
 
     def __str__(self):
-        return f"{self.invoice_number} - {self.supplier.name} ({self.invoice_date.date()}) - {self.get_invoice_type_display()} - {self.total_amount}"
+        date_str = (
+            self.invoice_date.strftime("%Y-%m-%d")  # pylint: disable=no-member
+            if self.invoice_date
+            else "N/A"
+        )
+        return (
+            f"{self.invoice_number} - {self.supplier.name} ({date_str}) - "
+            f"{self.get_invoice_type_display()} - {self.total_amount}"
+        )
 
     def save(self, *args, **kwargs):
         self.invoice_number = StringProcessor(self.invoice_number).toUppercase()
@@ -206,6 +223,8 @@ class SupplierPayment(SoftDeleteModel):
     """
 
     class PaymentMethod(models.TextChoices):
+        """Supported payment methods."""
+
         CASH = "CASH", "Cash"
         BANK_TRANSFER = "BANK_TRANSFER", "Bank Transfer"
         UPI = "UPI", "UPI"
@@ -275,7 +294,10 @@ class SupplierPaymentAllocation(SoftDeleteModel):
         pass
 
     def __str__(self):
-        return f"{self.amount_allocated} of Payment {self.payment.id} allocated to Invoice {self.invoice.invoice_number}"
+        return (
+            f"{self.amount_allocated} of Payment {self.payment.id} "
+            f"allocated to Invoice {self.invoice.invoice_number}"
+        )
 
 
 class MediaFile(models.Model):
@@ -295,6 +317,8 @@ class MediaFile(models.Model):
 
     def save(self, *args, **kwargs):
         if self.media_file:
-            new_filename = f"{slugify(self.supplier_invoice.invoice_number)}-{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            slug = slugify(self.supplier_invoice.invoice_number)
+            new_filename = f"{slug}-{timestamp}.pdf"
             self.media_file.name = new_filename
         super().save(*args, **kwargs)

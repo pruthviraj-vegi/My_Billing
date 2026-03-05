@@ -2,13 +2,14 @@
 Mixins for Invoice models to organize related functionality
 """
 
+import logging
+from collections import defaultdict
 from decimal import Decimal
-from django.utils import timezone
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
-from collections import defaultdict
-import logging
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class InvoiceFinancialMixin:
             return self.return_invoices.filter(
                 status__in=["APPROVED", "COMPLETED"]
             ).aggregate(total=Sum("refund_amount"))["total"] or Decimal("0")
-        except Exception as e:
+        except Exception:  # pylint: disable=broad-except
             return Decimal("0")
 
     @property
@@ -39,7 +40,7 @@ class InvoiceFinancialMixin:
     @property
     def remaining_amount(self):
         """Final amount still owed by customer"""
-        return self.net_amount_due - self.paid_amount
+        return self.net_amount_due - getattr(self, "paid_amount", Decimal("0"))
 
     @property
     def amount_cleared(self):
@@ -49,7 +50,11 @@ class InvoiceFinancialMixin:
     @property
     def total_received(self):
         """Total amount received from customer (advance + payments)"""
-        return self.advance_amount + self.paid_amount + self.total_returned_amount
+        return (
+            getattr(self, "advance_amount", Decimal("0"))
+            + getattr(self, "paid_amount", Decimal("0"))
+            + self.total_returned_amount
+        )  #
 
     @property
     def is_fully_paid(self):
@@ -89,7 +94,8 @@ class InvoiceFinancialMixin:
         # Refresh from database to avoid race conditions
         self.refresh_from_db()
 
-        self.paid_amount += Decimal(str(amount))
+        current_paid = getattr(self, "paid_amount", Decimal("0"))
+        self.paid_amount = current_paid + Decimal(str(amount))
         if payment_method:
             self.payment_method = payment_method
 
@@ -169,6 +175,7 @@ class InvoiceItemFinancialMixin:
 
     @property
     def amount(self):
+        """Total amount before any discounts"""
         return self.quantity * self.unit_price
 
     @property
@@ -201,6 +208,7 @@ class InvoiceItemFinancialMixin:
 
     @property
     def tax_value(self):
+        """Taxable value after discount share"""
         return self.discounted_amount / (1 + (self.gst_percentage / 100))
 
     @property

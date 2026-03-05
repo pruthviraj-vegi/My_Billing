@@ -1,23 +1,31 @@
 # ------------------------------------------------------------------
 # File: accounts/models.py
 # ------------------------------------------------------------------
-from django.db import models
+"""Models for the user app."""
+
+from decimal import Decimal
+
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.validators import MinValueValidator
+from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from .managers import CustomUserManager
-from base.utility import StringProcessor
-from decimal import Decimal
-from django.conf import settings
-from django.core.validators import MinValueValidator
 
 from base.manager import SoftDeleteModel
+from base.utility import StringProcessor
+
+from .managers import CustomUserManager
 
 User = settings.AUTH_USER_MODEL
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
+    """Custom User model for the application."""
+
     class Roles(models.TextChoices):
+        """Choices for user roles."""
+
         OWNER = "OWNER", "Owner"
         MANAGER = "MANAGER", "Manager"
         CASHIER = "CASHIER", "Cashier"
@@ -99,18 +107,22 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
 
     @property
     def is_owner(self):
+        """Check if the user is an owner."""
         return self.role == self.Roles.OWNER
 
     @property
     def is_manager(self):
+        """Check if the user is a manager."""
         return self.role in [self.Roles.OWNER, self.Roles.MANAGER]
 
     @property
     def username(self):
+        """Return the username of the user (first name)."""
         return self.first_name
 
     @property
     def full_name(self):
+        """Return the full name of the user."""
         return str(self.first_name) + " " + str(self.last_name)
 
     @property
@@ -126,10 +138,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
 
     @property
     def is_commission_eligible(self):
+        """Check if the user is eligible for commission."""
         return self.current_salary.commission if self.current_salary else False
 
 
 class Salary(models.Model):
+    """Salary model to track user compensations."""
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="salaries")
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
     commission = models.BooleanField(default=False)
@@ -151,13 +166,18 @@ class Salary(models.Model):
         return f"{self.user.full_name} - {self.amount} ({self.effective_from})"
 
     def is_eligible_for_salary(self):
+        """Check if the salary is active and eligible."""
         if self.user.is_commission_eligible:
             return True
         return False
 
 
 class Transaction(models.Model):
+    """Transaction model to track financial operations."""
+
     class TransactionType(models.TextChoices):
+        """Choices for transaction types."""
+
         SALE = "SALE", "Sale"
         REFUND = "REFUND", "Refund"
         PAYMENT = "PAYMENT", "Payment"
@@ -169,6 +189,8 @@ class Transaction(models.Model):
         ADJUSTMENT = "ADJUSTMENT", "Adjustment"
 
     class PaymentMethod(models.TextChoices):
+        """Choices for payment methods."""
+
         CASH = "CASH", "Cash"
         CARD = "CARD", "Card"
         UPI = "UPI", "UPI"
@@ -289,7 +311,7 @@ class Transaction(models.Model):
     def get_display_amount(self):
         """Return amount with proper sign for display"""
         if self.is_debit:
-            return -self.amount
+            return self.amount * -1
         return self.amount
 
 
@@ -297,6 +319,8 @@ class LoginEvent(models.Model):
     """Audit log of user login/logout events."""
 
     class EventType(models.TextChoices):
+        """Choices for login event types."""
+
         LOGIN = "LOGIN", "Login"
         LOGOUT = "LOGOUT", "Logout"
 
@@ -317,10 +341,12 @@ class LoginEvent(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user_id} {self.event_type} {self.occurred_at.isoformat()}"
+        return f"{self.user_id} {self.event_type} {self.occurred_at}"
 
 
 class UnauthorizedAccess(models.Model):
+    """Model to log unauthorized access attempts."""
+
     user = models.ForeignKey(
         "CustomUser",  # or 'yourapp.CustomUser' if in different app
         on_delete=models.SET_NULL,

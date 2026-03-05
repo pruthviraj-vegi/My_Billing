@@ -1,21 +1,27 @@
-from django.db import models
-from django.conf import settings
+"""
+Models for the invoice app.
+"""
+
+# pylint: disable=too-many-lines
+
 from decimal import Decimal
-from customer.models import Customer, Payment
-from django.core.validators import MinValueValidator, MaxValueValidator
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.utils import timezone
-from inventory.models import ProductVariant
-from inventory.services import InventoryService
-from base.utility import get_financial_year, StringProcessor
-from base.manager import SoftDeleteModel
-from django.db import transaction
-from django.urls import reverse
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models, transaction
 from django.db.models import Sum
-from inventory.models import GSTHsnCode
+from django.urls import reverse
+from django.utils import timezone
+
+from base.manager import SoftDeleteModel
+from base.utility import StringProcessor, get_financial_year
+from customer.models import Customer, Payment
+from inventory.models import GSTHsnCode, ProductVariant
+from inventory.services import InventoryService
 
 # Import organized components
-from .choices import (
+from .choices import (  # pylint: disable=relative-beyond-top-level
     GstTypeChoices,
     InvoiceTypeChoices,
     PaymentTypeChoices,
@@ -30,7 +36,7 @@ from .choices import (
     ItemConditionChoices,
     ItemReturnReasonChoices,
 )
-from .constraints import (
+from .constraints import (  # pylint: disable=relative-beyond-top-level
     InvoiceConstraints,
     InvoiceIndexes,
     InvoiceItemConstraints,
@@ -38,7 +44,7 @@ from .constraints import (
     InvoiceAuditConstraints,
     InvoiceSequenceConstraints,
 )
-from .managers import (
+from .managers import (  # pylint: disable=relative-beyond-top-level
     InvoiceManager,
     InvoiceItemManager,
     AuditTableManager,
@@ -47,7 +53,7 @@ from .managers import (
     ReturnInvoiceManager,
     ReturnInvoiceItemManager,
 )
-from .mixins import (
+from .mixins import (  # pylint: disable=relative-beyond-top-level
     InvoiceFinancialMixin,
     InvoiceItemFinancialMixin,
     InvoiceValidationMixin,
@@ -219,6 +225,7 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
         self.validate_financial_amounts()
 
     def save(self, *args, **kwargs):
+        """Save the invoice and update relevant fields automatically."""
         # Prevent modifications to cancelled invoices
         # Allow updates only for specific cancellation-related fields
         if self.pk and self.is_cancelled:
@@ -311,7 +318,9 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
             )
 
             # Soft delete all payment allocations for this invoice
-            from invoice.models import PaymentAllocation
+            from invoice.models import (
+                PaymentAllocation,
+            )  # pylint: disable=redefined-outer-name
 
             allocations = PaymentAllocation.objects.filter(
                 invoice=self, is_deleted=False
@@ -447,7 +456,7 @@ class InvoiceItem(InvoiceItemFinancialMixin, InvoiceItemValidationMixin, models.
                     include_barcode=False, include_variants=True
                 )
             return f"#{self.invoice_id} - {self.quantity} × {product_name}"
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             return f"#{self.invoice_id} - {self.quantity} × Product #{self.product_variant_id}"
 
     @classmethod
@@ -466,10 +475,13 @@ class InvoiceItem(InvoiceItemFinancialMixin, InvoiceItemValidationMixin, models.
     def cache_product_details(self):
         """Cache frequently accessed product details"""
         self._cached_product_name = self.product_variant.product.name
-        self._cached_variant_name = self.product_variant.name
+        self._cached_variant_name = self.product_variant.get_name(
+            include_barcode=False, include_variants=True
+        )
         return self
 
     def save(self, *args, **kwargs):
+        """Save the invoice item, auto-filling HSN and GST details if missing."""
         if not self.hsn_code:
             self.hsn_code = self.product_variant.product.hsn_code
 
@@ -625,7 +637,7 @@ class AuditTable(models.Model):
 
     @transaction.atomic
     def save(self, *args, **kwargs):
-
+        """Save the audit table session."""
         self.title = StringProcessor(self.title).toTitle()
         self.description = StringProcessor(self.description).toTitle()
 
@@ -641,6 +653,7 @@ class AuditTable(models.Model):
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
+        """Return the absolute URL for the audit table."""
         if (
             self.audit_type == AuditTypeChoices.CONVERSION
             and self.status == AuditStatusChoices.PENDING
@@ -727,7 +740,10 @@ class PaymentAllocation(SoftDeleteModel):
         pass
 
     def __str__(self):
-        return f"₹{self.amount_allocated} of Payment {self.payment.id} allocated to Invoice {self.invoice.invoice_number}"
+        return (
+            f"₹{self.amount_allocated} of Payment {self.payment.id}"
+            f" allocated to Invoice {self.invoice.invoice_number}"
+        )
 
 
 class ReturnInvoice(models.Model):
@@ -909,6 +925,7 @@ class ReturnInvoice(models.Model):
                 )
 
     def save(self, *args, **kwargs):
+        """Save the return invoice, generating number and financial year if missing."""
         # Auto-generate financial year
         if not self.financial_year and self.return_date:
             self.financial_year = get_financial_year(self.return_date)
@@ -973,6 +990,7 @@ class ReturnInvoice(models.Model):
         self.save()
 
     def get_absolute_url(self):
+        """Return the absolute URL for the return invoice based on its status."""
         if self.status == RefundStatusChoices.PENDING:
             return reverse("invoice:return_stock_adjustment", kwargs={"pk": self.pk})
 
@@ -983,16 +1001,19 @@ class ReturnInvoice(models.Model):
 
     @property
     def total_tax_value(self):
+        """Calculate the sum of tax values across all return invoice items."""
         return round(sum(item.tax_value for item in self.return_invoice_items.all()), 2)
 
     @property
     def total_gst_amount(self):
+        """Calculate the sum of GST amounts across all return invoice items."""
         return round(
             sum(item.gst_amount for item in self.return_invoice_items.all()), 2
         )
 
     @property
     def cgst_amount(self):
+        """Calculate CGST amount as half of the total GST amount."""
         return round(self.total_gst_amount / 2, 2)
 
     def __str__(self):
@@ -1095,6 +1116,7 @@ class ReturnInvoiceItem(models.Model):
         ]
 
     def save(self, *args, **kwargs):
+        """Save the return invoice item and auto-calculate total amount."""
         # Auto-calculate total amount
         if self.quantity_returned and self.unit_price:
             self.total_amount = self.quantity_returned * self.unit_price
@@ -1178,6 +1200,7 @@ class ReturnInvoiceItem(models.Model):
 
     @property
     def gst_amount(self):
+        """Calculate the GST amount for this return item."""
         return round(self.total_return_amount - self.tax_value, 2)
 
 

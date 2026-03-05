@@ -1,5 +1,9 @@
+"""
+URL patterns for the report app.
+"""
+
 from django.urls import path
-from . import views, statements
+from . import statements, views
 
 app_name = "report"
 

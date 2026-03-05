@@ -1,7 +1,16 @@
-from django.db import models
+"""
+Settings and configuration models for the application.
+"""
+
+import logging
+
 from django.conf import settings
+from django.db import models
+
 from base.manager import phone_regex
 from base.utility import StringProcessor
+
+logger = logging.getLogger(__name__)
 
 User = settings.AUTH_USER_MODEL
 
@@ -118,6 +127,8 @@ class ReportConfiguration(models.Model):
     """Model to store report generation preferences and settings."""
 
     class ReportType(models.TextChoices):
+        """Types of reports available."""
+
         INVOICE = "INVOICE", "Invoice"
         ESTIMATE = "ESTIMATE", "Estimate"
         QUOTATION = "QUOTATION", "Quotation"
@@ -125,13 +136,17 @@ class ReportConfiguration(models.Model):
         STATEMENT = "STATEMENT", "Account Statement"
 
     class PaperSize(models.TextChoices):
+        """Supported paper sizes for reports."""
+
         A4 = "A4", "A4"
         A5 = "A5", "A5"
-        _58mm = "58mm", "58mm"
+        MM58 = "58mm", "58mm"  # Renamed from _58mm
         LETTER = "LETTER", "Letter"
         LEGAL = "LEGAL", "Legal"
 
     class Currency(models.TextChoices):
+        """Supported currencies for reports."""
+
         INR = "INR", "Indian Rupee (₹)"
         USD = "USD", "US Dollar ($)"
         EUR = "EUR", "Euro (€)"
@@ -284,6 +299,8 @@ class PaymentDetails(models.Model):
     """Model to store multiple payment methods and QR codes for the shop."""
 
     class PaymentType(models.TextChoices):
+        """Supported payment methods."""
+
         UPI = "UPI", "UPI"
         BANK_ACCOUNT = "BANK", "Bank Account"
         QR_CODE = "QR", "QR Code"
@@ -492,17 +509,23 @@ class BarcodeConfiguration(models.Model):
     """Simplified model to store barcode/label printing preferences."""
 
     class BarcodeType(models.TextChoices):
+        """Supported barcode formats."""
+
         CODE128 = "CODE128", "Code 128"
         EAN13 = "EAN13", "EAN-13"
         QR_CODE = "QR", "QR Code"
 
     class LabelSize(models.TextChoices):
+        """Predefined label sizes."""
+
         SMALL = "25x12", "25mm x 12mm"
         MEDIUM = "38x25", "38mm x 25mm"
         LARGE = "50x25", "50mm x 25mm"
         CUSTOM = "CUSTOM", "Custom Size"
 
     class PaperSize(models.TextChoices):
+        """Supported paper types for barcode printing."""
+
         A4 = "A4", "A4 (210 x 297 mm)"
         ROLL = "ROLL", "Label Roll"
 
@@ -577,10 +600,11 @@ class BarcodeConfiguration(models.Model):
         return f"{self.config_name} ({self.barcode_type})"
 
     def save(self, *args, **kwargs):
+        """Override save to clean and format data."""
         try:
             self.config_name = StringProcessor(self.config_name).toTitle()
             self.heading_text = StringProcessor(self.heading_text).toTitle()
-        except BaseException as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(str(e))
 
         return super().save(*args, **kwargs)
@@ -592,18 +616,25 @@ class BarcodeConfiguration(models.Model):
 
     @property
     def actual_label_width(self):
+        """Get actual width of the label in mm."""
         if self.label_size == self.LabelSize.CUSTOM and self.custom_label_width:
             return float(self.custom_label_width)
-        if "x" in self.label_size:
-            return float(self.label_size.split("x")[0])
+
+        # self.label_size is a string value of the Choice, not the Enum member itself directly in DB
+        label_size_str = str(self.label_size)
+        if "x" in label_size_str:
+            return float(label_size_str.split("x", maxsplit=1)[0])
         return 38.0
 
     @property
     def actual_label_height(self):
+        """Get actual height of the label in mm."""
         if self.label_size == self.LabelSize.CUSTOM and self.custom_label_height:
             return float(self.custom_label_height)
-        if "x" in self.label_size:
-            return float(self.label_size.split("x")[1])
+
+        label_size_str = str(self.label_size)
+        if "x" in label_size_str:
+            return float(label_size_str.split("x", maxsplit=1)[1])
         return 25.0
 
     @property

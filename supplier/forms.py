@@ -1,11 +1,19 @@
-from django import forms
-from .models import Supplier, SupplierInvoice, SupplierPayment
-from django.core.exceptions import ValidationError
-from decimal import Decimal
+"""
+Forms for the supplier app.
+"""
+
 from datetime import datetime
+from decimal import Decimal
+
+from django import forms
+from django.core.exceptions import ValidationError
+
+from .models import Supplier, SupplierInvoice, SupplierPayment
 
 
 class SupplierForm(forms.ModelForm):
+    """Form to create or update a supplier."""
+
     class Meta:
         model = Supplier
         fields = [
@@ -99,6 +107,8 @@ class SupplierForm(forms.ModelForm):
 
 
 class SupplierInvoiceForm(forms.ModelForm):
+    """Form to create or update a supplier invoice."""
+
     class Meta:
         model = SupplierInvoice
         fields = [
@@ -253,6 +263,8 @@ class SupplierInvoiceForm(forms.ModelForm):
 
 
 class SupplierPaymentForm(forms.ModelForm):
+    """Form to record a payment made to a supplier."""
+
     class Meta:
         model = SupplierPayment
         fields = [
@@ -287,7 +299,7 @@ class SupplierPaymentForm(forms.ModelForm):
                 field.label = f"{field.label} *"
 
         # Add appropriate classes based on widget type
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             widget = field.widget
             if isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"

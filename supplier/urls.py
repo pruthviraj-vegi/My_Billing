@@ -1,4 +1,9 @@
+"""
+URL patterns for the supplier app.
+"""
+
 from django.urls import path
+
 from . import views
 
 

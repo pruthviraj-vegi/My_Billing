@@ -1,15 +1,16 @@
-# ------------------------------------------------------------------
-# File: accounts/forms.py
-# ------------------------------------------------------------------
+"""
+Forms for managing shop details and report configurations.
+"""
+
 from django import forms
-from django.core.exceptions import ValidationError
-from .models import (
-    ShopDetails,
-    ReportConfiguration,
-    PaymentDetails,
-    BarcodeConfiguration,
-)
+
 from base.manager import phone_regex
+from .models import (
+    BarcodeConfiguration,
+    PaymentDetails,
+    ReportConfiguration,
+    ShopDetails,
+)
 
 
 class ShopDetailsForm(forms.ModelForm):

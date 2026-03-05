@@ -1,10 +1,14 @@
+"""
+Django admin configurations for the invoice app.
+"""
+
 from django.contrib import admin
-from .models import (
+from invoice.models import (
+    AuditTable,
     Invoice,
+    InvoiceAudit,
     InvoiceItem,
     PaymentAllocation,
-    AuditTable,
-    InvoiceAudit,
     ReturnInvoice,
     ReturnInvoiceItem,
 )
@@ -12,6 +16,8 @@ from .models import (
 
 @admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):
+    """Admin interface for Invoice model."""
+
     list_display = (
         "invoice_number",
         "customer",
@@ -49,16 +55,19 @@ class InvoiceAdmin(admin.ModelAdmin):
     )
 
     def total_payable_display(self, obj):
+        """Display the total payable amount for the invoice."""
         return obj.total_payable
 
     total_payable_display.short_description = "Total Payable"
 
     def total_received_display(self, obj):
+        """Display the total received amount for the invoice."""
         return obj.total_received
 
     total_received_display.short_description = "Total Received"
 
     def remaining_amount_display(self, obj):
+        """Display the remaining amount to be paid for the invoice."""
         return obj.remaining_amount
 
     remaining_amount_display.short_description = "Remaining"
@@ -66,6 +75,8 @@ class InvoiceAdmin(admin.ModelAdmin):
 
 @admin.register(InvoiceItem)
 class InvoiceItemAdmin(admin.ModelAdmin):
+    """Admin interface for InvoiceItem model."""
+
     list_display = (
         "invoice",
         "product_variant",
@@ -93,6 +104,7 @@ class InvoiceItemAdmin(admin.ModelAdmin):
     )
 
     def amount_display(self, obj):
+        """Display the total amount (quantity * unit price) for the invoice item."""
         return obj.amount
 
     amount_display.short_description = "Amount"
@@ -247,6 +259,7 @@ class AuditTableAdmin(admin.ModelAdmin):
     )
 
     def total_changes_display(self, obj):
+        """Display the total number of changes associated with this audit table."""
         return obj.total_changes
 
     total_changes_display.short_description = "Total Changes"

@@ -1,22 +1,31 @@
-from django.db import transaction
-from django.http import JsonResponse
-from django.utils import timezone
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.core.exceptions import ValidationError
-from django.db.models import Q
+"""
+Views for invoice return operations.
+"""
 
-from django.views.generic.edit import CreateView
-from django.views.generic import DetailView
-from django.urls import reverse_lazy
+import logging
 from datetime import datetime
 from decimal import Decimal
-from .models import ReturnInvoice, Invoice, InvoiceItem, ReturnInvoiceItem
-from .form import ReturnInvoiceForm
-from .choices import ItemConditionChoices, ItemReturnReasonChoices, RefundStatusChoices
-from inventory.services import InventoryService
+
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic import DetailView
+from django.views.generic.edit import CreateView
+
 from base.utility import render_paginated_response, table_sorting
-import logging
+from inventory.services import InventoryService
+from invoice.choices import (
+    ItemConditionChoices,
+    ItemReturnReasonChoices,
+    RefundStatusChoices,
+)
+from invoice.form import ReturnInvoiceForm
+from invoice.models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceItem
 
 logger = logging.getLogger(__name__)
 
@@ -104,18 +113,22 @@ def fetch_return_invoices(request):
 
 
 class ReturnInvoiceCreateView(CreateView):
+    """Create a new return invoice."""
+
     model = ReturnInvoice
     form_class = ReturnInvoiceForm
     template_name = "invoice_return/create.html"
     success_url = reverse_lazy("invoice:return_home")
 
     def get_context_data(self, **kwargs):
+        """Add the page title to context."""
         context = super().get_context_data(**kwargs)
         context["title"] = "Create Return Invoice"
         return context
 
     @transaction.atomic
     def form_valid(self, form):
+        """Create return invoice with items from the original invoice."""
         try:
             # Check if a pending return invoice already exists for this invoice
             invoice = form.cleaned_data.get("invoice")
@@ -178,13 +191,14 @@ class ReturnInvoiceCreateView(CreateView):
             # Redirect to edit page to select items (we'll implement this next)
             return redirect("invoice:return_home")  # For now, redirect to home
 
-        except Exception as e:
-            logger.error(f"Error creating return invoice: {e}")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error creating return invoice: %s", e)
             messages.error(self.request, f"Error creating return invoice: {str(e)}")
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form validation error: {form.errors}")
+        """Handle invalid form submission."""
+        logger.error("Form validation error: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -197,6 +211,7 @@ class ReturnStockAdjustmentView(DetailView):
     context_object_name = "return_invoice"
 
     def get_context_data(self, **kwargs):
+        """Add return items and choice data to context."""
         context = super().get_context_data(**kwargs)
         return_invoice = self.get_object()
 
@@ -228,6 +243,7 @@ class ReturnInvoiceDetailView(DetailView):
     context_object_name = "return_invoice"
 
     def get_context_data(self, **kwargs):
+        """Add returned items and summary statistics to context."""
         context = super().get_context_data(**kwargs)
         return_invoice = self.get_object()
 
@@ -260,7 +276,7 @@ class ReturnInvoiceDetailView(DetailView):
 
 @transaction.atomic
 def create_auto_return_invoice(request, invoice_id):
-
+    """Automatically create a return invoice with all items from an invoice."""
     try:
 
         invoice = get_object_or_404(Invoice, id=invoice_id)
@@ -317,8 +333,8 @@ def create_auto_return_invoice(request, invoice_id):
 
         return redirect(return_invoice.get_absolute_url())
 
-    except Exception as e:
-        logger.error(f"Error creating auto return invoice: {e}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error creating auto return invoice: %s", e)
         return JsonResponse({"success": False, "error": str(e)})
 
 
@@ -351,7 +367,7 @@ def update_return_item(request, item_id):
                     }
                 )
         except ValueError as e:
-            logger.error(f"Invalid quantity format: {e}")
+            logger.error("Invalid quantity format: %s", e)
             return JsonResponse({"success": False, "error": "Invalid quantity format"})
 
         # Update item
@@ -391,10 +407,10 @@ def update_return_item(request, item_id):
         )
 
     except ReturnInvoiceItem.DoesNotExist:
-        logger.error(f"Return item not found: {item_id}")
+        logger.error("Return item not found: %s", item_id)
         return JsonResponse({"success": False, "error": "Return item not found"})
-    except Exception as e:
-        logger.error(f"Error updating return item: {e}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error updating return item: %s", e)
         return JsonResponse({"success": False, "error": str(e)})
 
 
@@ -471,8 +487,8 @@ def submit_return_invoice(request, pk):
 
     except ReturnInvoice.DoesNotExist:
         return JsonResponse({"success": False, "error": "Return invoice not found"})
-    except Exception as e:
-        logger.error(f"Error submitting return invoice: {e}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error submitting return invoice: %s", e)
         return JsonResponse({"success": False, "error": str(e)})
 
 
@@ -512,6 +528,6 @@ def delete_return_invoice(request, pk):
 
     except ReturnInvoice.DoesNotExist:
         return JsonResponse({"success": False, "error": "Return invoice not found"})
-    except Exception as e:
-        logger.error(f"Error deleting return invoice: {e}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error deleting return invoice: %s", e)
         return JsonResponse({"success": False, "error": str(e)})

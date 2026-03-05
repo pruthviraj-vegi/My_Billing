@@ -1,15 +1,18 @@
-from django.shortcuts import render, get_object_or_404, redirect
+"""
+Views for invoice cancellation operations.
+"""
+
+import logging
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
-from django.db.models import Q, Sum, Count
-from django.utils import timezone
 from django.db import transaction
+from django.db.models import Count, Q, Sum
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_http_methods
 
-from .models import Invoice, InvoiceCancellation
-from .form import InvoiceCancellationForm
-import logging
+from invoice.form import InvoiceCancellationForm
+from invoice.models import Invoice, InvoiceCancellation
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,7 @@ def cancel_invoice(request, pk):
         form = InvoiceCancellationForm(request.POST, invoice=invoice)
         try:
             with transaction.atomic():
+                reason = None
                 if form.is_valid():
                     reason = form.cleaned_data["cancellation_reason"]
 
@@ -46,18 +50,24 @@ def cancel_invoice(request, pk):
                         f"Invoice {invoice.invoice_number} has been cancelled successfully.",
                     )
                     logger.info(
-                        f"Invoice {invoice.invoice_number} cancelled by {request.user.username}. "
-                        f"Reason: {reason}"
+                        "Invoice %s cancelled by %s. Reason: %s",
+                        invoice.invoice_number,
+                        request.user.username,
+                        reason,
                     )
                     return redirect("invoice:detail", pk=pk)
                 else:
                     messages.error(request, f"Failed to cancel invoice: {message}")
                     logger.error(
-                        f"Failed to cancel invoice {invoice.invoice_number}: {message}"
+                        "Failed to cancel invoice %s: %s",
+                        invoice.invoice_number,
+                        message,
                     )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             messages.error(request, f"Failed to cancel invoice: {str(e)}")
-            logger.error(f"Failed to cancel invoice {invoice.invoice_number}: {str(e)}")
+            logger.error(
+                "Failed to cancel invoice %s: %s", invoice.invoice_number, str(e)
+            )
     else:
         form = InvoiceCancellationForm(invoice=invoice)
 

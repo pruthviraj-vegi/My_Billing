@@ -1,6 +1,11 @@
-from django.dispatch import receiver
+"""
+Signals for the user app, handling login and logout events.
+"""
+
 from django.contrib.auth.signals import user_logged_in, user_logged_out
+from django.dispatch import receiver
 from django.utils import timezone
+
 from .models import LoginEvent
 
 
@@ -13,6 +18,7 @@ def _extract_ip(request):
 
 @receiver(user_logged_in)
 def on_user_logged_in(sender, request, user, **kwargs):
+    """Log the user login event."""  # pylint: disable=unused-argument
     try:
         LoginEvent.objects.create(
             user=user,
@@ -22,12 +28,13 @@ def on_user_logged_in(sender, request, user, **kwargs):
             user_agent=request.META.get("HTTP_USER_AGENT", "")[:512],
             session_key=getattr(request.session, "session_key", None),
         )
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
 
 
 @receiver(user_logged_out)
 def on_user_logged_out(sender, request, user, **kwargs):
+    """Log the user logout event."""  # pylint: disable=unused-argument
     try:
         LoginEvent.objects.create(
             user=user,
@@ -41,5 +48,5 @@ def on_user_logged_out(sender, request, user, **kwargs):
                 getattr(request.session, "session_key", None) if request else None
             ),
         )
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass

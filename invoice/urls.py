@@ -1,10 +1,15 @@
+"""
+URL routing configuration for the invoice app.
+"""
+
 from django.urls import path
+
 from . import (
     views,
     views_,
-    views_return,
-    views_report,
     views_cancellation,
+    views_report,
+    views_return,
 )
 
 app_name = "invoice"

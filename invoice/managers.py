@@ -2,15 +2,17 @@
 Custom managers for Invoice models
 """
 
-from django.db import models
-from django.db.models import Q, Sum, Count
 from decimal import Decimal
+
+from django.db import models
+from django.db.models import Count, Q, Sum
 
 
 class InvoiceManager(models.Manager):
     """Custom manager for Invoice model"""
 
     def get_queryset(self):
+        """Return a queryset with related customer and sold_by objects pre-fetched."""
         return super().get_queryset().select_related("customer", "sold_by")
 
     def paid(self):
@@ -68,6 +70,7 @@ class InvoiceItemManager(models.Manager):
     """Custom manager for InvoiceItem model"""
 
     def get_queryset(self):
+        """Return a queryset with related product, category, and invoice objects pre-fetched."""
         return (
             super()
             .get_queryset()
@@ -102,6 +105,7 @@ class AuditTableManager(models.Manager):
     """Custom manager for AuditTable model"""
 
     def get_queryset(self):
+        """Return a queryset with the related created_by object pre-fetched."""
         return super().get_queryset().select_related("created_by")
 
     def pending(self):
@@ -129,6 +133,7 @@ class InvoiceAuditManager(models.Manager):
     """Custom manager for InvoiceAudit model"""
 
     def get_queryset(self):
+        """Return a queryset with related invoice, audit_table, and changed_by objects pre-fetched."""
         return (
             super()
             .get_queryset()
@@ -160,6 +165,7 @@ class PaymentAllocationManager(models.Manager):
     """Custom manager for PaymentAllocation model"""
 
     def get_queryset(self):
+        """Return a queryset with related payment, invoice, and created_by objects pre-fetched."""
         return super().get_queryset().select_related("payment", "invoice", "created_by")
 
     def by_payment(self, payment):
@@ -187,6 +193,7 @@ class ReturnInvoiceManager(models.Manager):
     """Custom manager for ReturnInvoice model"""
 
     def get_queryset(self):
+        """Return a queryset with related invoice, customer, and user objects pre-fetched."""
         return (
             super()
             .get_queryset()
@@ -248,6 +255,7 @@ class ReturnInvoiceItemManager(models.Manager):
     """Custom manager for ReturnInvoiceItem model"""
 
     def get_queryset(self):
+        """Return a queryset with related return_invoice, product, and original_invoice_item objects pre-fetched."""
         return (
             super()
             .get_queryset()

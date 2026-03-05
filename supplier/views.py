@@ -1,39 +1,45 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.template.loader import render_to_string
-from django.http import JsonResponse
+"""
+Views for the supplier app, handling suppliers, invoices, payments, and reporting.
+"""
+
+import json
+import logging
+from decimal import Decimal
+
+from django.contrib import messages
 from django.db.models import (
-    Q,
-    Sum,
     Count,
     DecimalField,
-    Value,
     ExpressionWrapper,
     F,
     OuterRef,
+    Q,
     Subquery,
+    Sum,
+    Value,
 )
-from django.db.models.functions import Coalesce, TruncDate, TruncWeek, TruncMonth
-from django.contrib import messages
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.db.models.functions import Coalesce, TruncDate, TruncMonth, TruncWeek
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from datetime import timedelta
-from decimal import Decimal
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
+
 from base.getDates import getDates
-from .models import Supplier, SupplierInvoice, SupplierPayment
-from .forms import SupplierForm, SupplierInvoiceForm, SupplierPaymentForm
 from base.utility import (
-    get_periodic_data,
     get_period_label,
+    get_periodic_data,
     render_paginated_response,
     table_sorting,
 )
-import logging
-import json
+
+from .forms import SupplierForm, SupplierInvoiceForm, SupplierPaymentForm
+from .models import Supplier, SupplierInvoice, SupplierPayment
 
 logger = logging.getLogger(__name__)
 
 
 def get_total_outstanding_balance():
+    """Calculate the total outstanding balance for all suppliers."""
     total_all_invoiced = SupplierInvoice.objects.filter(is_deleted=False).aggregate(
         total=Coalesce(
             Sum("total_amount"),
@@ -104,7 +110,9 @@ def get_comparison_data(date_filter, current_start, current_end):
     }
 
 
-def get_period_data(invoices, start_date, end_date, period_type):
+def get_period_data(
+    invoices, start_date, end_date, period_type
+):  # pylint: disable=unused-argument
     """
     Get aggregated data for a specific period using database-level grouping
 
@@ -265,7 +273,8 @@ def dashboard_fetch(request):
     )
 
     # Payment method breakdown (period-based)
-    payment_method_breakdown = (
+    # payment_method_breakdown is not currently used in the JSON response, but kept for future use if needed
+    _ = (
         payments.values("method")
         .annotate(
             count=Count("id"),
@@ -427,8 +436,6 @@ def get_suppliers_data(request):
     ]
 
     # Get primary sort field (first in list)
-    primary_sort = sort_fields[0] if sort_fields else "-id"
-
     # Build filters
     filters = Q()
     if search_query:
@@ -656,6 +663,8 @@ def delete_invoice(request, supplier_pk, invoice_pk):
 
 
 class CreateSupplier(CreateView):
+    """View to create a new supplier."""
+
     model = Supplier
     form_class = SupplierForm
     template_name = "supplier/form.html"
@@ -667,7 +676,7 @@ class CreateSupplier(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -679,6 +688,8 @@ class CreateSupplier(CreateView):
 
 
 class EditSupplier(UpdateView):
+    """View to edit an existing supplier."""
+
     model = Supplier
     form_class = SupplierForm
     template_name = "supplier/form.html"
@@ -695,12 +706,14 @@ class EditSupplier(UpdateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 class DeleteSupplier(DeleteView):
+    """View to delete an existing supplier."""
+
     model = Supplier
     success_url = reverse_lazy("supplier:home")
     template_name = "supplier/delete.html"
@@ -716,13 +729,15 @@ class DeleteSupplier(DeleteView):
         return super().delete(request, *args, **kwargs)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
 
 # Payment Views
 class CreatePayment(CreateView):
+    """View to record a payment made to a supplier."""
+
     model = SupplierPayment
     form_class = SupplierPaymentForm
     template_name = "supplier/payment/form.html"
@@ -753,7 +768,7 @@ class CreatePayment(CreateView):
         return response
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -763,6 +778,8 @@ class CreatePayment(CreateView):
 
 
 class EditPayment(UpdateView):
+    """View to edit a payment record."""
+
     model = SupplierPayment
     form_class = SupplierPaymentForm
     template_name = "supplier/payment/form.html"
@@ -794,16 +811,16 @@ class EditPayment(UpdateView):
 
     def form_valid(self, form):
         # Save the payment - signals will handle reallocation automatically
-        payment = form.save()
+        form.save()
 
         messages.success(
             self.request,
-            f"Payment updated successfully!",
+            "Payment updated successfully!",
         )
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(
             self.request, "Invalid form submission. Please check your inputs."
         )
@@ -815,6 +832,8 @@ class EditPayment(UpdateView):
 
 
 class CreateInvoice(CreateView):
+    """View to create a new supplier invoice."""
+
     model = SupplierInvoice
     form_class = SupplierInvoiceForm
     template_name = "supplier/invoice/form.html"
@@ -845,7 +864,7 @@ class CreateInvoice(CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -855,6 +874,8 @@ class CreateInvoice(CreateView):
 
 
 class EditInvoice(UpdateView):
+    """View to edit an existing supplier invoice."""
+
     model = SupplierInvoice
     form_class = SupplierInvoiceForm
     template_name = "supplier/invoice/form.html"
@@ -885,7 +906,7 @@ class EditInvoice(UpdateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
@@ -957,6 +978,7 @@ def get_opening_balance(supplier, start_date):
 
 
 def get_supplier_report_data(supplier, date_range):
+    """Get processed ledger data for a supplier within a date range."""
     # Fetch only necessary fields
 
     opening_balance = get_opening_balance(supplier, date_range[0])
@@ -1086,9 +1108,7 @@ def supplier_report_fetch(request, pk):
         start_date=start_date,
     )
 
-    # Extract the data from the JsonResponse
     # render_paginated_response returns a JsonResponse, we need to get its content
-    import json
 
     paginated_content = json.loads(paginated_data.content.decode("utf-8"))
 

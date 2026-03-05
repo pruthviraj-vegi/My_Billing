@@ -1,10 +1,13 @@
-# ------------------------------------------------------------------
-# File: accounts/forms.py
-# ------------------------------------------------------------------
+"""
+Forms for user management and related models.
+"""
+
+import logging
+
 from django import forms
 from django.utils import timezone
+
 from .models import CustomUser, Salary, Transaction
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +61,7 @@ class CustomUserForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             if field.required:
                 field.label = f"{field.label} *"
 
@@ -78,6 +81,7 @@ class CustomUserForm(forms.ModelForm):
         self.fields["phone_number"].widget.attrs["maxlength"] = "10"
 
     def clean_phone_number(self):
+        """Validate that the phone number is unique."""
         phone_number = self.cleaned_data.get("phone_number")
         if not phone_number:
             raise forms.ValidationError("Phone number is required.")
@@ -95,6 +99,7 @@ class CustomUserForm(forms.ModelForm):
         return phone_number
 
     def clean_email(self):
+        """Validate that the email address is unique and valid."""
         email = self.cleaned_data.get("email")
         if email:
             # Additional validation (Django's EmailField already validates basic format)
@@ -142,7 +147,7 @@ class PasswordResetForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             if field.required:
                 field.label = f"{field.label} *"
 
@@ -170,6 +175,7 @@ class PasswordResetForm(forms.Form):
         return cleaned_data
 
     def clean_new_password(self):
+        """Validate that the new password is provided."""
         new_password = self.cleaned_data.get("new_password")
         if not new_password:
             raise forms.ValidationError("Password is required.")
@@ -207,7 +213,7 @@ class SalaryForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             if field.required:
                 field.label = f"{field.label} *"
 
@@ -247,10 +253,11 @@ class SalaryForm(forms.ModelForm):
                             "User is eligible for commission."
                         )
 
-            except Exception as e:
-                logger.error(f"Error setting commission field: {e}")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("Error setting commission field: %s", e)
 
     def clean_amount(self):
+        """Validate that the salary amount is greater than zero."""
         amount = self.cleaned_data.get("amount")
         if amount is not None and amount <= 0:
             raise forms.ValidationError("Amount must be greater than 0.")
@@ -320,6 +327,7 @@ class TransactionForm(forms.ModelForm):
         }
 
     def clean_amount(self):
+        """Validate that the transaction amount is not zero."""
         amount = self.cleaned_data.get("amount")
         if amount is not None and amount == 0:
             raise forms.ValidationError("Amount cannot be 0.")
@@ -330,7 +338,7 @@ class TransactionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Add required field indicators
-        for field_name, field in self.fields.items():
+        for _, field in self.fields.items():
             if field.required:
                 field.label = f"{field.label} *"
 

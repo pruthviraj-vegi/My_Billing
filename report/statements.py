@@ -1,18 +1,25 @@
-from django.http import JsonResponse
-from invoice.models import Invoice
-from api.services import generate_invoice_pdf, generate_statement_pdf
-from api.views import send_template, send_test
-from customer.models import Customer, Payment
-from base.getDates import getDates
-from django.shortcuts import get_object_or_404
+"""
+Views for handling statement and invoice related endpoints.
+"""
 
 import logging
+
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+
+from api.services import generate_invoice_pdf, generate_statement_pdf
+from api.views import send_template
+from base.getDates import getDates
+from customer.models import Customer, Payment
+from invoice.models import Invoice
 
 logger = logging.getLogger(__name__)
 
 
 def send_invoice(request, pk):
-
+    """
+    Generate and send an invoice PDF to the customer via WhatsApp.
+    """
     invoice = Invoice.objects.get(pk=pk)
     try:
         # Use the helper function to generate or retrieve PDF
@@ -27,7 +34,7 @@ def send_invoice(request, pk):
             pdf_data["filename"],
         )
 
-        if response.get("success") == True:
+        if response.get("success") is True:
             return JsonResponse(
                 {
                     "success": True,
@@ -45,8 +52,8 @@ def send_invoice(request, pk):
             status=200,
         )
 
-    except Exception as e:
-        logger.error(f"Error generating invoice PDF: {e}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error generating invoice PDF: %s", e)
         return JsonResponse(
             {
                 "success": False,
@@ -57,6 +64,9 @@ def send_invoice(request, pk):
 
 
 def send_statement(request, pk):
+    """
+    Generate and send a statement PDF to the customer via WhatsApp.
+    """
     customer = get_object_or_404(Customer, id=pk)
     start_date, end_date = getDates(request)
 
@@ -74,7 +84,7 @@ def send_statement(request, pk):
             pdf_data["url"],
             pdf_data["filename"],
         )
-        if response.get("success") == True:
+        if response.get("success") is True:
             return JsonResponse(
                 {
                     "success": True,
@@ -92,8 +102,8 @@ def send_statement(request, pk):
             status=200,
         )
 
-    except Exception as e:
-        logger.error(f"Error generating statement PDF: {e}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error generating statement PDF: %s", e)
         return JsonResponse(
             {
                 "success": False,
@@ -104,6 +114,9 @@ def send_statement(request, pk):
 
 
 def send_text(request, pk):
+    """
+    Send a payment receipt text to the customer via WhatsApp.
+    """
     payment = get_object_or_404(Payment, id=pk)
     try:
         response = send_template(
@@ -120,7 +133,7 @@ def send_text(request, pk):
             "",
         )
 
-        if response.get("success") == True:
+        if response.get("success") is True:
             return JsonResponse(
                 {
                     "success": True,
@@ -138,8 +151,8 @@ def send_text(request, pk):
             status=200,
         )
 
-    except Exception as e:
-        logger.error(f"Error generating payment text: {e}")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error generating payment text: %s", e)
         return JsonResponse(
             {
                 "success": False,

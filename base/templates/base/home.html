@@ -1,10 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}
   Dashboard - Billing System
 {% endblock title %}
-
 {% block content %}
   <!-- Page Header -->
   <div class="page-header">
@@ -20,19 +18,15 @@
       </a>
     </div>
   </div>
-
   <!-- Breadcrumb Navigation -->
   <nav class="breadcrumb breadcrumb-right">
     <a href="#" class="breadcrumb-item">Dashboard</a>
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">Overview</span>
   </nav>
-
   <!-- Welcome Section -->
   <div class="welcome-section">
     <h1 class="welcome-title">Welcome back, {{ user.full_name }}!</h1>
     <p class="welcome-subtitle">Here's what's happening with your billing system today.</p>
   </div>
-
-  
 {% endblock content %}

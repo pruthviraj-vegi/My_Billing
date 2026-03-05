@@ -1,27 +1,25 @@
-from django.db import transaction, connection
-from django.http import JsonResponse
-from django.utils import timezone
-from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Sum
-from django.contrib import messages
+"""
+Views for the invoice audit table and related operations.
+"""
+
 import json
 import logging
-from django.db.models import Q
-
-logger = logging.getLogger(__name__)
-from invoice.models import (
-    AuditTable,
-    Invoice,
-    InvoiceAudit,
-    InvoiceSequence,
-    AuditTable,
-)
-from invoice.form import AuditTableForm
-from django.views.generic.edit import CreateView, DeleteView, View
-from django.urls import reverse_lazy
 from datetime import datetime, time
 
+from django.contrib import messages
+from django.db import connection, transaction
+from django.db.models import Q, Sum
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic.edit import CreateView, DeleteView, View
+
 from base.utility import render_paginated_response, table_sorting
+from invoice.form import AuditTableForm
+from invoice.models import AuditTable, Invoice, InvoiceAudit, InvoiceSequence
+
+logger = logging.getLogger(__name__)
 
 VALID_SORT_FIELDS = {
     "id",
@@ -51,7 +49,7 @@ def resequence_invoices(
     )
 
     if not invoices:
-        raise Exception("No invoices found for this financial year")
+        raise ValueError("No invoices found for this financial year")
 
     all_invoice_ids = [inv["id"] for inv in invoices]
 
@@ -199,6 +197,7 @@ def audit_home(request):
 
 
 def get_data(request):
+    """Get audit data with search and filter parameters"""
     # Get search and filter parameters
     search_query = request.GET.get("search", "").strip()
     audit_type = request.GET.get("audit_type", "")
@@ -306,7 +305,7 @@ def audit_suggestions(request):
 
         return JsonResponse({"suggestions": suggestions})
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
@@ -356,6 +355,7 @@ class AuditTableDeleteView(DeleteView):
 
 
 class InvoiceManager(View):
+    """View to manage invoices for audit."""
 
     template = "invoice_audit/invoice_manager.html"
 
@@ -403,7 +403,7 @@ class InvoiceManager(View):
 
     @transaction.atomic
     def post(self, request, pk):
-
+        """Handle processing of invoice conversion requests."""
         audit = get_object_or_404(AuditTable, pk=pk)
 
         try:
@@ -489,7 +489,7 @@ class InvoiceManager(View):
                         }
                     )
 
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     conversion_log.append(
                         {
                             "invoice_id": invoice_id,
@@ -526,9 +526,9 @@ class InvoiceManager(View):
             )
 
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON data: {e}")
+            logger.error("Invalid JSON data: %s", e)
             return JsonResponse({"success": False, "error": "Invalid JSON data"})
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             transaction.set_rollback(True)
             return JsonResponse({"success": False, "error": f"Server error: {str(e)}"})
 
@@ -542,6 +542,7 @@ def audit_detail(request, pk):
 
 
 def fetch_audit_details(request, pk):
+    """AJAX endpoint to fetch and sort audit details"""
     audit_table = get_object_or_404(AuditTable, pk=pk)
 
     sort_fields = [

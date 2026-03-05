@@ -1,25 +1,29 @@
-from django.contrib import messages
-from django.shortcuts import redirect
+"""
+Views for handling settings, shop details, report configs, and barcodes.
+"""
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+import logging
+
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
-from .models import (
-    ShopDetails,
-    ReportConfiguration,
-    PaymentDetails,
-    BarcodeConfiguration,
-)
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_http_methods
+
 from .forms import (
-    ShopDetailsForm,
-    ReportConfigurationForm,
-    QuickReportConfigForm,
-    PaymentDetailsForm,
     BarcodeConfigurationForm,
+    PaymentDetailsForm,
+    QuickReportConfigForm,
+    ReportConfigurationForm,
+    ShopDetailsForm,
 )
-import logging
+from .models import (
+    BarcodeConfiguration,
+    PaymentDetails,
+    ReportConfiguration,
+    ShopDetails,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +65,7 @@ def shop_details_create(request):
             shop.save()
             messages.success(request, "Shop details created successfully!")
             return redirect("setting:shop_details_list")
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
     else:
         form = ShopDetailsForm()
 
@@ -79,7 +83,7 @@ def shop_details_edit(request, pk):
             form.save()
             messages.success(request, "Shop details updated successfully!")
             return redirect("setting:shop_details_list")
-        logger.error(f"Form invalid: {form.errors}")
+        logger.error("Form invalid: %s", form.errors)
     else:
         form = ShopDetailsForm(instance=shop)
 
