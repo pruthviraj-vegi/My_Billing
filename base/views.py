@@ -1,15 +1,21 @@
-from django.urls import reverse_lazy
-from django.contrib.auth.views import LoginView
+"""Views for authentication, home page, and error handling."""
+
 from django.contrib import messages
-from django.views.generic import TemplateView
-from django.shortcuts import redirect, render
-from .forms import CustomLoginForm
 from django.contrib.auth import logout
+from django.contrib.auth.views import LoginView
+from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
-from base.decorators import RoleRequiredMixin, ALL_ROLES
+from django.views.generic import TemplateView
+
+from base.decorators import ALL_ROLES, RoleRequiredMixin
+
+from .forms import CustomLoginForm
 
 
 class CustomLoginView(LoginView):
+    """Handle user login with remember-me and safe redirect support."""
+
     form_class = CustomLoginForm
     template_name = "base/login.html"
     redirect_authenticated_user = True
@@ -65,6 +71,8 @@ class CustomLoginView(LoginView):
 
 
 class HomeView(RoleRequiredMixin, TemplateView):
+    """Dashboard home page, accessible to all authenticated roles."""
+
     template_name = "base/home.html"
     login_url = "base:login"
     allowed_roles = ALL_ROLES
@@ -75,7 +83,7 @@ class HomeView(RoleRequiredMixin, TemplateView):
         return context
 
 
-def custom_404_view(request, exception):
+def custom_404_view(request, _exception):
     """
     Custom 404 error handler.
     Django error handlers must be function-based views that accept:
@@ -88,5 +96,6 @@ def custom_404_view(request, exception):
 
 
 def logout_view(request):
+    """Log the user out and redirect to the login page."""
     logout(request)
     return redirect("base:login")

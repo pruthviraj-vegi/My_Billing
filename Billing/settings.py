@@ -231,6 +231,8 @@ ADMIN_URL = config("ADMIN_URL", default="admin/")  # Allow customizing admin URL
 
 
 class MaxLevelFilter(logging.Filter):
+    """Filter to limit log level."""
+
     def __init__(self, max_level):
         super().__init__()
         self.max_level = max_level
