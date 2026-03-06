@@ -35,15 +35,15 @@ class InvoiceForm(forms.ModelForm):
         widgets = {
             "customer": forms.Select(attrs={"placeholder": "Select customer"}),
             "payment_type": forms.Select(),
-            "amount": forms.NumberInput(attrs={"readonly": True}),
-            "discount_amount": forms.NumberInput(
+            "amount": forms.TextInput(attrs={"readonly": True}),
+            "discount_amount": forms.TextInput(
                 attrs={
                     "placeholder": "0.00",
                     "autofocus": True,
                 }
             ),
             "sold_by": forms.Select(),
-            "advance_amount": forms.NumberInput(
+            "advance_amount": forms.TextInput(
                 attrs={
                     "placeholder": "0.00",
                     "readonly": True,
@@ -85,6 +85,11 @@ class InvoiceForm(forms.ModelForm):
 
         # Make due_date not required by default (will be handled in clean method)
         self.fields["due_date"].required = False
+        self.fields["discount_amount"].widget.attrs[
+            "class"
+        ] = " form-input indian-number"
+        self.fields["advance_amount"].widget.attrs["class"] = "form-input indian-number"
+        self.fields["amount"].widget.attrs["class"] = "form-input indian-number"
 
         # Set initial customer for new invoices
         try:
@@ -164,8 +169,12 @@ class InvoiceForm(forms.ModelForm):
         due_date = cleaned_data.get("due_date")
         customer = cleaned_data.get("customer")
 
-        # Walk-in customer (ID 1) must use CASH payment type
-        if customer and customer.id == 1 and payment_type == Invoice.PaymentType.CREDIT:
+        # Walk-in customer (default ID) must use CASH payment type
+        if (
+            customer
+            and customer.id == Customer.get_default_customer().id
+            and payment_type == Invoice.PaymentType.CREDIT
+        ):
             cleaned_data["payment_type"] = Invoice.PaymentType.CASH
             payment_type = Invoice.PaymentType.CASH
 

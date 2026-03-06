@@ -228,19 +228,19 @@
             <div class="total-amount-display">
               <div class="total-row">
                 <span class="total-label">Total Amount:</span>
-                <span class="total-value" id="totalAmountDisplay">₹0.00</span>
+                <span class="total-value" id="totalAmountDisplay">0.00</span>
               </div>
               <div class="total-row">
                 <span class="total-label">Refund Amount:</span>
-                <span class="total-value text-success" id="refundAmountDisplay">₹0.00</span>
+                <span class="total-value text-success" id="refundAmountDisplay">0.00</span>
               </div>
               <div class="total-row">
                 <span class="total-label">Restocking Fee:</span>
-                <span class="total-value text-warning" id="restockingFeeDisplay">₹0.00</span>
+                <span class="total-value text-warning" id="restockingFeeDisplay">0.00</span>
               </div>
               <div class="total-row total-final">
                 <span class="total-label">Net Refund:</span>
-                <span class="total-value" id="netRefundDisplay">₹0.00</span>
+                <span class="total-value" id="netRefundDisplay">0.00</span>
               </div>
             </div>
           </div>
@@ -314,7 +314,7 @@
                   <div class="fw-semibold text-primary">${invoice.customer_name}</div>
                   <div class="text-muted">${invoice.customer_phone || 'No phone'}</div>
                   <div class="text-muted">Invoice: ${invoice.invoice_number}</div>
-                  <div class="text-muted">Amount: ₹${parseFloat(invoice.amount).toFixed(2)}</div>
+                  <div class="text-muted">Amount: ${parseFloat(invoice.amount).toFixed(2)}</div>
                 </div>
               `;
               

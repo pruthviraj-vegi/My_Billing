@@ -184,7 +184,7 @@
       methodSelect.addEventListener('change', toggleTransactionIdRequired)
       
       // Handle amount field errors
-      {% if form.amount.errors %}
+      // {% if form.amount.errors %}
         // Focus on amount field if there are errors
         if (amountField) {
           amountField.focus()
@@ -196,7 +196,7 @@
             errorMessage.style.animation = 'pulse 2s infinite'
           }
         }
-      {% endif %}
+      // {% endif %}
       
       // Clear error highlighting when user starts typing
       if (amountField) {

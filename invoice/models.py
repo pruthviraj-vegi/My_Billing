@@ -741,7 +741,7 @@ class PaymentAllocation(SoftDeleteModel):
 
     def __str__(self):
         return (
-            f"₹{self.amount_allocated} of Payment {self.payment.id}"
+            f"{self.amount_allocated} of Payment {self.payment.id}"
             f" allocated to Invoice {self.invoice.invoice_number}"
         )
 

@@ -146,10 +146,10 @@ class VariantForm(forms.ModelForm):
             "commission_percentage": forms.NumberInput(
                 attrs={"placeholder": "Enter commission percentage", "step": "1"}
             ),
-            "purchase_price": forms.NumberInput(
+            "purchase_price": forms.TextInput(
                 attrs={"placeholder": "Enter purchase price", "step": "1"}
             ),
-            "mrp": forms.NumberInput(
+            "mrp": forms.TextInput(
                 attrs={"placeholder": "Enter selling price", "step": "1"}
             ),
             "size": forms.Select(attrs={"placeholder": "Select size"}),
@@ -164,6 +164,9 @@ class VariantForm(forms.ModelForm):
             if field.required:
                 field.label = f"{field.label} *"
             field.widget.attrs["class"] = "form-input"
+
+        self.fields["purchase_price"].widget.attrs["class"] = "form-input indian-number"
+        self.fields["mrp"].widget.attrs["class"] = "form-input indian-number"
 
         try:
             if not self.instance.pk:

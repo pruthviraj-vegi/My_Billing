@@ -159,7 +159,7 @@ class PaymentForm(forms.ModelForm):
                     "help_text": "Select the payment type for the payment",
                 }
             ),
-            "amount": forms.NumberInput(
+            "amount": forms.TextInput(
                 attrs={
                     "placeholder": "Enter amount",
                     "autofocus": True,
@@ -213,6 +213,8 @@ class PaymentForm(forms.ModelForm):
                 widget.attrs["class"] = "form-textarea"
             else:
                 widget.attrs["class"] = "form-input"
+
+        self.fields["amount"].widget.attrs["class"] = "form-input indian-number"
 
         # Handle customer field if provided
         if self.customer:

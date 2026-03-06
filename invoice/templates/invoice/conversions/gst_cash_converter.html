@@ -82,7 +82,7 @@
                 <div class="table-header">
                     <h3>
                         <i class="fas fa-receipt"></i> GST Invoices ({{ gst_invoices.count }})
-                        <span class="badge badge-info" id="gstTotal">₹{{ gst_total|floatformat:0 }}</span>
+                        <span class="badge badge-info" id="gstTotal">{{ gst_total|floatformat:0 }}</span>
                     </h3>
                 </div>
                 <div class="table-container">
@@ -101,7 +101,7 @@
                 <div class="table-header">
                     <h3>
                         <i class="fas fa-money-bill-wave"></i> Cash Invoices ({{ cash_invoices.count }})
-                        <span class="badge badge-info" id="cashTotal">₹{{ cash_total|floatformat:0 }}</span>
+                        <span class="badge badge-info" id="cashTotal">{{ cash_total|floatformat:0 }}</span>
                     </h3>
                 </div>
                 <div class="table-container">
@@ -643,7 +643,7 @@ function createItemElement(item) {
                 <div class="item-description">${item.customer_name}</div>
                 <div class="item-date">${item.invoice_date}</div>
             </div>
-            <div class="item-amount">₹${item.amount.toLocaleString()}</div>
+            <div class="item-amount">${item.amount.toLocaleString()}</div>
         </div>
         <div class="item-actions">
             <button class="move-btn" onclick="toggleItem(${item.id})" title="Move to ${item.current === 'gst' ? 'Cash' : 'GST'}">
@@ -778,8 +778,8 @@ function updateTotals() {
         .filter(item => item.current === 'cash')
         .reduce((sum, item) => sum + item.amount, 0);
     
-    document.getElementById('gstTotal').textContent = `₹${gstTotal.toLocaleString()}`;
-    document.getElementById('cashTotal').textContent = `₹${cashTotal.toLocaleString()}`;
+    document.getElementById('gstTotal').textContent = `${gstTotal.toLocaleString()}`;
+    document.getElementById('cashTotal').textContent = `${cashTotal.toLocaleString()}`;
 }
 
 /**

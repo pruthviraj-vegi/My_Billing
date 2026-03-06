@@ -407,7 +407,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Update amount display
                     const amountElement = document.getElementById(`amount-${itemId}`);
                     if (amountElement) {
-                        amountElement.textContent = `₹${parseFloat(data.item_total).toFixed(2)}`;
+                        amountElement.textContent = `${parseFloat(data.item_total).toFixed(2)}`;
                     }
                     
                     // Update refund amount (total amount stays as original invoice amount)

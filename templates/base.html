@@ -232,6 +232,14 @@
     <script>
       document.addEventListener('DOMContentLoaded', function() {
           function formatIndianNumber(value, maxDecimals = 2) {
+              if (value === undefined || value === null) {
+                  return '';
+              }
+              value = String(value);
+
+              // Check if negative
+              let isNegative = value.indexOf('-') === 0;
+
               // Remove all non-numeric except decimal point
               value = value.replace(/[^\d.]/g, '');
               
@@ -249,7 +257,13 @@
               // Format integer part (Indian style)
               if (intPart && intPart.length > 0) {
                   // Remove leading zeros
-                  intPart = intPart.replace(/^0+/, '') || '0';
+                  intPart = intPart.replace(/^0+/, '');
+                  if (!intPart && decPart === undefined) {
+                      // Only allow empty intPart if no decimal part, meaning the user just typed "0" and it got removed, or it's genuinely empty
+                      intPart = '0';
+                  } else if (!intPart) {
+                      intPart = '0';
+                  }
                   
                   if (intPart.length > 3) {
                       let last3 = intPart.slice(-3);
@@ -258,23 +272,34 @@
                   }
               }
               
+              let result = intPart;
+
               // Limit decimal places
               if (decPart !== undefined) {
                   decPart = decPart.slice(0, maxDecimals);
-                  return intPart + '.' + decPart;
+                  result = intPart + '.' + decPart;
+              } else if (value.endsWith('.')) {
+                  // If user is typing decimal point
+                  result = intPart + '.';
+              }
+
+              if (isNegative && result && result !== '0') {
+                  return '-' + result;
+              } else if (isNegative) {
+                  return '-'; // In case they just type "-"
               }
               
-              // If user is typing decimal point
-              if (value.endsWith('.')) {
-                  return intPart + '.';
-              }
-              
-              return intPart;
+              return result || '';
           }
           
           // Apply to all .indian-number inputs
           document.querySelectorAll('.indian-number').forEach(input => {
               const maxDecimals = parseInt(input.dataset.decimals) || 2;
+              
+              // Format initial value if present
+              if (input.value) {
+                  input.value = formatIndianNumber(input.value, maxDecimals);
+              }
               
               input.addEventListener('input', function(e) {
                   const cursorPos = e.target.selectionStart;

@@ -109,16 +109,16 @@
         </div>
         <div class="detail-row">
           <div class="detail-label">Purchase Price:</div>
-          <div class="detail-value">₹{{ variant.purchase_price|floatformat:2 }}</div>
+          <div class="detail-value">{{ variant.purchase_price|floatformat:2 }}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">Selling Price:</div>
-          <div class="detail-value">₹{{ variant.mrp|floatformat:2 }}</div>
+          <div class="detail-value">{{ variant.mrp|floatformat:2 }}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">Final Price:</div>
           <div class="detail-value">
-            <strong>₹{{ variant.final_price|floatformat:2 }}</strong>
+            <strong>{{ variant.final_price|floatformat:2 }}</strong>
             {% if variant.discount_percentage > 0 %}
               <br />
               <small class="text-success">-{{ variant.discount_percentage }}% discount</small>
@@ -149,7 +149,7 @@
         </div>
         <div class="detail-row">
           <div class="detail-label">Total Value:</div>
-          <div class="detail-value">₹{{ variant.total_value|floatformat:2 }}</div>
+          <div class="detail-value">{{ variant.total_value|floatformat:2 }}</div>
         </div>
         <div class="detail-row">
           <div class="detail-label">Created:</div>

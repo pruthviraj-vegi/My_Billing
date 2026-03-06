@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
         
         if (amount > availableAmount) {
-            this.setCustomValidity('Amount cannot exceed available amount (₹' + availableAmount.toFixed(2) + ')');
+            this.setCustomValidity('Amount cannot exceed available amount ( ' + availableAmount.toFixed(2) + ' )');
         } else if (amount <= 0) {
             this.setCustomValidity('Amount must be greater than zero');
         } else {

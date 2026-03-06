@@ -22,6 +22,7 @@ from base.utility import (
 )
 from cart.models import Cart
 from customer.forms import CustomerForm
+from customer.models import Customer
 from inventory.services import InventoryService
 
 from invoice.form import InvoiceForm
@@ -695,6 +696,7 @@ class CreateInvoice(View):
             "form": form,
             "title": "Create Invoice",
             "customer_form": CustomerForm(),
+            "default_customer": Customer.get_default_customer(),
         }
         return render(request, self.template_name, context)
 

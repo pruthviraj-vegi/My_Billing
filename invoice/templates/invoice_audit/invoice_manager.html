@@ -1,20 +1,16 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-
 {% block title %}
     GST to Cash Converter
 {% endblock title %}
-
 {% block content %}
     {% csrf_token %}
     <!-- Page Header -->
     <div class="page-header">
         <h2 class="page-title">
             GST to Cash Converter
-            {% if date_range_info != "All invoices" %}
-                <span class="text-muted">({{ date_range_info }})</span>
-            {% endif %}
+            {% if date_range_info != "All invoices" %}<span class="text-muted">({{ date_range_info }})</span>{% endif %}
         </h2>
         <div class="page-actions">
             <a href="{% url 'invoice:home' %}" class="btn">
@@ -31,14 +27,12 @@
             </button>
         </div>
     </div>
-
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
         <a href="{% url 'invoice:home' %}" class="breadcrumb-item">Invoices</a>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Invoice Manager</span>
     </nav>
-
     <!-- Main Layout -->
     <div class="col d-flex flex-row gap-2">
         <!-- Left Column - GST Section -->
@@ -47,35 +41,39 @@
                 <div class="table-header">
                     <h3>
                         <i class="fas fa-receipt"></i> GST Invoices ({{ gst_invoices.count }})
-                        <span class="badge badge-info" id="gstTotal">₹{{ gst_total|floatformat:0 }}</span>
+                        <span class="badge badge-info" id="gstTotal">{{ gst_total|floatformat:0 }}</span>
                     </h3>
                 </div>
                 <div class="table-container">
-                    <div id="gstSection" class="drag-section" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div id="gstSection"
+                         class="drag-section"
+                         ondrop="drop(event)"
+                         ondragover="allowDrop(event)">
                         <!-- GST items will be populated here -->
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Right Column - Cash Section -->
         <div class="col-md-6">
             <div class="table-section">
                 <div class="table-header">
                     <h3>
                         <i class="fas fa-money-bill-wave"></i> Cash Invoices ({{ cash_invoices.count }})
-                        <span class="badge badge-info" id="cashTotal">₹{{ cash_total|floatformat:0 }}</span>
+                        <span class="badge badge-info" id="cashTotal">{{ cash_total|floatformat:0 }}</span>
                     </h3>
                 </div>
                 <div class="table-container">
-                    <div id="cashSection" class="drag-section" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div id="cashSection"
+                         class="drag-section"
+                         ondrop="drop(event)"
+                         ondragover="allowDrop(event)">
                         <!-- Cash items will be populated here -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <!-- Export Results Modal -->
     <div id="exportModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -93,9 +91,8 @@
         </div>
     </div>
 {% endblock content %}
-
 {% block extra_css %}
-<style>
+    <style>
 /* Date Filter Styles - Matching Home Page Search */
 .search-filter-section {
     margin-bottom: 1.5rem;
@@ -425,11 +422,10 @@
         padding: 0.25rem;
     }
 }
-</style>
+    </style>
 {% endblock extra_css %}
-
 {% block extra_js %}
-<script>
+    <script>
 // Quick date range functions
 function setQuickDateRange(range) {
     if (!range) return; // Don't do anything if no option selected
@@ -606,7 +602,7 @@ function createItemElement(item) {
                 <div class="item-description">${item.customer_name}</div>
                 <div class="item-date">${item.invoice_date}</div>
             </div>
-            <div class="item-amount">₹${item.amount.toLocaleString()}</div>
+            <div class="item-amount">${item.amount.toLocaleString()}</div>
         </div>
         <div class="item-actions">
             <button class="move-btn" onclick="toggleItem(${item.id})" title="Move to ${item.current === 'gst' ? 'Cash' : 'GST'}">
@@ -741,8 +737,8 @@ function updateTotals() {
         .filter(item => item.current === 'cash')
         .reduce((sum, item) => sum + item.amount, 0);
     
-    document.getElementById('gstTotal').textContent = `₹${gstTotal.toLocaleString()}`;
-    document.getElementById('cashTotal').textContent = `₹${cashTotal.toLocaleString()}`;
+    document.getElementById('gstTotal').textContent = `${gstTotal.toLocaleString()}`;
+    document.getElementById('cashTotal').textContent = `${cashTotal.toLocaleString()}`;
 }
 
 /**
@@ -862,5 +858,5 @@ document.addEventListener('dragleave', function(e) {
 
 // Initialize the application when page loads
 document.addEventListener('DOMContentLoaded', init);
-</script>
+    </script>
 {% endblock extra_js %}

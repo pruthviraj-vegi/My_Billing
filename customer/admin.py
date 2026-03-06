@@ -46,7 +46,7 @@ class CustomerCreditFilter(SimpleListFilter):
         return (
             ("has_credit", "Has Credit"),
             ("no_credit", "No Credit"),
-            ("high_credit", "High Credit (>₹1000)"),
+            ("high_credit", "High Credit (>1000)"),
         )
 
     def queryset(self, request, queryset):
@@ -199,7 +199,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def credit_balance_display(self, obj):
         """Display credit balance."""
-        return f"₹{obj.store_credit_balance}"
+        return f"{obj.store_credit_balance}"
 
     credit_balance_display.short_description = "Credit Balance"
     credit_balance_display.admin_order_field = "store_credit_balance"
@@ -215,7 +215,7 @@ class CustomerAdmin(admin.ModelAdmin):
         total_unallocated = sum(payment.unallocated_amount for payment in payments)
 
         if total_payments > 0:
-            return f"Payments: {total_payments}, Unallocated: ₹{total_unallocated}"
+            return f"Payments: {total_payments}, Unallocated: {total_unallocated}"
         return "No payments"
 
     payment_allocation_info.short_description = "Payment Info"

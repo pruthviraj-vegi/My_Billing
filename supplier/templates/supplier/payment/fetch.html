@@ -25,14 +25,14 @@
         {% if payment.amount != payment.unallocated_amount %}
           <span class="text-success">{{ payment.amount|sub:payment.unallocated_amount|currency }}</span>
         {% else %}
-          <span class="text-muted">₹0.00</span>
+          <span class="text-muted">0.00</span>
         {% endif %}
       </td>
       <td>
         {% if payment.unallocated_amount > 0 %}
           <span class="text-warning">{{ payment.unallocated_amount|currency }}</span>
         {% else %}
-          <span class="text-success">₹0.00</span>
+          <span class="text-success">0.00</span>
         {% endif %}
       </td>
       <td>

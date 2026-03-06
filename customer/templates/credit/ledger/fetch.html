@@ -15,7 +15,7 @@
       <td class="text-center">{{ row.notes|default:"-"|truncatechars:15 }}</td>
       <td class="text-center">
         {% if row.type == "Invoice" %}
-          <span title="Final Amount: ₹{{ row.gross_amount|floatformat:2 }} - ₹{{ row.discount_amount|floatformat:2 }} (discount) - ₹{{ row.advance_amount|floatformat:2 }} (advance) = ₹{{ row.credit|floatformat:2 }}">
+          <span title="Final Amount: {{ row.gross_amount|floatformat:2 }} - {{ row.discount_amount|floatformat:2 }} (discount) - {{ row.advance_amount|floatformat:2 }} (advance) = {{ row.credit|floatformat:2 }}">
             {{ row.credit|currency }}
           </span>
         {% else %}
@@ -35,7 +35,7 @@
               <small class="secondary-text text-warning">⚠ Partially Paid</small>
             {% endif %}
           {% else %}
-            <span class="text-muted">₹0.00</span>
+            <span class="text-muted">0.00</span>
           {% endif %}
         {% else %}
           -
@@ -46,7 +46,7 @@
           {% if row.outstanding > 0 %}
             <span class="text-danger">{{ row.outstanding|currency }}</span>
           {% else %}
-            <span class="text-success">₹0.00</span>
+            <span class="text-success">0.00</span>
           {% endif %}
         {% else %}
           -

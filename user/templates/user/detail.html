@@ -1,11 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-
 {% block title %}
   {{ user.full_name }} - User Details
 {% endblock title %}
-
 {% block content %}
   <!-- Page Header -->
   <div class="page-header">
@@ -19,12 +17,16 @@
         <i class="fas fa-edit"></i>
         Edit User
       </a>
-      <a href="{% url 'user:reset_password' user.id %}" class="btn btn-warning">
+      <a href="{% url 'user:reset_password' user.id %}"
+         class="btn btn-warning">
         <i class="fas fa-key"></i>
         Reset Password
       </a>
       {% if user.is_active %}
-        <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
+        <form method="post"
+              action="{% url 'user:change_status' user.id %}"
+              class="d-inline"
+              style="display: inline">
           {% csrf_token %}
           <button type="submit" class="btn btn-warning">
             <i class="fas fa-user-slash"></i>
@@ -32,7 +34,10 @@
           </button>
         </form>
       {% else %}
-        <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline" style="display: inline;">
+        <form method="post"
+              action="{% url 'user:change_status' user.id %}"
+              class="d-inline"
+              style="display: inline">
           {% csrf_token %}
           <button type="submit" class="btn btn-success">
             <i class="fas fa-user-check"></i>
@@ -42,14 +47,12 @@
       {% endif %}
     </div>
   </div>
-
   <!-- Breadcrumb Navigation -->
   <nav class="breadcrumb breadcrumb-right">
     <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">{{ user.full_name }}</span>
   </nav>
-
   <!-- Main Layout -->
   <div class="col d-flex flex-row">
     <!-- Left Column - User Details and Summary -->
@@ -65,7 +68,11 @@
           <div class="detail-name-compact">
             <h4>{{ user.full_name }}</h4>
             <span class="detail-status {% if user.is_active %}status-active{% else %}status-inactive{% endif %}">
-              {% if user.is_active %}Active{% else %}Inactive{% endif %}
+              {% if user.is_active %}
+                Active
+              {% else %}
+                Inactive
+              {% endif %}
             </span>
           </div>
           <div class="detail-contact-compact">
@@ -108,7 +115,6 @@
           </div>
         </div>
       </div>
-
       <!-- Salary Summary Card -->
       <div class="summary-card-compact" id="salarySummaryCard">
         <div class="summary-icon-compact">
@@ -118,7 +124,8 @@
           <h4>Salary Summary</h4>
           <div class="summary-stats-compact">
             <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number" data-count="{{ total_salaries|default:0 }}">0</span>
+              <span class="stat-number-compact counting-number"
+                    data-count="{{ total_salaries|default:0 }}">0</span>
               <span class="stat-label-compact">Total Records</span>
             </div>
             <div class="stat-item-compact">
@@ -126,7 +133,7 @@
                 {% if current_salary %}
                   {{ current_salary.amount|currency }}
                 {% else %}
-                  ₹0
+                  0
                 {% endif %}
               </span>
               <span class="stat-label-compact">Current</span>
@@ -144,7 +151,6 @@
           </div>
         </div>
       </div>
-
       <!-- Transaction Summary Card -->
       <div class="summary-card-compact" id="transactionSummaryCard">
         <div class="summary-icon-compact">
@@ -154,7 +160,8 @@
           <h4>Transaction Summary</h4>
           <div class="summary-stats-compact">
             <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number" data-count="{{ total_transactions|default:0 }}">0</span>
+              <span class="stat-number-compact counting-number"
+                    data-count="{{ total_transactions|default:0 }}">0</span>
               <span class="stat-label-compact">Total</span>
             </div>
             <div class="stat-item-compact">
@@ -168,7 +175,6 @@
           </div>
         </div>
       </div>
-
       <!-- Net Amount Card -->
       <div class="summary-card-compact" id="netAmountCard">
         <div class="summary-icon-compact">
@@ -187,7 +193,6 @@
         </div>
       </div>
     </div>
-
     <!-- Right Column - Tables -->
     <div class="col-md-10 d-flex flex-column gap-2 ps-1">
       <!-- Salary Table Section -->
@@ -196,7 +201,8 @@
           <h3>
             <i class="fas fa-money-bill-wave"></i> Salary History
           </h3>
-          <a href="{% url 'user:salary_create' user.id %}" class="btn btn-sm btn-primary">
+          <a href="{% url 'user:salary_create' user.id %}"
+             class="btn btn-sm btn-primary">
             <i class="fas fa-plus"></i>
             Add Salary
           </a>
@@ -236,10 +242,14 @@
                     <td>{{ salary.created_at|date:"M d, Y" }}</td>
                     <td>
                       <div class="action-buttons">
-                        <a href="{% url 'user:salary_edit' user.id salary.id %}" class="btn btn-sm btn-outline" title="Edit">
+                        <a href="{% url 'user:salary_edit' user.id salary.id %}"
+                           class="btn btn-sm btn-outline"
+                           title="Edit">
                           <i class="fas fa-edit"></i>
                         </a>
-                        <a href="{% url 'user:salary_delete' user.id salary.id %}" class="btn btn-sm btn-danger" title="Delete">
+                        <a href="{% url 'user:salary_delete' user.id salary.id %}"
+                           class="btn btn-sm btn-danger"
+                           title="Delete">
                           <i class="fas fa-trash"></i>
                         </a>
                       </div>
@@ -259,14 +269,14 @@
           {% endif %}
         </div>
       </div>
-
       <!-- Transaction Table Section -->
       <div class="table-section" id="transactionSection">
         <div class="table-header">
           <h3>
             <i class="fas fa-exchange-alt"></i> Transactions
           </h3>
-          <a href="{% url 'user:transaction_create' user.id %}" class="btn btn-sm btn-primary">
+          <a href="{% url 'user:transaction_create' user.id %}"
+             class="btn btn-sm btn-primary">
             <i class="fas fa-plus"></i>
             Add Transaction
           </a>
@@ -289,9 +299,7 @@
                 {% for transaction in transactions %}
                   <tr>
                     <td>{{ transaction.transaction_id }}</td>
-                    <td>
-                        {{ transaction.get_transaction_type_display }}
-                    </td>
+                    <td>{{ transaction.get_transaction_type_display }}</td>
                     <td>
                       {% if transaction.is_debit %}
                         <span class="text-danger">-{{ transaction.amount|currency }}</span>
@@ -304,10 +312,14 @@
                     <td>{{ transaction.date|date:"M d, Y" }}</td>
                     <td>
                       <div class="action-buttons">
-                        <a href="{% url 'user:transaction_edit' user.id transaction.id %}" class="btn btn-sm btn-outline" title="Edit">
+                        <a href="{% url 'user:transaction_edit' user.id transaction.id %}"
+                           class="btn btn-sm btn-outline"
+                           title="Edit">
                           <i class="fas fa-edit"></i>
                         </a>
-                        <a href="{% url 'user:transaction_delete' user.id transaction.id %}" class="btn btn-sm btn-danger" title="Delete">
+                        <a href="{% url 'user:transaction_delete' user.id transaction.id %}"
+                           class="btn btn-sm btn-danger"
+                           title="Delete">
                           <i class="fas fa-trash"></i>
                         </a>
                       </div>
@@ -319,7 +331,8 @@
           {% else %}
             <div class="text-center" style="padding: 2rem;">
               <p class="text-muted">No transactions found.</p>
-              <a href="{% url 'user:transaction_create' user.id %}" class="btn btn-primary">
+              <a href="{% url 'user:transaction_create' user.id %}"
+                 class="btn btn-primary">
                 <i class="fas fa-plus"></i>
                 Add First Transaction
               </a>
@@ -330,7 +343,6 @@
     </div>
   </div>
 {% endblock content %}
-
 {% block extra_js %}
   <script>
     document.addEventListener('DOMContentLoaded', function () {

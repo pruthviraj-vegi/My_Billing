@@ -64,43 +64,43 @@
             <div class="detail-label">GST Type:</div>
             <div class="detail-value">{{ invoice.get_gst_type_display }}</div>
             <div class="detail-label">Sub Total:</div>
-            <div class="detail-value">₹{{ invoice.sub_total|currency }}</div>
+            <div class="detail-value">{{ invoice.sub_total|currency }}</div>
           </div>
         {% else %}
           <div class="detail-row">
             <div class="detail-label">Sub Total:</div>
-            <div class="detail-value">₹{{ invoice.sub_total|currency }}</div>
+            <div class="detail-value">{{ invoice.sub_total|currency }}</div>
             <div class="detail-label">Total Amount:</div>
-            <div class="detail-value">₹{{ invoice.total_amount|currency }}</div>
+            <div class="detail-value">{{ invoice.total_amount|currency }}</div>
           </div>
         {% endif %}
         {% if invoice.cgst_amount > 0 %}
           <div class="detail-row">
             <div class="detail-label">CGST Amount:</div>
-            <div class="detail-value">₹{{ invoice.cgst_amount|currency }}</div>
+            <div class="detail-value">{{ invoice.cgst_amount|currency }}</div>
             <div class="detail-label">SGST Amount:</div>
-            <div class="detail-value">₹{{ invoice.cgst_amount|currency }}</div>
+            <div class="detail-value">{{ invoice.cgst_amount|currency }}</div>
           </div>
         {% endif %}
         {% if invoice.igst_amount > 0 %}
           <div class="detail-row">
             <div class="detail-label">IGST Amount:</div>
-            <div class="detail-value">₹{{ invoice.igst_amount|currency }}</div>
+            <div class="detail-value">{{ invoice.igst_amount|currency }}</div>
             <div class="detail-label">Total Amount:</div>
-            <div class="detail-value">₹{{ invoice.total_amount|currency }}</div>
+            <div class="detail-value">{{ invoice.total_amount|currency }}</div>
           </div>
         {% endif %}
         {% if invoice.adjustment_amount != 0 %}
           <div class="detail-row">
             <div class="detail-label">Adjustment Amount:</div>
-            <div class="detail-value">₹{{ invoice.adjustment_amount|currency }}</div>
+            <div class="detail-value">{{ invoice.adjustment_amount|currency }}</div>
             <div class="detail-label">Paid Amount:</div>
-            <div class="detail-value">₹{{ invoice.paid_amount|currency }}</div>
+            <div class="detail-value">{{ invoice.paid_amount|currency }}</div>
           </div>
         {% else %}
           <div class="detail-row">
             <div class="detail-label">Paid Amount:</div>
-            <div class="detail-value">₹{{ invoice.paid_amount|currency }}</div>
+            <div class="detail-value">{{ invoice.paid_amount|currency }}</div>
             <div class="detail-label">Status:</div>
             <div class="detail-value">
               <span class="status-badge {% if invoice.status == 'PAID' %}   status-active    {% elif invoice.status == 'PARTIALLY_PAID' %}   status-warning    {% else %}   status-danger   {% endif %}">

@@ -47,7 +47,7 @@ def check_and_invalidate(instance, fields, cache_key, old_tokens=None):
 
 # --- Customer ---
 @receiver(pre_save, sender=Customer)
-def capture_customer_tokens(_sender, instance, **_kwargs):
+def capture_customer_tokens(sender, instance, **kwargs):
     """Capture tokens for Customer before saving."""
     if instance.pk:
         try:
@@ -64,7 +64,7 @@ def capture_customer_tokens(_sender, instance, **_kwargs):
 
 
 @receiver(post_save, sender=Customer)
-def invalidate_customer_cache(_sender, instance, **_kwargs):
+def invalidate_customer_cache(sender, instance, **kwargs):
     """Invalidate Customer cache if search tokens have changed."""
     check_and_invalidate(
         instance,
@@ -75,14 +75,14 @@ def invalidate_customer_cache(_sender, instance, **_kwargs):
 
 
 @receiver(post_delete, sender=Customer)
-def delete_customer_cache(_sender, _instance, **_kwargs):
+def delete_customer_cache(sender, instance, **kwargs):
     """Invalidate Customer cache when a Customer is deleted."""
     invalidate_cache("customer_search_words")
 
 
 # --- Invoice ---
 @receiver(pre_save, sender=Invoice)
-def capture_invoice_tokens(_sender, instance, **_kwargs):
+def capture_invoice_tokens(sender, instance, **kwargs):
     """Capture tokens for Invoice before saving."""
     if instance.pk:
         try:
@@ -99,7 +99,7 @@ def capture_invoice_tokens(_sender, instance, **_kwargs):
 
 
 @receiver(post_save, sender=Invoice)
-def invalidate_invoice_cache(_sender, instance, **_kwargs):
+def invalidate_invoice_cache(sender, instance, **kwargs):
     """Invalidate Invoice cache if search tokens have changed."""
     check_and_invalidate(
         instance,
@@ -110,14 +110,14 @@ def invalidate_invoice_cache(_sender, instance, **_kwargs):
 
 
 @receiver(post_delete, sender=Invoice)
-def delete_invoice_cache(_sender, _instance, **_kwargs):
+def delete_invoice_cache(sender, instance, **kwargs):
     """Invalidate Invoice cache when an Invoice is deleted."""
     invalidate_cache("invoice_search_words")
 
 
 # --- Product ---
 @receiver(pre_save, sender=Product)
-def capture_product_tokens(_sender, instance, **_kwargs):
+def capture_product_tokens(sender, instance, **kwargs):
     """Capture tokens for Product before saving."""
     if instance.pk:
         try:
@@ -134,7 +134,7 @@ def capture_product_tokens(_sender, instance, **_kwargs):
 
 
 @receiver(post_save, sender=Product)
-def invalidate_product_cache(_sender, instance, **_kwargs):
+def invalidate_product_cache(sender, instance, **kwargs):
     """Invalidate Product cache if search tokens have changed."""
     check_and_invalidate(
         instance,
@@ -145,14 +145,14 @@ def invalidate_product_cache(_sender, instance, **_kwargs):
 
 
 @receiver(post_delete, sender=Product)
-def delete_product_cache(_sender, _instance, **_kwargs):
+def delete_product_cache(sender, instance, **kwargs):
     """Invalidate Product cache when a Product is deleted."""
     invalidate_cache("product_search_words")
 
 
 # --- Product Variant ---
 @receiver(pre_save, sender=ProductVariant)
-def capture_variant_tokens(_sender, instance, **_kwargs):
+def capture_variant_tokens(sender, instance, **kwargs):
     """Capture tokens for ProductVariant before saving."""
     if instance.pk:
         try:
@@ -169,7 +169,7 @@ def capture_variant_tokens(_sender, instance, **_kwargs):
 
 
 @receiver(post_save, sender=ProductVariant)
-def invalidate_product_variant_cache(_sender, instance, **_kwargs):
+def invalidate_product_variant_cache(sender, instance, **kwargs):
     """Invalidate ProductVariant and potentially Product cache if search tokens change."""
     old_tokens = getattr(instance, "old_tokens", set())
     # Variant affects its own cache AND Product cache (potentially)
@@ -191,7 +191,7 @@ def invalidate_product_variant_cache(_sender, instance, **_kwargs):
 
 
 @receiver(post_delete, sender=ProductVariant)
-def delete_product_variant_cache(_sender, _instance, **_kwargs):
+def delete_product_variant_cache(sender, instance, **kwargs):
     """Invalidate ProductVariant and Product caches when a variant is deleted."""
     invalidate_cache("product_variant_search_words")
     invalidate_cache("product_search_words")
@@ -199,7 +199,7 @@ def delete_product_variant_cache(_sender, _instance, **_kwargs):
 
 # --- Supplier ---
 @receiver(pre_save, sender=Supplier)
-def capture_supplier_tokens(_sender, instance, **_kwargs):
+def capture_supplier_tokens(sender, instance, **kwargs):
     """Capture tokens for Supplier before saving."""
     if instance.pk:
         try:
@@ -216,7 +216,7 @@ def capture_supplier_tokens(_sender, instance, **_kwargs):
 
 
 @receiver(post_save, sender=Supplier)
-def invalidate_supplier_cache(_sender, instance, **_kwargs):
+def invalidate_supplier_cache(sender, instance, **kwargs):
     """Invalidate Supplier cache if search tokens have changed."""
     check_and_invalidate(
         instance,
@@ -227,6 +227,6 @@ def invalidate_supplier_cache(_sender, instance, **_kwargs):
 
 
 @receiver(post_delete, sender=Supplier)
-def delete_supplier_cache(_sender, _instance, **_kwargs):
+def delete_supplier_cache(sender, instance, **kwargs):
     """Invalidate Supplier cache when a Supplier is deleted."""
     invalidate_cache("supplier_search_words")

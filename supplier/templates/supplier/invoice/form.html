@@ -198,27 +198,27 @@
           <div class="total-amount-display">
             <div class="total-row">
               <span class="total-label">Sub Total:</span>
-              <span class="total-value" id="subTotalDisplay">₹0.00</span>
+              <span class="total-value" id="subTotalDisplay">0.00</span>
             </div>
             <div class="total-row hidden" id="cgstDisplayRow">
               <span class="total-label">CGST:</span>
-              <span class="total-value" id="cgstDisplay">₹0.00</span>
+              <span class="total-value" id="cgstDisplay">0.00</span>
             </div>
             <div class="total-row hidden" id="sgstDisplayRow">
               <span class="total-label">SGST:</span>
-              <span class="total-value" id="sgstDisplay">₹0.00</span>
+              <span class="total-value" id="sgstDisplay">0.00</span>
             </div>
             <div class="total-row hidden" id="igstDisplayRow">
               <span class="total-label">IGST:</span>
-              <span class="total-value" id="igstDisplay">₹0.00</span>
+              <span class="total-value" id="igstDisplay">0.00</span>
             </div>
             <div class="total-row">
               <span class="total-label">Adjustment:</span>
-              <span class="total-value" id="adjustmentDisplay">₹0.00</span>
+              <span class="total-value" id="adjustmentDisplay">0.00</span>
             </div>
             <div class="total-row total-final">
               <span class="total-label">Total Amount:</span>
-              <span class="total-value" id="totalAmountDisplay">₹0.00</span>
+              <span class="total-value" id="totalAmountDisplay">0.00</span>
             </div>
           </div>
         </div>
@@ -302,10 +302,13 @@
     }
     
     function updateTotals() {
-      const subTotal = parseFloat(subTotalInput.value) || 0
-      const cgst = parseFloat(cgstInput.value) || 0
-      const igst = parseFloat(igstInput.value) || 0
-      const adjustment = parseFloat(adjustmentInput.value) || 0
+      // Helper function to safely parse formatted numbers (e.g. "1,000.00")
+      const parseNumber = (val) => parseFloat(val.toString().replace(/,/g, '')) || 0;
+
+      const subTotal = parseNumber(subTotalInput.value);
+      const cgst = parseNumber(cgstInput.value);
+      const igst = parseNumber(igstInput.value);
+      const adjustment = parseNumber(adjustmentInput.value);
     
       // In CGST/SGST, total tax is cgst + sgst (where sgst = cgst)
       const total = subTotal + cgst * 2 + igst + adjustment
@@ -319,7 +322,8 @@
     }
     
     function autoCalculateGST() {
-      const subTotal = parseFloat(subTotalInput.value) || 0
+      // Clean subtotal of commas before calculating
+      const subTotal = parseFloat(subTotalInput.value.toString().replace(/,/g, '')) || 0;
       const invoiceType = invoiceTypeSelect.value
       const gstType = gstTypeSelect.value
     
@@ -327,11 +331,11 @@
         if (gstType === 'CGST_SGST') {
           // CGST = 2.5% of sub-total, SGST = 2.5% of sub-total
           const cgstAmount = (subTotal * 0.025).toFixed(2)
-          cgstInput.value = cgstAmount
+          cgstInput.value = formatCurrency(cgstAmount)
         } else if (gstType === 'IGST') {
           // IGST = 5% of sub-total
           const igstAmount = (subTotal * 0.05).toFixed(2)
-          igstInput.value = igstAmount
+          igstInput.value = formatCurrency(igstAmount)
         }
       }
     
@@ -389,6 +393,15 @@
     
       // Auto-calculate GST when sub-total changes
       subTotalInput.addEventListener('input', autoCalculateGST)
+      
+      // Clean inputs on form submission
+      document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+        ;[subTotalInput, cgstInput, igstInput, adjustmentInput].forEach(function(input) {
+          if (input && input.value) {
+            input.value = input.value.toString().replace(/,/g, '');
+          }
+        });
+      });
     
       // --- Initial State ---
     

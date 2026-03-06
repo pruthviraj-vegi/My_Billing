@@ -56,10 +56,13 @@
   <!-- Product Variant Form -->
   <div class="form-container">
     <div class="form-card">
-      <form method="post" class="details-form" novalidate autocomplete="off" data-prevent-double-submit>
+      <form method="post"
+            class="details-form"
+            novalidate
+            autocomplete="off"
+            data-prevent-double-submit>
         {% csrf_token %}
         <!-- Form Errors -->
-        
         {% if not variant %}
           <!-- Supplier Invoice Section -->
           <div class="form-section">
@@ -75,7 +78,7 @@
                         <span class="form-error-inline">
                           <i class="fas fa-exclamation-circle"></i>
                           {{ error }}
-                        </span>  
+                        </span>
                       {% endfor %}
                     {% else %}
                       <span class="form-help-text">Select the supplier invoice for this product</span>
@@ -89,7 +92,6 @@
         <!-- Variant Details Section -->
         <div class="form-section">
           <h5 class="section-title">Variant Details</h5>
-          
           <!-- Row 1: Size and Color -->
           <div class="row">
             <!-- Row 2: Quantity and Minimum Quantity -->
@@ -103,7 +105,7 @@
                       <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </span>  
+                      </span>
                     {% endfor %}
                   {% else %}
                     <span class="form-help-text">e.g., 10, 25, 50 (initial stock quantity)</span>
@@ -111,7 +113,6 @@
                 </small>
               </div>
             </div>
-            
             <!-- Row 3: Purchase Price and Selling Price -->
             <div class="col-md-3">
               <div class="form-group {% if form.purchase_price.errors %}has-error{% endif %}">
@@ -123,7 +124,7 @@
                       <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </span>  
+                      </span>
                     {% endfor %}
                   {% else %}
                     <span class="form-help-text">e.g., 500.00, 750.50 (cost price per unit)</span>
@@ -141,7 +142,7 @@
                       <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </span>  
+                      </span>
                     {% endfor %}
                   {% else %}
                     <span class="form-help-text">e.g., 800.00, 1200.00 (selling price per unit)</span>
@@ -162,7 +163,7 @@
                       <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </span>  
+                      </span>
                     {% endfor %}
                   {% else %}
                     <span class="form-help-text">e.g., 10.00, 15.50 (discount percentage)</span>
@@ -170,7 +171,6 @@
                 </small>
               </div>
             </div>
-
             <div class="col-md-3">
               <div class="form-group {% if form.commission_percentage.errors %}has-error{% endif %}">
                 <label for="{{ form.commission_percentage.id_for_label }}"
@@ -182,7 +182,7 @@
                       <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </span>  
+                      </span>
                     {% endfor %}
                   {% else %}
                     <span class="form-help-text">e.g., 10.00, 15.50 (commission percentage)</span>
@@ -190,7 +190,6 @@
                 </small>
               </div>
             </div>
-            
             <div class="col-md-3">
               <div class="form-group {% if form.size.errors %}has-error{% endif %}">
                 <label for="{{ form.size.id_for_label }}" class="form-label">{{ form.size.label }}</label>
@@ -201,7 +200,7 @@
                       <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </span>  
+                      </span>
                     {% endfor %}
                   {% else %}
                     <span class="form-help-text">e.g., S, M, L, XL, XXL</span>
@@ -219,7 +218,7 @@
                       <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </span>  
+                      </span>
                     {% endfor %}
                   {% else %}
                     <span class="form-help-text">e.g., Red, Blue, Black, White</span>
@@ -227,7 +226,6 @@
                 </small>
               </div>
             </div>
-            
             <div class="col-md-3">
               <div class="form-group {% if form.minimum_quantity.errors %}has-error{% endif %}">
                 <label for="{{ form.minimum_quantity.id_for_label }}" class="form-label">{{ form.minimum_quantity.label }}</label>
@@ -238,7 +236,7 @@
                       <span class="form-error-inline">
                         <i class="fas fa-exclamation-circle"></i>
                         {{ error }}
-                      </span>  
+                      </span>
                     {% endfor %}
                   {% else %}
                     <span class="form-help-text">e.g., 10, 25, 50 (minimum stock quantity)</span>
@@ -246,7 +244,6 @@
                 </small>
               </div>
             </div>
-            
           </div>
           <!-- Row 5: Extra Attributes (Full Width) -->
           {% comment %} <div class="form-group {% if form.extra_attributes.errors %}has-error{% endif %}">
@@ -270,11 +267,11 @@
             <div class="total-amount-display">
               <div class="total-row">
                 <span class="total-label">GST Amount:</span>
-                <span class="total-value" id="gst-amount-display">₹0.00</span>
+                <span class="total-value" id="gst-amount-display">0.00</span>
               </div>
               <div class="total-row">
                 <span class="total-label">Purchase Price (with GST):</span>
-                <span class="total-value" id="purchase-with-gst-display">₹0.00</span>
+                <span class="total-value" id="purchase-with-gst-display">0.00</span>
               </div>
               <div class="total-row">
                 <span class="total-label">Profit Margin (%):</span>
@@ -282,15 +279,15 @@
               </div>
               <div class="total-row">
                 <span class="total-label">Total Value:</span>
-                <span class="total-value" id="total-value">₹0.00</span>
+                <span class="total-value" id="total-value">0.00</span>
               </div>
               <div class="total-row">
                 <span class="total-label">After Discount:</span>
-                <span class="total-value" id="after-discount">₹0.00</span>
+                <span class="total-value" id="after-discount">0.00</span>
               </div>
               <div class="total-row total-final">
                 <span class="total-label">Final Price:</span>
-                <span class="total-value" id="final-price">₹0.00</span>
+                <span class="total-value" id="final-price">0.00</span>
               </div>
             </div>
           </div>
@@ -298,10 +295,13 @@
         <!-- Form Actions -->
         <div class="form-actions">
           {% if not variant %}
-          <button type="submit" name="action" value="create_add" class="btn btn-outline-primary">
-            <i class="fas fa-plus-circle"></i>
-            Create & Add Another
-          </button>
+            <button type="submit"
+                    name="action"
+                    value="create_add"
+                    class="btn btn-outline-primary">
+              <i class="fas fa-plus-circle"></i>
+              Create & Add Another
+            </button>
           {% endif %}
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-save"></i>
@@ -352,24 +352,27 @@
     const gstPercentage = '{{ gst_rate }}' || 5
   
     function updateCalculations() {
-      const purchase = parseFloat(purchasePrice?.value) || 0
-      const selling = parseFloat(sellingPrice?.value) || 0
-      const qty = parseFloat(quantity?.value) || 0
-      const discount = parseFloat(discountPercentage?.value) || 0
+      // Helper function to safely parse formatted numbers (e.g. "1,000.00")
+      const parseNumber = (val) => parseFloat(val?.toString().replace(/,/g, '')) || 0;
+      
+      const purchase = parseNumber(purchasePrice?.value)
+      const selling = parseNumber(sellingPrice?.value)
+      const qty = parseNumber(quantity?.value)
+      const discount = parseNumber(discountPercentage?.value)
       const gst = parseFloat(gstPercentage) || 0
   
       // Calculate GST amount
       const gstAmount = purchase * (gst / 100)
-      document.getElementById('gst-amount-display').textContent = `₹${gstAmount.toFixed(2)}`
+      document.getElementById('gst-amount-display').textContent = `${formatCurrency(gstAmount)}`
   
       // Calculate purchase price with GST
       const purchaseWithGST = purchase + gstAmount
-      document.getElementById('purchase-with-gst-display').textContent = `₹${purchaseWithGST.toFixed(2)}`
+      document.getElementById('purchase-with-gst-display').textContent = `${formatCurrency(purchaseWithGST)}`
   
       // Calculate after discount (final selling price)
       const discountAmount = selling * (discount / 100)
       const afterDiscount = selling - discountAmount
-      document.getElementById('after-discount').textContent = `₹${afterDiscount.toFixed(2)}`
+      document.getElementById('after-discount').textContent = `${formatCurrency(afterDiscount)}`
   
       // Calculate profit margin percentage - based on final selling price vs purchase price with GST
       const profitMargin = afterDiscount - purchaseWithGST
@@ -378,11 +381,11 @@
   
       // Calculate total value (purchase price × quantity)
       const totalValue = purchase * qty
-      document.getElementById('total-value').textContent = `₹${totalValue.toFixed(2)}`
+      document.getElementById('total-value').textContent = `${formatCurrency(totalValue)}`
   
       // Calculate final price (after discount)
       const finalPrice = afterDiscount
-      document.getElementById('final-price').textContent = `₹${finalPrice.toFixed(2)}`
+      document.getElementById('final-price').textContent = `${formatCurrency(finalPrice)}`
     };
   
     // Add event listeners
@@ -392,10 +395,21 @@
       }
     })
   
+    // Clean inputs on form submission
+    const form = document.querySelector('form[data-prevent-double-submit]');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        ;[purchasePrice, sellingPrice].forEach(function(input) {
+          if (input && input.value) {
+            input.value = input.value.toString().replace(/,/g, '');
+          }
+        });
+      });
+    }
+
     // Initial calculation
     updateCalculations()
   })
 
   </script>
-  
 {% endblock extra_js %}

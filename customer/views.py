@@ -509,6 +509,11 @@ class DeleteCustomer(RoleRequiredMixin, DeleteView):
 
     def delete(self, request, *args, **kwargs):
         customer = self.get_object()
+
+        if customer.pk == 1 or customer.phone_number == "3":
+            messages.error(request, "The default Walk-in customer cannot be deleted.")
+            return redirect("customer:home")
+
         messages.success(request, f"Customer '{customer.name}' deleted successfully!")
         return super().delete(request, *args, **kwargs)
 
@@ -596,6 +601,11 @@ def customer_delete(request, customer_id):
     """Delete customer (soft delete)."""
     if request.method == "POST":
         customer = get_object_or_404(Customer, id=customer_id)
+
+        if customer.pk == 1 or customer.phone_number == "0000000000":
+            messages.error(request, "The default Walk-in customer cannot be deleted.")
+            return redirect("customer:home")
+
         customer.delete()  # This will use soft delete
         messages.success(request, "Customer deleted successfully!")
         return redirect("customer:home")

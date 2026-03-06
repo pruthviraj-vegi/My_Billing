@@ -172,7 +172,7 @@
                                     </li>
                                     <li>Invoice can no longer be edited or deleted</li>
                                     {% if invoice.payment_type == 'CREDIT' %}
-                                        <li>All payment allocations (₹{{ financial_impact.paid|currency }}) will be reversed</li>
+                                        <li>All payment allocations ({{ financial_impact.paid|currency }}) will be reversed</li>
                                         <li>Customer's outstanding balance will be recalculated</li>
                                         <li>Payments will be reallocated to other invoices</li>
                                     {% endif %}

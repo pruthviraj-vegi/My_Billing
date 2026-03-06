@@ -138,10 +138,10 @@ class SupplierInvoiceForm(forms.ModelForm):
             ),
             "invoice_type": forms.Select(),
             "gst_type": forms.Select(),
-            "sub_total": forms.NumberInput(),
-            "cgst_amount": forms.NumberInput(),
-            "igst_amount": forms.NumberInput(),
-            "adjustment_amount": forms.NumberInput(),
+            "sub_total": forms.TextInput(),
+            "cgst_amount": forms.TextInput(),
+            "igst_amount": forms.TextInput(),
+            "adjustment_amount": forms.TextInput(),
             "notes": forms.Textarea(
                 attrs={
                     "rows": 3,
@@ -164,6 +164,13 @@ class SupplierInvoiceForm(forms.ModelForm):
                 widget.attrs["class"] = "form-textarea"
             else:
                 widget.attrs["class"] = "form-input"
+
+        self.fields["sub_total"].widget.attrs["class"] = "form-input indian-number"
+        self.fields["cgst_amount"].widget.attrs["class"] = "form-input indian-number"
+        self.fields["igst_amount"].widget.attrs["class"] = "form-input indian-number"
+        self.fields["adjustment_amount"].widget.attrs[
+            "class"
+        ] = "form-input indian-number"
 
         # Set initial values for GST fields (new invoices only)
         if not self.instance.pk:

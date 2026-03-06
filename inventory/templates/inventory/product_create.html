@@ -428,10 +428,13 @@
       const gstPercentage = 5
     
       function updateCalculations() {
-        const purchase = parseFloat(purchasePrice?.value) || 0
-        const selling = parseFloat(sellingPrice?.value) || 0
-        const qty = parseFloat(quantity?.value) || 0
-        const discount = parseFloat(discountPercentage?.value) || 0
+        // Helper function to safely parse formatted numbers (e.g. "1,000.00")
+        const parseNumber = (val) => parseFloat(val?.toString().replace(/,/g, '')) || 0;
+        
+        const purchase = parseNumber(purchasePrice?.value)
+        const selling = parseNumber(sellingPrice?.value)
+        const qty = parseNumber(quantity?.value)
+        const discount = parseNumber(discountPercentage?.value)
         const gst = parseFloat(gstPercentage) || 5
     
         // Calculate GST amount
@@ -467,6 +470,18 @@
           input.addEventListener('input', updateCalculations)
         }
       })
+      
+      // Clean inputs on form submission
+      const form = document.querySelector('form[data-prevent-double-submit]');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          ;[purchasePrice, sellingPrice].forEach(function(input) {
+            if (input && input.value) {
+              input.value = input.value.toString().replace(/,/g, '');
+            }
+          });
+        });
+      }
     
       // Initial calculation
       updateCalculations()

@@ -32,9 +32,9 @@ class CartForm(forms.ModelForm):
                     "value": "Walk in",
                 }
             ),
-            "advance_payment": forms.NumberInput(
+            "advance_payment": forms.TextInput(
                 attrs={
-                    "class": "form-input",
+                    "class": "form-input indian-number",
                     "placeholder": "Enter advance payment",
                     "maxlength": "10",
                     "value": "0",

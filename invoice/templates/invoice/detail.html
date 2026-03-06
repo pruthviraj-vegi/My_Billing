@@ -14,12 +14,14 @@
                 Back
             </a>
             {% if not invoice.is_cancelled %}
-                <a href="javascript:void(0);"
-                   onclick="sendInvoice('{{ invoice.id }}')"
-                   class="btn btn-primary">
-                    <i class="fas fa-paper-plane"></i>
-                    Send Invoice
-                </a>
+                {% if invoice.customer.get_default_customer.pk != invoice.customer.pk %}
+                    <a href="javascript:void(0);"
+                       onclick="sendInvoice('{{ invoice.id }}')"
+                       class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i>
+                        Send Invoice
+                    </a>
+                {% endif %}
                 <a href="{% url 'invoice:create_auto_return_invoice' invoice.id %}"
                    class="btn btn-primary">
                     <i class="fas fa-plus"></i>

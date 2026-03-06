@@ -1,10 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block title %}
   {{ title }} - Stock Management
 {% endblock title %}
-
 {% block content %}
   <!-- Page Header -->
   <div class="page-header">
@@ -14,32 +12,34 @@
         <i class="fas fa-arrow-left"></i>
         Back to Variant Details
       </a>
-      <a href="{% url 'inventory:stock_management_home' %}" class="btn btn-primary">
+      <a href="{% url 'inventory:stock_management_home' %}"
+         class="btn btn-primary">
         <i class="fas fa-boxes"></i>
         Stock Management
       </a>
     </div>
   </div>
-
   <!-- Breadcrumb Navigation -->
   <nav class="breadcrumb breadcrumb-right">
     <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
     <span class="breadcrumb-separator">/</span>
-    <a href="{% url 'inventory:stock_management_home' %}" class="breadcrumb-item">Stock Management</a>
+    <a href="{% url 'inventory:stock_management_home' %}"
+       class="breadcrumb-item">Stock Management</a>
     <span class="breadcrumb-separator">/</span>
-    <a href="{% url 'inventory:variant_details' variant.pk %}" class="breadcrumb-item">{{ variant.full_name }}</a>
+    <a href="{% url 'inventory:variant_details' variant.pk %}"
+       class="breadcrumb-item">{{ variant.full_name }}</a>
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">Update</span>
   </nav>
-
   <!-- Main Content -->
   <div class="form-container">
     <div class="form-card">
       <div class="form-header">
-        <h3><i class="fas fa-edit"></i> {{ subtitle }}</h3>
+        <h3>
+          <i class="fas fa-edit"></i> {{ subtitle }}
+        </h3>
         <p>Update variant details and pricing information for {{ variant.full_name }}.</p>
       </div>
-
       <!-- Current Variant Info -->
       <div class="variant-summary">
         <div class="summary-grid">
@@ -63,63 +63,55 @@
           </div>
         </div>
       </div>
-
       <form method="post" class="details-form">
         {% csrf_token %}
-        
         <!-- Pricing Information -->
         <div class="form-section">
-          <h4><i class="fas fa-tags"></i> Pricing Information</h4>
+          <h4>
+            <i class="fas fa-tags"></i> Pricing Information
+          </h4>
           <div class="form-row">
             <div class="form-group">
               <label for="{{ form.purchase_price.id_for_label }}">{{ form.purchase_price.label }}</label>
               {{ form.purchase_price }}
-              {% if form.purchase_price.help_text %}
-                <small class="form-help">{{ form.purchase_price.help_text }}</small>
-              {% endif %}
+              {% if form.purchase_price.help_text %}<small class="form-help">{{ form.purchase_price.help_text }}</small>{% endif %}
               {% if form.purchase_price.errors %}
                 <div class="field-errors">
-                  {% for error in form.purchase_price.errors %}
-                    <div class="error-message">{{ error }}</div>
-                  {% endfor %}
+                  {% for error in form.purchase_price.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
                 </div>
               {% endif %}
             </div>
-            
             <div class="form-group">
               <label for="{{ form.mrp.id_for_label }}">{{ form.mrp.label }}</label>
               {{ form.mrp }}
-              {% if form.mrp.help_text %}
-                <small class="form-help">{{ form.mrp.help_text }}</small>
-              {% endif %}
+              {% if form.mrp.help_text %}<small class="form-help">{{ form.mrp.help_text }}</small>{% endif %}
               {% if form.mrp.errors %}
                 <div class="field-errors">
-                  {% for error in form.mrp.errors %}
-                    <div class="error-message">{{ error }}</div>
-                  {% endfor %}
+                  {% for error in form.mrp.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
                 </div>
               {% endif %}
             </div>
           </div>
-          
           <!-- Price Summary -->
           <div class="price-summary">
             <div class="summary-item">
               <strong>Profit Margin:</strong>
-              <span id="profit-margin" class="{% if variant.profit_margin > 0 %}text-success{% else %}text-danger{% endif %}">
+              <span id="profit-margin"
+                    class="{% if variant.profit_margin > 0 %}text-success{% else %}text-danger{% endif %}">
                 {{ variant.profit_margin|floatformat:1 }}%
               </span>
             </div>
             <div class="summary-item">
               <strong>Final Price:</strong>
-              <span id="final-price">₹{{ variant.final_price|floatformat:2 }}</span>
+              <span id="final-price">{{ variant.final_price|floatformat:2 }}</span>
             </div>
           </div>
         </div>
-
         <!-- Stock Settings -->
         <div class="form-section">
-          <h4><i class="fas fa-cubes"></i> Stock Settings</h4>
+          <h4>
+            <i class="fas fa-cubes"></i> Stock Settings
+          </h4>
           <div class="form-row">
             <div class="form-group">
               <label for="{{ form.minimum_quantity.id_for_label }}">{{ form.minimum_quantity.label }}</label>
@@ -129,13 +121,10 @@
               {% endif %}
               {% if form.minimum_quantity.errors %}
                 <div class="field-errors">
-                  {% for error in form.minimum_quantity.errors %}
-                    <div class="error-message">{{ error }}</div>
-                  {% endfor %}
+                  {% for error in form.minimum_quantity.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
                 </div>
               {% endif %}
             </div>
-            
             <div class="form-group">
               <label for="{{ form.discount_percentage.id_for_label }}">{{ form.discount_percentage.label }}</label>
               {{ form.discount_percentage }}
@@ -144,22 +133,20 @@
               {% endif %}
               {% if form.discount_percentage.errors %}
                 <div class="field-errors">
-                  {% for error in form.discount_percentage.errors %}
-                    <div class="error-message">{{ error }}</div>
-                  {% endfor %}
+                  {% for error in form.discount_percentage.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
                 </div>
               {% endif %}
             </div>
           </div>
         </div>
-
         <!-- Form Actions -->
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-save"></i>
             Update Variant
           </button>
-          <a href="{% url 'inventory:variant_details' variant.pk %}" class="btn btn-secondary">
+          <a href="{% url 'inventory:variant_details' variant.pk %}"
+             class="btn btn-secondary">
             <i class="fas fa-times"></i>
             Cancel
           </a>
@@ -168,9 +155,8 @@
     </div>
   </div>
 {% endblock content %}
-
 {% block extra_js %}
-<script>
+  <script>
   // Auto-calculate profit margin and final price
   function updatePriceCalculations() {
     const purchasePrice = parseFloat(document.getElementById('{{ form.purchase_price.id_for_label }}').value) || 0;
@@ -196,7 +182,7 @@
     profitMarginElement.textContent = profitMargin.toFixed(1) + '%';
     profitMarginElement.className = profitMargin > 0 ? 'text-success' : 'text-danger';
     
-    finalPriceElement.textContent = '₹' + finalPrice.toFixed(2);
+    finalPriceElement.textContent = finalPrice.toFixed(2);
   }
 
   // Add event listeners for real-time calculations
@@ -230,9 +216,8 @@
 
   // Initialize calculations on page load
   updatePriceCalculations();
-</script>
-
-<style>
+  </script>
+  <style>
   .variant-summary {
     background-color: var(--bg-surface-hover);
     border: 1px solid var(--border-color);
@@ -288,5 +273,5 @@
     font-size: 1.125rem;
     font-weight: 600;
   }
-</style>
-{% endblock extra_js %} 
+  </style>
+{% endblock extra_js %}

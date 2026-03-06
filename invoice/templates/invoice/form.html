@@ -250,23 +250,23 @@
         <div class="total-amount-display">
           <div class="total-row">
             <span class="total-label">Sub Total:</span>
-            <span class="total-value" id="subTotalDisplay">₹0.00</span>
+            <span class="total-value" id="subTotalDisplay">0.00</span>
           </div>
           <div class="total-row">
             <span class="total-label">Discount:</span>
-            <span class="total-value text-danger" id="discountDisplay">₹0.00</span>
+            <span class="total-value text-danger" id="discountDisplay">0.00</span>
           </div>
           <div class="total-row">
             <span class="total-label">Total:</span>
-            <span class="total-value" id="totalDisplay">₹0.00</span>
+            <span class="total-value" id="totalDisplay">0.00</span>
           </div>
           <div class="total-row">
             <span class="total-label">Advance:</span>
-            <span class="total-value text-success" id="advanceDisplay">₹0.00</span>
+            <span class="total-value text-success" id="advanceDisplay">0.00</span>
           </div>
           <div class="total-row total-final">
             <span class="total-label">Balance Due:</span>
-            <span class="total-value" id="balanceDisplay">₹0.00</span>
+            <span class="total-value" id="balanceDisplay">0.00</span>
           </div>
         </div>
       </div>
@@ -310,26 +310,19 @@
   <script>
      $(document).ready(function() {
       setupModal('id_customer', 'Customer', 'new_customer', '#add_new_customer', '{% url "customer:create_ajax" %}');
-       $('#id_customer').select2({
-         placeholder: "Type to search customers...",
-         width: '100%'
-       });
-       $('#id_payment_method').select2({
-         placeholder: "Type to search payment methods...",
-         width: '100%'
-       });
-       $('#id_sold_by').select2({
-         placeholder: "Type to search created by...",
-         width: '100%'
-       });
+       $('#id_customer').select2();
+       $('#id_payment_method').select2();
+       $('#id_sold_by').select2();
        
-       // Handle walk-in customer (ID 1) - force CASH payment type
+       // Handle walk-in customer - force CASH payment type
+       const defaultCustomerId = "{{ default_customer.id|default:'1' }}";
+       
        $('#id_customer').on('change', function() {
          const customerId = $(this).val();
          const paymentTypeSelect = $('#{{ form.payment_type.id_for_label }}');
          const paymentTypeGroup = paymentTypeSelect.closest('.form-group');
          
-         if (customerId === '1' || customerId === 1) {
+         if (customerId === defaultCustomerId || customerId == parseInt(defaultCustomerId)) {
            // Set payment type to CASH for walk-in customer
            paymentTypeSelect.val('CASH');
            // Trigger native change event
@@ -364,7 +357,7 @@
        });
        
        // Trigger on page load if customer is already selected
-       if ($('#id_customer').val() === '1' || $('#id_customer').val() == 1) {
+       if ($('#id_customer').val() === defaultCustomerId || $('#id_customer').val() == parseInt(defaultCustomerId)) {
          $('#id_customer').trigger('change');
        }
       });
@@ -389,9 +382,10 @@
       const balanceDisplay = document.getElementById('balanceDisplay');
       
       updateTotals = function() {
-        const subTotal = parseFloat(amountField.value) || 0;
-        const discount = parseFloat(discountAmountField.value) || 0;
-        const advance = parseFloat(advanceAmountField.value) || 0;
+        // Strip out formatting commas before parsing to float
+        const subTotal = parseFloat(amountField.value.replace(/,/g, '')) || 0;
+        const discount = parseFloat(discountAmountField.value.replace(/,/g, '')) || 0;
+        const advance = parseFloat(advanceAmountField.value.replace(/,/g, '')) || 0;
         
         const total = subTotal - discount;
         const balance = total - advance;

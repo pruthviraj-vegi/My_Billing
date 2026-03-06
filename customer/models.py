@@ -83,6 +83,21 @@ class Customer(SoftDeleteModel):
         """Check if customer has store credit."""
         return self.store_credit_balance > 0
 
+    @classmethod
+    def get_default_customer(cls):
+        """
+        Get or create the default 'Walk-in' customer.
+        This provides a reliable anchor for anonymous or quick POS sales.
+        """
+        customer, _ = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                "name": "Walk in",
+                "phone_number": "3",
+            },
+        )
+        return customer
+
     class Meta:
         indexes = [
             models.Index(fields=["name"], name="customer_name_idx"),
@@ -117,6 +132,12 @@ class Customer(SoftDeleteModel):
         # Prevent setting self as referrer
         if self.pk and self.referred_by_id == self.pk:
             raise ValidationError("A customer cannot refer themselves.")
+
+    def delete(self, *args, **kwargs):
+        """Prevent deletion of the default Walk-in customer."""
+        if self.pk == 1 or self.phone_number == "3":
+            raise ValidationError("The default Walk-in customer cannot be deleted.")
+        return super().delete(*args, **kwargs)
 
 
 class Payment(SoftDeleteModel):
@@ -192,7 +213,7 @@ class Payment(SoftDeleteModel):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.customer} - ₹{self.amount} ({self.get_payment_type_display()}) via {self.get_method_display()}"
+        return f"{self.customer} - {self.amount} ({self.get_payment_type_display()}) via {self.get_method_display()}"
 
 
 class CustomerCreditSummary(models.Model):
@@ -352,7 +373,7 @@ class CustomerCreditSummary(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.customer.name} - Balance: ₹{self.balance_amount:,.2f}"
+        return f"{self.customer.name} - Balance: {self.balance_amount:,.2f}"
 
     @classmethod
     def recalculate_for_customer(cls, customer, save=True):
@@ -471,7 +492,7 @@ class CustomerCreditSummary(models.Model):
     def get_status_display(self):
         """Human-readable status"""
         if self.balance_amount < 0:
-            return f"Credit Balance: ₹{abs(self.balance_amount):,.2f}"
+            return f"Credit Balance: {abs(self.balance_amount):,.2f}"
         elif self.balance_amount == 0:
             return "Cleared"
         elif self.is_overdue:

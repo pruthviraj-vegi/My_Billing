@@ -759,7 +759,7 @@ class CreatePayment(CreateView):
         response = super().form_valid(form)
         messages.success(
             self.request,
-            f"Payment of ₹{form.instance.amount} recorded successfully!",
+            f"Payment of {form.instance.amount} recorded successfully!",
         )
         return response
 
@@ -919,7 +919,7 @@ def delete_payment(request, supplier_pk, payment_pk):
     if request.method == "POST":
         payment_amount = payment.amount
         payment.delete()
-        messages.success(request, f"Payment of ₹{payment_amount} deleted successfully!")
+        messages.success(request, f"Payment of {payment_amount} deleted successfully!")
         return redirect("supplier:detail", pk=supplier_pk)
 
     context = {"supplier": supplier, "payment": payment}
