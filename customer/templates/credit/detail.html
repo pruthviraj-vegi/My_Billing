@@ -205,30 +205,6 @@
               <option value="custom">Custom Date</option>
             </select>
           </div>
-          <!-- Custom Date Inputs (shown when Custom is selected) -->
-          <div class="form-group custom-date-inputs " id="customDateInputs">
-            <label class="form-label">Select Custom Date Range</label>
-            <div class="row gap-2">
-              <div class="date-picker custom-date-picker">
-                <div class="form-custom cal-icon">
-                  <input class="form-input"
-                         type="text"
-                         id="customFromDate"
-                         placeholder="From: dd-mm-yyyy"
-                         readonly>
-                </div>
-              </div>
-              <div class="date-picker custom-date-picker">
-                <div class="form-custom cal-icon">
-                  <input class="form-input"
-                         type="text"
-                         id="customToDate"
-                         placeholder="To: dd-mm-yyyy"
-                         readonly>
-                </div>
-              </div>
-            </div>
-          </div>
         </form>
       </div>
       <div class="modal-footer">
@@ -280,129 +256,30 @@
       const closeModalBtn = document.getElementById('closeDownloadModal')
       const cancelBtn = document.getElementById('cancelDownloadBtn')
       const submitBtn = document.getElementById('submitDownloadBtn')
-      const customDateInputs = document.getElementById('customDateInputs')
-      const customFromDate = document.getElementById('customFromDate')
-      const customToDate = document.getElementById('customToDate')
       const customerId = "{{ customer.id }}"
       let dropdownInitialized = false
-      let fromDatePicker = null
-      let toDatePicker = null
-
-      // Initialize date pickers for custom inputs
-      function initializeCustomDatePickers() {
-        if (typeof DatePicker === 'undefined') {
-          console.warn('DatePicker.js not loaded - custom date inputs will not work')
-          return
-        }
-
-        if (!fromDatePicker && customFromDate) {
-          try {
-            fromDatePicker = new DatePicker('#customFromDate', {
-              mode: 'single',
-              format: 'd-m-Y',
-              showIcon: true,
-              iconPosition: 'right',
-              clickOpens: true,
-              allowInput: false,
-              closeOnSelect: true,
-              onChange: (date) => {
-                if (date) {
-                  const isoDate = date.toISOString().split('T')[0]
-                  customFromDate.setAttribute('data-iso-date', isoDate)
-                }
-              }
-            })
-          } catch (error) {
-            console.error('Error initializing from date picker:', error)
-          }
-        }
-
-        if (!toDatePicker && customToDate) {
-          try {
-            toDatePicker = new DatePicker('#customToDate', {
-              mode: 'single',
-              format: 'd-m-Y',
-              showIcon: true,
-              iconPosition: 'right',
-              clickOpens: true,
-              allowInput: false,
-              closeOnSelect: true,
-              onChange: (date) => {
-                if (date) {
-                  const isoDate = date.toISOString().split('T')[0]
-                  customToDate.setAttribute('data-iso-date', isoDate)
-                }
-              }
-            })
-          } catch (error) {
-            console.error('Error initializing to date picker:', error)
-          }
-        }
-      }
 
       // Open modal
       downloadBtn.addEventListener('click', function () {
         downloadModal.style.display = 'flex'
-        // Reset custom date inputs
-        customDateInputs.style.display = 'none'
-        customFromDate.value = ''
-        customToDate.value = ''
-        customFromDate.removeAttribute('data-iso-date')
-        customToDate.removeAttribute('data-iso-date')
         
         // Initialize dropdown after modal is shown (only once)
         if (!dropdownInitialized && typeof convertSelectToStyledDropdown !== 'undefined') {
           setTimeout(() => {
-            // Check if already converted
             if (!window.reportDateFilter_styled) {
               const selectElement = document.getElementById('reportDateFilter')
               if (selectElement) {
-                convertSelectToStyledDropdown('reportDateFilter', {
+                window.reportDateFilter_styled = convertSelectToStyledDropdown('reportDateFilter', {
                   onChange: function(data) {
-                    // Show/hide custom date inputs based on selection
-                    if (data.value === 'custom') {
-                      customDateInputs.style.display = 'block'
-                      // Hide date inputs inside dropdown (if they exist)
-                      const styledRef = window.reportDateFilter_styled
-                      if (styledRef && styledRef.checkBoxes) {
-                        const dropdownDateInputs = styledRef.checkBoxes.querySelector('.date-list:last-of-type')
-                        if (dropdownDateInputs) {
-                          dropdownDateInputs.style.display = 'none'
-                        }
+                    if (data.value === 'custom' && data.fromDate && data.toDate) {
+                      const hiddenSelect = window.reportDateFilter_styled?.hiddenSelect;
+                      if (hiddenSelect) {
+                        hiddenSelect.setAttribute('data-from-date', data.fromDate);
+                        hiddenSelect.setAttribute('data-to-date', data.toDate);
                       }
-                      // Initialize date pickers when custom is selected
-                      setTimeout(() => {
-                        initializeCustomDatePickers()
-                      }, 50)
-                    } else {
-                      customDateInputs.style.display = 'none'
-                      // Show date inputs in dropdown again (if they exist)
-                      const styledRef = window.reportDateFilter_styled
-                      if (styledRef && styledRef.checkBoxes) {
-                        const dropdownDateInputs = styledRef.checkBoxes.querySelector('.date-list:last-of-type')
-                        if (dropdownDateInputs) {
-                          dropdownDateInputs.style.display = 'block'
-                        }
-                      }
-                      // Clear custom dates when other option is selected
-                      customFromDate.value = ''
-                      customToDate.value = ''
-                      customFromDate.removeAttribute('data-iso-date')
-                      customToDate.removeAttribute('data-iso-date')
                     }
                   }
-                })
-                
-                // Hide date inputs in dropdown initially (we'll use modal inputs instead)
-                setTimeout(() => {
-                  const styledRef = window.reportDateFilter_styled
-                  if (styledRef && styledRef.checkBoxes) {
-                    const dropdownDateInputs = styledRef.checkBoxes.querySelector('.date-list:last-of-type')
-                    if (dropdownDateInputs) {
-                      dropdownDateInputs.style.display = 'none'
-                    }
-                  }
-                }, 150)
+                });
                 dropdownInitialized = true
               }
             } else {
@@ -415,12 +292,6 @@
       // Close modal handlers
       function closeModal() {
         downloadModal.style.display = 'none'
-        // Reset custom date inputs when closing
-        customDateInputs.style.display = 'none'
-        customFromDate.value = ''
-        customToDate.value = ''
-        customFromDate.removeAttribute('data-iso-date')
-        customToDate.removeAttribute('data-iso-date')
       }
 
       closeModalBtn.addEventListener('click', closeModal)

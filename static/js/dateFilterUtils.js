@@ -42,8 +42,20 @@ function getDateFilterData() {
         const customFromDate = document.getElementById('customFromDate');
         const customToDate = document.getElementById('customToDate');
 
-        const fromDate = customFromDate?.getAttribute('data-iso-date');
-        const toDate = customToDate?.getAttribute('data-iso-date');
+        let fromDate = null;
+        let toDate = null;
+
+        // Try getting custom dates from the styled dropdown's hidden select attributes
+        if (hiddenSelect && hiddenSelect.hasAttribute('data-from-date')) {
+            fromDate = hiddenSelect.getAttribute('data-from-date');
+            toDate = hiddenSelect.getAttribute('data-to-date');
+        }
+
+        // Fallback to standalone inputs if dropdown attributes are not found
+        if ((!fromDate || !toDate) && customFromDate && customToDate) {
+            fromDate = customFromDate.getAttribute('data-iso-date');
+            toDate = customToDate.getAttribute('data-iso-date');
+        }
 
         if (!fromDate || !toDate) {
             return {

@@ -41,7 +41,18 @@ const collectFormData = (formOrId, defaultParams = {}, table = null) => {
     if (form && form.tagName === 'FORM') {
         form.querySelectorAll("input, select, textarea").forEach(input => {
             if (input.name && input.value.trim() !== "") {
+                if (input.type === 'radio' && !input.checked) return;
+                if (input.type === 'checkbox' && !input.checked) return;
+
                 params.append(input.name, input.value.trim());
+
+                // Integration with dropdown_style.js custom date range
+                if (input.tagName === 'SELECT' && input.value === 'custom') {
+                    const fromDate = input.getAttribute('data-from-date');
+                    const toDate = input.getAttribute('data-to-date');
+                    if (fromDate) params.append('from_date', fromDate);
+                    if (toDate) params.append('to_date', toDate);
+                }
             }
         });
     }

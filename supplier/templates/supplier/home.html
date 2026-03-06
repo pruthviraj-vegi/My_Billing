@@ -121,30 +121,6 @@
               <option value="custom">Custom Date</option>
             </select>
           </div>
-          <!-- Custom Date Inputs (shown when Custom is selected) -->
-          <div class="form-group custom-date-inputs" id="customDateInputs">
-            <label class="form-label">Select Custom Date Range</label>
-            <div class="row gap-2">
-              <div class="date-picker custom-date-picker">
-                <div class="form-custom cal-icon">
-                  <input class="form-input"
-                         type="text"
-                         id="customFromDate"
-                         placeholder="From: dd-mm-yyyy"
-                         readonly>
-                </div>
-              </div>
-              <div class="date-picker custom-date-picker">
-                <div class="form-custom cal-icon">
-                  <input class="form-input"
-                         type="text"
-                         id="customToDate"
-                         placeholder="To: dd-mm-yyyy"
-                         readonly>
-                </div>
-              </div>
-            </div>
-          </div>
         </form>
       </div>
       <div class="modal-footer">
@@ -169,6 +145,7 @@
   <script src="{% static 'js/wordSuggestion.js' %}"></script>
   <script src="{% static 'js/fetchData.js' %}"></script>
   <script src="{% static 'js/dropdown_style.js' %}"></script>
+  <script src="{% static 'js/dateFilterUtils.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       $('#searchInput').wordSuggestion({
@@ -198,230 +175,78 @@
     const closeModalBtn = document.getElementById('closeDownloadModal')
     const cancelBtn = document.getElementById('cancelDownloadBtn')
     const submitBtn = document.getElementById('submitDownloadBtn')
-    const customDateInputs = document.getElementById('customDateInputs')
-    const customFromDate = document.getElementById('customFromDate')
-    const customToDate = document.getElementById('customToDate')
     
     if (!downloadModal || !downloadReportBtn || !closeModalBtn || !cancelBtn || !submitBtn) {
       console.warn('Download report modal elements not found')
     } else {
       let dropdownInitialized = false
-      let fromDatePicker = null
-      let toDatePicker = null
 
-      // Initialize date pickers for custom inputs
-      function initializeCustomDatePickers() {
-        if (typeof DatePicker === 'undefined') {
-          console.warn('DatePicker.js not loaded - custom date inputs will not work')
-          return
-        }
-
-        if (!fromDatePicker && customFromDate) {
-          try {
-            fromDatePicker = new DatePicker('#customFromDate', {
-              mode: 'single',
-              format: 'd-m-Y',
-              showIcon: true,
-              iconPosition: 'right',
-              clickOpens: true,
-              allowInput: false,
-              closeOnSelect: true,
-              onChange: (date) => {
-                if (date) {
-                  const isoDate = date.toISOString().split('T')[0]
-                  customFromDate.setAttribute('data-iso-date', isoDate)
-                }
+      // Open modal
+      downloadReportBtn.addEventListener('click', function () {
+        downloadModal.style.display = 'flex'
+        
+        // Initialize dropdown after modal is shown (only once)
+        if (!dropdownInitialized && typeof convertSelectToStyledDropdown !== 'undefined') {
+          setTimeout(() => {
+            // Check if already converted
+            if (!window.reportDateFilter_styled) {
+              const selectElement = document.getElementById('reportDateFilter')
+              if (selectElement) {
+                window.reportDateFilter_styled = convertSelectToStyledDropdown('reportDateFilter')
+                dropdownInitialized = true
               }
-            })
-          } catch (error) {
-            console.error('Error initializing from date picker:', error)
-          }
-        }
-
-        if (!toDatePicker && customToDate) {
-          try {
-            toDatePicker = new DatePicker('#customToDate', {
-              mode: 'single',
-              format: 'd-m-Y',
-              showIcon: true,
-              iconPosition: 'right',
-              clickOpens: true,
-              allowInput: false,
-              closeOnSelect: true,
-              onChange: (date) => {
-                if (date) {
-                  const isoDate = date.toISOString().split('T')[0]
-                  customToDate.setAttribute('data-iso-date', isoDate)
-                }
-              }
-            })
-          } catch (error) {
-            console.error('Error initializing to date picker:', error)
-          }
-        }
-      }
-
-    // Open modal
-    downloadReportBtn.addEventListener('click', function () {
-      downloadModal.style.display = 'flex'
-      // Reset custom date inputs
-      customDateInputs.style.display = 'none'
-      customFromDate.value = ''
-      customToDate.value = ''
-      customFromDate.removeAttribute('data-iso-date')
-      customToDate.removeAttribute('data-iso-date')
-      
-      // Initialize dropdown after modal is shown (only once)
-      if (!dropdownInitialized && typeof convertSelectToStyledDropdown !== 'undefined') {
-        setTimeout(() => {
-          // Check if already converted
-          if (!window.reportDateFilter_styled) {
-            const selectElement = document.getElementById('reportDateFilter')
-            if (selectElement) {
-              convertSelectToStyledDropdown('reportDateFilter', {
-                onChange: function(data) {
-                  // Show/hide custom date inputs based on selection
-                  if (data.value === 'custom') {
-                    customDateInputs.style.display = 'block'
-                    // Hide date inputs inside dropdown (if they exist)
-                    const styledRef = window.reportDateFilter_styled
-                    if (styledRef && styledRef.checkBoxes) {
-                      const dropdownDateInputs = styledRef.checkBoxes.querySelector('.date-list:last-of-type')
-                      if (dropdownDateInputs) {
-                        dropdownDateInputs.style.display = 'none'
-                      }
-                    }
-                    // Initialize date pickers when custom is selected
-                    setTimeout(() => {
-                      initializeCustomDatePickers()
-                    }, 50)
-                  } else {
-                    customDateInputs.style.display = 'none'
-                    // Show date inputs in dropdown again (if they exist)
-                    const styledRef = window.reportDateFilter_styled
-                    if (styledRef && styledRef.checkBoxes) {
-                      const dropdownDateInputs = styledRef.checkBoxes.querySelector('.date-list:last-of-type')
-                      if (dropdownDateInputs) {
-                        dropdownDateInputs.style.display = 'block'
-                      }
-                    }
-                    // Clear custom dates when other option is selected
-                    customFromDate.value = ''
-                    customToDate.value = ''
-                    customFromDate.removeAttribute('data-iso-date')
-                    customToDate.removeAttribute('data-iso-date')
-                  }
-                }
-              })
-              
-              // Hide date inputs in dropdown initially (we'll use modal inputs instead)
-              setTimeout(() => {
-                const styledRef = window.reportDateFilter_styled
-                if (styledRef && styledRef.checkBoxes) {
-                  const dropdownDateInputs = styledRef.checkBoxes.querySelector('.date-list:last-of-type')
-                  if (dropdownDateInputs) {
-                    dropdownDateInputs.style.display = 'none'
-                  }
-                }
-              }, 150)
+            } else {
               dropdownInitialized = true
             }
-          } else {
-            dropdownInitialized = true
-          }
-        }, 100)
-      }
-    })
+          }, 100)
+        }
+      })
 
-    // Close modal handlers
-    function closeModal() {
-      downloadModal.style.display = 'none'
-      // Reset custom date inputs when closing
-      customDateInputs.style.display = 'none'
-      customFromDate.value = ''
-      customToDate.value = ''
-      customFromDate.removeAttribute('data-iso-date')
-      customToDate.removeAttribute('data-iso-date')
-    }
-
-    closeModalBtn.addEventListener('click', closeModal)
-    cancelBtn.addEventListener('click', closeModal)
-
-    // Close on backdrop click
-    downloadModal.addEventListener('click', function(e) {
-      if (e.target === downloadModal) {
-        closeModal()
-      }
-    })
-
-    // Submit download
-    submitBtn.addEventListener('click', function() {
-      const styledRef = window.reportDateFilter_styled
-      const hiddenSelect = styledRef?.hiddenSelect || document.getElementById('reportDateFilter') || document.getElementById('reportDateFilter_hidden')
-      
-      if (!hiddenSelect) {
-        console.error('Date filter not found')
-        return
+      // Close modal handlers
+      function closeModal() {
+        downloadModal.style.display = 'none'
       }
 
-      const selectedValue = hiddenSelect.value
+      closeModalBtn.addEventListener('click', closeModal)
+      cancelBtn.addEventListener('click', closeModal)
 
-      // Prepare request data
-      const requestData = {
-        date_filter: selectedValue
-      }
+      // Close on backdrop click
+      downloadModal.addEventListener('click', function(e) {
+        if (e.target === downloadModal) {
+          closeModal()
+        }
+      })
 
-      // Show loading state
-      const originalText = submitBtn.innerHTML
-      
-      // Add custom dates if available (from modal inputs, not dropdown)
-      if (selectedValue === 'custom') {
-        const fromDate = customFromDate.getAttribute('data-iso-date')
-        const toDate = customToDate.getAttribute('data-iso-date')
-        
-        if (!fromDate || !toDate) {
-          alert('Please select both From and To dates for custom date range.')
-          submitBtn.innerHTML = originalText
-          submitBtn.disabled = false
+      // Submit download
+      submitBtn.addEventListener('click', function() {
+        // Get date filter data using reusable function
+        const filterResult = getDateFilterData()
+
+        if (!filterResult.isValid) {
+          showNotification(filterResult.error, 'error')
           return
         }
-        
-        requestData.from_date = fromDate
-        requestData.to_date = toDate
-      }
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...'
-      submitBtn.disabled = true
 
-      // Build URL with query parameters
-      let downloadUrl = urls.purchase_orders_pdf
-      const separator = downloadUrl.includes('?') ? '&' : '?'
-      downloadUrl += `${separator}date_filter=${encodeURIComponent(requestData.date_filter)}`
-      
-      if (requestData.from_date) {
-        downloadUrl += `&from_date=${encodeURIComponent(requestData.from_date)}`
-      }
-      if (requestData.to_date) {
-        downloadUrl += `&to_date=${encodeURIComponent(requestData.to_date)}`
-      }
+        // Set loading state using reusable function
+        setButtonLoading(submitBtn, true, 'Generating...')
 
-      // Open PDF in new tab
-      try {
-        window.open(downloadUrl, '_blank')
-        // Close modal after a short delay
-        setTimeout(() => {
-          closeModal()
-          // Reset button state
-          submitBtn.innerHTML = originalText
-          submitBtn.disabled = false
-        }, 500)
-      } catch (error) {
-        console.error('Error opening PDF:', error)
-        alert('Failed to open report. Please try again.')
-        // Reset button state
-        submitBtn.innerHTML = originalText
-        submitBtn.disabled = false
-      }
-    })
+        // Build URL with query parameters using reusable function
+        const downloadUrl = buildDateFilterUrl(urls.purchase_orders_pdf, filterResult.data)
+
+        // Open PDF in new tab
+        try {
+          window.open(downloadUrl, '_blank')
+          
+          // Close modal after short delay
+          setTimeout(() => {
+            closeModal()
+            setButtonLoading(submitBtn, false)
+          }, 500)
+        } catch (error) {
+          showNotification(error, 'error')
+          setButtonLoading(submitBtn, false)
+        }
+      })
     }
   </script>
 {% endblock extra_js %}

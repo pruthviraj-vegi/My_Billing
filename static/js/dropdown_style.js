@@ -469,15 +469,22 @@
 
             // Click outside to close
             const handleOutsideClick = (e) => {
-                const isDatepickerClick = e.target.closest('.datepicker-container') ||
-                    e.target.closest('.datepicker-popup') ||
-                    e.target === fromDateInput ||
-                    e.target === toDateInput;
+                const path = e.composedPath ? e.composedPath() : [];
 
-                if (!panel.contains(e.target) &&
-                    !selectBox.contains(e.target) &&
-                    !isDatepickerClick &&
-                    state.isOpen) {
+                const isDatepickerClick = path.some(el => {
+                    return el.classList && (
+                        el.classList.contains('datepicker-container') ||
+                        el.classList.contains('datepicker-popup')
+                    ) || el === fromDateInput || el === toDateInput;
+                }) || (e.target && e.target.closest && (
+                    e.target.closest('.datepicker-container') ||
+                    e.target.closest('.datepicker-popup')
+                )) || e.target === fromDateInput || e.target === toDateInput;
+
+                const isPanelClick = path.includes(panel) || panel.contains(e.target);
+                const isSelectBoxClick = path.includes(selectBox) || selectBox.contains(e.target);
+
+                if (!isPanelClick && !isSelectBoxClick && !isDatepickerClick && state.isOpen) {
                     toggleDropdown(true);
                 }
             };
