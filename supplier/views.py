@@ -1,5 +1,6 @@
 """
-Views for the supplier app, handling suppliers, invoices, payments, and reporting.
+Views for the supplier app,
+handling suppliers, invoices, payments, and reporting.
 """
 
 import json
@@ -425,7 +426,6 @@ def get_suppliers_data(request):
     - Reduces queries from 77 to 2-3 regardless of supplier count
     """
     search_query = request.GET.get("search", "").strip()
-    status_filter = request.GET.get("status", "").strip()
 
     # Use table_sorting utility for consistent sort handling (returns a list)
     sort_fields = table_sorting(request, VALID_SORT_FIELDS, "-id")
@@ -439,28 +439,24 @@ def get_suppliers_data(request):
     # Build filters
     filters = Q()
     if search_query:
-        filters &= (
-            # Contact information
-            Q(name__icontains=search_query)
-            | Q(contact_person__icontains=search_query)
-            | Q(phone__icontains=search_query)
-            | Q(email__icontains=search_query)
-            | Q(gstin__icontains=search_query)
-            |
-            # Address fields
-            Q(first_line__icontains=search_query)
-            | Q(second_line__icontains=search_query)
-            | Q(city__icontains=search_query)
-            | Q(state__icontains=search_query)
-            | Q(pincode__icontains=search_query)
-            | Q(country__icontains=search_query)
-        )
-
-    # Status filter
-    if status_filter == "active":
-        filters &= Q(is_deleted=False)
-    elif status_filter == "inactive":
-        filters &= Q(is_deleted=True)
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                # Contact information
+                Q(name__icontains=word)
+                | Q(contact_person__icontains=word)
+                | Q(phone__icontains=word)
+                | Q(email__icontains=word)
+                | Q(gstin__icontains=word)
+                |
+                # Address fields
+                Q(first_line__icontains=word)
+                | Q(second_line__icontains=word)
+                | Q(city__icontains=word)
+                | Q(state__icontains=word)
+                | Q(pincode__icontains=word)
+                | Q(country__icontains=word)
+            )
 
     # Base queryset
     suppliers = Supplier.objects.filter(filters)

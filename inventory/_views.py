@@ -363,9 +363,9 @@ def fetch_categories(request):
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= Q(name__icontains=search_query) | Q(
-            description__icontains=search_query
-        )
+        term = search_query.strip()
+        for word in term.split():
+            filters &= Q(name__icontains=word) | Q(description__icontains=word)
 
     categories = Category.objects.filter(filters)
 
@@ -618,12 +618,14 @@ def fetch_uoms(request):
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= (
-            Q(name__icontains=search_query)
-            | Q(short_code__icontains=search_query)
-            | Q(category__icontains=search_query)
-            | Q(description__icontains=search_query)
-        )
+        term = search_query.strip()
+        for word in term.split():
+            filters &= (
+                Q(name__icontains=word)
+                | Q(short_code__icontains=word)
+                | Q(category__icontains=word)
+                | Q(description__icontains=word)
+            )
 
     uoms = UOM.objects.filter(filters)
 
@@ -689,7 +691,7 @@ def gst_hsn_search_suggestions(request):
 def fetch_gst_hsn_codes(request):
     """AJAX endpoint for fetching GST HSN codes with pagination and search"""
     # Get search query
-    search_query = request.GET.get("search", "").strip()
+    search_query = request.GET.get("search", "")
 
     # Get sorting parameters
     sort_by = request.GET.get("sort", "code")
@@ -703,19 +705,19 @@ def fetch_gst_hsn_codes(request):
     if sort_order == "desc":
         sort_by = f"-{sort_by}"
 
-    # Build queryset
-    queryset = GSTHsnCode.objects.all()
-
     # Apply search filter
+    filters = Q()
     if search_query:
-        queryset = queryset.filter(
-            Q(code__icontains=search_query)
-            | Q(description__icontains=search_query)
-            | Q(gst_percentage__icontains=search_query)
-        )
+        term = search_query.strip()
+        for word in term.split():
+            filters &= (
+                Q(code__icontains=word)
+                | Q(description__icontains=word)
+                | Q(gst_percentage__icontains=word)
+            )
 
-    # Apply sorting
-    queryset = queryset.order_by(sort_by)
+    # Build queryset
+    queryset = GSTHsnCode.objects.filter(filters).order_by(sort_by)
 
     return render_paginated_response(
         request,
@@ -837,12 +839,14 @@ def fetch_favorites(request):
         # Apply search filter
         filters = Q()
         if search_query:
-            filters &= (
-                Q(variant__product__brand__icontains=search_query)
-                | Q(variant__product__name__icontains=search_query)
-                | Q(variant__barcode__icontains=search_query)
-                | Q(variant__product__description__icontains=search_query)
-            )
+            term = search_query.strip()
+            for word in term.split():
+                filters &= (
+                    Q(variant__product__brand__icontains=word)
+                    | Q(variant__product__name__icontains=word)
+                    | Q(variant__barcode__icontains=word)
+                    | Q(variant__product__description__icontains=word)
+                )
 
         # Apply status filter
         if status_filter:
@@ -937,13 +941,17 @@ def get_variants_for_favorites(request):
         )
 
         # Apply search filter
+        filters = Q()
         if search_query:
-            variants = variants.filter(
-                Q(product__brand__icontains=search_query)
-                | Q(product__name__icontains=search_query)
-                | Q(barcode__icontains=search_query)
-                | Q(product__description__icontains=search_query)
-            )
+            term = search_query.strip()
+            for word in term.split():
+                filters &= (
+                    Q(product__brand__icontains=word)
+                    | Q(product__name__icontains=word)
+                    | Q(barcode__icontains=word)
+                )
+
+        variants = variants.filter(filters)
 
         # Limit results
         variants = variants[:50]  # Limit to 50 results for performance

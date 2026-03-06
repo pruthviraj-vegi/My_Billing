@@ -609,16 +609,20 @@ def get_data(request):
     payment_type_filter = request.GET.get("payment_type", "")
     sort_by = request.GET.get("sort", "-id")
     bill_types_filter = request.GET.get("bill_types", "")
+    financial_year = request.GET.get("financial_year", "")
 
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= (
-            Q(invoice_number__icontains=search_query)
-            | Q(customer__name__icontains=search_query)
-            | Q(customer__phone_number__icontains=search_query)
-            | Q(notes__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(invoice_number__icontains=word)
+                | Q(customer__name__icontains=word)
+                | Q(customer__phone_number__icontains=word)
+                | Q(customer__address__icontains=word)
+                | Q(notes__icontains=word)
+            )
 
     # Apply status filter
     if status_filter:
@@ -631,6 +635,10 @@ def get_data(request):
     # Apply bill types filter
     if bill_types_filter:
         filters &= Q(invoice_type=bill_types_filter)
+
+    # Apply financial year filter
+    if financial_year:
+        filters &= Q(financial_year=financial_year)
 
     invoices = Invoice.objects.select_related("customer").filter(filters)
 

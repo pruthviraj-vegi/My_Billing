@@ -49,37 +49,35 @@ def fetch_products(request):
     # Get search and filter parameters
     search_query = request.GET.get("search", "")
     category_filter = request.GET.get("category", "")
-    status_filter = request.GET.get("status", "")
 
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= (
-            Q(brand__icontains=search_query)
-            | Q(name__icontains=search_query)
-            | Q(description__icontains=search_query)
-            | Q(category__name__icontains=search_query)
-            | Q(hsn_code__code__icontains=search_query)
-        )
+        term = search_query.strip()
+        for word in term.split():
+            filters &= (
+                Q(brand__icontains=word)
+                | Q(name__icontains=word)
+                | Q(description__icontains=word)
+                | Q(category__name__icontains=word)
+                | Q(hsn_code__code__icontains=word)
+            )
 
     # Apply category filter
     if category_filter:
         filters &= Q(category_id=category_filter)
 
-    # Apply status filter
-    if status_filter:
-        filters &= Q(status=status_filter)
-
-    # Start with all products
-    products = Product.objects.select_related(
-        "category",
-        "cloth_type",
-        "hsn_code",
-    ).filter(filters)
-
     # Apply sorting
     valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-id")
-    products = products.order_by(*valid_sorts)
+    products = (
+        Product.objects.select_related(
+            "category",
+            "cloth_type",
+            "hsn_code",
+        )
+        .filter(filters)
+        .order_by(*valid_sorts)
+    )
 
     return render_paginated_response(
         request,

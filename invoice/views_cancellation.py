@@ -93,28 +93,31 @@ def cancelled_invoices_list(request):
     """List all cancelled invoices"""
 
     # Get search and filter parameters
-    search_query = request.GET.get("search", "").strip()
+    search_query = request.GET.get("search", "")
     payment_type = request.GET.get("payment_type", "")
 
-    # Base queryset
-    invoices = Invoice.objects.filter(is_cancelled=True).select_related(
-        "customer", "cancelled_by", "cancellation_record"
-    )
-
     # Apply search
+    filters = Q()
     if search_query:
-        invoices = invoices.filter(
-            Q(invoice_number__icontains=search_query)
-            | Q(customer__name__icontains=search_query)
-            | Q(cancellation_reason__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(invoice_number__icontains=word)
+                | Q(customer__name__icontains=word)
+                | Q(cancellation_reason__icontains=word)
+            )
 
     # Apply payment type filter
     if payment_type:
-        invoices = invoices.filter(payment_type=payment_type)
+        filters &= Q(payment_type=payment_type)
 
     # Order by cancellation date
-    invoices = invoices.order_by("-cancelled_at")
+    invoices = (
+        Invoice.objects.filter(is_cancelled=True)
+        .select_related("customer", "cancelled_by", "cancellation_record")
+        .filter(filters)
+        .order_by("-cancelled_at")
+    )
 
     # Calculate statistics
     stats = invoices.aggregate(

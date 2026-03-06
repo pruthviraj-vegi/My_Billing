@@ -407,24 +407,22 @@ def get_data(request):
     """Build and return a filtered, sorted queryset of customers based on request params."""
     # Get search and filter parameters
     search_query = request.GET.get("search", "")
-    _status_filter = request.GET.get("status", "")  # Reserved for future use
 
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= (
-            Q(name__icontains=search_query)
-            | Q(phone_number__icontains=search_query)
-            | Q(email__icontains=search_query)
-            | Q(address__icontains=search_query)
-        )
-
-    customers = Customer.objects.filter(filters)
-
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(name__icontains=word)
+                | Q(phone_number__icontains=word)
+                | Q(email__icontains=word)
+                | Q(address__icontains=word)
+            )
     # Apply sorting (Multi-column support)
     valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
 
-    customers = customers.order_by(*valid_sorts)
+    customers = Customer.objects.filter(filters).order_by(*valid_sorts)
 
     return customers
 

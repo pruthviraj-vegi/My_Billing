@@ -1,5 +1,6 @@
 """
-Views for handling inventory operations such as product creation, updates, and tracking.
+Views for handling inventory operations
+such as product creation, updates, and tracking.
 """
 
 import json

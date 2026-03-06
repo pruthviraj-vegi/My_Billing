@@ -864,8 +864,10 @@ class InventoryLog(SoftDeleteModel):
 
     def __str__(self):
         date_str = (
-            self.timestamp.strftime("%Y-%m-%d") if self.timestamp else "N/A"
-        )  # pylint: disable=no-member
+            self.timestamp.strftime("%Y-%m-%d")  # pylint: disable=no-member
+            if self.timestamp
+            else "N/A"
+        )
         return f"{self.variant} changed by {self.quantity_change} on {date_str}"
 
     def save(self, *args, **kwargs):

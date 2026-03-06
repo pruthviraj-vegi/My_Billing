@@ -199,22 +199,21 @@ def audit_home(request):
 def get_data(request):
     """Get audit data with search and filter parameters"""
     # Get search and filter parameters
-    search_query = request.GET.get("search", "").strip()
+    search_query = request.GET.get("search", "")
     audit_type = request.GET.get("audit_type", "")
     status = request.GET.get("status", "")
     financial_year = request.GET.get("financial_year", "")
 
-    # Build queryset
-    queryset = AuditTable.objects.select_related("created_by").all()
-
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= (
-            Q(title__icontains=search_query)
-            | Q(description__icontains=search_query)
-            | Q(audit_type__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(title__icontains=word)
+                | Q(description__icontains=word)
+                | Q(audit_type__icontains=word)
+            )
 
     # Apply audit_type filter
     if audit_type:
@@ -228,11 +227,13 @@ def get_data(request):
     if financial_year:
         filters &= Q(financial_year=financial_year)
 
-    queryset = queryset.filter(filters)
-
     # Apply sorting
     valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
-    queryset = queryset.order_by(*valid_sorts)
+    queryset = (
+        AuditTable.objects.select_related("created_by")
+        .filter(filters)
+        .order_by(*valid_sorts)
+    )
 
     return queryset
 
@@ -310,6 +311,8 @@ def audit_suggestions(request):
 
 
 class AuditTableCreateView(CreateView):
+    """View to handle the creation of new audit sessions."""
+
     model = AuditTable
     form_class = AuditTableForm
     template_name = "invoice_audit/form.html"
@@ -325,13 +328,13 @@ class AuditTableCreateView(CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
+        """Return URL to redirect to upon successful audit session creation."""
         return self.object.get_absolute_url()
-
-    def form_invalid(self, form):
-        return super().form_invalid(form)
 
 
 class AuditTableDeleteView(DeleteView):
+    """View to handle the deletion of audit sessions."""
+
     model = AuditTable
     template_name = "invoice_audit/delete.html"
     context_object_name = "audit_table"
@@ -345,12 +348,11 @@ class AuditTableDeleteView(DeleteView):
         return context
 
     def get_success_url(self):
+        """Return URL to redirect to after successful deletion."""
         return reverse_lazy("invoice:audit_home")
 
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
     def get_success_url_name(self):
+        """Helper method occasionally used by custom logic for redirects."""
         return "invoice:audit_detail"
 
 
@@ -360,6 +362,7 @@ class InvoiceManager(View):
     template = "invoice_audit/invoice_manager.html"
 
     def get(self, request, pk):
+        """Handle GET requests to display invoice manager."""
 
         audit = get_object_or_404(AuditTable, pk=pk)
 

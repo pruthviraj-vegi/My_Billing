@@ -5096,7 +5096,13 @@ WORD SUGGESTION SYSTEM STYLES
   top: 100%;
   left: 0;
   right: 0;
-  background: var(--bg-surface);
+  background: linear-gradient(
+    to right,
+    var(--bg-surface) 0%,
+    color-mix(in srgb, var(--bg-surface) 90%, transparent) 40%,
+    color-mix(in srgb, var(--bg-surface) 60%, transparent) 100%
+  );
+  backdrop-filter: blur(4px);
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
   box-shadow: var(--shadow-md);
@@ -5228,7 +5234,12 @@ WORD SUGGESTION SYSTEM STYLES
 }
 
 [data-theme="dark"] .word-suggestion-dropdown {
-  background: var(--bg-surface);
+  background: linear-gradient(
+    to right,
+    var(--bg-surface) 0%,
+    color-mix(in srgb, var(--bg-surface) 90%, transparent) 40%,
+    color-mix(in srgb, var(--bg-surface) 60%, transparent) 100%
+  );
   border-color: var(--border-color);
 }
 

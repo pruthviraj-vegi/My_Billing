@@ -30,17 +30,22 @@ logger = logging.getLogger(__name__)
 
 def shop_details_list(request):
     """List all shop details."""
-    shops = ShopDetails.objects.all().order_by("-created_at")
 
     # Search functionality
     search_query = request.GET.get("search", "")
+    filters = Q()
     if search_query:
-        shops = shops.filter(
-            Q(shop_name__icontains=search_query)
-            | Q(city__icontains=search_query)
-            | Q(state__icontains=search_query)
-            | Q(phone_number__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(shop_name__icontains=word)
+                | Q(city__icontains=word)
+                | Q(state__icontains=word)
+                | Q(phone_number__icontains=word)
+            )
+
+    # Base queryset
+    shops = ShopDetails.objects.filter(filters).order_by("-created_at")
 
     # Pagination
     paginator = Paginator(shops, 10)
@@ -122,16 +127,22 @@ def shop_details_delete(request, pk):
 
 def report_config_list(request):
     """List all report configurations."""
-    configs = ReportConfiguration.objects.all().order_by("-is_default", "-created_at")
 
     # Search functionality
     search_query = request.GET.get("search", "")
+    filters = Q()
     if search_query:
-        configs = configs.filter(
-            Q(report_type__icontains=search_query)
-            | Q(terms_conditions__icontains=search_query)
-            | Q(thank_you_message__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(report_type__icontains=word)
+                | Q(terms_conditions__icontains=word)
+                | Q(thank_you_message__icontains=word)
+            )
+
+    configs = ReportConfiguration.objects.filter(filters).order_by(
+        "-is_default", "-created_at"
+    )
 
     # Pagination
     paginator = Paginator(configs, 10)
@@ -317,19 +328,23 @@ def shop_settings_dashboard(request):
 
 def payment_details_list(request):
     """List all payment details."""
-    payments = PaymentDetails.objects.all().order_by(
-        "display_order", "-is_default", "-created_at"
-    )
 
     # Search functionality
     search_query = request.GET.get("search", "")
+    filters = Q()
     if search_query:
-        payments = payments.filter(
-            Q(payment_name__icontains=search_query)
-            | Q(upi_id__icontains=search_query)
-            | Q(account_number__icontains=search_query)
-            | Q(bank_name__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(payment_name__icontains=word)
+                | Q(upi_id__icontains=word)
+                | Q(account_number__icontains=word)
+                | Q(bank_name__icontains=word)
+            )
+
+    payments = PaymentDetails.objects.filter(filters).order_by(
+        "display_order", "-is_default", "-created_at"
+    )
 
     # Pagination
     paginator = Paginator(payments, 10)
@@ -428,15 +443,18 @@ def payment_details_delete(request, pk):
 
 def barcode_config_list(request):
     """List all barcode configurations."""
-    configs = BarcodeConfiguration.objects.all().order_by("-is_default", "-created_at")
 
     # Search functionality
     search_query = request.GET.get("search", "")
+    filters = Q()
     if search_query:
-        configs = configs.filter(
-            Q(config_name__icontains=search_query)
-            | Q(heading_text__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= Q(config_name__icontains=word) | Q(heading_text__icontains=word)
+
+    configs = BarcodeConfiguration.objects.filter(filters).order_by(
+        "-is_default", "-created_at"
+    )
 
     # Pagination
     paginator = Paginator(configs, 10)

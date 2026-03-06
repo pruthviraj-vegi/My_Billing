@@ -76,25 +76,23 @@ def get_variants_data(request):
     status_filter = request.GET.get("status", "")
     stock_filter = request.GET.get("stock", "")
 
-    # Start with all variants
-    variants = (
-        ProductVariant.objects.select_related(
-            "product", "product__category", "size", "color"
-        )
-        .prefetch_related("favorite_variants")
-        .all()
-    )
-
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= (
-            Q(product__brand__icontains=search_query)
-            | Q(product__name__icontains=search_query)
-            | Q(barcode__icontains=search_query)
-            | Q(product__description__icontains=search_query)
-            | Q(product__category__name__icontains=search_query)
-        )
+        # Split query into words so multiple terms can be matched
+        terms = search_query.split()
+        for term in terms:
+            filters &= (
+                Q(product__brand__icontains=term)
+                | Q(product__name__icontains=term)
+                | Q(barcode__icontains=term)
+                | Q(product__description__icontains=term)
+                | Q(product__category__name__icontains=term)
+                | Q(size__name__icontains=term)
+                | Q(color__name__icontains=term)
+                | Q(mrp__icontains=term)
+                | Q(purchase_price__icontains=term)
+            )
 
     # Apply category filter (supports both ID and name search)
     if category_filter:
@@ -138,7 +136,13 @@ def get_variants_data(request):
     elif stock_filter == "low_stock":
         filters &= Q(quantity__lte=F("minimum_quantity"), quantity__gt=0)
 
-    variants = variants.filter(filters)
+    variants = (
+        ProductVariant.objects.select_related(
+            "product", "product__category", "size", "color"
+        )
+        .prefetch_related("favorite_variants")
+        .filter(filters)
+    )
 
     # Apply sorting
     valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")

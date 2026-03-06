@@ -62,12 +62,14 @@ def get_data(request):
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= (
-            Q(full_name__icontains=search_query)
-            | Q(phone_number__icontains=search_query)
-            | Q(email__icontains=search_query)
-            | Q(address__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(full_name__icontains=word)
+                | Q(phone_number__icontains=word)
+                | Q(email__icontains=word)
+                | Q(address__icontains=word)
+            )
 
     # Apply role filter
     if role_filter:

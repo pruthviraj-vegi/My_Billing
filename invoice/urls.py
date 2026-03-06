@@ -4,7 +4,7 @@ URL routing configuration for the invoice app.
 
 from django.urls import path
 
-from . import (
+from invoice import (
     views,
     views_,
     views_cancellation,

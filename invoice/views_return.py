@@ -67,12 +67,14 @@ def fetch_return_invoices(request):
     # Apply search filter
     filters = Q()
     if search_query:
-        filters &= (
-            Q(return_number__icontains=search_query)
-            | Q(customer__name__icontains=search_query)
-            | Q(invoice__invoice_number__icontains=search_query)
-            | Q(notes__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(return_number__icontains=word)
+                | Q(customer__name__icontains=word)
+                | Q(invoice__invoice_number__icontains=word)
+                | Q(notes__icontains=word)
+            )
 
     # Apply status filter
     if status_filter:
@@ -97,13 +99,15 @@ def fetch_return_invoices(request):
         except ValueError:
             pass
 
-    return_invoices = ReturnInvoice.objects.select_related(
-        "customer", "invoice", "created_by", "approved_by", "processed_by"
-    ).filter(filters)
-
     # Apply sorting
     valid_sorts = table_sorting(request, valid_sort_fields, "-created_at")
-    return_invoices = return_invoices.order_by(*valid_sorts)
+    return_invoices = (
+        ReturnInvoice.objects.select_related(
+            "customer", "invoice", "created_by", "approved_by", "processed_by"
+        )
+        .filter(filters)
+        .order_by(*valid_sorts)
+    )
 
     return render_paginated_response(
         request,

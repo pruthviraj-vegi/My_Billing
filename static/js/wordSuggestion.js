@@ -25,6 +25,7 @@ class WordSuggestion {
             url: suggestionUrl || "",
             onSuggestionSelected: null, // optional callback
             allowSpaces: false, // configurable space handling
+            multiWord: true, // whether to suggest for the last word only
             ...options
         };
 
@@ -99,22 +100,24 @@ class WordSuggestion {
     // ----------- HANDLERS -----------
 
     handleInput(e) {
-        const query = e.target.value.trim();
+        const rawValue = e.target.value;
+        let query = rawValue.trim();
+
+        if (this.options.multiWord) {
+            query = this.getLastWord(rawValue);
+        }
+
         clearTimeout(this.debounceTimer);
 
-        if (query.length < this.options.minQueryLength || (!this.options.allowSpaces && query.includes(' '))) {
+        // If multiWord is enabled, we only query the last word.
+        if (query.length < this.options.minQueryLength || (!this.options.allowSpaces && !this.options.multiWord && query.includes(' '))) {
             this.hideDropdown();
             return;
         }
 
         this.debounceTimer = setTimeout(() => {
             this.searchSuggestions(query);
-        }, this.options.debounceDelay)
-
-
-
-
-
+        }, this.options.debounceDelay);
     }
 
     handleKeydown(e) {
@@ -134,8 +137,12 @@ class WordSuggestion {
                 break;
             case 'Enter':
             case 'Tab': // Tab also accepts suggestion
-                e.preventDefault();
-                this.selectSuggestion();
+                if (this.selectedIndex >= 0) {
+                    e.preventDefault();
+                    this.selectSuggestion();
+                }
+                // If it's Enter and nothing is selected, we let default behavior happen
+                // so the form can naturally be submitted.
                 break;
             case 'Escape':
                 e.preventDefault();
@@ -162,6 +169,19 @@ class WordSuggestion {
         if (!this.input.contains(e.target) && !this.dropdown.contains(e.target)) {
             this.hideDropdown();
         }
+    }
+
+    // ----------- WORD EXTRACTION HELPERS -----------
+
+    getLastWord(value) {
+        const words = value.split(/\s+/);
+        return words[words.length - 1] || '';
+    }
+
+    replaceLastWord(value, replacement) {
+        const words = value.split(/\s+/);
+        words[words.length - 1] = replacement;
+        return words.join(' ');
     }
 
     // ----------- DATA FETCHING -----------
@@ -309,12 +329,15 @@ class WordSuggestion {
         if (selectedIndex < 0 || selectedIndex >= this.suggestions.length)
             return;
 
-
-
         const suggestion = this.suggestions[selectedIndex];
         const currentValue = this.input.value;
 
-        this.input.value = suggestion;
+        if (this.options.multiWord) {
+            this.input.value = this.replaceLastWord(currentValue, suggestion) + ' ';
+        } else {
+            this.input.value = suggestion;
+        }
+
         this.hideDropdown();
 
         // Fire input-specific event
@@ -325,6 +348,9 @@ class WordSuggestion {
                 fullText: this.input.value
             }
         }));
+
+        this.input.dispatchEvent(new Event('input', { bubbles: true }));
+        this.input.focus();
 
         if (typeof this.options.onSuggestionSelected === 'function') {
             this.options.onSuggestionSelected(suggestion, this.input);
@@ -426,7 +452,8 @@ if (typeof window.$ === 'undefined') {
                         debounceDelay: config.debounceDelay,
                         minQueryLength: config.minLength,
                         maxSuggestions: config.maxSuggestions,
-                        onSuggestionSelected: config.onSelect
+                        onSuggestionSelected: config.onSelect,
+                        multiWord: config.multiWord
                     });
                 });
                 return this;

@@ -80,15 +80,17 @@ def credit_customers_data(request):
     )  # Single JOIN, exclude customers with both credit and debit = 0
 
     # ===== SEARCH =====
+    filters = Q()
     if search_query:
-        qs = qs.filter(
-            Q(name__icontains=search_query)
-            | Q(phone_number__icontains=search_query)
-            | Q(email__icontains=search_query)
-            | Q(address__icontains=search_query)
-        )
+        terms = search_query.split()
+        for word in terms:
+            filters &= (
+                Q(name__icontains=word)
+                | Q(phone_number__icontains=word)
+                | Q(email__icontains=word)
+                | Q(address__icontains=word)
+            )
 
-    # ===== SORTING (All in database!) =====
     # ===== SORTING (All in database!) =====
     # Map frontend sort keys to database fields
     sort_fields_map = {
@@ -108,7 +110,7 @@ def credit_customers_data(request):
     # table_sorting will now handle the mapping and direction logic automatically
     final_order_by = table_sorting(request, sort_fields_map, "-created_at")
 
-    qs = qs.order_by(*final_order_by)
+    qs = qs.filter(filters).order_by(*final_order_by)
 
     # ===== EXECUTE =====
     customers = list(qs)
