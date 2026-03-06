@@ -31,25 +31,18 @@
     </nav>
     <!-- Search and Filter Section -->
     <div class="search-filter-section">
-        <form method="get" class="search-filter-form" id="searchForm">
+        <form method="#"
+              class="search-filter-form"
+              id="searchForm"
+              autocomplete="off">
             <div class="search-group search-expanded">
                 <i class="fas fa-search search-icon"></i>
-                <div class="search-input-container">
-                    <div class="word-suggestion-container">
-                        <input type="search"
-                               name="search"
-                               class="search-input"
-                               placeholder="Search credit customers by name, phone, email, or address..."
-                               value=""
-                               id="searchInput"
-                               data-url="{% url 'suggestions:customer_all' %}"
-                               autocomplete="off"
-                               autofocus>
-                    </div>
-                    <div class="filter-tags-inline" id="filterTagsInline">
-                        <!-- Filter tags will be dynamically added here -->
-                    </div>
-                </div>
+                <input type="search"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search credit customers by name, phone, email, or address..."
+                       id="searchInput"
+                       autofocus>
             </div>
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-search"></i>

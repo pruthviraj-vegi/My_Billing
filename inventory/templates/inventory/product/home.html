@@ -26,24 +26,16 @@
         <form method="#" class="search-filter-form" id="searchForm">
             <div class="search-group search-expanded">
                 <i class="fas fa-search search-icon"></i>
-                <div class="search-input-container">
-                    <input type="search"
-                           name="search"
-                           class="search-input"
-                           placeholder="Search products by brand, name, or description..."
-                           value=""
-                           id="searchInput"
-                           autocomplete="off"
-                           autofocus>
-                </div>
+                <input type="search"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search products by brand, name, or description..."
+                       id="searchInput"
+                       autofocus>
             </div>
             <select name="category" class="filter-select" id="categoryFilter">
                 <option value="">All Categories</option>
                 {% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}
-            </select>
-            <select name="status" class="filter-select" id="statusFilter">
-                <option value="">All Status</option>
-                {% for value, label in status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
             </select>
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-search"></i>

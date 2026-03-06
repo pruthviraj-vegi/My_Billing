@@ -62,10 +62,13 @@ def invoice_dashboard_fetch(request):
         total_amount=Coalesce(Sum("amount"), Decimal("0")),
         total_discount=Coalesce(Sum("discount_amount"), Decimal("0")),
         total_paid=Coalesce(Sum("paid_amount"), Decimal("0")),
-        cancelled_amount=Coalesce(
-            Sum("amount", filter=Q(is_cancelled=True)), Decimal("0")
-        ),
     )
+
+    # Get cancellation metrics based on cancellation date
+    cancellation_metrics = Invoice.objects.filter(
+        is_cancelled=True,
+        cancelled_at__date__range=[start_date, end_date],
+    ).aggregate(cancelled_amount=Coalesce(Sum("amount"), Decimal("0")))
 
     # Get return invoice metrics
     return_metrics = ReturnInvoice.objects.filter(
@@ -115,7 +118,7 @@ def invoice_dashboard_fetch(request):
     total_amount = invoice_metrics["total_amount"]
     total_discount = invoice_metrics["total_discount"]
     total_paid = invoice_metrics["total_paid"]
-    total_cancelled_amount = invoice_metrics["cancelled_amount"]
+    total_cancelled_amount = cancellation_metrics["cancelled_amount"]
     total_return_amount = return_metrics["total_return_amount"]
     total_profit = profit_data["total_profit"] - total_discount
 

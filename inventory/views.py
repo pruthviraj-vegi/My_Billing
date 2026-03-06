@@ -682,6 +682,7 @@ def _supplier_invoice_tracking_queryset(request):
 def supplier_invoice_tracking(request):
     """Render main page; data loads via AJAX fetch endpoint."""
     suppliers = Supplier.objects.filter(is_deleted=False).order_by("name")
+
     return render(
         request,
         "inventory/supplier_invoice_tracking.html",
@@ -696,7 +697,6 @@ def supplier_invoice_tracking(request):
 def supplier_invoice_tracking_fetch(request):
     """AJAX endpoint powering supplier invoice tracking table."""
     invoices = _supplier_invoice_tracking_queryset(request)
-    invoices = ()
     return render_paginated_response(
         request,
         invoices,

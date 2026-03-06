@@ -38,19 +38,17 @@
         <form method="get" class="search-filter-form">
             <div class="search-group search-expanded">
                 <i class="fas fa-calendar-alt search-icon"></i>
-                <div class="search-input-container">
-                    <input type="date"
-                           name="start_date"
-                           value="{{ start_date|default:'' }}"
-                           class="search-input"
-                           placeholder="Start Date">
-                    <span class="date-separator">to</span>
-                    <input type="date"
-                           name="end_date"
-                           value="{{ end_date|default:'' }}"
-                           class="search-input"
-                           placeholder="End Date">
-                </div>
+                <input type="date"
+                       name="start_date"
+                       value="{{ start_date|default:'' }}"
+                       class="search-input"
+                       placeholder="Start Date">
+                <span class="date-separator">to</span>
+                <input type="date"
+                       name="end_date"
+                       value="{{ end_date|default:'' }}"
+                       class="search-input"
+                       placeholder="End Date">
             </div>
             <select class="filter-select"
                     id="quickDateRange"
@@ -147,31 +145,15 @@
     align-items: center;
 }
 
-.search-input-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.search-input-container .search-input {
-    flex: 1;
-    min-width: 120px;
-}
 
 /* Responsive Design for Date Filter */
 @media (max-width: 768px) {
-    .search-input-container {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
+    
     
     .date-separator {
         margin: 0;
     }
     
-    .search-input-container .search-input {
-        width: 100%;
-    }
 }
 
 /* Drag and Drop Styles */

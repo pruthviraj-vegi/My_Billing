@@ -35,17 +35,18 @@
   </nav>
   <!-- Search and Filter Section -->
   <div class="search-filter-section">
-    <form method="get" class="search-filter-form" id="searchForm">
+    <form method="#"
+          class="search-filter-form"
+          id="searchForm"
+          autocomplete="off">
       <div class="search-group search-expanded">
         <i class="fas fa-search search-icon"></i>
         <input type="search"
                name="search"
-               value="{{ search_query }}"
                class="search-input"
                placeholder="Search suppliers by name, contact, phone, email, or GSTIN..."
                id="searchInput"
                autofocus />
-        <i class="fas fa-search search-icon"></i>
       </div>
       <select name="status" class="filter-select">
         <option value="">All Status</option>

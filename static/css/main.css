@@ -1473,21 +1473,6 @@ form.submitting * {
   min-width: 0;
 }
 
-.search-input-container {
-  /* position: relative; */
-  width: 100%;
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  background: var(--bg-body);
-  transition: all 0.2s ease;
-}
-
-.search-input-container:focus-within {
-  border-color: var(--border-color-focus);
-}
-
 .search-input {
   width: 100%;
   padding: 0.6rem 1rem 0.6rem 2.5rem;
@@ -1497,7 +1482,7 @@ form.submitting * {
   outline: none;
   flex: 1;
   min-width: 0;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
 }
 
 .filter-tags-inline {
@@ -5098,11 +5083,12 @@ WORD SUGGESTION SYSTEM STYLES
   right: 0;
   background: linear-gradient(
     to right,
-    var(--bg-surface) 0%,
-    color-mix(in srgb, var(--bg-surface) 90%, transparent) 40%,
-    color-mix(in srgb, var(--bg-surface) 60%, transparent) 100%
+    var(--bg-surface) 50%,
+    color-mix(in srgb, var(--bg-surface) 30%, transparent) 70%,
+    color-mix(in srgb, var(--bg-surface) 10%, transparent) 90%,
+    transparent 100%
   );
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
   box-shadow: var(--shadow-md);
@@ -7220,4 +7206,65 @@ a:hover {
   background: var(--bg-surface, #1e293b) !important;
   color: var(--text-primary, #f1f5f9) !important;
   border-color: var(--border-color, #334155) !important;
+}
+
+/* ========================================
+   PAGINATION GLASS EFFECT
+   ======================================== */
+.pagination {
+  gap: 0.5rem;
+}
+
+.page-item .page-link {
+  background: color-mix(in srgb, var(--bg-surface) 30%, transparent) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.page-item .page-link:hover,
+.page-item .page-link:focus {
+  background: color-mix(in srgb, var(--bg-surface) 50%, transparent) !important;
+  color: var(--primary) !important;
+  border-color: var(--border-color-focus) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.page-item.active .page-link,
+.page-item.active .page-link:hover {
+  background: color-mix(in srgb, var(--primary) 20%, transparent) !important;
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-weight: 600;
+}
+
+.page-item.disabled .page-link {
+  opacity: 0.5;
+  background: transparent !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  cursor: not-allowed;
+  border-color: transparent !important;
+}
+
+/* Fix Bootstrap's border-radius override */
+.pagination .page-item:not(:first-child) {
+  margin-left: 0;
+}
+.pagination .page-link {
+  margin-left: 0 !important;
+}
+.pagination .page-item:first-child .page-link {
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+.pagination .page-item:last-child .page-link {
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
 }

@@ -26,29 +26,13 @@
         <form method="get" class="search-filter-form" id="searchForm">
             <div class="search-group search-expanded">
                 <i class="fas fa-search search-icon"></i>
-                <div class="search-input-container">
-                    <input type="search"
-                           name="search"
-                           class="search-input"
-                           placeholder="Search HSN Codes by code, description or GST percentage..."
-                           value=""
-                           id="searchInput"
-                           autofocus>
-                </div>
+                <input type="search"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search HSN Codes by code, description or GST percentage..."
+                       id="searchInput"
+                       autofocus>
             </div>
-            <select name="sort" class="filter-select" id="sortSelect">
-                <option value="">-------</option>
-                <option value="-created_at">Newest First</option>
-                <option value="created_at">Oldest First</option>
-                <option value="code">Code A-Z</option>
-                <option value="-code">Code Z-A</option>
-                <option value="gst_percentage">GST % Low-High</option>
-                <option value="-gst_percentage">GST % High-Low</option>
-                <option value="cess_rate">Cess % Low-High</option>
-                <option value="-cess_rate">Cess % High-Low</option>
-                <option value="effective_from">Effective Date</option>
-                <option value="-effective_from">Effective Date (Recent)</option>
-            </select>
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-search"></i>
                 Search

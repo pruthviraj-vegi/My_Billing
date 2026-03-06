@@ -73,7 +73,7 @@ class WordSuggestion {
 
         // Find the best container for the dropdown
         // Prefer explicit containers or direct parent over modal body to keep it near the input
-        const container = this.input.closest('.search-input-container') ||
+        const container = this.input.closest('.search-expanded') ||
             this.input.closest('.input-group') ||
             this.input.parentNode;
 

@@ -26,16 +26,12 @@
         <form method="get" class="search-filter-form" id="searchForm">
             <div class="search-group search-expanded">
                 <i class="fas fa-search search-icon"></i>
-                <div class="search-input-container">
-                    <input type="search"
-                           name="search"
-                           class="search-input"
-                           placeholder="Search by Variant name, brand, barcode, or description..."
-                           value=""
-                           id="searchInput"
-                           autocomplete="off"
-                           autofocus>
-                </div>
+                <input type="search"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search by Variant name, brand, barcode, or description..."
+                       id="searchInput"
+                       autofocus>
             </div>
             <button type="button" class="btn btn-primary" id="toggleFiltersBtn">
                 <i class="fas fa-filter"></i>
@@ -59,10 +55,6 @@
                     <select name="size" class="filter-select" id="sizeFilter">
                         <option value="">All Sizes</option>
                         {% for size in sizes %}<option value="{{ size.id }}">{{ size.name }}</option>{% endfor %}
-                    </select>
-                    <select name="status" class="filter-select" id="statusFilter">
-                        <option value="">All Status</option>
-                        {% for value, label in status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                     </select>
                 </div>
             </div>
