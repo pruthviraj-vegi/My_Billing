@@ -113,7 +113,7 @@ def currency(value, _arg=None):
             return "0.00"
 
         data = locale.format_string(
-            f"%%.{formate['frac_digits']}f",
+            f"%.{formate['frac_digits']}f",
             numeric_value,
             grouping=formate["grouping"],
             monetary=False,

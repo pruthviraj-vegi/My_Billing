@@ -153,7 +153,7 @@ class CreateCart(RoleRequiredMixin, CreateView):
         Returns:
             str: Resolved URL string navigating to cart management data page.
         """
-        return reverse("cart:getCartData", kwargs={"pk": self.object.id})
+        return reverse("cart:get_cart_data", kwargs={"pk": self.object.id})
 
 
 class EditCart(RoleRequiredMixin, UpdateView):
@@ -190,7 +190,7 @@ class EditCart(RoleRequiredMixin, UpdateView):
         Returns:
             str: Routing path bridging user straight into cart view endpoints.
         """
-        return reverse("cart:getCartData", kwargs={"pk": self.object.id})
+        return reverse("cart:get_cart_data", kwargs={"pk": self.object.id})
 
 
 @require_role(ALL_ROLES)

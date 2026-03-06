@@ -9,7 +9,8 @@
     <h2 class="page-title">{{ title }}</h2>
     <div class="page-actions">
       {% if cart %}
-        <a href="{% url 'cart:getCartData' cart.id %}" class="btn btn-secondary">
+        <a href="{% url 'cart:get_cart_data' cart.id %}"
+           class="btn btn-secondary">
           <i class="fas fa-arrow-left"></i>
           Back to Cart
         </a>
@@ -25,7 +26,7 @@
     <a href="{% url 'cart:main_page' %}" class="breadcrumb-item">Carts</a>
     <span class="breadcrumb-separator">/</span>
     {% if cart %}
-      <a href="{% url 'cart:getCartData' cart.id %}" class="breadcrumb-item">{{ cart.name }}</a>
+      <a href="{% url 'cart:get_cart_data' cart.id %}" class="breadcrumb-item">{{ cart.name }}</a>
       <span class="breadcrumb-separator">/</span>
       <span class="breadcrumb-active">Edit</span>
     {% else %}

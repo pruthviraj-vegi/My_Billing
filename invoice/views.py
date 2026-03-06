@@ -674,7 +674,7 @@ class CreateInvoice(View):
         cart = get_object_or_404(Cart, id=pk)
         if int(cart.total_amount) <= 0:
             messages.error(request, "Cart is empty")
-            return redirect("cart:getCartData", pk=cart.id)
+            return redirect("cart:get_cart_data", pk=cart.id)
         form = self.form_class(
             initial={
                 "payment_type": Invoice.PaymentType.CASH,
@@ -695,7 +695,7 @@ class CreateInvoice(View):
         cart = get_object_or_404(Cart, id=pk)
         if int(cart.total_amount) <= 0:
             messages.error(request, "Cart is empty")
-            return redirect("cart:getCartData", pk=cart.id)
+            return redirect("cart:get_cart_data", pk=cart.id)
         form = self.form_class(request.POST)
         if form.is_valid():
             with transaction.atomic():

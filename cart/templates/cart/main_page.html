@@ -21,7 +21,7 @@
             </button>
             <div class="cart-buttons-container" id="cartButtonsContainer">
                 {% for data in carts %}
-                    <a href="{% url 'cart:getCartData' data.id %}"
+                    <a href="{% url 'cart:get_cart_data' data.id %}"
                        class="btn cart-btn {% if data.id == cart.id %}btn-primary active-cart-btn{% else %}btn-secondary{% endif %}"
                        data-cart-id="{{ data.id }}">
                         {{ data.name }} - <span class="value" id="cart-button-total-{{ data.id }}">{{ data.total_amount|currency }}
@@ -59,7 +59,7 @@
                 <ul class="cart-list-items">
                     {% for data in carts %}
                         <li class="cart-list-item {% if data.id == cart.id %}active{% endif %}">
-                            <a href="{% url 'cart:getCartData' data.id %}" class="cart-list-link">
+                            <a href="{% url 'cart:get_cart_data' data.id %}" class="cart-list-link">
                                 <div class="cart-list-info">
                                     <span class="cart-list-name">{{ data.name }}</span>
                                     <span class="cart-list-amount" id="cart-list-total-{{ data.id }}">{{ data.total_amount|currency }}

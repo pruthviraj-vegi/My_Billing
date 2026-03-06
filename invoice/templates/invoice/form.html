@@ -17,7 +17,8 @@
         </a>
       {% endif %}
       {% if cart %}
-        <a href="{% url 'cart:getCartData' cart.id %}" class="btn btn-secondary">
+        <a href="{% url 'cart:get_cart_data' cart.id %}"
+           class="btn btn-secondary">
           <i class="fas fa-arrow-left"></i>
           Back to Cart
         </a>
@@ -27,7 +28,7 @@
   <!-- Breadcrumb Navigation -->
   <nav class="breadcrumb breadcrumb-right">
     {% if cart %}
-      <a href="{% url 'cart:getCartData' cart.id %}" class="breadcrumb-item">Cart Details</a>
+      <a href="{% url 'cart:get_cart_data' cart.id %}" class="breadcrumb-item">Cart Details</a>
       <span class="breadcrumb-separator">/</span>
     {% endif %}
     <span class="breadcrumb-separator">/</span>
@@ -133,7 +134,6 @@
                 {% endif %}
               </div>
             </div>
-
             <!-- Discount Amount Field -->
             <div class="col-md-4">
               <div class="form-group {% if form.discount_amount.errors %}has-error{% endif %}">
@@ -151,7 +151,6 @@
                 {% endif %}
               </div>
             </div>
-            
             <!-- Amount Field -->
             <div class="col-md-4">
               <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
@@ -169,7 +168,6 @@
                 {% endif %}
               </div>
             </div>
-            
             <!-- Due Date Field -->
             <div class="col-md-4">
               <div class="form-group {% if form.due_date.errors %}has-error{% endif %}">
@@ -244,64 +242,69 @@
         </div>
         <!-- Amount Summary Section -->
         <div class="form-section">
-          <div class="section-title">Amount Summary :<span class="text-success"> {% if cart.advance_payment > 0 %} (Advance Payment: {{ cart.advance_payment|currency }}){% endif %}</span></div>
-          <div class="total-amount-display">
-            <div class="total-row">
-              <span class="total-label">Sub Total:</span>
-              <span class="total-value" id="subTotalDisplay">₹0.00</span>
-            </div>
-            <div class="total-row">
-              <span class="total-label">Discount:</span>
-              <span class="total-value text-danger" id="discountDisplay">₹0.00</span>
-            </div>
-            <div class="total-row">
-              <span class="total-label">Total:</span>
-              <span class="total-value" id="totalDisplay">₹0.00</span>
-            </div>
-            <div class="total-row">
-              <span class="total-label">Advance:</span>
-              <span class="total-value text-success" id="advanceDisplay">₹0.00</span>
-            </div>
-            <div class="total-row total-final">
-              <span class="total-label">Balance Due:</span>
-              <span class="total-value" id="balanceDisplay">₹0.00</span>
-            </div>
+          <div class="section-title">
+            Amount Summary :<span class="text-success">
+            {% if cart.advance_payment > 0 %}(Advance Payment: {{ cart.advance_payment|currency }}){% endif %}
+          </span>
+        </div>
+        <div class="total-amount-display">
+          <div class="total-row">
+            <span class="total-label">Sub Total:</span>
+            <span class="total-value" id="subTotalDisplay">₹0.00</span>
+          </div>
+          <div class="total-row">
+            <span class="total-label">Discount:</span>
+            <span class="total-value text-danger" id="discountDisplay">₹0.00</span>
+          </div>
+          <div class="total-row">
+            <span class="total-label">Total:</span>
+            <span class="total-value" id="totalDisplay">₹0.00</span>
+          </div>
+          <div class="total-row">
+            <span class="total-label">Advance:</span>
+            <span class="total-value text-success" id="advanceDisplay">₹0.00</span>
+          </div>
+          <div class="total-row total-final">
+            <span class="total-label">Balance Due:</span>
+            <span class="total-value" id="balanceDisplay">₹0.00</span>
           </div>
         </div>
-        <!-- Form Actions -->
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i>
-            {% if invoice %}
-              Update Invoice
-            {% else %}
-              Create Invoice
-            {% endif %}
-          </button>
+      </div>
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save"></i>
           {% if invoice %}
-            <a href="{% url 'invoice:detail' invoice.id %}"
-               class="btn btn-secondary">
-              <i class="fas fa-times"></i>
-              Cancel
-            </a>
-          {% elif cart %}
-            <a href="{% url 'cart:getCartData' cart.id %}" class="btn btn-secondary">
-              <i class="fas fa-times"></i>
-              Cancel
-            </a>
+            Update Invoice
+          {% else %}
+            Create Invoice
           {% endif %}
-          {% if invoice %}
-            <a href="{% url 'invoice:detail' invoice.id %}"
-               class="btn btn-secondary">
-              <i class="fas fa-eye"></i>
-              View Invoice
-            </a>
-          {% endif %}
-        </div>
-      </form>
-    </div>
+        </button>
+        {% if invoice %}
+          <a href="{% url 'invoice:detail' invoice.id %}"
+             class="btn btn-secondary">
+            <i class="fas fa-times"></i>
+            Cancel
+          </a>
+        {% elif cart %}
+          <a href="{% url 'cart:get_cart_data' cart.id %}"
+             class="btn btn-secondary">
+            <i class="fas fa-times"></i>
+            Cancel
+          </a>
+        {% endif %}
+        {% if invoice %}
+          <a href="{% url 'invoice:detail' invoice.id %}"
+             class="btn btn-secondary">
+            <i class="fas fa-eye"></i>
+            View Invoice
+          </a>
+        {% endif %}
+      </div>
+    </form>
   </div>
-  {% include "model_forms/customer.html" %}
+</div>
+{% include "model_forms/customer.html" %}
 {% endblock content %}
 {% block extra_js %}
   <script>
