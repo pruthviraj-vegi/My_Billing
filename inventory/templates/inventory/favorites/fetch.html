@@ -10,17 +10,8 @@
             </td>
             <td>{{ variant.product.brand }}</td>
             <td>
-                <div>
-                    <div class="font-weight-bold text-primary">{{ variant.product.name }}</div>
-                    <small class="text-muted">{{ variant.product.category.name|default:"-" }}</small>
-                </div>
-            </td>
-            <td>
-                <div>
-                    {% if variant.size %}<span class="badge badge-info">{{ variant.size.name }}</span>{% endif %}
-                    {% if variant.color %}<span class="badge badge-secondary">{{ variant.color.name }}</span>{% endif %}
-                    {% if not variant.size and not variant.color %}<span class="text-muted">-</span>{% endif %}
-                </div>
+                <div class="font-weight-bold text-primary">{{ variant.product.name }}</div>
+                <small class="text-muted">{{ variant.product.category.name|default:"-" }}</small>
             </td>
             <td>
                 <div>
@@ -46,17 +37,23 @@
             </td>
             <td>
                 <div class="action-buttons">
+                    <a class="btn-action btn-view add-to-cart-btn"
+                       href="#"
+                       data-barcode="{{ variant.barcode }}"
+                       title="Add to Cart">
+                        <i class="fas fa-cart-plus"></i>
+                    </a>
                     <a href="{% url 'inventory_variant:details' variant.id %}"
                        class="btn-action btn-view"
                        title="View Variant Details">
                         <i class="fas fa-eye"></i>
                     </a>
-                    <button type="button"
-                            class="btn-action btn-danger remove-favorite-btn"
-                            data-variant-id="{{ variant.id }}"
-                            title="Remove from Favorites">
+                    <a href="#"
+                       class="btn-action btn-danger remove-favorite-btn"
+                       data-variant-id="{{ variant.id }}"
+                       title="Remove from Favorites">
                         <i class="fas fa-trash"></i>
-                    </button>
+                    </a>
                 </div>
             </td>
         </tr>
@@ -64,7 +61,7 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="9" class="text-center p-3">
+        <td colspan="100" class="text-center p-3">
             <div class="empty-state">
                 <i class="fas fa-star"></i>
                 <h4>No Favorites Found</h4>

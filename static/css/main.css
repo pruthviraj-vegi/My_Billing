@@ -5600,6 +5600,42 @@ WORD SUGGESTION SYSTEM STYLES
 }
 
 /* ========================================
+   FAVORITES MODAL
+   ======================================== */
+
+.favorites-modal-dialog {
+  max-width: 95vw;
+  width: 95vw;
+  height: 90vh;
+  margin: auto;
+}
+
+.favorites-modal-content {
+  height: 100%;
+}
+
+.favorites-modal-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.favorites-modal-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  min-height: 0;
+}
+
+.favorites-modal-table-wrap thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-surface-hover);
+}
+
+/* ========================================
    INPUT GROUP STYLES
    ======================================== */
 
