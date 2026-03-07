@@ -121,6 +121,12 @@
                                 <span><strong>Notes:</strong> {{ invoice.notes|truncatechars:50 }}</span>
                             </div>
                         {% endif %}
+                        {% if invoice.is_cancelled %}
+                            <div class="contact-item">
+                                <i class="fas fa-times-circle"></i>
+                                <span><strong>Cancelled At:</strong> {{ invoice.cancelled_at|date:"M d, Y" }}</span>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

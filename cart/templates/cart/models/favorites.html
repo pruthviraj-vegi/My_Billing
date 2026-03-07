@@ -4,7 +4,9 @@
 {% if page_obj %}
     {% for value in page_obj %}
         <tr data-value="{{ value.variant.id }}">
-            <td id="data-barcode">{{ value.variant.barcode }}</td>
+            <td id="data-barcode">
+                <span data-copy="{{ value.variant.barcode }}">{{ value.variant.barcode }}</span>
+            </td>
             <td>
                 <strong>{{ value.variant.product.brand }}</strong>
             </td>

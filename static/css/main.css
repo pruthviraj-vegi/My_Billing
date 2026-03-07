@@ -5698,8 +5698,13 @@ WORD SUGGESTION SYSTEM STYLES
   height: 60px;
   border-radius: 50%;
   border: 3px solid var(--border-color);
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.color-swatch-small {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
 }
 
 .color-info {
@@ -7299,6 +7304,16 @@ a:hover {
 .pagination .page-item:first-child .page-link {
   border-top-left-radius: 0.5rem;
   border-bottom-left-radius: 0.5rem;
+}
+
+/* Click-to-copy elements */
+[data-copy] {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+[data-copy]:hover {
+  color: var(--primary);
 }
 .pagination .page-item:last-child .page-link {
   border-top-right-radius: 0.5rem;

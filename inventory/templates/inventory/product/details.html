@@ -160,7 +160,7 @@
                                 {% for variant in variants %}
                                     <tr>
                                         <td>
-                                            <strong>{{ variant.barcode }}</strong>
+                                            <strong data-copy="{{ variant.barcode }}">{{ variant.barcode }}</strong>
                                         </td>
                                         <td>
                                             {% if variant.size %}
@@ -172,12 +172,9 @@
                                         <td>
                                             {% if variant.color %}
                                                 <div class="d-flex align-items-center gap-2">
-                                                    <div class="color-swatch"
-                                                         style="background-color: {{ variant.color.hex_code|default:'#ccc' }};
-                                                                width: 20px;
-                                                                height: 20px;
-                                                                border-radius: 50%;
-                                                                border: 1px solid var(--border-color)"></div>
+                                                    <div class="color-swatch-small"
+                                                         style="background-color: {{ variant.color.hex_code|default:'#ccc' }}">
+                                                    </div>
                                                     <span>{{ variant.color.name }}</span>
                                                 </div>
                                             {% else %}
@@ -228,7 +225,10 @@
                                                 <a href="{% url 'inventory_variant:details' variant.id %}"
                                                    class="btn-action btn-view"
                                                    title="View Details"><i class="fas fa-eye"></i></a>
-                                                <a href="{% url 'report:barcode' variant.id %}" class="btn-action btn-barcode" target="_blank" title="Generate Barcode">
+                                                <a href="{% url 'report:barcode' variant.id %}"
+                                                   class="btn-action btn-barcode"
+                                                   target="_blank"
+                                                   title="Generate Barcode">
                                                     <i class="fas fa-barcode"></i>
                                                 </a>
                                                 <a href="{% url 'inventory_variant:edit' variant.id %}"
@@ -247,7 +247,8 @@
                         <i class="fas fa-box-open"></i>
                         <h4>No Variants Found</h4>
                         <p>This product doesn't have any variants yet.</p>
-                        <a href="{% url 'inventory_variant:create' product.id %}" class="btn btn-primary">
+                        <a href="{% url 'inventory_variant:create' product.id %}"
+                           class="btn btn-primary">
                             <i class="fas fa-plus"></i>
                             Add First Variant
                         </a>

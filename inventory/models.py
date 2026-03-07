@@ -665,13 +665,17 @@ class ProductVariant(SoftDeleteModel):
         return max(1, int(qty + 1) // 2) if qty > 0 else 1
 
     @property
-    def billing_stock(self):
-        """Get the billing stock for the variant"""
-        cart_qty = (
+    def cart_qty(self):
+        """Get the cart quantity for the variant"""
+        return (
             self.cart_items.aggregate(total_quantity=Sum("quantity"))["total_quantity"]
             or 0
         )
-        return max(0, self.quantity - cart_qty)
+
+    @property
+    def billing_stock(self):
+        """Get the billing stock for the variant"""
+        return max(0, self.quantity - self.cart_qty)
 
     def clean(self):
         """Custom validation"""

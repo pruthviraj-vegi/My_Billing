@@ -6,7 +6,7 @@
         {% with variant=favorite.variant %}
             <tr>
                 <td>
-                    <strong>{{ variant.barcode }}</strong>
+                    <strong data-copy="{{ variant.barcode }}">{{ variant.barcode }}</strong>
                 </td>
                 <td>
                     <div class="font-weight-bold">{{ variant.product.brand }}</div>

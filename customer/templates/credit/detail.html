@@ -414,7 +414,7 @@
             throw new Error(data.error || data.message || 'Unexpected response from server');
           }
         } catch (error) {
-          showNotification('send PDF statement', error);
+          showNotification('PDF Sending Failed', "error");
         } finally {
           setButtonLoading(sendPdfBtn, false);
         }
@@ -441,7 +441,7 @@
           throw new Error(data.error || data.message || 'Unexpected response from server');
         }
       } catch (error) {
-        showNotification('send payment', error);
+        showNotification('Payment Sending Failed', "error");
       }
     }
 

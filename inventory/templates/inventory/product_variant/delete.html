@@ -71,7 +71,9 @@
         </div>
         <div class="detail-row">
           <div class="detail-label">Barcode:</div>
-          <div class="detail-value">{{ variant.barcode }}</div>
+          <div class="detail-value" data-copy="{{ variant.barcode }}">
+            <strong>{{ variant.barcode }}</strong>
+          </div>
         </div>
         {% if variant.size %}
           <div class="detail-row">
@@ -86,12 +88,8 @@
               <div class="d-flex align-items-center gap-2">
                 <span>{{ variant.color.name }}</span>
                 {% if variant.color.hex_code %}
-                  <div class="color-swatch"
-                       style="background-color: {{ variant.color.hex_code }};
-                              width: 30px;
-                              height: 30px;
-                              border-radius: 50%;
-                              border: 2px solid #e1e5e9"></div>
+                  <div class="color-swatch-small"
+                       style="background-color: {{ variant.color.hex_code }}"></div>
                 {% endif %}
               </div>
             </div>

@@ -336,6 +336,12 @@ LOGGING = {
             "level": "DEBUG",
             "propagate": False,
         },
+        # Suppress noisy fontTools subsetting logs (from WeasyPrint PDF generation)
+        "fontTools": {
+            "handlers": ["error_file"],
+            "level": "WARNING",
+            "propagate": False,
+        },
         # Root logger for your apps
         "": {
             "handlers": ["debug_file", "info_file", "error_file"],

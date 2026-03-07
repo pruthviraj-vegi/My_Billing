@@ -53,9 +53,8 @@
                     <div class="supplier-contact-compact">
                         <div class="contact-item">
                             <i class="fas fa-barcode"></i>
-                            <span>
-                                <strong>Barcode:</strong>
-                            {{ variant.barcode }}</span>
+                            <strong>Barcode:</strong>
+                            <span data-copy="{{ variant.barcode }}">{{ variant.barcode }}</span>
                         </div>
                         <div class="contact-item">
                             <i class="fas fa-tag"></i>
@@ -77,12 +76,9 @@
                                 <span>
                                     <strong>Color:</strong>
                                     <div class="d-inline-flex align-items-center gap-2">
-                                        <div class="color-swatch"
-                                             style="background-color: {{ variant.color.hex_code|default:'#ccc' }};
-                                                    width: 16px;
-                                                    height: 16px;
-                                                    border-radius: 50%;
-                                                    border: 1px solid var(--border-color)"></div>
+                                        <div class="color-swatch-small"
+                                             style="background-color: {{ variant.color.hex_code|default:'#ccc' }}">
+                                        </div>
                                         {{ variant.color.name }}
                                     </div>
                                 </span>
@@ -102,7 +98,9 @@
             <!-- Stock Summary Cards -->
             <div class="summary-card-compact" id="stockSummaryCard">
                 <div class="summary-icon-compact">
-                    <i class="fas fa-boxes"></i>
+                    <h4>
+                        <i class="fas fa-boxes"></i>
+                    </h4>
                 </div>
                 <div class="summary-content-compact">
                     <h4>Stock Summary</h4>
@@ -124,7 +122,9 @@
             </div>
             <div class="summary-card-compact" id="valueSummaryCard">
                 <div class="summary-icon-compact">
-                    <i class="fas fa-chart-line"></i>
+                    <h4>
+                        <i class="fas fa-chart-line"></i>
+                    </h4>
                 </div>
                 <div class="summary-content-compact">
                     <h4>Value Summary</h4>
@@ -171,28 +171,34 @@
                 </div>
             </div>
             <!-- Quick Actions Section -->
-            <div class="summary-cards-compact">
-                <div class="quick-actions-grid">
-                    <a href="{% url 'inventory_variant:stock_in' variant.id %}"
-                       class="quick-action-btn btn-success">
-                        <i class="fas fa-plus-circle"></i>
-                        <span>Stock In</span>
-                    </a>
-                    <a href="{% url 'inventory_variant:adjustment_in' variant.id %}"
-                       class="quick-action-btn btn-info">
-                        <i class="fas fa-arrow-up"></i>
-                        <span>Adjust In</span>
-                    </a>
-                    <a href="{% url 'inventory_variant:adjustment_out' variant.id %}"
-                       class="quick-action-btn btn-warning">
-                        <i class="fas fa-arrow-down"></i>
-                        <span>Adjust Out</span>
-                    </a>
-                    <a href="{% url 'inventory_variant:damage_create' variant.id %}"
-                       class="quick-action-btn btn-danger">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>Mark Damaged</span>
-                    </a>
+            <div class="summary-card-compact">
+                <div class="summary-icon-compact">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <div class="summary-content-compact">
+                    <h4>Quick Actions</h4>
+                    <div class="quick-actions-inline">
+                        <a href="{% url 'inventory_variant:stock_in' variant.id %}"
+                           class="quick-action-icon btn-success"
+                           data-tooltip="Stock In">
+                            <i class="fas fa-plus-circle"></i>
+                        </a>
+                        <a href="{% url 'inventory_variant:adjustment_in' variant.id %}"
+                           class="quick-action-icon btn-info"
+                           data-tooltip="Adjust In">
+                            <i class="fas fa-arrow-up"></i>
+                        </a>
+                        <a href="{% url 'inventory_variant:adjustment_out' variant.id %}"
+                           class="quick-action-icon btn-warning"
+                           data-tooltip="Adjust Out">
+                            <i class="fas fa-arrow-down"></i>
+                        </a>
+                        <a href="{% url 'inventory_variant:damage_create' variant.id %}"
+                           class="quick-action-icon btn-danger"
+                           data-tooltip="Mark Damaged">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -259,9 +265,9 @@
                                 </tr>
                                 <tr>
                                     <td>
-                                        <strong>Stock Health</strong>
+                                        <strong>Billing Stock</strong>
                                     </td>
-                                    <td>{{ variant.stock_health }}</td>
+                                    <td>{{ variant.cart_qty }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -692,39 +698,62 @@
             gap: 0.5rem;
         }
 
-        .quick-actions-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-        }
-
-        .quick-action-btn {
+        .quick-actions-inline {
             display: flex;
-            flex-direction: column;
             align-items: center;
             gap: 0.5rem;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            text-decoration: none;
-            color: white;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            text-align: center;
         }
 
-        .quick-action-btn:hover {
-            transform: translateY(-2px);
+        .quick-action-icon {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            text-decoration: none;
+            color: white;
+            transition: all 0.2s ease;
+        }
+
+        .quick-action-icon:hover {
+            transform: scale(1.15);
             box-shadow: var(--shadow-md);
             color: white;
             text-decoration: none;
         }
 
-        .quick-action-btn i {
-            font-size: 1.5rem;
+        .quick-action-icon i {
+            font-size: 0.8rem;
         }
 
-        .quick-action-btn span {
-            font-size: 0.875rem;
+        /* Tooltip on hover */
+        .quick-action-icon::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.3rem 0.6rem;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+            white-space: nowrap;
+            box-shadow: var(--shadow-sm);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .quick-action-icon:hover::after {
+            opacity: 1;
+            visibility: visible;
         }
 
         .btn-success {
@@ -758,16 +787,17 @@
                 min-width: auto;
             }
 
-            .quick-actions-grid {
-                grid-template-columns: 1fr;
+            .quick-actions-inline {
+                gap: 0.4rem;
             }
 
-            .quick-action-btn {
-                padding: 0.75rem;
+            .quick-action-icon {
+                width: 28px;
+                height: 28px;
             }
 
-            .quick-action-btn i {
-                font-size: 1.25rem;
+            .quick-action-icon i {
+                font-size: 0.7rem;
             }
         }
     </style>

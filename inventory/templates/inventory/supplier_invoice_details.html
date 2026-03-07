@@ -185,12 +185,9 @@
                                         <td>
                                             {% if product.variant__color__name %}
                                                 <div class="d-inline-flex align-items-center gap-2">
-                                                    <div class="color-swatch"
-                                                         style="background-color: {{ product.variant__color__hex_code|default:'#ccc' }};
-                                                                width: 16px;
-                                                                height: 16px;
-                                                                border-radius: 50%;
-                                                                border: 1px solid var(--border-color)"></div>
+                                                    <div class="color-swatch-small"
+                                                         style="background-color: {{ product.variant__color__hex_code|default:'#ccc' }}">
+                                                    </div>
                                                     {{ product.variant__color__name }}
                                                 </div>
                                             {% else %}
@@ -198,7 +195,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <code>{{ product.variant__barcode }}</code>
+                                            <code data-copy="{{ product.variant__barcode }}">{{ product.variant__barcode }}</code>
                                         </td>
                                         <td>
                                             <strong>{{ product.stock_in_quantity|floatformat:0 }}</strong>

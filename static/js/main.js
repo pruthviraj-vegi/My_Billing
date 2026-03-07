@@ -217,4 +217,42 @@ function throttle(func, limit) {
             setTimeout(() => inThrottle = false, limit);
         }
     };
-} 
+}
+
+// Copy to clipboard utility
+// Usage: <span data-copy="TEXT_TO_COPY">Visible Text</span>
+// Or JS: copyToClipboard('some text')
+function copyToClipboard(text) {
+    function fallbackCopy(t) {
+        const textarea = document.createElement('textarea');
+        textarea.value = t;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (typeof showNotification === 'function') {
+            showNotification('Copied to clipboard!', 'success');
+        }
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            if (typeof showNotification === 'function') {
+                showNotification('Copied to clipboard!', 'success');
+            }
+        }).catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+// Auto-bind click-to-copy on elements with data-copy attribute
+document.addEventListener('click', function (e) {
+    const el = e.target.closest('[data-copy]');
+    if (el) {
+        e.preventDefault();
+        copyToClipboard(el.getAttribute('data-copy'));
+    }
+});

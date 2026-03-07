@@ -1,6 +1,8 @@
 {% load custom_filters %}
 <tr id="cart-item-{{ item.id }}">
-    <td>{{ item.product_variant.barcode }}</td>
+    <td>
+        <span data-copy="{{ item.product_variant.barcode }}">{{ item.product_variant.barcode }}</span>
+    </td>
     <td>{{ item.product_variant.product.brand }}</td>
     <td>{{ item.product_variant.simple_name }}</td>
     <td class="price-toggle-cell"

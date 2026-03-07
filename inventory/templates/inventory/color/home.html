@@ -69,12 +69,7 @@
                             <td>{{ color.id }}</td>
                             <td>
                                 <div class="color-swatch"
-                                     style="background-color: {{ color.hex_code|default:'#ccc' }};
-                                            width: 30px;
-                                            height: 30px;
-                                            border-radius: 50%;
-                                            border: 2px solid #e1e5e9;
-                                            display: inline-block">
+                                     style="background-color: {{ color.hex_code|default:'#ccc' }}">
                                     {% if not color.hex_code %}?{% endif %}
                                 </div>
                             </td>
