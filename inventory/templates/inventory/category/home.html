@@ -46,6 +46,7 @@
                 <tr>
                     <th class="sortable" data-sort="id">ID</th>
                     <th class="sortable" data-sort="name">Category</th>
+                    <th class="sortable" data-sort="parent__name">Parent Category</th>
                     <th>Description</th>
                     <th>Products</th>
                     <th class="sortable" data-sort="created_at">Created</th>
@@ -55,7 +56,7 @@
             <tbody id="table_body">
                 <!-- Empty table body - data will be loaded via AJAX -->
                 <tr>
-                    <td colspan="7" class="text-center p-3">
+                    <td colspan="8" class="text-center p-3">
                         <div class="loading">
                             <i class="fas fa-spinner fa-spin"></i>
                             Loading categories...

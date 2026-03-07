@@ -11,6 +11,13 @@
                 </div>
             </td>
             <td>
+                {% if category.parent %}
+                    <span class="text-muted">{{ category.parent.name }}</span>
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </td>
+            <td>
                 {% if category.description %}
                     <span class="text-muted">{{ category.description|truncatechars:50 }}</span>
                 {% else %}
@@ -40,7 +47,7 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="7" class="text-center p-3">
+        <td colspan="8" class="text-center p-3">
             <div class="empty-state">
                 <i class="fas fa-folder"></i>
                 <h4>No Categories Found</h4>

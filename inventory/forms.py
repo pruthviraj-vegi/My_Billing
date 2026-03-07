@@ -210,12 +210,17 @@ class CategoryForm(forms.ModelForm):
 
     class Meta:
         model = Category
-        fields = ["name", "description"]
+        fields = ["name", "parent", "description"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
                     "placeholder": "Enter category name",
                     "autofocus": True,
+                }
+            ),
+            "parent": forms.Select(
+                attrs={
+                    "placeholder": "Select parent category (optional)",
                 }
             ),
             "description": forms.Textarea(
@@ -232,6 +237,30 @@ class CategoryForm(forms.ModelForm):
         # Add form-input class to all fields
         for field in self.fields.values():
             field.widget.attrs["class"] = "form-input"
+
+        # When editing, exclude self and all descendants from parent choices
+        # to prevent circular references (e.g. A → B → A)
+        if self.instance.pk:
+            excluded_ids = {self.instance.pk}
+            excluded_ids.update(d.pk for d in self.instance.get_descendants())
+            self.fields["parent"].queryset = Category.objects.exclude(
+                pk__in=excluded_ids
+            )
+
+    def clean_parent(self):
+        """Prevent circular parent references (server-side backup validation)."""
+        parent = self.cleaned_data.get("parent")
+        if parent and self.instance.pk:
+            # Cannot set self as parent
+            if parent.pk == self.instance.pk:
+                raise forms.ValidationError("A category cannot be its own parent.")
+            # Cannot set a descendant as parent
+            if parent in self.instance.get_descendants():
+                raise forms.ValidationError(
+                    f'"{parent.name}" is a subcategory of "{self.instance.name}". '
+                    "Setting it as parent would create a circular reference."
+                )
+        return parent
 
     def clean_name(self):
         """Ensure category name is unique (case-insensitive)"""

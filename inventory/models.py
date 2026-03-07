@@ -20,7 +20,10 @@ User = settings.AUTH_USER_MODEL
 class Category(models.Model):
     """Product category for grouping products (e.g. Shirts, Trousers)."""
 
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=255)
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"
+    )
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -29,7 +32,18 @@ class Category(models.Model):
         verbose_name_plural = "Categories"
 
     def __str__(self):
+        if self.parent:
+            return f"{self.parent.name} → {self.name}"
         return self.name
+
+    def get_descendants(self):
+        """Return all descendant categories (children, grandchildren, etc.)."""
+        descendants = set()
+        children = self.children.all()
+        for child in children:
+            descendants.add(child)
+            descendants.update(child.get_descendants())
+        return descendants
 
     def save(self, *args, **kwargs):
         self.name = StringProcessor(self.name).toTitle()
