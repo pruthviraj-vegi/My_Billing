@@ -48,12 +48,6 @@
                id="searchInput"
                autofocus />
       </div>
-      <select name="status" class="filter-select">
-        <option value="">All Status</option>
-        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
-        <option value="inactive"
-                {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
-      </select>
       <button type="submit" class="btn btn-primary">
         <i class="fas fa-search"></i>
         Search

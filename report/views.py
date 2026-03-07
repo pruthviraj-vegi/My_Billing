@@ -30,7 +30,7 @@ from customer.views_credit import (
     get_opening_balance,
 )
 from inventory.models import ProductVariant
-from inventory.views_variant import get_variants_data
+from inventory.views_variant import get_variants_data, total_inventory_value
 from invoice.models import Invoice, InvoiceItem
 from invoice.views_report import (
     get_invoice_report_data,
@@ -239,52 +239,6 @@ def generate_barcode(request, pk):
     return render(request, template, context)
 
 
-def generate_invoices_pdf(request):
-    """Generate a PDF report of GST invoices for the selected date range."""
-    start_date, end_date = getDates(request)
-    invoices = Invoice.objects.filter(
-        invoice_type=Invoice.Invoice_type.GST,
-        invoice_date__range=(start_date, end_date),
-    ).order_by("invoice_date")
-
-    total_count = invoices.count()
-
-    total_tax_value = 0
-    total_gst_amount = 0
-    total_payable = 0
-    for invoice in invoices:
-        total_tax_value += invoice.total_tax_value
-        total_gst_amount += invoice.total_gst_amount
-        total_payable += invoice.total_payable
-
-    # Handle invoice numbers range
-    if total_count == 0:
-        invoice_numbers = 0
-    elif total_count == 1:
-        invoice_numbers = str(invoices.first().invoice_number)
-    else:
-        first_invoice = invoices.first()
-        last_invoice = invoices.last()
-        invoice_numbers = (
-            f"{first_invoice.invoice_number} to {last_invoice.invoice_number}"
-        )
-
-    context = {
-        "data": invoices,
-        "total_count": total_count,
-        "start_date": start_date,
-        "end_date": end_date,
-        "total_tax_value": total_tax_value,
-        "total_gst_amount": total_gst_amount,
-        "total_payable": total_payable,
-        "invoice_numbers": invoice_numbers,
-    }
-
-    template = "invoice_report.html"
-    filename = f"invoices_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
-    return generate_pdf(template, filename, context, request)
-
-
 def generate_customers_pdf(request):
     """Generate PDF for customers list with search and sort parameters."""
 
@@ -382,11 +336,13 @@ def generate_suppliers_pdf(request):
 def generate_variants_pdf(request):
     """Generate PDF for variants list with search and sort parameters."""
     variants = get_variants_data(request)
+    total_outstanding = total_inventory_value(request)
     total_count = variants.count()
 
     # Prepare context
     context = {
         "variants": variants,
+        "total_outstanding": total_outstanding,
         "total_count": total_count,
     }
 

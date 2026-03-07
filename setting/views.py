@@ -254,47 +254,6 @@ def set_default_config(request, pk):
     )
 
 
-def quick_report_settings(request):
-    """Quick report settings page."""
-    if request.method == "POST":
-        form = QuickReportConfigForm(request.POST)
-        if form.is_valid():
-            # Get or create default invoice config
-            config = ReportConfiguration.get_default_config(
-                ReportConfiguration.ReportType.INVOICE
-            )
-
-            # Update settings
-            config.paper_size = form.cleaned_data["paper_size"]
-            config.show_logo = form.cleaned_data["show_logo"]
-            config.show_qr_code = form.cleaned_data["show_qr_code"]
-            config.show_terms_conditions = form.cleaned_data["show_terms_conditions"]
-
-            if form.cleaned_data["custom_terms"]:
-                config.terms_conditions = form.cleaned_data["custom_terms"]
-
-            config.save()
-            messages.success(request, "Report settings updated successfully!")
-            return redirect("setting:quick_report_settings")
-    else:
-        # Load current settings
-        config = ReportConfiguration.get_default_config(
-            ReportConfiguration.ReportType.INVOICE
-        )
-        form = QuickReportConfigForm(
-            initial={
-                "paper_size": config.paper_size,
-                "show_logo": config.show_logo,
-                "show_qr_code": config.show_qr_code,
-                "show_terms_conditions": config.show_terms_conditions,
-                "custom_terms": config.terms_conditions,
-            }
-        )
-
-    context = {"form": form, "page_title": "Quick Report Settings"}
-    return render(request, "setting/reports/quick_report_settings.html", context)
-
-
 def shop_settings_dashboard(request):
     """Dashboard for shop and report settings."""
     # Get shop details

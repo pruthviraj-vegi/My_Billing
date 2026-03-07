@@ -11,7 +11,6 @@ urlpatterns = [
     path("invoice/<int:pk>/", views.create_invoice, name="invoice_pdf"),
     path("estimate/<int:pk>/", views.estimate_invoice, name="estimate_pdf"),
     path("barcode/<int:pk>/", views.generate_barcode, name="barcode"),
-    path("invoices/pdf/", views.generate_invoices_pdf, name="invoices_pdf"),
     path("customers/pdf/", views.generate_customers_pdf, name="customers_pdf"),
     path(
         "credit/customers/pdf/", views.generate_credit_pdf, name="credit_customers_pdf"

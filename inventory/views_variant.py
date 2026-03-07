@@ -8,7 +8,7 @@ from typing import Optional, Union
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Q, Sum, DecimalField
 from django.db.utils import IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -149,6 +149,17 @@ def get_variants_data(request):
     variants = variants.order_by(*valid_sorts)
 
     return variants
+
+
+def total_inventory_value(request) -> float:
+    """Calculate total inventory value."""
+    total_value = ProductVariant.objects.aggregate(
+        total_value=Sum(
+            F("quantity") * F("purchase_price"),
+            output_field=DecimalField(max_digits=16, decimal_places=2),
+        )
+    )
+    return total_value["total_value"]
 
 
 def fetch_variants(request):

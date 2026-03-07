@@ -50,12 +50,6 @@ urlpatterns = [
         views.set_default_config,
         name="set_default_config",
     ),
-    # Quick Settings
-    path(
-        "quick-report-settings/",
-        views.quick_report_settings,
-        name="quick_report_settings",
-    ),
     # Dashboard
     path(
         "shop-settings/", views.shop_settings_dashboard, name="shop_settings_dashboard"

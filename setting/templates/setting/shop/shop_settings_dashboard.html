@@ -1,16 +1,14 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-{% block title %}Shop & Report Settings{% endblock %}
+{% block title %}
+    Shop & Report Settings
+{% endblock title %}
 {% block content %}
     <!-- Page Header -->
     <div class="page-header">
         <h2 class="page-title">Shop & Report Settings</h2>
         <div class="page-actions">
-            <a href="{% url 'setting:quick_report_settings' %}"
-               class="btn btn-primary">
-                <i class="fas fa-cog"></i> Quick Settings
-            </a>
             <a href="{% url 'setting:shop_details_list' %}" class="btn">
                 <i class="fas fa-list"></i>
                 Manage Shops
@@ -232,10 +230,6 @@
                 <a href="{% url 'setting:report_config_create' %}" class="action-card">
                     <i class="fas fa-file-invoice"></i>
                     <span>Create Report Config</span>
-                </a>
-                <a href="{% url 'setting:quick_report_settings' %}" class="action-card">
-                    <i class="fas fa-cog"></i>
-                    <span>Quick Settings</span>
                 </a>
                 <a href="{% url 'setting:shop_details_list' %}" class="action-card">
                     <i class="fas fa-list"></i>

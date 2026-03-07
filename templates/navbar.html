@@ -23,7 +23,6 @@
                class="dropdown-item {% if request.resolver_match.url_name == 'create_cart' %}active{% endif %}">Create Cart</a>
             <a href="{% url 'cart:auto_cart_create' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'auto_cart_create' %}active{% endif %}">Auto Create Cart</a>
-            <a href="#" class="dropdown-item">Payment History</a>
          </div>
       </li>
       <li class="nav-item">
