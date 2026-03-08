@@ -40,25 +40,21 @@
             <td>{{ customer.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
-                    {% if request.user|has_role:"OWNER,MANAGER" %}
-                        <a href="{% url 'customer:detail' customer.id %}"
-                           class="btn-action btn-view"
-                           title="View Details">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                    {% endif %}
+                    <a href="{% url 'customer:detail' customer.id %}"
+                       class="btn-action btn-view"
+                       title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </a>
                     <a href="{% url 'customer:edit' customer.id %}"
                        class="btn-action btn-edit"
                        title="Edit Customer">
                         <i class="fas fa-edit"></i>
                     </a>
-                    {% if request.user|has_role:"OWNER,MANAGER" %}
-                        <a href="{% url 'customer:delete' customer.id %}"
-                           class="btn-action btn-delete"
-                           title="Delete Customer">
-                            <i class="fas fa-trash"></i>
-                        </a>
-                    {% endif %}
+                    <a href="{% url 'customer:delete' customer.id %}"
+                       class="btn-action btn-delete"
+                       title="Delete Customer">
+                        <i class="fas fa-trash"></i>
+                    </a>
                 </div>
             </td>
         </tr>

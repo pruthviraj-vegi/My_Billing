@@ -17,13 +17,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
-from base.decorators import (
-    ALL_ROLES,
-    MANAGEMENT,
-    OWNER_ONLY,
-    RoleRequiredMixin,
-    require_role,
-)
+
 from base.getDates import getDates
 from base.utility import (
     get_period_label,
@@ -39,7 +33,6 @@ from .models import Customer, Payment
 logger = logging.getLogger(__name__)
 
 
-@require_role(MANAGEMENT)
 def dashboard(request):
     """
     Customer management dashboard with analytics and insights.
@@ -212,7 +205,6 @@ def get_period_data(invoices, start_date, _end_date, period_type):
         ]
 
 
-@require_role(MANAGEMENT)
 def dashboard_fetch(request):
     """
     AJAX endpoint to fetch customer dashboard data
@@ -396,7 +388,6 @@ VALID_SORT_FIELDS = {
 CUSTOMERS_PER_PAGE = 20
 
 
-@require_role(ALL_ROLES)
 def home(request):
     """Customer management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -427,7 +418,6 @@ def get_data(request):
     return customers
 
 
-@require_role(ALL_ROLES)
 def fetch_customers(request):
     """AJAX endpoint to fetch customers with search, filter, and pagination."""
     customers = get_data(request)
@@ -439,14 +429,13 @@ def fetch_customers(request):
     )
 
 
-class CreateCustomer(RoleRequiredMixin, CreateView):
+class CreateCustomer(CreateView):
     """CBV to create a new customer record."""
 
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
     success_url = reverse_lazy("customer:home")
-    allowed_roles = ALL_ROLES
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -468,14 +457,13 @@ class CreateCustomer(RoleRequiredMixin, CreateView):
         return reverse_lazy("customer:home")
 
 
-class EditCustomer(RoleRequiredMixin, UpdateView):
+class EditCustomer(UpdateView):
     """CBV to update an existing customer record."""
 
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
     success_url = reverse_lazy("customer:home")
-    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -495,12 +483,11 @@ class EditCustomer(RoleRequiredMixin, UpdateView):
         return super().form_invalid(form)
 
 
-class DeleteCustomer(RoleRequiredMixin, DeleteView):
+class DeleteCustomer(DeleteView):
     """CBV to delete a customer record with confirmation."""
 
     model = Customer
     template_name = "customer/delete.html"
-    allowed_roles = MANAGEMENT
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -530,7 +517,6 @@ class DeleteCustomer(RoleRequiredMixin, DeleteView):
         return super().form_invalid(form)
 
 
-@require_role(MANAGEMENT)
 def customer_detail(request, pk):
     """View customer details."""
     customer = get_object_or_404(Customer, id=pk)
@@ -541,7 +527,6 @@ def customer_detail(request, pk):
     return render(request, "customer/detail.html", context)
 
 
-@require_role(MANAGEMENT)
 def fetch_customer_invoices(request, pk):
     """AJAX: fetch invoices for a customer with pagination and optional sorting."""
     customer = get_object_or_404(Customer, id=pk)
@@ -596,7 +581,6 @@ def get_calculations(pk):
     }
 
 
-@require_role(OWNER_ONLY)
 def customer_delete(request, customer_id):
     """Delete customer (soft delete)."""
     if request.method == "POST":
@@ -613,7 +597,6 @@ def customer_delete(request, customer_id):
     return redirect("customer:home")
 
 
-@require_role(ALL_ROLES)
 def create_customer_ajax(request):
     """AJAX endpoint for creating customers via modal"""
     try:

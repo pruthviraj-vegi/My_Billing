@@ -8,7 +8,6 @@ from django.urls import reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
 
-from base.decorators import ALL_ROLES, RoleRequiredMixin
 
 from .forms import CustomLoginForm
 
@@ -70,12 +69,11 @@ class CustomLoginView(LoginView):
         return super().form_invalid(form)
 
 
-class HomeView(RoleRequiredMixin, TemplateView):
+class HomeView(TemplateView):
     """Dashboard home page, accessible to all authenticated roles."""
 
     template_name = "base/home.html"
     login_url = "base:login"
-    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

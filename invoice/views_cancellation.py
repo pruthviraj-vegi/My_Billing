@@ -5,7 +5,6 @@ Views for invoice cancellation operations.
 import logging
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,7 +16,6 @@ from invoice.models import Invoice, InvoiceCancellation
 logger = logging.getLogger(__name__)
 
 
-@login_required
 @require_http_methods(["GET", "POST"])
 def cancel_invoice(request, pk):
     """
@@ -88,7 +86,6 @@ def cancel_invoice(request, pk):
     return render(request, "invoice/cancel_invoice.html", context)
 
 
-@login_required
 def cancelled_invoices_list(request):
     """List all cancelled invoices"""
 
@@ -137,7 +134,6 @@ def cancelled_invoices_list(request):
     return render(request, "invoice/cancelled_invoices_list.html", context)
 
 
-@login_required
 def cancellation_detail(request, pk):
     """View details of a cancelled invoice"""
     invoice = get_object_or_404(Invoice, pk=pk, is_cancelled=True)

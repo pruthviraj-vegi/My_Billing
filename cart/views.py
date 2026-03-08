@@ -18,7 +18,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, TemplateView, UpdateView
 
-from base.decorators import ALL_ROLES, OWNER_ONLY, RoleRequiredMixin, require_role
+
 from base.utility import render_paginated_response
 from inventory.models import BarcodeMapping, FavoriteVariant, ProductVariant
 from inventory.views_variant import get_variants_data
@@ -29,11 +29,10 @@ from .models import Cart, CartItem
 logger = logging.getLogger(__name__)
 
 
-class CartMainPageView(RoleRequiredMixin, TemplateView):
+class CartMainPageView(TemplateView):
     """Template view to render the main cart management page"""
 
     template_name = "cart/main_page.html"
-    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         """
@@ -46,7 +45,7 @@ class CartMainPageView(RoleRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         # Use select_related to avoid N+1 queries
         context["carts"] = (
-            Cart.objects.filter(status="OPEN")
+            Cart.objects.filter(status="OPEN", created_by=self.request.user)
             .select_related("created_by")
             .prefetch_related("cart_items__product_variant__product")
             .order_by("-created_at")
@@ -54,7 +53,6 @@ class CartMainPageView(RoleRequiredMixin, TemplateView):
         return context
 
 
-@require_role(ALL_ROLES)
 def get_cart_data(request, pk):
     """
     Retrieve and display data for a specific cart along with other open carts.
@@ -80,7 +78,9 @@ def get_cart_data(request, pk):
             .order_by("-created_at")
         )
 
-        carts = Cart.objects.filter(status="OPEN").order_by("-created_at")
+        carts = Cart.objects.filter(status="OPEN", created_by=request.user).order_by(
+            "-created_at"
+        )
 
         # Calculate total selling price (sum of all items' MRP * quantity)
         total_selling_price = cart_list.aggregate(
@@ -106,7 +106,7 @@ def get_cart_data(request, pk):
     return render(request, template_name, context)
 
 
-class CreateCart(RoleRequiredMixin, CreateView):
+class CreateCart(CreateView):
     """
     View for creating a new Cart instance.
 
@@ -117,7 +117,6 @@ class CreateCart(RoleRequiredMixin, CreateView):
     model = Cart
     template_name = "cart/form.html"
     form_class = CartForm
-    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         """
@@ -156,7 +155,7 @@ class CreateCart(RoleRequiredMixin, CreateView):
         return reverse("cart:get_cart_data", kwargs={"pk": self.object.id})
 
 
-class EditCart(RoleRequiredMixin, UpdateView):
+class EditCart(UpdateView):
     """
     View for editing an existing Cart instance.
 
@@ -166,7 +165,6 @@ class EditCart(RoleRequiredMixin, UpdateView):
     model = Cart
     template_name = "cart/form.html"
     form_class = CartForm
-    allowed_roles = ALL_ROLES
 
     def get_context_data(self, **kwargs):
         """
@@ -193,7 +191,6 @@ class EditCart(RoleRequiredMixin, UpdateView):
         return reverse("cart:get_cart_data", kwargs={"pk": self.object.id})
 
 
-@require_role(ALL_ROLES)
 def auto_cart_create(request):
     """
     Automatically create a new cart or redirect to an existing empty open cart.
@@ -216,7 +213,6 @@ def auto_cart_create(request):
     return redirect("cart:get_cart_data", pk=cart.id)
 
 
-@require_role(ALL_ROLES)
 def get_favorites(request):
     """
     Retrieve and paginate the current user's favorite product variants.
@@ -232,7 +228,6 @@ def get_favorites(request):
     return render_paginated_response(request, favorites, "cart/models/favorites.html")
 
 
-@require_role(ALL_ROLES)
 def custom_search(request):
     """
     Handle custom search functionality for product variants.
@@ -247,7 +242,8 @@ def custom_search(request):
 
 
 # API Views for Cart Operations
-@require_role(ALL_ROLES)
+
+
 @require_http_methods(["POST"])
 def scan_barcode(request):
     """
@@ -371,7 +367,6 @@ def scan_barcode(request):
         )
 
 
-@require_role(ALL_ROLES)
 @require_http_methods(["PUT", "DELETE"])
 def manage_cart_item(request, item_id):
     """
@@ -471,7 +466,6 @@ def manage_cart_item(request, item_id):
         )
 
 
-@require_role(OWNER_ONLY)
 @require_http_methods(["POST"])
 def archive_cart(request, cart_id):
     """
@@ -495,7 +489,6 @@ def archive_cart(request, cart_id):
         )
 
 
-@require_role(ALL_ROLES)
 @require_http_methods(["POST"])
 def clear_cart(request, cart_id):
     """

@@ -20,7 +20,7 @@ class CustomUserAdmin(UserAdmin):
 
     # Define the fields to display in the list view
     list_display = (
-        "full_name",
+        "first_name",
         "phone_number",
         "email",
         "role",
@@ -32,7 +32,7 @@ class CustomUserAdmin(UserAdmin):
     # Define the fields to display in the detail view
     fieldsets = (
         (None, {"fields": ("phone_number", "password")}),
-        (_("Personal info"), {"fields": ("full_name", "email")}),
+        (_("Personal info"), {"fields": ("first_name", "email")}),
         (
             _("Role & Permissions"),
             {
@@ -59,7 +59,7 @@ class CustomUserAdmin(UserAdmin):
             {
                 "classes": ("wide",),
                 "fields": (
-                    "full_name",
+                    "first_name",
                     "phone_number",
                     "email",
                     "role",
@@ -71,7 +71,7 @@ class CustomUserAdmin(UserAdmin):
     )
 
     # Define search fields
-    search_fields = ("full_name", "phone_number", "email")
+    search_fields = ("first_name", "phone_number", "email")
 
     # Define filters
     list_filter = (
@@ -212,7 +212,7 @@ class SessionAdmin(admin.ModelAdmin):
         user = self._get_user(obj)
         if not user:
             return "-"
-        return getattr(user, "full_name", None) or user.get_username()
+        return getattr(user, "first_name", None) or user.get_username()
 
     user_display.short_description = "User"
 
@@ -256,7 +256,7 @@ class LoginEventAdmin(admin.ModelAdmin):
     list_display = ("occurred_at", "user", "event_type", "ip_address", "session_key")
     list_filter = ("event_type", "occurred_at")
     search_fields = (
-        "user__full_name",
+        "user__first_name",
         "user__phone_number",
         "ip_address",
         "session_key",

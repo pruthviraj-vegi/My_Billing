@@ -15,7 +15,7 @@
                class="form-input quantity-input"
                value="{{ item.quantity }}"
                data-item-id="{{ item.id }}"
-               min="0"
+               min="0.1"
                step="1">
     </td>
     <td>
@@ -26,7 +26,7 @@
                min="0"
                step="1">
     </td>
-    <td class="discount-cell">{{ item.product_variant.discount_percentage|default:"0" }}%</td>
+    <td class="discount-cell">{{ item.discount_percentage|default:"0" }}%</td>
     <td class="amount-cell">{{ item.amount|currency }}</td>
     <td class="text-center">
         <button type="button"
