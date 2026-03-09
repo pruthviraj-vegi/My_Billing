@@ -48,11 +48,13 @@
             <td>{{ variant.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
-                    <a href="{% url 'inventory_variant:details' variant.id %}"
-                       class="btn-action btn-view"
-                       title="View Variant Details">
-                        <i class="fas fa-eye"></i>
-                    </a>
+                    {% if perms.inventory.view_product_variant %}
+                        <a href="{% url 'inventory_variant:details' variant.id %}"
+                           class="btn-action btn-view"
+                           title="View Variant Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    {% endif %}
                     <a href="{% url 'report:barcode' variant.id %}"
                        class="btn-action btn-barcode"
                        target="_blank"
@@ -71,10 +73,12 @@
                 <i class="fas fa-boxes"></i>
                 <h4>No Variants Found</h4>
                 <p>No variants match your search criteria. Try adjusting your filters or add a new product.</p>
-                <a href="{% url 'inventory_products:create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Create First Product
-                </a>
+                {% if perms.inventory.add_product %}
+                    <a href="{% url 'inventory_products:create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Create First Product
+                    </a>
+                {% endif %}
             </div>
         </td>
     </tr>

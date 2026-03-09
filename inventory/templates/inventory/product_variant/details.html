@@ -15,11 +15,13 @@
                 <i class="fas fa-arrow-left"></i>
                 Back to Variants
             </a>
-            <a href="{% url 'inventory_variant:edit' variant.id %}"
-               class="btn btn-primary">
-                <i class="fas fa-edit"></i>
-                Edit Variant
-            </a>
+            {% if perms.inventory.change_product_variant %}
+                <a href="{% url 'inventory_variant:edit' variant.id %}"
+                   class="btn btn-primary">
+                    <i class="fas fa-edit"></i>
+                    Edit Variant
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->
@@ -178,26 +180,28 @@
                 <div class="summary-content-compact">
                     <h4>Quick Actions</h4>
                     <div class="quick-actions-inline">
-                        <a href="{% url 'inventory_variant:stock_in' variant.id %}"
-                           class="quick-action-icon btn-success"
-                           data-tooltip="Stock In">
-                            <i class="fas fa-plus-circle"></i>
-                        </a>
-                        <a href="{% url 'inventory_variant:adjustment_in' variant.id %}"
-                           class="quick-action-icon btn-info"
-                           data-tooltip="Adjust In">
-                            <i class="fas fa-arrow-up"></i>
-                        </a>
-                        <a href="{% url 'inventory_variant:adjustment_out' variant.id %}"
-                           class="quick-action-icon btn-warning"
-                           data-tooltip="Adjust Out">
-                            <i class="fas fa-arrow-down"></i>
-                        </a>
-                        <a href="{% url 'inventory_variant:damage_create' variant.id %}"
-                           class="quick-action-icon btn-danger"
-                           data-tooltip="Mark Damaged">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </a>
+                        {% if perms.inventory.add_inventorylog %}
+                            <a href="{% url 'inventory_variant:stock_in' variant.id %}"
+                               class="quick-action-icon btn-success"
+                               data-tooltip="Stock In">
+                                <i class="fas fa-plus-circle"></i>
+                            </a>
+                            <a href="{% url 'inventory_variant:adjustment_in' variant.id %}"
+                               class="quick-action-icon btn-info"
+                               data-tooltip="Adjust In">
+                                <i class="fas fa-arrow-up"></i>
+                            </a>
+                            <a href="{% url 'inventory_variant:adjustment_out' variant.id %}"
+                               class="quick-action-icon btn-warning"
+                               data-tooltip="Adjust Out">
+                                <i class="fas fa-arrow-down"></i>
+                            </a>
+                            <a href="{% url 'inventory_variant:damage_create' variant.id %}"
+                               class="quick-action-icon btn-danger"
+                               data-tooltip="Mark Damaged">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

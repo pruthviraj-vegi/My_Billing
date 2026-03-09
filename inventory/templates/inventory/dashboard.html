@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-{% block title %}Inventory Dashboard{% endblock %}
+{% block title %}
+    Inventory Dashboard
+{% endblock title %}
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
 {% endblock extra_css %}
@@ -24,16 +26,20 @@
                     <option value="full_date">Full Date</option>
                 </select>
             </form>
-            <a href="{% url 'inventory:product_create' %}" class="btn">
-                <i class="fas fa-plus"></i>
-                Add Full Product
-            </a>
+            {% if perms.inventory.view_product %}
+                <a href="{% url 'inventory:product_create' %}" class="btn">
+                    <i class="fas fa-plus"></i>
+                    Add Full Product
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
-        <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
-        <span class="breadcrumb-separator">/</span>
+        {% if perms.inventory.view_dashboard %}
+            <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
+            <span class="breadcrumb-separator">/</span>
+        {% endif %}
         <span class="breadcrumb-active">Inventory Dashboard</span>
     </nav>
     <!-- Loading State - Hidden for seamless updates -->

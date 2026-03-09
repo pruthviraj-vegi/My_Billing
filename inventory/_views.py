@@ -376,6 +376,7 @@ def search_suggestions(request):
     return JsonResponse({"suggestions": suggestions})
 
 
+@required_permission("inventory.view_category")
 def fetch_categories(request):
     """AJAX endpoint to fetch categories with search, filter, and pagination."""
     # Get search and filter parameters
@@ -645,6 +646,7 @@ def uom_search_suggestions(request):
     return JsonResponse({"suggestions": suggestions})
 
 
+@required_permission("inventory.view_uom")
 def fetch_uoms(request):
     """AJAX endpoint to fetch UOMs with search, filter, and pagination."""
     # Get search and filter parameters
@@ -724,6 +726,7 @@ def gst_hsn_search_suggestions(request):
     return JsonResponse({"suggestions": suggestions})
 
 
+@required_permission("inventory.view_gsthsncode")
 def fetch_gst_hsn_codes(request):
     """AJAX endpoint for fetching GST HSN codes with pagination and search"""
     # Get search query
@@ -861,6 +864,7 @@ def favorites_home(request):
     )
 
 
+@required_permission("inventory.view_favoritevariant")
 def fetch_favorites(request):
     """AJAX endpoint to fetch favorite variants with search, filter, and pagination"""
 

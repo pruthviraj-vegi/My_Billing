@@ -48,16 +48,20 @@
             <td>{{ uom.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
-                    <a href="{% url 'inventory:uom_edit' uom.id %}"
-                       class="btn-action btn-edit"
-                       title="Edit UOM">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    <a href="{% url 'inventory:uom_delete' uom.id %}"
-                       class="btn-action btn-delete"
-                       title="Delete UOM">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                    {% if perms.inventory.change_uom %}
+                        <a href="{% url 'inventory:uom_edit' uom.id %}"
+                           class="btn-action btn-edit"
+                           title="Edit UOM">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.inventory.delete_uom %}
+                        <a href="{% url 'inventory:uom_delete' uom.id %}"
+                           class="btn-action btn-delete"
+                           title="Delete UOM">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    {% endif %}
                 </div>
             </td>
         </tr>
@@ -70,10 +74,12 @@
                 <i class="fas fa-ruler"></i>
                 <h4>No UOMs Found</h4>
                 <p>No UOMs match your search criteria. Try adjusting your filters or add a new UOM.</p>
-                <a href="{% url 'inventory:uom_create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Add First UOM
-                </a>
+                {% if perms.inventory.add_uom %}
+                    <a href="{% url 'inventory:uom_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Add First UOM
+                    </a>
+                {% endif %}
             </div>
         </td>
     </tr>

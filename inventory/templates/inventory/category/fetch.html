@@ -30,16 +30,20 @@
             <td>{{ category.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
-                    <a href="{% url 'inventory:category_edit' category.id %}"
-                       class="btn-action btn-edit"
-                       title="Edit Category">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    <a href="{% url 'inventory:category_delete' category.id %}"
-                       class="btn-action btn-delete"
-                       title="Delete Category">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                    {% if perms.inventory.change_category %}
+                        <a href="{% url 'inventory:category_edit' category.id %}"
+                           class="btn-action btn-edit"
+                           title="Edit Category">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.inventory.delete_category %}
+                        <a href="{% url 'inventory:category_delete' category.id %}"
+                           class="btn-action btn-delete"
+                           title="Delete Category">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    {% endif %}
                 </div>
             </td>
         </tr>

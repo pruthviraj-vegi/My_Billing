@@ -8,10 +8,12 @@
   <div class="page-header">
     <h2 class="page-title">Cloth Types Management</h2>
     <div class="page-actions">
-      <a href="{% url 'inventory:cloth_create' %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i>
-        New Cloth Type
-      </a>
+      {% if perms.inventory.add_cloth %}
+        <a href="{% url 'inventory:cloth_create' %}" class="btn btn-primary">
+          <i class="fas fa-plus"></i>
+          New Cloth Type
+        </a>
+      {% endif %}
     </div>
   </div>
   <!-- Breadcrumb Navigation -->
@@ -81,12 +83,16 @@
               <td>{{ cloth_type.created_at|date:'M d, Y' }}</td>
               <td>
                 <div class="action-buttons">
-                  <a href="{% url 'inventory:cloth_edit' cloth_type.id %}"
-                     class="btn-action btn-edit"
-                     title="Edit Cloth Type"><i class="fas fa-edit"></i></a>
-                  <a href="{% url 'inventory:cloth_delete' cloth_type.id %}"
-                     class="btn-action btn-delete"
-                     title="Delete Cloth Type"><i class="fas fa-trash"></i></a>
+                  {% if perms.inventory.change_cloth %}
+                    <a href="{% url 'inventory:cloth_edit' cloth_type.id %}"
+                       class="btn-action btn-edit"
+                       title="Edit Cloth Type"><i class="fas fa-edit"></i></a>
+                  {% endif %}
+                  {% if perms.inventory.delete_cloth %}
+                    <a href="{% url 'inventory:cloth_delete' cloth_type.id %}"
+                       class="btn-action btn-delete"
+                       title="Delete Cloth Type"><i class="fas fa-trash"></i></a>
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -98,12 +104,14 @@
         <i class="fas fa-tshirt"></i>
         <h4>No Cloth Types Found</h4>
         <p>No cloth types match your search criteria. Try adjusting your filters or add a new cloth type.</p>
-        <a href="{% url 'inventory:cloth_create' %}"
-           class="btn btn-primary"
-           id="addFirstClothTypeBtn">
-          <i class="fas fa-plus"></i>
-          Add First Cloth Type
-        </a>
+        {% if perms.inventory.add_cloth %}
+          <a href="{% url 'inventory:cloth_create' %}"
+             class="btn btn-primary"
+             id="addFirstClothTypeBtn">
+            <i class="fas fa-plus"></i>
+            Add First Cloth Type
+          </a>
+        {% endif %}
       </div>
     {% endif %}
   </div>

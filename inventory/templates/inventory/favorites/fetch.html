@@ -37,17 +37,21 @@
             </td>
             <td>
                 <div class="action-buttons">
-                    <a class="btn-action btn-view add-to-cart-btn"
-                       href="#"
-                       data-barcode="{{ variant.barcode }}"
-                       title="Add to Cart">
-                        <i class="fas fa-cart-plus"></i>
-                    </a>
-                    <a href="{% url 'inventory_variant:details' variant.id %}"
-                       class="btn-action btn-view"
-                       title="View Variant Details">
-                        <i class="fas fa-eye"></i>
-                    </a>
+                    {% if perms.inventory.add_to_cart %}
+                        <a class="btn-action btn-view add-to-cart-btn"
+                           href="#"
+                           data-barcode="{{ variant.barcode }}"
+                           title="Add to Cart">
+                            <i class="fas fa-cart-plus"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.inventory.view_product %}
+                        <a href="{% url 'inventory_variant:details' variant.id %}"
+                           class="btn-action btn-view"
+                           title="View Variant Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    {% endif %}
                     <a href="#"
                        class="btn-action btn-danger remove-favorite-btn"
                        data-variant-id="{{ variant.id }}"

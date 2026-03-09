@@ -9,10 +9,12 @@
     <div class="page-header">
         <h2 class="heading page-title">Categories Management</h2>
         <div class="page-actions">
-            <a href="{% url 'inventory:category_create' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                New Category
-            </a>
+            {% if perms.inventory.add_category %}
+                <a href="{% url 'inventory:category_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    New Category
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->

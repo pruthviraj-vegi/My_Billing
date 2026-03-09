@@ -48,16 +48,20 @@
             <td>{{ gst_hsn.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
-                    <a href="{% url 'inventory:gst_hsn_edit' gst_hsn.id %}"
-                       class="btn-action btn-edit"
-                       title="Edit HSN Code">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    <a href="{% url 'inventory:gst_hsn_delete' gst_hsn.id %}"
-                       class="btn-action btn-delete"
-                       title="Delete HSN Code">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                    {% if perms.inventory.change_gsthsncode %}
+                        <a href="{% url 'inventory:gst_hsn_edit' gst_hsn.id %}"
+                           class="btn-action btn-edit"
+                           title="Edit HSN Code">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.inventory.delete_gsthsncode %}
+                        <a href="{% url 'inventory:gst_hsn_delete' gst_hsn.id %}"
+                           class="btn-action btn-delete"
+                           title="Delete HSN Code">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    {% endif %}
                 </div>
             </td>
         </tr>
@@ -70,10 +74,12 @@
                 <i class="fas fa-barcode"></i>
                 <h4>No HSN Codes Found</h4>
                 <p>No HSN codes match your search criteria. Try adjusting your filters or add a new HSN code.</p>
-                <a href="{% url 'inventory:gst_hsn_create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Add First HSN Code
-                </a>
+                {% if perms.inventory.add_gsthsncode %}
+                    <a href="{% url 'inventory:gst_hsn_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Add First HSN Code
+                    </a>
+                {% endif %}
             </div>
         </td>
     </tr>
