@@ -139,7 +139,7 @@
                   <a href="{% url 'customer:create' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add Customer</a>
                {% endif %}
-               {% if perms.customer.view_credit %}
+               {% if perms.customer.view_customercreditsummary %}
                   <a href="{% url 'customer:credit_home' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'credit_home' %}active{% endif %}">Credits</a>
                {% endif %}
