@@ -37,13 +37,17 @@
       </td>
       <td>
         <div class="action-buttons">
-          <a href="{% url 'supplier:edit_payment' supplier.pk payment.pk %}"
-             class="btn-action btn-edit"
-             title="Edit Payment"><i class="fas fa-edit"></i></a>
-          <a href="{% url 'supplier:delete_payment' supplier.pk payment.pk %}"
-             class="btn-action btn-delete"
-             title="Delete Payment"><i class="fas fa-trash"></i></a>
-        </div>
+          {% if perms.supplier.change_supplierpayment %}
+            <a href="{% url 'supplier:edit_payment' supplier.pk payment.pk %}"
+               class="btn-action btn-edit"
+               title="Edit Payment"><i class="fas fa-edit"></i></a>
+          {% endif %}
+          {% if perms.supplier.delete_supplierpayment %}
+            <a href="{% url 'supplier:delete_payment' supplier.pk payment.pk %}"
+               class="btn-action btn-delete"
+               title="Delete Payment"><i class="fas fa-trash"></i></a>
+          </div>
+        {% endif %}
       </td>
     </tr>
   {% endfor %}

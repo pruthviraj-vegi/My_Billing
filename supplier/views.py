@@ -1,6 +1,7 @@
 """
 Views for the supplier app,
-handling suppliers, invoices, payments, and reporting.
+handling suppliers, invoices,
+payments, and reporting.
 """
 
 import json
@@ -63,6 +64,7 @@ def get_total_outstanding_balance():
     return (total_all_invoiced - total_all_paid).quantize(Decimal("0.01"))
 
 
+@require_permission("supplier.view_dashboard")
 def dashboard(request):
     """Supplier management dashboard with analytics and insights."""
 
@@ -212,6 +214,7 @@ def get_period_data(
         ]
 
 
+@require_permission("supplier.view_dashboard")
 def dashboard_fetch(request):
     """
     AJAX endpoint to fetch supplier dashboard data
@@ -524,6 +527,7 @@ def get_suppliers_data(request):
     return suppliers.order_by(*sort_fields)
 
 
+@require_permission("supplier.view_supplier")
 def fetch_suppliers(request):
     """AJAX endpoint to fetch suppliers with search, filter, sorting, and pagination."""
 
@@ -537,6 +541,7 @@ def fetch_suppliers(request):
     )
 
 
+@require_permission("supplier.view_supplierinvoice")
 def fetch_supplier_invoices(request, pk):
     """AJAX: fetch invoices for a supplier with pagination and optional sorting."""
     supplier = get_object_or_404(Supplier, id=pk)
@@ -562,6 +567,7 @@ def fetch_supplier_invoices(request, pk):
     )
 
 
+@require_permission("supplier.view_supplierpayment")
 def fetch_supplier_payments(request, pk):
     """AJAX: fetch payments for a supplier with pagination and optional sorting."""
     supplier = get_object_or_404(Supplier, id=pk)
@@ -939,23 +945,6 @@ def delete_payment(request, supplier_pk, payment_pk):
     context = {"supplier": supplier, "payment": payment}
 
     return render(request, "supplier/payment/delete.html", context)
-
-
-def payment_detail(request, supplier_pk, payment_pk):
-    """View payment details."""
-    supplier = get_object_or_404(Supplier, id=supplier_pk)
-    payment = get_object_or_404(SupplierPayment, id=payment_pk, supplier=supplier)
-
-    # Get payment allocations if any
-    allocations = payment.allocations.all().select_related("invoice")
-
-    context = {
-        "supplier": supplier,
-        "payment": payment,
-        "allocations": allocations,
-    }
-
-    return render(request, "supplier/payment/detail.html", context)
 
 
 def get_opening_balance(supplier, start_date):

@@ -50,11 +50,6 @@ urlpatterns = [
         name="create_payment",
     ),
     path(
-        "<int:supplier_pk>/payments/<int:payment_pk>/",
-        views.payment_detail,
-        name="payment_detail",
-    ),
-    path(
         "<int:supplier_pk>/payments/<int:payment_pk>/edit/",
         views.EditPayment.as_view(),
         name="edit_payment",

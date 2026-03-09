@@ -9,22 +9,24 @@
   <div class="page-header">
     <h2 class="page-title">Suppliers</h2>
     <div class="page-actions">
-      <a href="{% url 'supplier:dashboard' %}" class="btn btn-info">
-        <i class="fas fa-chart-line"></i>
-        Dashboard
-      </a>
-      <a href="#" id="downloadBtn" class="btn btn-primary">
-        <i class="fas fa-download"></i>
-        Download
-      </a>
-      <button type="button" class="btn btn-info" id="downloadReportBtn">
-        <i class="fas fa-download"></i>
-        Download Report
-      </button>
-      <a href="{% url 'supplier:create' %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i>
-        Add Supplier
-      </a>
+      {% if perms.supplier.download_report %}
+        <a href="#" id="downloadBtn" class="btn btn-primary">
+          <i class="fas fa-download"></i>
+          Download
+        </a>
+      {% endif %}
+      {% if perms.supplier.download_report %}
+        <button type="button" class="btn btn-info" id="downloadReportBtn">
+          <i class="fas fa-download"></i>
+          Download Report
+        </button>
+      {% endif %}
+      {% if perms.supplier.add_supplier %}
+        <a href="{% url 'supplier:create' %}" class="btn btn-primary">
+          <i class="fas fa-plus"></i>
+          Add Supplier
+        </a>
+      {% endif %}
     </div>
   </div>
   <!-- Breadcrumb Navigation -->

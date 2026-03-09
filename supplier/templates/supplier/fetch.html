@@ -44,26 +44,34 @@
             <td>{{ supplier.annotated_last_invoice|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
-                    <a href="{% url 'supplier:detail' supplier.id %}"
-                       class="btn-action btn-view"
-                       title="View Details">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                    <a href="{% url 'supplier:report' supplier.id %}"
-                       class="btn-action btn-info"
-                       title="View Report">
-                        <i class="fas fa-chart-line"></i>
-                    </a>
-                    <a href="{% url 'supplier:edit' supplier.id %}"
-                       class="btn-action btn-edit"
-                       title="Edit Supplier">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    <a href="{% url 'supplier:delete' supplier.id %}"
-                       class="btn-action btn-delete"
-                       title="Delete Supplier">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                    {% if perms.supplier.view_supplierinvoice or perms.supplier.view_supplierpayment %}
+                        <a href="{% url 'supplier:detail' supplier.id %}"
+                           class="btn-action btn-view"
+                           title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.supplier.add_supplier %}
+                        <a href="{% url 'supplier:report' supplier.id %}"
+                           class="btn-action btn-info"
+                           title="View Report">
+                            <i class="fas fa-chart-line"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.supplier.change_supplier %}
+                        <a href="{% url 'supplier:edit' supplier.id %}"
+                           class="btn-action btn-edit"
+                           title="Edit Supplier">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.supplier.delete_supplier %}
+                        <a href="{% url 'supplier:delete' supplier.id %}"
+                           class="btn-action btn-delete"
+                           title="Delete Supplier">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    {% endif %}
                 </div>
             </td>
         </tr>

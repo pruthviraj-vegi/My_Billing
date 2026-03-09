@@ -13,25 +13,33 @@
         <i class="fas fa-arrow-left"></i>
         Back
       </a>
-      <a href="{% url 'supplier:report' supplier.pk %}" class="btn btn-info">
-        <i class="fas fa-chart-line"></i>
-        View Report
-      </a>
-      <a href="{% url 'supplier:auto_reallocate' supplier.pk %}"
-         class="btn btn-warning"
-         id="autoReallocateBtn"
-         onclick="return confirmAutoReallocate()">
-        <i class="fas fa-sync-alt"></i>
-        Auto Reallocate
-      </a>
-      <a href="{% url 'supplier:edit' supplier.pk %}" class="btn btn-primary">
-        <i class="fas fa-edit"></i>
-        Edit Supplier
-      </a>
-      <a href="{% url 'supplier:delete' supplier.pk %}" class="btn btn-danger">
-        <i class="fas fa-trash"></i>
-        Delete Supplier
-      </a>
+      {% if perms.supplier.download_report %}
+        <a href="{% url 'supplier:report' supplier.pk %}" class="btn btn-info">
+          <i class="fas fa-chart-line"></i>
+          View Report
+        </a>
+      {% endif %}
+      {% if perms.supplier.view_supplierinvoice or perms.supplier.view_supplierpayment %}
+        <a href="{% url 'supplier:auto_reallocate' supplier.pk %}"
+           class="btn btn-warning"
+           id="autoReallocateBtn"
+           onclick="return confirmAutoReallocate()">
+          <i class="fas fa-sync-alt"></i>
+          Auto Reallocate
+        </a>
+      {% endif %}
+      {% if perms.supplier.change_supplier %}
+        <a href="{% url 'supplier:edit' supplier.pk %}" class="btn btn-primary">
+          <i class="fas fa-edit"></i>
+          Edit Supplier
+        </a>
+      {% endif %}
+      {% if perms.supplier.delete_supplier %}
+        <a href="{% url 'supplier:delete' supplier.pk %}" class="btn btn-danger">
+          <i class="fas fa-trash"></i>
+          Delete Supplier
+        </a>
+      {% endif %}
     </div>
   </div>
   <!-- Breadcrumb Navigation -->
@@ -162,11 +170,13 @@
           <h3>
             <i class="fas fa-file-invoice"></i> Invoices
           </h3>
-          <a href="{% url 'supplier:create_invoice' supplier.pk %}"
-             class="btn btn-sm btn-primary">
-            <i class="fas fa-plus"></i>
-            Add Invoice
-          </a>
+          {% if perms.supplier.add_supplierinvoice %}
+            <a href="{% url 'supplier:create_invoice' supplier.pk %}"
+               class="btn btn-sm btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Invoice
+            </a>
+          {% endif %}
         </div>
         <div class="table-container">
           <table class="data-table" id="invoices_table" data-sort="-invoice_date">
@@ -201,11 +211,13 @@
           <h3>
             <i class="fas fa-credit-card"></i> Payments
           </h3>
-          <a href="{% url 'supplier:create_payment' supplier.pk %}"
-             class="btn btn-sm btn-primary">
-            <i class="fas fa-plus"></i>
-            Add Payment
-          </a>
+          {% if perms.supplier.add_supplierpayment %}
+            <a href="{% url 'supplier:create_payment' supplier.pk %}"
+               class="btn btn-sm btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Payment
+            </a>
+          {% endif %}
         </div>
         <div class="table-container">
           <table class="data-table" id="payments_table" data-sort="-payment_date">

@@ -46,12 +46,16 @@
       </td>
       <td>
         <div class="action-buttons">
-          <a href="{% url 'supplier:edit_invoice' supplier.pk invoice.pk %}"
-             class="btn-action btn-edit"
-             title="Edit Invoice"><i class="fas fa-edit"></i></a>
-          <a href="{% url 'supplier:delete_invoice' supplier.pk invoice.pk %}"
-             class="btn-action btn-delete"
-             title="Delete Invoice"><i class="fas fa-trash"></i></a>
+          {% if perms.supplier.change_supplierinvoice %}
+            <a href="{% url 'supplier:edit_invoice' supplier.pk invoice.pk %}"
+               class="btn-action btn-edit"
+               title="Edit Invoice"><i class="fas fa-edit"></i></a>
+          {% endif %}
+          {% if perms.supplier.delete_supplierinvoice %}
+            <a href="{% url 'supplier:delete_invoice' supplier.pk invoice.pk %}"
+               class="btn-action btn-delete"
+               title="Delete Invoice"><i class="fas fa-trash"></i></a>
+          {% endif %}
         </div>
       </td>
     </tr>
