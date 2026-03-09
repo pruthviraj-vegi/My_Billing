@@ -216,6 +216,11 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
         ordering = ["-created_at"]
         indexes = InvoiceIndexes.get_all_indexes()
         constraints = InvoiceConstraints.get_all_constraints()
+        permissions = [
+            ("view_dashboard", "View Dashboard"),
+            ("view_audit_details", "View Audit Details"),
+            ("export_audit_details", "Export Audit Details"),
+        ]
 
     def __str__(self):
         return self.invoice_number or f"Invoice-{self.id}"
@@ -318,9 +323,7 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
             )
 
             # Soft delete all payment allocations for this invoice
-            from invoice.models import (
-                PaymentAllocation,
-            )  # pylint: disable=redefined-outer-name
+            from invoice.models import PaymentAllocation
 
             allocations = PaymentAllocation.objects.filter(
                 invoice=self, is_deleted=False

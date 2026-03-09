@@ -19,6 +19,8 @@ from base.utility import render_paginated_response, table_sorting
 from invoice.form import AuditTableForm
 from invoice.models import AuditTable, Invoice, InvoiceAudit, InvoiceSequence
 
+from base.decorators import require_permission, PermissionRequiredMixin
+
 logger = logging.getLogger(__name__)
 
 VALID_SORT_FIELDS = {
@@ -179,6 +181,7 @@ def apply_conversion(invoice, conversion_direction):
     return invoice
 
 
+@require_permission("invoice.view_audittable")
 def audit_home(request):
     """
     New audit home page with table view similar to invoice home
@@ -196,6 +199,7 @@ def audit_home(request):
     return render(request, "invoice_audit/home.html", context)
 
 
+@require_permission("invoice.view_audittable")
 def get_data(request):
     """Get audit data with search and filter parameters"""
     # Get search and filter parameters
@@ -310,12 +314,13 @@ def audit_suggestions(request):
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
-class AuditTableCreateView(CreateView):
+class AuditTableCreateView(PermissionRequiredMixin, CreateView):
     """View to handle the creation of new audit sessions."""
 
     model = AuditTable
     form_class = AuditTableForm
     template_name = "invoice_audit/form.html"
+    permission_required = "invoice.add_audittable"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -332,13 +337,14 @@ class AuditTableCreateView(CreateView):
         return self.object.get_absolute_url()
 
 
-class AuditTableDeleteView(DeleteView):
+class AuditTableDeleteView(PermissionRequiredMixin, DeleteView):
     """View to handle the deletion of audit sessions."""
 
     model = AuditTable
     template_name = "invoice_audit/delete.html"
     context_object_name = "audit_table"
     success_url = reverse_lazy("invoice:audit_home")
+    permission_required = "invoice.delete_audittable"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -356,10 +362,11 @@ class AuditTableDeleteView(DeleteView):
         return "invoice:audit_detail"
 
 
-class InvoiceManager(View):
+class InvoiceManager(PermissionRequiredMixin, View):
     """View to manage invoices for audit."""
 
     template = "invoice_audit/invoice_manager.html"
+    permission_required = "invoice.view_audittable"
 
     def get(self, request, pk):
         """Handle GET requests to display invoice manager."""
@@ -536,6 +543,7 @@ class InvoiceManager(View):
             return JsonResponse({"success": False, "error": f"Server error: {str(e)}"})
 
 
+@require_permission("invoice.view_audittable")
 def audit_detail(request, pk):
     """View audit table details"""
     audit_table = get_object_or_404(AuditTable, pk=pk)
@@ -577,6 +585,7 @@ def fetch_audit_details(request, pk):
     )
 
 
+@require_permission("invoice.delete_audittable")
 def audit_delete(request, pk):
     """Delete audit table"""
     audit_table = get_object_or_404(AuditTable, pk=pk)

@@ -13,9 +13,12 @@ from django.views.decorators.http import require_http_methods
 from invoice.form import InvoiceCancellationForm
 from invoice.models import Invoice, InvoiceCancellation
 
+from base.decorators import require_permission
+
 logger = logging.getLogger(__name__)
 
 
+@require_permission("invoice.add_invoice")
 @require_http_methods(["GET", "POST"])
 def cancel_invoice(request, pk):
     """
@@ -86,6 +89,7 @@ def cancel_invoice(request, pk):
     return render(request, "invoice/cancel_invoice.html", context)
 
 
+@require_permission("invoice.view_invoice")
 def cancelled_invoices_list(request):
     """List all cancelled invoices"""
 
@@ -134,6 +138,7 @@ def cancelled_invoices_list(request):
     return render(request, "invoice/cancelled_invoices_list.html", context)
 
 
+@require_permission("invoice.view_invoice")
 def cancellation_detail(request, pk):
     """View details of a cancelled invoice"""
     invoice = get_object_or_404(Invoice, pk=pk, is_cancelled=True)

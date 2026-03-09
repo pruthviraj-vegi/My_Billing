@@ -22,15 +22,19 @@
                         Send Invoice
                     </a>
                 {% endif %}
-                <a href="{% url 'invoice:create_auto_return_invoice' invoice.id %}"
-                   class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Create Return
-                </a>
-                <a href="{% url 'invoice:edit' invoice.id %}" class="btn btn-primary">
-                    <i class="fas fa-edit"></i>
-                    Edit Invoice
-                </a>
+                {% if perms.invoice.add_returninvoice %}
+                    <a href="{% url 'invoice:create_auto_return_invoice' invoice.id %}"
+                       class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Create Return
+                    </a>
+                {% endif %}
+                {% if perms.invoice.change_invoice %}
+                    <a href="{% url 'invoice:edit' invoice.id %}" class="btn btn-primary">
+                        <i class="fas fa-edit"></i>
+                        Edit Invoice
+                    </a>
+                {% endif %}
             {% endif %}
             <a href="{% url 'report:invoice_pdf' invoice.id %}"
                class="btn btn-primary"
@@ -39,15 +43,19 @@
                 Print Invoice
             </a>
             {% if not invoice.is_cancelled %}
-                <a href="{% url 'invoice:cancel_invoice' invoice.id %}"
-                   class="btn btn-warning">
-                    <i class="fas fa-ban"></i>
-                    Cancel Invoice
-                </a>
-                <a href="{% url 'invoice:delete' invoice.id %}" class="btn btn-danger">
-                    <i class="fas fa-trash"></i>
-                    Delete Invoice
-                </a>
+                {% if perms.invoice.add_invoicecancellation %}
+                    <a href="{% url 'invoice:cancel_invoice' invoice.id %}"
+                       class="btn btn-warning">
+                        <i class="fas fa-ban"></i>
+                        Cancel Invoice
+                    </a>
+                {% endif %}
+                {% if perms.invoice.delete_invoice %}
+                    <a href="{% url 'invoice:delete' invoice.id %}" class="btn btn-danger">
+                        <i class="fas fa-trash"></i>
+                        Delete Invoice
+                    </a>
+                {% endif %}
             {% else %}
                 <span class="btn btn-danger disabled">
                     <i class="fas fa-times-circle"></i>
@@ -228,8 +236,7 @@
                                     <tr>
                                         <td>
                                             <div class="product-info">
-                                                <strong><a style="color: inherit"
-   href="{% url 'inventory_products:details' item.product_variant.product.id %}"
+                                                <strong><a href="{% url 'inventory_products:details' item.product_variant.product.id %}"
    target="_blank">{{ item.product_variant.product.brand }}</a></strong>
                                                 <br>
                                                 <small class="text-muted">{{ item.product_variant.product.category.name }}</small>
@@ -237,8 +244,7 @@
                                         </td>
                                         <td>
                                             <div class="variant-info">
-                                                <strong><a style="color: inherit"
-   href="{% url 'inventory_variant:details' item.product_variant.id %}"
+                                                <strong><a href="{% url 'inventory_variant:details' item.product_variant.id %}"
    target="_blank">{{ item.product_variant.simple_name }}</a></strong>
                                                 <br>
                                                 {% if item.product_variant.size %}

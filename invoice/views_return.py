@@ -17,6 +17,8 @@ from django.utils import timezone
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView
 
+from base.decorators import require_permission, PermissionRequiredMixin
+
 from base.utility import render_paginated_response, table_sorting
 from inventory.services import InventoryService
 from invoice.choices import (
@@ -41,6 +43,7 @@ valid_sort_fields = [
 ]
 
 
+@require_permission("invoice.view_returninvoice")
 def home(request):
     """Home page for return invoices - loads empty table, data fetched via AJAX"""
     # Get filter choices for dropdowns
@@ -55,6 +58,7 @@ def home(request):
     return render(request, "invoice_return/home.html", context)
 
 
+@require_permission("invoice.view_returninvoice")
 def fetch_return_invoices(request):
     """AJAX endpoint to fetch return invoices with search, filter, and pagination."""
     # Get search and filter parameters
@@ -116,13 +120,14 @@ def fetch_return_invoices(request):
     )
 
 
-class ReturnInvoiceCreateView(CreateView):
+class ReturnInvoiceCreateView(PermissionRequiredMixin, CreateView):
     """Create a new return invoice."""
 
     model = ReturnInvoice
     form_class = ReturnInvoiceForm
     template_name = "invoice_return/create.html"
     success_url = reverse_lazy("invoice:return_home")
+    required_permission = "invoice.add_returninvoice"
 
     def get_context_data(self, **kwargs):
         """Add the page title to context."""
@@ -207,12 +212,13 @@ class ReturnInvoiceCreateView(CreateView):
         return super().form_invalid(form)
 
 
-class ReturnStockAdjustmentView(DetailView):
+class ReturnStockAdjustmentView(PermissionRequiredMixin, DetailView):
     """View for managing return item quantities, conditions, and reasons"""
 
     model = ReturnInvoice
     template_name = "invoice_return/stock_adjustment.html"
     context_object_name = "return_invoice"
+    required_permission = "invoice.change_returninvoice"
 
     def get_context_data(self, **kwargs):
         """Add return items and choice data to context."""
@@ -239,12 +245,13 @@ class ReturnStockAdjustmentView(DetailView):
         return context
 
 
-class ReturnInvoiceDetailView(DetailView):
+class ReturnInvoiceDetailView(PermissionRequiredMixin, DetailView):
     """View for displaying return invoice details"""
 
     model = ReturnInvoice
     template_name = "invoice_return/detail.html"
     context_object_name = "return_invoice"
+    required_permission = "invoice.view_returninvoice"
 
     def get_context_data(self, **kwargs):
         """Add returned items and summary statistics to context."""
@@ -278,6 +285,7 @@ class ReturnInvoiceDetailView(DetailView):
         return context
 
 
+@require_permission("invoice.add_returninvoice")
 @transaction.atomic
 def create_auto_return_invoice(request, invoice_id):
     """Automatically create a return invoice with all items from an invoice."""
@@ -342,6 +350,7 @@ def create_auto_return_invoice(request, invoice_id):
         return JsonResponse({"success": False, "error": str(e)})
 
 
+@require_permission("invoice.change_returninvoice")
 @transaction.atomic
 def update_return_item(request, item_id):
     """API endpoint to update return item quantity, condition, and reason"""
@@ -418,6 +427,7 @@ def update_return_item(request, item_id):
         return JsonResponse({"success": False, "error": str(e)})
 
 
+@require_permission("invoice.add_returninvoice")
 @transaction.atomic
 def submit_return_invoice(request, pk):
     """Submit return invoice for processing"""
@@ -496,6 +506,7 @@ def submit_return_invoice(request, pk):
         return JsonResponse({"success": False, "error": str(e)})
 
 
+@require_permission("invoice.delete_returninvoice")
 @transaction.atomic
 def delete_return_invoice(request, pk):
     """Delete a return invoice"""

@@ -13,8 +13,7 @@
             </td>
             <td>
                 <div>
-                    <span class="font-weight-bold text-primary"><a style="text-decoration: none"
-   href="{% url 'customer:detail' invoice.customer.id %} "
+                    <span class="font-weight-bold text-primary"><a href="{% url 'customer:detail' invoice.customer.id %} "
    target="_blank">{{ invoice.customer.name|default:"N/A" }}</a></span>
                     <br />
                     {% if invoice.customer.phone_number %}
@@ -82,7 +81,7 @@
                        title="View Details">
                         <i class="fas fa-eye"></i>
                     </a>
-                    {% if not invoice.is_cancelled %}
+                    {% if not invoice.is_cancelled and perms.invoice.change_invoice %}
                         <a href="{% url 'invoice:edit' invoice.id %}"
                            class="btn-action btn-edit"
                            title="Edit Invoice">
