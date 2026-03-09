@@ -18,6 +18,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, TemplateView, UpdateView
 
+from base.decorators import require_permission, PermissionRequiredMixin
 
 from base.utility import render_paginated_response
 from inventory.models import BarcodeMapping, FavoriteVariant, ProductVariant
@@ -106,7 +107,7 @@ def get_cart_data(request, pk):
     return render(request, template_name, context)
 
 
-class CreateCart(CreateView):
+class CreateCart(PermissionRequiredMixin, CreateView):
     """
     View for creating a new Cart instance.
 
@@ -117,6 +118,7 @@ class CreateCart(CreateView):
     model = Cart
     template_name = "cart/form.html"
     form_class = CartForm
+    required_permission = "cart.add_cart"
 
     def get_context_data(self, **kwargs):
         """
@@ -155,7 +157,7 @@ class CreateCart(CreateView):
         return reverse("cart:get_cart_data", kwargs={"pk": self.object.id})
 
 
-class EditCart(UpdateView):
+class EditCart(PermissionRequiredMixin, UpdateView):
     """
     View for editing an existing Cart instance.
 
@@ -165,6 +167,7 @@ class EditCart(UpdateView):
     model = Cart
     template_name = "cart/form.html"
     form_class = CartForm
+    required_permission = "cart.change_cart"
 
     def get_context_data(self, **kwargs):
         """
@@ -466,6 +469,7 @@ def manage_cart_item(request, item_id):
         )
 
 
+@require_permission("cart.change_cart")
 @require_http_methods(["POST"])
 def archive_cart(request, cart_id):
     """
