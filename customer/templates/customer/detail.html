@@ -13,10 +13,12 @@
         <i class="fas fa-arrow-left"></i>
         Back
       </a>
-      <a href="{% url 'customer:edit' customer.id %}" class="btn btn-primary">
-        <i class="fas fa-edit"></i>
-        Edit Member
-      </a>
+      {% if perms.customer.change_customer %}
+        <a href="{% url 'customer:edit' customer.id %}" class="btn btn-primary">
+          <i class="fas fa-edit"></i>
+          Edit Member
+        </a>
+      {% endif %}
       <a href="{% url 'customer:credit_detail' customer.id %}"
          class="btn btn-info">
         <i class="fas fa-credit-card"></i>

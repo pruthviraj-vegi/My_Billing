@@ -109,6 +109,10 @@ class Customer(SoftDeleteModel):
         ordering = ["-created_at"]
         verbose_name = "Customer"
         verbose_name_plural = "Customers"
+        permissions = [
+            ("view_dashboard", "View Dashboard"),
+            ("export_customers", "Export Customers"),
+        ]
 
     def save(self, *args, **kwargs):
         """Override save method to clean and format data."""
@@ -370,6 +374,9 @@ class CustomerCreditSummary(models.Model):
             models.CheckConstraint(
                 check=models.Q(debit_amount__gte=0), name="debit_non_negative"
             ),
+        ]
+        permissions = [
+            ("export_summery", "Customer Summery Details"),
         ]
 
     def __str__(self):

@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
+from base.decorators import require_permission, PermissionRequiredMixin
 
 from base.getDates import getDates
 from base.utility import (
@@ -33,6 +34,7 @@ from .models import Customer, Payment
 logger = logging.getLogger(__name__)
 
 
+@require_permission("customer.view_dashboard")
 def dashboard(request):
     """
     Customer management dashboard with analytics and insights.
@@ -60,6 +62,7 @@ def dashboard(request):
     return render(request, "customer/dashboard.html", context)
 
 
+@require_permission("customer.view_dashboard")
 def get_comparison_data(date_filter, current_start, current_end):
     """Generate comparison data for line chart based on date filter"""
     previous_start, previous_end, period_type = get_periodic_data(
@@ -93,6 +96,7 @@ def get_comparison_data(date_filter, current_start, current_end):
     }
 
 
+@require_permission("customer.view_dashboard")
 def get_period_data(invoices, start_date, _end_date, period_type):
     """
     Get aggregated data for a specific period using database-level grouping
@@ -205,6 +209,7 @@ def get_period_data(invoices, start_date, _end_date, period_type):
         ]
 
 
+@require_permission("customer.view_dashboard")
 def dashboard_fetch(request):
     """
     AJAX endpoint to fetch customer dashboard data
@@ -388,6 +393,7 @@ VALID_SORT_FIELDS = {
 CUSTOMERS_PER_PAGE = 20
 
 
+@require_permission("customer.view_customer")
 def home(request):
     """Customer management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -418,6 +424,7 @@ def get_data(request):
     return customers
 
 
+@require_permission("customer.view_customer")
 def fetch_customers(request):
     """AJAX endpoint to fetch customers with search, filter, and pagination."""
     customers = get_data(request)
@@ -429,13 +436,14 @@ def fetch_customers(request):
     )
 
 
-class CreateCustomer(CreateView):
+class CreateCustomer(PermissionRequiredMixin, CreateView):
     """CBV to create a new customer record."""
 
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
     success_url = reverse_lazy("customer:home")
+    required_permission = "customer.add_customer"
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -457,13 +465,14 @@ class CreateCustomer(CreateView):
         return reverse_lazy("customer:home")
 
 
-class EditCustomer(UpdateView):
+class EditCustomer(PermissionRequiredMixin, UpdateView):
     """CBV to update an existing customer record."""
 
     model = Customer
     form_class = CustomerForm
     template_name = "customer/form.html"
     success_url = reverse_lazy("customer:home")
+    required_permission = "customer.change_customer"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -483,11 +492,12 @@ class EditCustomer(UpdateView):
         return super().form_invalid(form)
 
 
-class DeleteCustomer(DeleteView):
+class DeleteCustomer(PermissionRequiredMixin, DeleteView):
     """CBV to delete a customer record with confirmation."""
 
     model = Customer
     template_name = "customer/delete.html"
+    required_permission = "customer.delete_customer"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -517,6 +527,7 @@ class DeleteCustomer(DeleteView):
         return super().form_invalid(form)
 
 
+@require_permission("customer.view_customer")
 def customer_detail(request, pk):
     """View customer details."""
     customer = get_object_or_404(Customer, id=pk)
@@ -581,12 +592,13 @@ def get_calculations(pk):
     }
 
 
+@require_permission("customer.delete_customer")
 def customer_delete(request, customer_id):
     """Delete customer (soft delete)."""
     if request.method == "POST":
         customer = get_object_or_404(Customer, id=customer_id)
 
-        if customer.pk == 1 or customer.phone_number == "0000000000":
+        if customer.pk == 1 or customer.phone_number == "3":
             messages.error(request, "The default Walk-in customer cannot be deleted.")
             return redirect("customer:home")
 
@@ -597,6 +609,7 @@ def customer_delete(request, customer_id):
     return redirect("customer:home")
 
 
+@require_permission("customer.add_customer")
 def create_customer_ajax(request):
     """AJAX endpoint for creating customers via modal"""
     try:

@@ -27,6 +27,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
+
+from base.decorators import require_permission, PermissionRequiredMixin
+
 from base.utility import render_paginated_response, table_sorting
 from invoice.models import Invoice, ReturnInvoice
 
@@ -49,6 +52,7 @@ VALID_SORT_FIELDS = {
 }
 
 
+@require_permission("customer.view_customer_credit_summary")
 def home(request):
     """Credit management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -62,6 +66,7 @@ def total_credit_customers_data(request):
     )["total"]
 
 
+@require_permission("customer.view_customer_credit_summary")
 def credit_customers_data(request):
     """
     ULTRA-OPTIMIZED credit customers view.
@@ -358,6 +363,7 @@ def _build_ledger_rows(customer, start_date=None, end_date=None):
     return rows
 
 
+@require_permission("customer.view_customer_credit_summary")
 def fetch_credit_ledger(request, customer_id: int):
     """AJAX: fetch credit ledger entries for a customer with pagination and optional sorting."""
     customer = get_object_or_404(Customer, pk=customer_id)
@@ -410,6 +416,7 @@ def fetch_credit_ledger(request, customer_id: int):
     )
 
 
+@require_permission("customer.view_customer_credit_summary")
 def credit_detail(request, customer_id: int):
     """Render the credit detail page for a customer with ledger totals and allocation summary."""
     template = "credit/detail.html"
@@ -447,12 +454,13 @@ def credit_detail(request, customer_id: int):
     return render(request, template, context)
 
 
-class PaymentCreateView(CreateView):
+class PaymentCreateView(PermissionRequiredMixin, CreateView):
     """CBV to create a new payment record for a customer, with auto-allocation via signals."""
 
     template_name = "credit/form.html"
     form_class = PaymentForm
     model = Payment
+    required_permission = "customer.add_payment"
     title = "Create Payment"
 
     def get_success_url(self):
@@ -498,12 +506,13 @@ class PaymentCreateView(CreateView):
         return super().form_invalid(form)
 
 
-class PaymentUpdateView(UpdateView):
+class PaymentUpdateView(PermissionRequiredMixin, UpdateView):
     """CBV to update an existing payment record for a customer."""
 
     template_name = "credit/form.html"
     form_class = PaymentForm
     model = Payment
+    required_permission = "customer.change_payment"
     title = "Edit Payment"
 
     def get_success_url(self):
@@ -539,6 +548,7 @@ class PaymentDeleteView(DeleteView):
     model = Payment
     template_name = "credit/delete.html"
     success_url = reverse_lazy("customer:credit_home")
+    required_permission = "customer.delete_payment"
 
     def get_success_url(self):
         return reverse_lazy(
