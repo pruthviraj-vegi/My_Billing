@@ -538,6 +538,7 @@ def customer_detail(request, pk):
     return render(request, "customer/detail.html", context)
 
 
+@require_permission("customer.view_customer")
 def fetch_customer_invoices(request, pk):
     """AJAX: fetch invoices for a customer with pagination and optional sorting."""
     customer = get_object_or_404(Customer, id=pk)

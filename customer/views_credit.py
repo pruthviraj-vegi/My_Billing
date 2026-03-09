@@ -52,7 +52,7 @@ VALID_SORT_FIELDS = {
 }
 
 
-@require_permission("customer.view_customer_credit_summary")
+@require_permission("customer.view_customercreditsummary")
 def home(request):
     """Credit management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -66,7 +66,6 @@ def total_credit_customers_data(request):
     )["total"]
 
 
-@require_permission("customer.view_customer_credit_summary")
 def credit_customers_data(request):
     """
     ULTRA-OPTIMIZED credit customers view.
@@ -134,6 +133,7 @@ def credit_customers_data(request):
     return customers
 
 
+@require_permission("customer.view_customercreditsummary")
 def fetch_credits(request):
     """AJAX endpoint to fetch credit customers with search, filter, and pagination."""
     customers = credit_customers_data(request)
@@ -363,7 +363,7 @@ def _build_ledger_rows(customer, start_date=None, end_date=None):
     return rows
 
 
-@require_permission("customer.view_customer_credit_summary")
+@require_permission("customer.view_customercreditsummary")
 def fetch_credit_ledger(request, customer_id: int):
     """AJAX: fetch credit ledger entries for a customer with pagination and optional sorting."""
     customer = get_object_or_404(Customer, pk=customer_id)
@@ -416,7 +416,7 @@ def fetch_credit_ledger(request, customer_id: int):
     )
 
 
-@require_permission("customer.view_customer_credit_summary")
+@require_permission("customer.view_customercreditsummary")
 def credit_detail(request, customer_id: int):
     """Render the credit detail page for a customer with ledger totals and allocation summary."""
     template = "credit/detail.html"

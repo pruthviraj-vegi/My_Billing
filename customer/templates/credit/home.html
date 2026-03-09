@@ -9,18 +9,24 @@
     <div class="page-header">
         <h2 class="heading page-title">Credit Management</h2>
         <div class="page-actions">
-            <a href="#" id="downloadBtn" class="btn btn-primary">
-                <i class="fas fa-download"></i>
-                Download
-            </a>
-            <a href="{% url 'customer:create' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                New Customer
-            </a>
-            <a href="{% url 'customer:payment_create' %}" class="btn btn-secondary">
-                <i class="fas fa-credit-card"></i>
-                Add Payment
-            </a>
+            {% if perms.customer.export_customers %}
+                <a href="#" id="downloadBtn" class="btn btn-primary">
+                    <i class="fas fa-download"></i>
+                    Download
+                </a>
+            {% endif %}
+            {% if perms.customer.add_customer %}
+                <a href="{% url 'customer:create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    New Customer
+                </a>
+            {% endif %}
+            {% if perms.customer.add_payment %}
+                <a href="{% url 'customer:payment_create' %}" class="btn btn-secondary">
+                    <i class="fas fa-credit-card"></i>
+                    Add Payment
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->
