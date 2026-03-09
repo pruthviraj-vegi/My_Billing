@@ -24,6 +24,7 @@ urlpatterns = [
         name="invalidate_session",
     ),
     path("logins/", views.logins_overview, name="logins"),
+    path("unauthorized/", views.unauthorized_overview, name="unauthorized"),
     path("<int:pk>/", views.user_detail, name="detail"),
     path("<int:pk>/edit/", views.EditUser.as_view(), name="edit"),
     path("<int:pk>/delete/", views.DeleteUser.as_view(), name="delete"),

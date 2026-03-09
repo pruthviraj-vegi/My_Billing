@@ -23,7 +23,6 @@ class CustomUserAdmin(UserAdmin):
         "first_name",
         "phone_number",
         "email",
-        "role",
         "is_active",
         "is_staff",
         "date_joined",
@@ -37,7 +36,6 @@ class CustomUserAdmin(UserAdmin):
             _("Role & Permissions"),
             {
                 "fields": (
-                    "role",
                     "is_active",
                     "is_staff",
                     "is_superuser",
@@ -62,7 +60,7 @@ class CustomUserAdmin(UserAdmin):
                     "first_name",
                     "phone_number",
                     "email",
-                    "role",
+                    "groups",
                     "password1",
                     "password2",
                 ),
@@ -75,7 +73,6 @@ class CustomUserAdmin(UserAdmin):
 
     # Define filters
     list_filter = (
-        "role",
         "is_active",
         "is_staff",
         "is_superuser",

@@ -23,15 +23,6 @@ User = settings.AUTH_USER_MODEL
 class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
     """Custom User model for the application."""
 
-    class Roles(models.TextChoices):
-        """Choices for user roles."""
-
-        OWNER = "OWNER", "Owner"
-        MANAGER = "MANAGER", "Manager"
-        CASHIER = "CASHIER", "Cashier"
-        STAFF = "STAFF", "Staff"
-        SALESPERSON = "SALESPERSON", "Salesperson"
-
     first_name = models.CharField(max_length=255, null=True, blank=True)
     last_name = models.CharField(max_length=255, null=True, blank=True)
 
@@ -48,7 +39,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
     phone_number = models.CharField(
         max_length=15, unique=True, verbose_name=_("Phone Number")
     )
-    role = models.CharField(max_length=20, choices=Roles.choices, default=Roles.CASHIER)
     address = models.TextField(max_length=255, null=True, blank=True)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -108,12 +98,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
     @property
     def is_owner(self):
         """Check if the user is an owner."""
-        return self.role == self.Roles.OWNER
+        return self.groups.filter(name__iexact="owner").exists()
 
     @property
     def is_manager(self):
         """Check if the user is a manager."""
-        return self.role in [self.Roles.OWNER, self.Roles.MANAGER]
+        return self.groups.filter(name__iregex=r"owner|manager").exists()  #
 
     @property
     def username(self):
@@ -356,9 +346,6 @@ class UnauthorizedAccess(models.Model):
     )
     timestamp = models.DateTimeField(auto_now_add=True)
     view_name = models.CharField(max_length=255, help_text="Name of the view/function")
-    user_role = models.CharField(
-        max_length=20, help_text="Role of the user at time of attempt"
-    )
     required_roles = models.CharField(
         max_length=255, help_text="Roles that were required"
     )

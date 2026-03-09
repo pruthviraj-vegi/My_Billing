@@ -185,6 +185,8 @@
                   class="dropdown-item {% if request.resolver_match.url_name == 'sessions' %}active{% endif %}">Sessions</a>
                <a href="{% url 'user:logins' %}"
                   class="dropdown-item {% if request.resolver_match.url_name == 'logins' %}active{% endif %}">Login Activity</a>
+               <a href="{% url 'user:unauthorized' %}"
+                  class="dropdown-item {% if request.resolver_match.url_name == 'unauthorized' %}active{% endif %}">Unauthorized Activity</a>
             </div>
          </li>
       {% endif %}

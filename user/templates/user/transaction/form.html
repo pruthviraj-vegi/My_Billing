@@ -1,16 +1,23 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-
 {% block title %}
-    {% if transaction %}Edit Transaction{% else %}Create Transaction{% endif %} - {{ user.full_name }}
+    {% if transaction %}
+        Edit Transaction
+    {% else %}
+        Create Transaction
+    {% endif %}
+    - {{ user.full_name }}
 {% endblock title %}
-
 {% block content %}
     <!-- Page Header -->
     <div class="page-header">
         <h2 class="page-title">
-            {% if transaction %}Edit Transaction{% else %}Create Transaction{% endif %}
+            {% if transaction %}
+                Edit Transaction
+            {% else %}
+                Create Transaction
+            {% endif %}
         </h2>
         <div class="page-actions">
             <a href="{% url 'user:detail' user.id %}" class="btn btn-secondary">
@@ -19,22 +26,25 @@
             </a>
         </div>
     </div>
-
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
         <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
         <span class="breadcrumb-separator">/</span>
         <a href="{% url 'user:detail' user.id %}" class="breadcrumb-item">{{ user.full_name }}</a>
         <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-active">{% if transaction %}Edit Transaction{% else %}Create Transaction{% endif %}</span>
+        <span class="breadcrumb-active">
+            {% if transaction %}
+                Edit Transaction
+            {% else %}
+                Create Transaction
+            {% endif %}
+        </span>
     </nav>
-
     <!-- Transaction Form -->
     <div class="form-container">
         <div class="form-card">
             <form method="post" class="details-form" novalidate autocomplete="off">
                 {% csrf_token %}
-                
                 <!-- Form Errors -->
                 {% if form.non_field_errors %}
                     <div class="form-errors">
@@ -46,11 +56,9 @@
                         {% endfor %}
                     </div>
                 {% endif %}
-
                 <!-- Transaction Details Section -->
                 <div class="form-section">
                     <h5 class="section-title">Transaction Information</h5>
-                    
                     <!-- Transaction Type Field -->
                     <div class="form-group {% if form.transaction_type.errors %}has-error{% endif %}">
                         <label for="{{ form.transaction_type.id_for_label }}" class="form-label">{{ form.transaction_type.label }}</label>
@@ -67,7 +75,6 @@
                             <span class="form-help-text">Select the type of transaction</span>
                         </small>
                     </div>
-
                     <!-- Amount Field -->
                     <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
                         <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
@@ -84,7 +91,6 @@
                             <span class="form-help-text">Enter the transaction amount</span>
                         </small>
                     </div>
-
                     <!-- Payment Method Field -->
                     <div class="form-group {% if form.payment_method.errors %}has-error{% endif %}">
                         <label for="{{ form.payment_method.id_for_label }}" class="form-label">{{ form.payment_method.label }}</label>
@@ -101,7 +107,6 @@
                             <span class="form-help-text">Select the payment method used</span>
                         </small>
                     </div>
-
                     <!-- Description Field -->
                     <div class="form-group {% if form.description.errors %}has-error{% endif %}">
                         <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
@@ -118,7 +123,6 @@
                             <span class="form-help-text">Additional details about the transaction</span>
                         </small>
                     </div>
-
                     <!-- Reference Number Field -->
                     <div class="form-group {% if form.reference_number.errors %}has-error{% endif %}">
                         <label for="{{ form.reference_number.id_for_label }}" class="form-label">{{ form.reference_number.label }}</label>
@@ -135,7 +139,6 @@
                             <span class="form-help-text">External reference number (e.g., invoice number, receipt number)</span>
                         </small>
                     </div>
-
                     <!-- Date Field -->
                     <div class="form-group {% if form.date.errors %}has-error{% endif %}">
                         <label for="{{ form.date.id_for_label }}" class="form-label">{{ form.date.label }}</label>
@@ -152,7 +155,6 @@
                             <span class="form-help-text">Transaction date</span>
                         </small>
                     </div>
-
                     <!-- Notes Field -->
                     <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
                         <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
@@ -169,12 +171,15 @@
                             <span class="form-help-text">Internal notes (not visible to customer)</span>
                         </small>
                     </div>
-
                     <!-- Form Actions -->
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i>
-                            {% if transaction %}Update Transaction{% else %}Create Transaction{% endif %}
+                            {% if transaction %}
+                                Update Transaction
+                            {% else %}
+                                Create Transaction
+                            {% endif %}
                         </button>
                         <a href="{% url 'user:detail' user.id %}" class="btn btn-secondary">
                             <i class="fas fa-times"></i>
@@ -183,18 +188,16 @@
                     </div>
                 </div>
             </form>
+            <!-- Help Text -->
+            <div class="help-section mt-4 pt-3 border-top">
+                <h5 class="text-muted mb-2">Notes:</h5>
+                <ul class="text-muted mb-0 small ps-4">
+                    <li>Transaction Type, Amount, and Payment Method are required</li>
+                    <li>Transaction ID will be auto-generated</li>
+                    <li>Description and Reference Number are optional but recommended</li>
+                    <li>Notes are for internal use only and not visible to customers</li>
+                </ul>
+            </div>
         </div>
     </div>
-
-    <!-- Help Text -->
-    <div class="help-section">
-        <h4>Notes:</h4>
-        <ul>
-            <li>Transaction Type, Amount, and Payment Method are required</li>
-            <li>Transaction ID will be auto-generated</li>
-            <li>Description and Reference Number are optional but recommended</li>
-            <li>Notes are for internal use only and not visible to customers</li>
-        </ul>
-    </div>
 {% endblock content %}
-

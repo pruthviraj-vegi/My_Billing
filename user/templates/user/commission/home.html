@@ -79,8 +79,8 @@
               </div>
             {% endif %}
             <div class="contact-item">
-              <i class="fas fa-user-tag"></i>
-              <span>{{ user.get_role_display }}</span>
+              <i class="fas fa-users"></i>
+              <span>{{ user.groups.all|first|default:"User" }}</span>
             </div>
             {% if current_salary %}
               <div class="contact-item">

@@ -25,7 +25,7 @@ from base.utility import render_paginated_response, table_sorting
 from invoice.models import Invoice, InvoiceItem
 
 from .forms import CustomUserForm, PasswordResetForm, SalaryForm, TransactionForm
-from .models import LoginEvent, Salary, Transaction
+from .models import LoginEvent, Salary, Transaction, UnauthorizedAccess
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,6 @@ VALID_SORT_FIELDS = {
     "date_joined",
     "phone_number",
     "email",
-    "role",
 }
 
 USERS_PER_PAGE = 20
@@ -45,9 +44,7 @@ USERS_PER_PAGE = 20
 def home(request):
     """User management main page - initial load only."""
     # For initial page load, just render the template with empty data
-    context = {
-        "roles": User.Roles.choices,
-    }
+    context = {}
     return render(request, "user/home.html", context)
 
 
@@ -55,7 +52,6 @@ def get_data(request):
     """Helper function to get filtered and sorted users."""
     # Get search and filter parameters
     search_query = request.GET.get("search", "")
-    role_filter = request.GET.get("role", "")
     status_filter = request.GET.get("status", "")
     commission_filter = request.GET.get("commission", "")
 
@@ -71,11 +67,7 @@ def get_data(request):
                 | Q(address__icontains=word)
             )
 
-    # Apply role filter
-    if role_filter:
-        filters &= Q(role=role_filter)
-
-    # Apply status filter (active/inactive)
+    # Status filter (active/inactive)
     if status_filter == "active":
         filters &= Q(is_active=True)
     elif status_filter == "inactive":
@@ -285,7 +277,6 @@ def search_users_ajax(request):
                 "full_name": user.full_name,
                 "phone_number": user.phone_number,
                 "email": user.email,
-                "role": user.role,
                 "is_active": user.is_active,
             }
         )
@@ -312,6 +303,12 @@ def logins_overview(request):
     """View an overview of recent login events."""
     events = LoginEvent.objects.select_related("user").all()[:500]
     return render(request, "user/logins.html", {"events": events})
+
+
+def unauthorized_overview(request):
+    """View an overview of recent unauthorized access attempts."""
+    events = UnauthorizedAccess.objects.select_related("user").all()[:500]
+    return render(request, "user/unauthorised/main.html", {"events": events})
 
 
 def sessions_overview(request):

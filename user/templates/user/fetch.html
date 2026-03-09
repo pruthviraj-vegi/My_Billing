@@ -14,7 +14,7 @@
             <td>{{ user.phone_number }}</td>
             <td>{{ user.email|default:"-" }}</td>
             <td>
-                <span class="badge badge-{{ user.role|lower }}">{{ user.get_role_display }}</span>
+                <span class="badge badge-primary">{{ user.groups.all|first|default:"User" }}</span>
             </td>
             <td>
                 {% if user.address %}

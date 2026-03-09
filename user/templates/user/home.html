@@ -17,6 +17,10 @@
                 <i class="fas fa-sign-in-alt"></i>
                 Login Activity
             </a>
+            <a href="{% url 'user:unauthorized' %}" class="btn">
+                <i class="fas fa-shield-alt text-danger"></i>
+                Unauthorized Access
+            </a>
             <a href="{% url 'user:create' %}" class="btn btn-primary">
                 <i class="fas fa-plus"></i>
                 New User
@@ -45,10 +49,6 @@
                        id="searchInput"
                        autofocus>
             </div>
-            <select name="role" class="filter-select" id="roleFilter">
-                <option value="">All Roles</option>
-                {% for role_value, role_label in roles %}<option value="{{ role_value }}">{{ role_label }}</option>{% endfor %}
-            </select>
             <select name="status" class="filter-select" id="statusFilter">
                 <option value="">All Status</option>
                 <option value="active">Active</option>
@@ -75,7 +75,7 @@
                     <th class="sortable" data-sort="full_name">Name</th>
                     <th class="sortable" data-sort="phone_number">Phone No</th>
                     <th class="sortable" data-sort="email">Email</th>
-                    <th class="sortable" data-sort="role">Role</th>
+                    <th>Groups</th>
                     <th class="sortable" data-sort="address">Address</th>
                     <th>Commission</th>
                     <th>Status</th>

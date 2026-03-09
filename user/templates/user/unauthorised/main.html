@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+    Unauthorized Access Activity
+{% endblock title %}
+{% block content %}
+    <div class="page-header">
+        <h2 class="page-title">Unauthorized Access Activity</h2>
+        <div class="page-actions">
+            <a href="{% url 'user:home' %}" class="btn">
+                <i class="fas fa-arrow-left"></i>
+                Back
+            </a>
+        </div>
+    </div>
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Unauthorized Access</span>
+    </nav>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>User</th>
+                    <th>View Name</th>
+                    <th>Required Roles</th>
+                    <th>IP Address</th>
+                    <th>URL Path</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ev in events %}
+                    <tr>
+                        <td>{{ ev.timestamp|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            {% if ev.user %}
+                                {{ ev.user.full_name|default:ev.user.phone_number }}
+                            {% else %}
+                                <span class="text-muted">Anonymous / Deleted</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ev.view_name }}</td>
+                        <td>{{ ev.required_roles }}</td>
+                        <td>{{ ev.ip_address|default:"-" }}</td>
+                        <td>
+                            <span title="{{ ev.url_path }}">{{ ev.url_path|default:"-"|truncatechars:32 }}</span>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">No unauthorized access activity</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock content %}

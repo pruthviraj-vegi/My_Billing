@@ -22,7 +22,7 @@ class CustomUserForm(forms.ModelForm):
             "last_name",
             "phone_number",
             "email",
-            "role",
+            "groups",
             "is_active",
             "address",
         )
@@ -47,7 +47,12 @@ class CustomUserForm(forms.ModelForm):
                 }
             ),
             "email": forms.EmailInput(attrs={"placeholder": "Enter email address"}),
-            "role": forms.Select(attrs={}),
+            "groups": forms.SelectMultiple(
+                attrs={
+                    "class": "form-select",
+                    "data-placeholder": "Select roles/groups",
+                }
+            ),
             "is_active": forms.CheckboxInput(attrs={}),
             "address": forms.Textarea(
                 attrs={

@@ -1,11 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-
 {% block title %}
     Delete User - {{ user.full_name }}
 {% endblock title %}
-
 {% block content %}
     <!-- Page Header -->
     <div class="page-header">
@@ -17,7 +15,6 @@
             </a>
         </div>
     </div>
-
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
         <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
@@ -26,7 +23,6 @@
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Delete</span>
     </nav>
-
     <!-- Delete Confirmation -->
     <div class="delete-container">
         <div class="delete-warning">
@@ -34,11 +30,8 @@
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <h3>Are you sure you want to delete this user?</h3>
-            <p class="warning-text">
-                This action cannot be undone. The user will be permanently removed from the system.
-            </p>
+            <p class="warning-text">This action cannot be undone. The user will be permanently removed from the system.</p>
         </div>
-
         <!-- User Information -->
         <div class="user-info">
             <h4>User Details:</h4>
@@ -56,11 +49,9 @@
                     <span class="info-value">{{ user.email|default:"Not provided" }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Role:</span>
+                    <span class="info-label">Groups:</span>
                     <span class="info-value">
-                        <span class="badge badge-{{ user.role|lower }}">
-                            {{ user.get_role_display }}
-                        </span>
+                        <span class="badge badge-primary">{{ user.groups.all|join:", "|default:"User" }}</span>
                     </span>
                 </div>
                 <div class="info-row">
@@ -79,7 +70,6 @@
                 </div>
             </div>
         </div>
-
         <!-- Important Notes -->
         <div class="important-notes">
             <h4>Important Notes:</h4>
@@ -90,7 +80,6 @@
                 <li>Consider deactivating the user instead if you want to preserve data</li>
             </ul>
         </div>
-
         <!-- Delete Actions -->
         <div class="delete-actions">
             <form method="post" class="delete-form">
@@ -105,13 +94,14 @@
                 Cancel
             </a>
         </div>
-
         <!-- Alternative Actions -->
         <div class="alternative-actions">
             <h4>Alternative Actions:</h4>
             <div class="action-buttons">
                 {% if user.is_active %}
-                    <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline">
+                    <form method="post"
+                          action="{% url 'user:change_status' user.id %}"
+                          class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-warning">
                             <i class="fas fa-user-slash"></i>
@@ -119,7 +109,9 @@
                         </button>
                     </form>
                 {% else %}
-                    <form method="post" action="{% url 'user:change_status' user.id %}" class="d-inline">
+                    <form method="post"
+                          action="{% url 'user:change_status' user.id %}"
+                          class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-success">
                             <i class="fas fa-user-check"></i>

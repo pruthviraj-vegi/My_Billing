@@ -78,7 +78,6 @@ def _log_unauthorized_access(request, view_name, allowed_roles):
     UnauthorizedAccess.objects.create(
         user=request.user,
         view_name=view_name,
-        user_role=request.user.role,
         required_roles=", ".join(allowed_roles),
         ip_address=get_client_ip(request),
         url_path=request.path,
@@ -115,6 +114,7 @@ class PermissionRequiredMixin:
     required_permission = None
 
     def dispatch(self, request, *args, **kwargs):
+        """checking the permission for class based"""
         if not self.required_permission:
             raise ValueError(
                 f"{self.__class__.__name__} must define `required_permission`"
