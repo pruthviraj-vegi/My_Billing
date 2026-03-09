@@ -25,6 +25,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
+
+from base.decorators import require_permission, PermissionRequiredMixin
+
 from base.getDates import getDates
 from base.utility import (
     get_period_label,
@@ -395,6 +398,7 @@ def dashboard_fetch(request):
     )
 
 
+@require_permission("supplier.view_supplier")
 def home(request):
     """Supplier management main page with search and filter functionality."""
 
@@ -583,6 +587,7 @@ def fetch_supplier_payments(request, pk):
     )
 
 
+@require_permission("supplier.view_supplier")
 def supplier_detail(request, pk):
     """
     View supplier details with invoices and payments tables.
@@ -642,6 +647,7 @@ def supplier_detail(request, pk):
     return render(request, "supplier/detail.html", context)
 
 
+@require_permission("supplier.delete_supplierinvoice")
 def delete_invoice(request, supplier_pk, invoice_pk):
     """Delete an invoice."""
     supplier = get_object_or_404(Supplier, id=supplier_pk)
@@ -658,13 +664,14 @@ def delete_invoice(request, supplier_pk, invoice_pk):
     return render(request, "supplier/invoice/delete.html", context)
 
 
-class CreateSupplier(CreateView):
+class CreateSupplier(PermissionRequiredMixin, CreateView):
     """View to create a new supplier."""
 
     model = Supplier
     form_class = SupplierForm
     template_name = "supplier/form.html"
     success_url = reverse_lazy("supplier:home")
+    required_permission = "supplier.add_supplier"
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -683,13 +690,14 @@ class CreateSupplier(CreateView):
         return context
 
 
-class EditSupplier(UpdateView):
+class EditSupplier(PermissionRequiredMixin, UpdateView):
     """View to edit an existing supplier."""
 
     model = Supplier
     form_class = SupplierForm
     template_name = "supplier/form.html"
     success_url = reverse_lazy("supplier:home")
+    required_permission = "supplier.change_supplier"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -707,12 +715,13 @@ class EditSupplier(UpdateView):
         return super().form_invalid(form)
 
 
-class DeleteSupplier(DeleteView):
+class DeleteSupplier(PermissionRequiredMixin, DeleteView):
     """View to delete an existing supplier."""
 
     model = Supplier
     success_url = reverse_lazy("supplier:home")
     template_name = "supplier/delete.html"
+    required_permission = "supplier.delete_supplier"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -731,12 +740,13 @@ class DeleteSupplier(DeleteView):
 
 
 # Payment Views
-class CreatePayment(CreateView):
+class CreatePayment(PermissionRequiredMixin, CreateView):
     """View to record a payment made to a supplier."""
 
     model = SupplierPayment
     form_class = SupplierPaymentForm
     template_name = "supplier/payment/form.html"
+    required_permission = "supplier.add_supplierpayment"
 
     def get_success_url(self):
         return reverse_lazy("supplier:detail", kwargs={"pk": self.supplier.pk})
@@ -773,13 +783,14 @@ class CreatePayment(CreateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class EditPayment(UpdateView):
+class EditPayment(PermissionRequiredMixin, UpdateView):
     """View to edit a payment record."""
 
     model = SupplierPayment
     form_class = SupplierPaymentForm
     template_name = "supplier/payment/form.html"
     pk_url_kwarg = "payment_pk"
+    required_permission = "supplier.change_supplierpayment"
 
     def get_success_url(self):
         return reverse_lazy("supplier:detail", kwargs={"pk": self.supplier.pk})
@@ -827,12 +838,13 @@ class EditPayment(UpdateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class CreateInvoice(CreateView):
+class CreateInvoice(PermissionRequiredMixin, CreateView):
     """View to create a new supplier invoice."""
 
     model = SupplierInvoice
     form_class = SupplierInvoiceForm
     template_name = "supplier/invoice/form.html"
+    required_permission = "supplier.add_supplierinvoice"
 
     def get_success_url(self):
         return reverse_lazy("supplier:detail", kwargs={"pk": self.supplier.pk})
@@ -869,13 +881,14 @@ class CreateInvoice(CreateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class EditInvoice(UpdateView):
+class EditInvoice(PermissionRequiredMixin, UpdateView):
     """View to edit an existing supplier invoice."""
 
     model = SupplierInvoice
     form_class = SupplierInvoiceForm
     template_name = "supplier/invoice/form.html"
     pk_url_kwarg = "invoice_pk"  # Use invoice_pk instead of pk
+    required_permission = "supplier.change_supplierinvoice"
 
     def get_success_url(self):
         return reverse_lazy("supplier:detail", kwargs={"pk": self.supplier.pk})
@@ -911,6 +924,7 @@ class EditInvoice(UpdateView):
         return super().dispatch(request, *args, **kwargs)
 
 
+@require_permission("supplier.delete_supplierpayment")
 def delete_payment(request, supplier_pk, payment_pk):
     """Delete a payment."""
     supplier = get_object_or_404(Supplier, id=supplier_pk)

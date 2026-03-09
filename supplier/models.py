@@ -50,6 +50,12 @@ class Supplier(SoftDeleteModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        permissions = [
+            ("view_dashboard", "view dashboard"),
+            ("download_report", "download report"),
+        ]
+
     def __str__(self):
         return self.name
 
