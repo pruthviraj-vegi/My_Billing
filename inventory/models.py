@@ -277,6 +277,12 @@ class Product(SoftDeleteModel):
             models.Index(fields=["status"]),
             models.Index(fields=["created_at"]),
         ]
+        permissions = [
+            ("view_dashboard", "View Dashboard"),
+            ("export_reports", "Export Reports"),
+            ("view_supplier_details", "View Supplier Details"),
+            ("view_low_stock_details", "View Low Stock Details"),
+        ]
 
     @transaction.atomic
     def save(self, *args, **kwargs):

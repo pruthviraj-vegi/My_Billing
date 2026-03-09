@@ -28,6 +28,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.views.generic import View
 
+from base.decorators import PermissionRequiredMixin, require_permission
 from base.getDates import getDates
 from base.utility import render_paginated_response, table_sorting
 from supplier.models import Supplier, SupplierInvoice
@@ -48,6 +49,7 @@ from .services import InventoryService
 logger = logging.getLogger(__name__)
 
 
+@require_permission("inventory.view_dashboard")
 def inventory_dashboard(request):
     """Enhanced inventory dashboard with comprehensive metrics"""
     active_variants = ProductVariant.objects.filter(
@@ -83,6 +85,7 @@ def inventory_dashboard(request):
     return render(request, "inventory/dashboard.html", context)
 
 
+@require_permission("inventory.view_dashboard")
 def inventory_dashboard_fetch(request):
     """
     AJAX endpoint to fetch dynamic dashboard data based on date filter
@@ -285,6 +288,7 @@ def _calculate_total_stock_by_supplier():
     return result
 
 
+@require_permission("inventory.view_low_stock")
 def low_stock_page(request):
     """Display all low stock items with pagination"""
 
@@ -328,8 +332,10 @@ def low_stock_page(request):
     return render(request, "inventory/low_stock.html", context)
 
 
-class CreateProduct(View):
+class CreateProduct(PermissionRequiredMixin, View):
     """View to handle product creation."""
+
+    required_permission = "inventory.add_product"
 
     template_name = "inventory/product_create.html"
     title = "Create Product"
@@ -485,6 +491,7 @@ class CreateProduct(View):
         return value
 
 
+@require_permission("inventory.change_productvariant")
 def variant_update(request, pk):
     """Update product variant details"""
     variant = get_object_or_404(ProductVariant, pk=pk)
@@ -679,6 +686,7 @@ def _supplier_invoice_tracking_queryset(request):
     return supplier_invoices.order_by(*final_sorts)
 
 
+@require_permission("inventory.view_supplier_invoice_tracking")
 def supplier_invoice_tracking(request):
     """Render main page; data loads via AJAX fetch endpoint."""
     suppliers = Supplier.objects.filter(is_deleted=False).order_by("name")
@@ -694,6 +702,7 @@ def supplier_invoice_tracking(request):
     )
 
 
+@require_permission("inventory.view_supplier_invoice_tracking")
 def supplier_invoice_tracking_fetch(request):
     """AJAX endpoint powering supplier invoice tracking table."""
     invoices = _supplier_invoice_tracking_queryset(request)
@@ -704,6 +713,7 @@ def supplier_invoice_tracking_fetch(request):
     )
 
 
+@require_permission("inventory.view_supplier_invoice_details")
 def supplier_invoice_details(request, invoice_id):
     """View to show detailed breakdown of a specific supplier invoice"""
 

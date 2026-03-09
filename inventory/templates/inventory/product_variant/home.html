@@ -9,10 +9,12 @@
     <div class="page-header">
         <h2 class="heading page-title">Product Variants Management</h2>
         <div class="page-actions">
-            <a href="#" id="downloadBtn" class="btn btn-primary">
-                <i class="fas fa-download"></i>
-                Download
-            </a>
+            {% if perms.inventory.export_reports %}
+                <a href="#" id="downloadBtn" class="btn btn-primary">
+                    <i class="fas fa-download"></i>
+                    Download
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->

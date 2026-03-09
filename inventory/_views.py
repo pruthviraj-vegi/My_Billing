@@ -18,6 +18,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
+from base.decorators import PermissionRequiredMixin, require_permission
 from base.utility import render_paginated_response
 
 from .forms import (
@@ -63,6 +64,7 @@ def create_ajax_response(success=True, message="", data=None):
     return JsonResponse(response)
 
 
+@require_permission("inventory.view_clothtype")
 def cloth_home(request):
     """List all cloth types"""
     cloth_types = ClothType.objects.all().order_by("name")
@@ -74,8 +76,10 @@ def cloth_home(request):
     return render(request, "inventory/cloth/home.html", context)
 
 
-class CreateClothType(CreateView):
+class CreateClothType(PermissionRequiredMixin, CreateView):
     """CBV to create a new cloth type record."""
+
+    required_permission = "inventory.add_clothtype"
 
     model = ClothType
     form_class = ClothTypeForm
@@ -100,8 +104,10 @@ class CreateClothType(CreateView):
         return super().form_invalid(form)
 
 
-class UpdateClothType(UpdateView):
+class UpdateClothType(PermissionRequiredMixin, UpdateView):
     """CBV to update an existing cloth type record."""
+
+    required_permission = "inventory.change_clothtype"
 
     model = ClothType
     form_class = ClothTypeForm
@@ -120,8 +126,10 @@ class UpdateClothType(UpdateView):
         return context
 
 
-class DeleteClothType(DeleteView):
+class DeleteClothType(PermissionRequiredMixin, DeleteView):
     """CBV to delete a cloth type record with confirmation."""
+
+    required_permission = "inventory.delete_clothtype"
 
     model = ClothType
     template_name = "inventory/cloth/delete.html"
@@ -139,6 +147,7 @@ class DeleteClothType(DeleteView):
         return super().form_valid(form)
 
 
+@require_permission("inventory.view_color")
 def color_home(request):
     """List all colors"""
     colors = Color.objects.all().order_by("name")
@@ -150,8 +159,10 @@ def color_home(request):
     return render(request, "inventory/color/home.html", context)
 
 
-class CreateColor(CreateView):
+class CreateColor(PermissionRequiredMixin, CreateView):
     """CBV to create a new color record."""
+
+    required_permission = "inventory.add_color"
 
     model = Color
     form_class = ColorForm
@@ -176,8 +187,10 @@ class CreateColor(CreateView):
         return super().form_invalid(form)
 
 
-class UpdateColor(UpdateView):
+class UpdateColor(PermissionRequiredMixin, UpdateView):
     """CBV to update an existing color record."""
+
+    required_permission = "inventory.change_color"
 
     model = Color
     form_class = ColorForm
@@ -196,8 +209,10 @@ class UpdateColor(UpdateView):
         return context
 
 
-class DeleteColor(DeleteView):
+class DeleteColor(PermissionRequiredMixin, DeleteView):
     """CBV to delete a color record with confirmation."""
+
+    required_permission = "inventory.delete_color"
 
     model = Color
     template_name = "inventory/color/delete.html"
@@ -215,6 +230,7 @@ class DeleteColor(DeleteView):
         return super().form_valid(form)
 
 
+@require_permission("inventory.view_size")
 def size_home(request):
     """List all sizes"""
     sizes = Size.objects.all().order_by("name")
@@ -226,8 +242,10 @@ def size_home(request):
     return render(request, "inventory/size/home.html", context)
 
 
-class CreateSize(CreateView):
+class CreateSize(PermissionRequiredMixin, CreateView):
     """CBV to create a new size record."""
+
+    required_permission = "inventory.add_size"
 
     model = Size
     form_class = SizeForm
@@ -252,8 +270,10 @@ class CreateSize(CreateView):
         return super().form_invalid(form)
 
 
-class UpdateSize(UpdateView):
+class UpdateSize(PermissionRequiredMixin, UpdateView):
     """CBV to update an existing size record."""
+
+    required_permission = "inventory.change_size"
 
     model = Size
     form_class = SizeForm
@@ -272,8 +292,10 @@ class UpdateSize(UpdateView):
         return context
 
 
-class DeleteSize(DeleteView):
+class DeleteSize(PermissionRequiredMixin, DeleteView):
     """CBV to delete a size record with confirmation."""
+
+    required_permission = "inventory.delete_size"
 
     model = Size
     template_name = "inventory/size/delete.html"
@@ -381,6 +403,7 @@ def fetch_categories(request):
     )
 
 
+@require_permission("inventory.view_category")
 def category_home(request):
     """Category management main page - initial load only."""
     # No need to load categories here as they'll be loaded via AJAX
@@ -388,8 +411,10 @@ def category_home(request):
     return render(request, "inventory/category/home.html")
 
 
-class CreateCategory(CreateView):
+class CreateCategory(PermissionRequiredMixin, CreateView):
     """CBV to create a new category record."""
+
+    required_permission = "inventory.add_category"
 
     model = Category
     form_class = CategoryForm
@@ -413,8 +438,10 @@ class CreateCategory(CreateView):
         return super().form_invalid(form)
 
 
-class UpdateCategory(UpdateView):
+class UpdateCategory(PermissionRequiredMixin, UpdateView):
     """CBV to update an existing category record."""
+
+    required_permission = "inventory.change_category"
 
     model = Category
     form_class = CategoryForm
@@ -433,8 +460,10 @@ class UpdateCategory(UpdateView):
         return context
 
 
-class DeleteCategory(DeleteView):
+class DeleteCategory(PermissionRequiredMixin, DeleteView):
     """CBV to delete a category record with confirmation."""
+
+    required_permission = "inventory.delete_category"
 
     model = Category
     template_name = "inventory/category/delete.html"
@@ -457,6 +486,7 @@ class DeleteCategory(DeleteView):
 # ========================================
 
 
+@require_permission("inventory.view_uom")
 def uom_home(request):
     """UOM management main page - initial load only."""
     # No need to load UOMs here as they'll be loaded via AJAX
@@ -464,8 +494,10 @@ def uom_home(request):
     return render(request, "inventory/uom/home.html")
 
 
-class CreateUOM(CreateView):
+class CreateUOM(PermissionRequiredMixin, CreateView):
     """CBV to create a new unit of measurement record."""
+
+    required_permission = "inventory.add_uom"
 
     model = UOM
     form_class = UOMForm
@@ -490,8 +522,10 @@ class CreateUOM(CreateView):
         return super().form_invalid(form)
 
 
-class UpdateUOM(UpdateView):
+class UpdateUOM(PermissionRequiredMixin, UpdateView):
     """CBV to update an existing unit of measurement record."""
+
+    required_permission = "inventory.change_uom"
 
     model = UOM
     form_class = UOMForm
@@ -510,8 +544,10 @@ class UpdateUOM(UpdateView):
         return context
 
 
-class DeleteUOM(DeleteView):
+class DeleteUOM(PermissionRequiredMixin, DeleteView):
     """CBV to delete a unit of measurement record with confirmation."""
+
+    required_permission = "inventory.delete_uom"
 
     model = UOM
     template_name = "inventory/uom/delete.html"
@@ -727,6 +763,7 @@ def fetch_gst_hsn_codes(request):
 
 
 # GST HSN Code Management Views
+@require_permission("inventory.view_gsthsncode")
 def gst_hsn_home(request):
     """List all GST HSN Codes"""
     gst_hsn_codes = GSTHsnCode.objects.all().order_by("-created_at", "code")
@@ -738,8 +775,10 @@ def gst_hsn_home(request):
     return render(request, "inventory/gst_hsn/home.html", context)
 
 
-class CreateGSTHsnCode(CreateView):
+class CreateGSTHsnCode(PermissionRequiredMixin, CreateView):
     """CBV to create a new GST HSN code record."""
+
+    required_permission = "inventory.add_gsthsncode"
 
     model = GSTHsnCode
     form_class = GSTHsnCodeForm
@@ -763,8 +802,10 @@ class CreateGSTHsnCode(CreateView):
         return super().form_invalid(form)
 
 
-class UpdateGSTHsnCode(UpdateView):
+class UpdateGSTHsnCode(PermissionRequiredMixin, UpdateView):
     """CBV to update an existing GST HSN code record."""
+
+    required_permission = "inventory.change_gsthsncode"
 
     model = GSTHsnCode
     form_class = GSTHsnCodeForm
@@ -774,8 +815,10 @@ class UpdateGSTHsnCode(UpdateView):
         return reverse("inventory:gst_hsn_home")
 
 
-class DeleteGSTHsnCode(DeleteView):
+class DeleteGSTHsnCode(PermissionRequiredMixin, DeleteView):
     """CBV to delete a GST HSN code record with confirmation."""
+
+    required_permission = "inventory.delete_gsthsncode"
 
     model = GSTHsnCode
     template_name = "inventory/gst_hsn/delete.html"
@@ -808,6 +851,7 @@ VALID_FAVORITE_SORT_FIELDS = {
 
 
 # Favorites Views
+@require_permission("inventory.view_favoritevariant")
 def favorites_home(request):
     """HTML page to display all favorite variants for the current user"""
     # Adjust to your login URL
@@ -986,6 +1030,7 @@ def get_variants_for_favorites(request):
         )
 
 
+@require_permission("inventory.add_favoritevariant")
 @require_http_methods(["POST"])
 def add_favorite(request, variant_id):
     """Add a single variant to favorites"""
@@ -1023,6 +1068,7 @@ def add_favorite(request, variant_id):
         )
 
 
+@require_permission("inventory.delete_favoritevariant")
 @require_http_methods(["POST"])
 def remove_favorite(request, variant_id):
     """Remove a single variant from favorites"""
@@ -1047,6 +1093,7 @@ def remove_favorite(request, variant_id):
         )
 
 
+@require_permission("inventory.add_category")
 @require_http_methods(["POST"])
 def create_category_ajax(request):
     """AJAX endpoint for creating categories via modal"""
@@ -1104,6 +1151,7 @@ def create_category_ajax(request):
         )
 
 
+@require_permission("inventory.add_clothtype")
 @require_http_methods(["POST"])
 def create_cloth_type_ajax(request):
     """AJAX endpoint for creating cloth types via modal"""
@@ -1161,6 +1209,7 @@ def create_cloth_type_ajax(request):
         )
 
 
+@require_permission("inventory.add_uom")
 @require_http_methods(["POST"])
 def create_uom_ajax(request):
     """AJAX endpoint for creating UOMs via modal"""
@@ -1215,6 +1264,7 @@ def create_uom_ajax(request):
         )
 
 
+@require_permission("inventory.add_gsthsncode")
 @require_http_methods(["POST"])
 def create_gst_hsn_code_ajax(request):
     """AJAX endpoint for creating GST HSN codes via modal"""
@@ -1273,6 +1323,7 @@ def create_gst_hsn_code_ajax(request):
         )
 
 
+@require_permission("inventory.add_size")
 @require_http_methods(["POST"])
 def create_size_ajax(request):
     """AJAX endpoint for creating sizes via modal"""
@@ -1324,6 +1375,7 @@ def create_size_ajax(request):
         )
 
 
+@require_permission("inventory.add_color")
 @require_http_methods(["POST"])
 def create_color_ajax(request):
     """AJAX endpoint for creating colors via modal"""

@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import CreateView, UpdateView
 
+from base.decorators import PermissionRequiredMixin, require_permission
 from base.utility import render_paginated_response, table_sorting
 
 from .forms import (
@@ -49,6 +50,7 @@ VALID_SORT_FIELDS = {
 VARIANTS_PER_PAGE = 20
 
 
+@require_permission("inventory.view_productvariant")
 def variant_home(request):
     """Product variant management main page - initial load only."""
     # Get filter options for the template
@@ -151,6 +153,7 @@ def get_variants_data(request):
     return variants
 
 
+@require_permission("inventory.view_productvariant")
 def total_inventory_value(request) -> float:
     """Calculate total inventory value."""
     total_value = ProductVariant.objects.aggregate(
@@ -173,6 +176,7 @@ def fetch_variants(request):
     )
 
 
+@require_permission("inventory.view_productvariant")
 def variant_details(request, variant_id):
     """Detailed view for a single product variant with stock management options"""
 
@@ -220,8 +224,10 @@ def recent_variants_logs(request, variant_id):
     )
 
 
-class CreateProductVariant(CreateView):
+class CreateProductVariant(PermissionRequiredMixin, CreateView):
     """View to create a new product variant"""
+
+    required_permission = "inventory.add_productvariant"
 
     template_name = "inventory/product_variant/form.html"
     form_class = VariantForm
@@ -430,8 +436,10 @@ class CreateProductVariant(CreateView):
         return value
 
 
-class EditProductVariant(UpdateView):
+class EditProductVariant(PermissionRequiredMixin, UpdateView):
     """View to edit an existing product variant"""
+
+    required_permission = "inventory.change_productvariant"
 
     template_name = "inventory/product_variant/form.html"
     form_class = VariantForm
@@ -503,8 +511,10 @@ class EditProductVariant(UpdateView):
         )
 
 
-class StockInCreate(CreateView):
+class StockInCreate(PermissionRequiredMixin, CreateView):
     """View to process stock in operations for a variant"""
+
+    required_permission = "inventory.add_inventorylog"
 
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = StockInForm
@@ -615,8 +625,10 @@ class StockInCreate(CreateView):
         return super().form_invalid(form)
 
 
-class AdjustmentInCreate(CreateView):
+class AdjustmentInCreate(PermissionRequiredMixin, CreateView):
     """View to process adjustment in operations for a variant"""
+
+    required_permission = "inventory.add_inventorylog"
 
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = AdjustmentInForm
@@ -705,8 +717,10 @@ class AdjustmentInCreate(CreateView):
         return super().form_invalid(form)
 
 
-class AdjustmentOutCreate(CreateView):
+class AdjustmentOutCreate(PermissionRequiredMixin, CreateView):
     """View to process adjustment out operations for a variant"""
+
+    required_permission = "inventory.add_inventorylog"
 
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = AdjustmentOutForm
@@ -794,8 +808,10 @@ class AdjustmentOutCreate(CreateView):
         return super().form_invalid(form)
 
 
-class DamageCreate(CreateView):
+class DamageCreate(PermissionRequiredMixin, CreateView):
     """View to process damage out operations for a variant"""
+
+    required_permission = "inventory.add_inventorylog"
 
     template_name = "inventory/product_variant/inventory_operation_form.html"
     form_class = DamageForm

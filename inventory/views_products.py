@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
 
+from base.decorators import PermissionRequiredMixin, require_permission
 from base.utility import render_paginated_response, table_sorting
 
 from .models import Product, ProductVariant
@@ -30,6 +31,7 @@ VALID_SORT_FIELDS = {
 }
 
 
+@require_permission("inventory.view_product")
 def product_home(request):
     """Product management main page - initial load only."""
     # Get filter options for the template
@@ -86,6 +88,7 @@ def fetch_products(request):
     )
 
 
+@require_permission("inventory.view_product")
 def product_details(request, product_id):
     """Display detailed product information with variants and statistics"""
 
@@ -143,7 +146,7 @@ def product_details(request, product_id):
     return render(request, "inventory/product/details.html", context)
 
 
-class CreateProduct(CreateView):
+class CreateProduct(PermissionRequiredMixin, CreateView):
     """
     View for creating a new product.
 
@@ -151,6 +154,8 @@ class CreateProduct(CreateView):
     of valid and invalid form submissions. Also provides forms for linked
     entities like categories and cloth types.
     """
+
+    required_permission = "inventory.add_product"
 
     template_name = "inventory/product/form.html"
     form_class = ProductForm
@@ -181,13 +186,15 @@ class CreateProduct(CreateView):
         )
 
 
-class EditProduct(UpdateView):
+class EditProduct(PermissionRequiredMixin, UpdateView):
     """
     View for editing an existing product.
 
     Handles the updating of product attributes and provides additional
     forms for managing related fields such as category and units.
     """
+
+    required_permission = "inventory.change_product"
 
     template_name = "inventory/product/form.html"
     form_class = ProductForm
