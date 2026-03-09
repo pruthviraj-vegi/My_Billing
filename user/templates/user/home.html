@@ -13,18 +13,24 @@
                 <i class="fas fa-user-clock"></i>
                 Sessions
             </a>
-            <a href="{% url 'user:logins' %}" class="btn">
-                <i class="fas fa-sign-in-alt"></i>
-                Login Activity
-            </a>
-            <a href="{% url 'user:unauthorized' %}" class="btn">
-                <i class="fas fa-shield-alt text-danger"></i>
-                Unauthorized Access
-            </a>
-            <a href="{% url 'user:create' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                New User
-            </a>
+            {% if perms.user.view_loginevent %}
+                <a href="{% url 'user:logins' %}" class="btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Login Activity
+                </a>
+            {% endif %}
+            {% if perms.user.view_unauthorizedaccess %}
+                <a href="{% url 'user:unauthorized' %}" class="btn">
+                    <i class="fas fa-shield-alt text-danger"></i>
+                    Unauthorized Access
+                </a>
+            {% endif %}
+            {% if perms.user.add_customuser %}
+                <a href="{% url 'user:create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    New User
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->

@@ -28,7 +28,7 @@ from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 
-from base.decorators import require_permission, PermissionRequiredMixin
+from base.decorators import required_permission, RequiredPermissionMixin
 
 from base.utility import render_paginated_response, table_sorting
 from invoice.models import Invoice, ReturnInvoice
@@ -52,7 +52,7 @@ VALID_SORT_FIELDS = {
 }
 
 
-@require_permission("customer.view_customercreditsummary")
+@required_permission("customer.view_customercreditsummary")
 def home(request):
     """Credit management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -133,7 +133,7 @@ def credit_customers_data(request):
     return customers
 
 
-@require_permission("customer.view_customercreditsummary")
+@required_permission("customer.view_customercreditsummary")
 def fetch_credits(request):
     """AJAX endpoint to fetch credit customers with search, filter, and pagination."""
     customers = credit_customers_data(request)
@@ -363,7 +363,7 @@ def _build_ledger_rows(customer, start_date=None, end_date=None):
     return rows
 
 
-@require_permission("customer.view_customercreditsummary")
+@required_permission("customer.view_customercreditsummary")
 def fetch_credit_ledger(request, customer_id: int):
     """AJAX: fetch credit ledger entries for a customer with pagination and optional sorting."""
     customer = get_object_or_404(Customer, pk=customer_id)
@@ -416,7 +416,7 @@ def fetch_credit_ledger(request, customer_id: int):
     )
 
 
-@require_permission("customer.view_customercreditsummary")
+@required_permission("customer.view_customercreditsummary")
 def credit_detail(request, customer_id: int):
     """Render the credit detail page for a customer with ledger totals and allocation summary."""
     template = "credit/detail.html"
@@ -454,7 +454,7 @@ def credit_detail(request, customer_id: int):
     return render(request, template, context)
 
 
-class PaymentCreateView(PermissionRequiredMixin, CreateView):
+class PaymentCreateView(RequiredPermissionMixin, CreateView):
     """CBV to create a new payment record for a customer, with auto-allocation via signals."""
 
     template_name = "credit/form.html"
@@ -506,7 +506,7 @@ class PaymentCreateView(PermissionRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
-class PaymentUpdateView(PermissionRequiredMixin, UpdateView):
+class PaymentUpdateView(RequiredPermissionMixin, UpdateView):
     """CBV to update an existing payment record for a customer."""
 
     template_name = "credit/form.html"

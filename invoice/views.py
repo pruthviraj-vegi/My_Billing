@@ -20,7 +20,7 @@ from base.utility import (
     render_paginated_response,
     table_sorting,
 )
-from base.decorators import require_permission, PermissionRequiredMixin
+from base.decorators import required_permission, RequiredPermissionMixin
 
 from cart.models import Cart
 from customer.forms import CustomerForm
@@ -35,14 +35,14 @@ from invoice.models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceIte
 logger = logging.getLogger(__name__)
 
 
-@require_permission("invoice.view_dashboard")
+@required_permission("invoice.view_dashboard")
 def invoice_dashboard(request):
     """Invoice dashboard with date filtering and metrics"""
 
     return render(request, "invoice/dashboard.html")
 
 
-@require_permission("invoice.view_dashboard")
+@required_permission("invoice.view_dashboard")
 def invoice_dashboard_fetch(request):
     """
     AJAX endpoint to fetch dashboard data
@@ -592,7 +592,7 @@ VALID_SORT_FIELDS = {
 }
 
 
-@require_permission("invoice.view_invoice")
+@required_permission("invoice.view_invoice")
 def invoice_home(request):
     """Invoice management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -670,7 +670,7 @@ def get_data(request):
     return invoices
 
 
-@require_permission("invoice.view_invoice")
+@required_permission("invoice.view_invoice")
 def fetch_invoices(request):
     """AJAX endpoint to fetch invoices with search, filter, and pagination."""
     invoices = get_data(request)
@@ -682,7 +682,7 @@ def fetch_invoices(request):
     )
 
 
-class CreateInvoice(PermissionRequiredMixin, View):
+class CreateInvoice(RequiredPermissionMixin, View):
     """Create a new invoice from a cart."""
 
     template_name = "invoice/form.html"
@@ -760,7 +760,7 @@ class CreateInvoice(PermissionRequiredMixin, View):
             return render(request, self.template_name, context)
 
 
-class InvoiceDetail(PermissionRequiredMixin, View):
+class InvoiceDetail(RequiredPermissionMixin, View):
     """Display detailed view of a single invoice."""
 
     template_name = "invoice/detail.html"
@@ -830,7 +830,7 @@ class InvoiceDetail(PermissionRequiredMixin, View):
         return render(request, self.template_name, context)
 
 
-class InvoiceEdit(PermissionRequiredMixin, View):
+class InvoiceEdit(RequiredPermissionMixin, View):
     """Edit an existing invoice."""
 
     template_name = "invoice/form.html"
@@ -887,7 +887,7 @@ class InvoiceEdit(PermissionRequiredMixin, View):
         return render(request, self.template_name, context)
 
 
-class InvoiceDelete(PermissionRequiredMixin, View):
+class InvoiceDelete(RequiredPermissionMixin, View):
     """Delete an invoice."""
 
     required_permission = "invoice.delete_invoice"

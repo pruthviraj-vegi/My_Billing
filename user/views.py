@@ -9,7 +9,6 @@ from datetime import datetime
 from decimal import Decimal
 
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
 from django.db.models import Exists, OuterRef, Q, Sum
@@ -22,6 +21,9 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 from base.getDates import getDates
 from base.utility import render_paginated_response, table_sorting
+
+from base.decorators import RequiredPermissionMixin, required_permission
+
 from invoice.models import Invoice, InvoiceItem
 
 from .forms import CustomUserForm, PasswordResetForm, SalaryForm, TransactionForm
@@ -41,6 +43,7 @@ VALID_SORT_FIELDS = {
 USERS_PER_PAGE = 20
 
 
+@required_permission("user.view_customuser")
 def home(request):
     """User management main page - initial load only."""
     # For initial page load, just render the template with empty data
@@ -95,6 +98,7 @@ def get_data(request):
     return users
 
 
+@required_permission("user.view_customuser")
 def fetch_users(request):
     """AJAX endpoint to fetch users with search, filter, and pagination."""
     users = get_data(request)
@@ -106,9 +110,10 @@ def fetch_users(request):
     )
 
 
-class CreateUser(CreateView):
+class CreateUser(RequiredPermissionMixin, CreateView):
     """View to create a new user."""
 
+    required_permission = "user.add_customuser"
     model = User
     form_class = CustomUserForm
     template_name = "user/form.html"
@@ -134,9 +139,10 @@ class CreateUser(CreateView):
         return super().form_invalid(form)
 
 
-class EditUser(UpdateView):
+class EditUser(RequiredPermissionMixin, UpdateView):
     """View to edit an existing user."""
 
+    required_permission = "user.change_customuser"
     model = User
     form_class = CustomUserForm
     template_name = "user/form.html"
@@ -158,9 +164,10 @@ class EditUser(UpdateView):
         return super().form_invalid(form)
 
 
-class DeleteUser(DeleteView):
+class DeleteUser(RequiredPermissionMixin, DeleteView):
     """View to delete a user."""
 
+    required_permission = "user.delete_customuser"
     model = User
     template_name = "user/delete.html"
 
@@ -187,12 +194,11 @@ class DeleteUser(DeleteView):
         return super().form_invalid(form)
 
 
+@required_permission("user.view_customuser")
 def user_detail(request, pk):
     """View user details."""
     user = get_object_or_404(User, id=pk)
-    recent_logins = LoginEvent.objects.filter(
-        user=user, event_type=LoginEvent.EventType.LOGIN
-    )[:10]
+
     salaries = user.salaries.all()[:50]  # Last 50 salary records
     transactions = user.transactions.all().order_by("-date")[
         :50
@@ -229,7 +235,6 @@ def user_detail(request, pk):
         "user/detail.html",
         {
             "user": user,
-            "recent_logins": recent_logins,
             "salaries": salaries,
             "transactions": transactions,
             "current_salary": current_salary,
@@ -242,6 +247,7 @@ def user_detail(request, pk):
     )
 
 
+@required_permission("user.delete_customuser")
 def user_delete(request, user_id):
     """Delete user."""
     if request.method == "POST":
@@ -284,6 +290,7 @@ def search_users_ajax(request):
     return JsonResponse({"users": data})
 
 
+@required_permission("user.change_customuser")
 def change_user_status(request, user_id):
     """Toggle user active/inactive status."""
     if request.method == "POST":
@@ -299,12 +306,14 @@ def change_user_status(request, user_id):
     return redirect("user:home")
 
 
+@required_permission("user.view_loginevent")
 def logins_overview(request):
     """View an overview of recent login events."""
     events = LoginEvent.objects.select_related("user").all()[:500]
     return render(request, "user/logins.html", {"events": events})
 
 
+@required_permission("user.view_unauthorizedaccess")
 def unauthorized_overview(request):
     """View an overview of recent unauthorized access attempts."""
     events = UnauthorizedAccess.objects.select_related("user").all()[:500]
@@ -361,7 +370,6 @@ def sessions_overview(request):
     return render(request, "user/sessions.html", context)
 
 
-@staff_member_required
 @require_POST
 def invalidate_all_sessions(request):
     """Invalidate all active sessions (logs everyone out)."""
@@ -373,7 +381,6 @@ def invalidate_all_sessions(request):
     return redirect("user:sessions")
 
 
-@staff_member_required
 @require_POST
 def invalidate_session(request, session_key):
     """Invalidate a specific session by key."""
@@ -386,6 +393,7 @@ def invalidate_session(request, session_key):
     return redirect("user:sessions")
 
 
+@required_permission("user.change_customuser")
 def reset_user_password(request, user_id):
     """Reset password for a specific user."""
     user = get_object_or_404(User, id=user_id)
@@ -415,6 +423,7 @@ def reset_user_password(request, user_id):
 # ==================== SALARY CRUD ====================
 
 
+@required_permission("user.add_salary")
 def salary_create(request, user_id):
     """Create a new salary record for a user."""
     user = get_object_or_404(User, id=user_id)
@@ -445,6 +454,7 @@ def salary_create(request, user_id):
     return render(request, "user/salary/form.html", context)
 
 
+@required_permission("user.change_salary")
 def salary_edit(request, user_id, salary_id):
     """Edit an existing salary record."""
     user = get_object_or_404(User, id=user_id)
@@ -468,6 +478,7 @@ def salary_edit(request, user_id, salary_id):
     return render(request, "user/salary/form.html", context)
 
 
+@required_permission("user.delete_salary")
 def salary_delete(request, user_id, salary_id):
     """Delete a salary record."""
     user = get_object_or_404(User, id=user_id)
@@ -485,6 +496,7 @@ def salary_delete(request, user_id, salary_id):
 # ==================== TRANSACTION CRUD ====================
 
 
+@required_permission("user.add_transaction")
 def transaction_create(request, user_id):
     """Create a new transaction for a user."""
     user = get_object_or_404(User, id=user_id)
@@ -509,6 +521,7 @@ def transaction_create(request, user_id):
     return render(request, "user/transaction/form.html", context)
 
 
+@required_permission("user.change_transaction")
 def transaction_edit(request, user_id, transaction_id):
     """Edit an existing transaction."""
     user = get_object_or_404(User, id=user_id)
@@ -532,6 +545,7 @@ def transaction_edit(request, user_id, transaction_id):
     return render(request, "user/transaction/form.html", context)
 
 
+@required_permission("user.delete_transaction")
 def transaction_delete(request, user_id, transaction_id):
     """Delete a transaction."""
     user = get_object_or_404(User, id=user_id)

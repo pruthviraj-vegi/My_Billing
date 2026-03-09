@@ -10,18 +10,18 @@ from base.getDates import getDates
 from base.utility import render_paginated_response
 from invoice.models import Invoice, ReturnInvoice
 
-from base.decorators import require_permission
+from base.decorators import required_permission
 
 logger = logging.getLogger(__name__)
 
 
-@require_permission("invoice.view_audits")
+@required_permission("invoice.view_audits")
 def invoice_report(request):
     """Render the invoice report main page."""
     return render(request, "invoice_report/main.html")
 
 
-@require_permission("invoice.view_audits")
+@required_permission("invoice.view_audits")
 def get_invoice_report_data(date_range):
     """Get GST invoices within the given date range."""
     invoices = Invoice.objects.select_related("customer").filter(
@@ -31,7 +31,7 @@ def get_invoice_report_data(date_range):
     return invoices
 
 
-@require_permission("invoice.view_audits")
+@required_permission("invoice.view_audits")
 def get_invoice_cancled_data(date_range):
     """Get cancelled GST invoices within the given date range."""
     invoices = Invoice.objects.select_related("customer").filter(
@@ -42,7 +42,7 @@ def get_invoice_cancled_data(date_range):
     return invoices
 
 
-@require_permission("invoice.view_audits")
+@required_permission("invoice.view_audits")
 def get_invoice_return_data(date_range):
     """Get approved GST return invoices within the given date range."""
     invoices = ReturnInvoice.objects.select_related("invoice__customer").filter(
@@ -54,7 +54,7 @@ def get_invoice_return_data(date_range):
     return invoices
 
 
-@require_permission("invoice.view_audits")
+@required_permission("invoice.view_audits")
 def invoice_report_fetch(request):
     """AJAX endpoint to fetch invoice report data."""
     start_date, end_date = getDates(request)
@@ -69,7 +69,7 @@ def invoice_report_fetch(request):
     )
 
 
-@require_permission("invoice.view_audits")
+@required_permission("invoice.view_audits")
 def invoice_cancled_report_fetch(request):
     """AJAX endpoint to fetch cancelled invoice report data."""
     start_date, end_date = getDates(request)
@@ -84,7 +84,7 @@ def invoice_cancled_report_fetch(request):
     )
 
 
-@require_permission("invoice.view_audits")
+@required_permission("invoice.view_audits")
 def invoice_return_report_fetch(request):
     """AJAX endpoint to fetch return invoice report data."""
     start_date, end_date = getDates(request)

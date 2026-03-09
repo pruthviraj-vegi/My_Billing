@@ -169,7 +169,7 @@
             </div>
          </li>
       {% endif %}
-      {% if perms.user.view_customuser %}
+      {% if perms.user.view_customuser or perms.user.view_loginevent or perms.user.view_unauthorizedaccess %}
          <li class="nav-item">
             <a href="#"
                class="nav-link {% if 'user' in request.resolver_match.namespace %}active{% endif %}">
@@ -177,16 +177,26 @@
                <span>Users</span>
             </a>
             <div class="dropdown-menu">
-               <a href="{% url 'user:home' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">All Users</a>
-               <a href="{% url 'user:create' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add User</a>
-               <a href="{% url 'user:sessions' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'sessions' %}active{% endif %}">Sessions</a>
-               <a href="{% url 'user:logins' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'logins' %}active{% endif %}">Login Activity</a>
-               <a href="{% url 'user:unauthorized' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'unauthorized' %}active{% endif %}">Unauthorized Activity</a>
+               {% if perms.user.view_customuser %}
+                  <a href="{% url 'user:home' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">All Users</a>
+               {% endif %}
+               {% if perms.user.add_customuser %}
+                  <a href="{% url 'user:create' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add User</a>
+               {% endif %}
+               {% if perms.user.view_session %}
+                  <a href="{% url 'user:sessions' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'sessions' %}active{% endif %}">Sessions</a>
+               {% endif %}
+               {% if perms.user.view_loginevent %}
+                  <a href="{% url 'user:logins' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'logins' %}active{% endif %}">Login Activity</a>
+               {% endif %}
+               {% if perms.user.view_unauthorizedaccess %}
+                  <a href="{% url 'user:unauthorized' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'unauthorized' %}active{% endif %}">Unauthorized Activity</a>
+               {% endif %}
             </div>
          </li>
       {% endif %}

@@ -27,7 +27,7 @@ from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 
-from base.decorators import require_permission, PermissionRequiredMixin
+from base.decorators import required_permission, RequiredPermissionMixin
 
 from base.getDates import getDates
 from base.utility import (
@@ -64,7 +64,7 @@ def get_total_outstanding_balance():
     return (total_all_invoiced - total_all_paid).quantize(Decimal("0.01"))
 
 
-@require_permission("supplier.view_dashboard")
+@required_permission("supplier.view_dashboard")
 def dashboard(request):
     """Supplier management dashboard with analytics and insights."""
 
@@ -214,7 +214,7 @@ def get_period_data(
         ]
 
 
-@require_permission("supplier.view_dashboard")
+@required_permission("supplier.view_dashboard")
 def dashboard_fetch(request):
     """
     AJAX endpoint to fetch supplier dashboard data
@@ -401,7 +401,7 @@ def dashboard_fetch(request):
     )
 
 
-@require_permission("supplier.view_supplier")
+@required_permission("supplier.view_supplier")
 def home(request):
     """Supplier management main page with search and filter functionality."""
 
@@ -527,7 +527,7 @@ def get_suppliers_data(request):
     return suppliers.order_by(*sort_fields)
 
 
-@require_permission("supplier.view_supplier")
+@required_permission("supplier.view_supplier")
 def fetch_suppliers(request):
     """AJAX endpoint to fetch suppliers with search, filter, sorting, and pagination."""
 
@@ -541,7 +541,7 @@ def fetch_suppliers(request):
     )
 
 
-@require_permission("supplier.view_supplierinvoice")
+@required_permission("supplier.view_supplierinvoice")
 def fetch_supplier_invoices(request, pk):
     """AJAX: fetch invoices for a supplier with pagination and optional sorting."""
     supplier = get_object_or_404(Supplier, id=pk)
@@ -567,7 +567,7 @@ def fetch_supplier_invoices(request, pk):
     )
 
 
-@require_permission("supplier.view_supplierpayment")
+@required_permission("supplier.view_supplierpayment")
 def fetch_supplier_payments(request, pk):
     """AJAX: fetch payments for a supplier with pagination and optional sorting."""
     supplier = get_object_or_404(Supplier, id=pk)
@@ -593,7 +593,7 @@ def fetch_supplier_payments(request, pk):
     )
 
 
-@require_permission("supplier.view_supplier")
+@required_permission("supplier.view_supplier")
 def supplier_detail(request, pk):
     """
     View supplier details with invoices and payments tables.
@@ -653,7 +653,7 @@ def supplier_detail(request, pk):
     return render(request, "supplier/detail.html", context)
 
 
-@require_permission("supplier.delete_supplierinvoice")
+@required_permission("supplier.delete_supplierinvoice")
 def delete_invoice(request, supplier_pk, invoice_pk):
     """Delete an invoice."""
     supplier = get_object_or_404(Supplier, id=supplier_pk)
@@ -670,7 +670,7 @@ def delete_invoice(request, supplier_pk, invoice_pk):
     return render(request, "supplier/invoice/delete.html", context)
 
 
-class CreateSupplier(PermissionRequiredMixin, CreateView):
+class CreateSupplier(RequiredPermissionMixin, CreateView):
     """View to create a new supplier."""
 
     model = Supplier
@@ -696,7 +696,7 @@ class CreateSupplier(PermissionRequiredMixin, CreateView):
         return context
 
 
-class EditSupplier(PermissionRequiredMixin, UpdateView):
+class EditSupplier(RequiredPermissionMixin, UpdateView):
     """View to edit an existing supplier."""
 
     model = Supplier
@@ -721,7 +721,7 @@ class EditSupplier(PermissionRequiredMixin, UpdateView):
         return super().form_invalid(form)
 
 
-class DeleteSupplier(PermissionRequiredMixin, DeleteView):
+class DeleteSupplier(RequiredPermissionMixin, DeleteView):
     """View to delete an existing supplier."""
 
     model = Supplier
@@ -746,7 +746,7 @@ class DeleteSupplier(PermissionRequiredMixin, DeleteView):
 
 
 # Payment Views
-class CreatePayment(PermissionRequiredMixin, CreateView):
+class CreatePayment(RequiredPermissionMixin, CreateView):
     """View to record a payment made to a supplier."""
 
     model = SupplierPayment
@@ -789,7 +789,7 @@ class CreatePayment(PermissionRequiredMixin, CreateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class EditPayment(PermissionRequiredMixin, UpdateView):
+class EditPayment(RequiredPermissionMixin, UpdateView):
     """View to edit a payment record."""
 
     model = SupplierPayment
@@ -844,7 +844,7 @@ class EditPayment(PermissionRequiredMixin, UpdateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class CreateInvoice(PermissionRequiredMixin, CreateView):
+class CreateInvoice(RequiredPermissionMixin, CreateView):
     """View to create a new supplier invoice."""
 
     model = SupplierInvoice
@@ -887,7 +887,7 @@ class CreateInvoice(PermissionRequiredMixin, CreateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class EditInvoice(PermissionRequiredMixin, UpdateView):
+class EditInvoice(RequiredPermissionMixin, UpdateView):
     """View to edit an existing supplier invoice."""
 
     model = SupplierInvoice
@@ -930,7 +930,7 @@ class EditInvoice(PermissionRequiredMixin, UpdateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-@require_permission("supplier.delete_supplierpayment")
+@required_permission("supplier.delete_supplierpayment")
 def delete_payment(request, supplier_pk, payment_pk):
     """Delete a payment."""
     supplier = get_object_or_404(Supplier, id=supplier_pk)

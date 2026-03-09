@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import CreateView, UpdateView
 
-from base.decorators import PermissionRequiredMixin, require_permission
+from base.decorators import RequiredPermissionMixin, required_permission
 from base.utility import render_paginated_response, table_sorting
 
 from .forms import (
@@ -50,7 +50,7 @@ VALID_SORT_FIELDS = {
 VARIANTS_PER_PAGE = 20
 
 
-@require_permission("inventory.view_productvariant")
+@required_permission("inventory.view_productvariant")
 def variant_home(request):
     """Product variant management main page - initial load only."""
     # Get filter options for the template
@@ -153,7 +153,7 @@ def get_variants_data(request):
     return variants
 
 
-@require_permission("inventory.view_productvariant")
+@required_permission("inventory.view_productvariant")
 def total_inventory_value(request) -> float:
     """Calculate total inventory value."""
     total_value = ProductVariant.objects.aggregate(
@@ -176,7 +176,7 @@ def fetch_variants(request):
     )
 
 
-@require_permission("inventory.view_productvariant")
+@required_permission("inventory.view_productvariant")
 def variant_details(request, variant_id):
     """Detailed view for a single product variant with stock management options"""
 
@@ -224,7 +224,7 @@ def recent_variants_logs(request, variant_id):
     )
 
 
-class CreateProductVariant(PermissionRequiredMixin, CreateView):
+class CreateProductVariant(RequiredPermissionMixin, CreateView):
     """View to create a new product variant"""
 
     required_permission = "inventory.add_productvariant"
@@ -436,7 +436,7 @@ class CreateProductVariant(PermissionRequiredMixin, CreateView):
         return value
 
 
-class EditProductVariant(PermissionRequiredMixin, UpdateView):
+class EditProductVariant(RequiredPermissionMixin, UpdateView):
     """View to edit an existing product variant"""
 
     required_permission = "inventory.change_productvariant"
@@ -511,7 +511,7 @@ class EditProductVariant(PermissionRequiredMixin, UpdateView):
         )
 
 
-class StockInCreate(PermissionRequiredMixin, CreateView):
+class StockInCreate(RequiredPermissionMixin, CreateView):
     """View to process stock in operations for a variant"""
 
     required_permission = "inventory.add_inventorylog"
@@ -625,7 +625,7 @@ class StockInCreate(PermissionRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
-class AdjustmentInCreate(PermissionRequiredMixin, CreateView):
+class AdjustmentInCreate(RequiredPermissionMixin, CreateView):
     """View to process adjustment in operations for a variant"""
 
     required_permission = "inventory.add_inventorylog"
@@ -717,7 +717,7 @@ class AdjustmentInCreate(PermissionRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
-class AdjustmentOutCreate(PermissionRequiredMixin, CreateView):
+class AdjustmentOutCreate(RequiredPermissionMixin, CreateView):
     """View to process adjustment out operations for a variant"""
 
     required_permission = "inventory.add_inventorylog"
@@ -808,7 +808,7 @@ class AdjustmentOutCreate(PermissionRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
-class DamageCreate(PermissionRequiredMixin, CreateView):
+class DamageCreate(RequiredPermissionMixin, CreateView):
     """View to process damage out operations for a variant"""
 
     required_permission = "inventory.add_inventorylog"

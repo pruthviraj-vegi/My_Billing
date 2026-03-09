@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
 
-from base.decorators import PermissionRequiredMixin, require_permission
+from base.decorators import RequiredPermissionMixin, required_permission
 from base.utility import render_paginated_response, table_sorting
 
 from .models import Product, ProductVariant
@@ -31,7 +31,7 @@ VALID_SORT_FIELDS = {
 }
 
 
-@require_permission("inventory.view_product")
+@required_permission("inventory.view_product")
 def product_home(request):
     """Product management main page - initial load only."""
     # Get filter options for the template
@@ -88,7 +88,7 @@ def fetch_products(request):
     )
 
 
-@require_permission("inventory.view_product")
+@required_permission("inventory.view_product")
 def product_details(request, product_id):
     """Display detailed product information with variants and statistics"""
 
@@ -146,7 +146,7 @@ def product_details(request, product_id):
     return render(request, "inventory/product/details.html", context)
 
 
-class CreateProduct(PermissionRequiredMixin, CreateView):
+class CreateProduct(RequiredPermissionMixin, CreateView):
     """
     View for creating a new product.
 
@@ -186,7 +186,7 @@ class CreateProduct(PermissionRequiredMixin, CreateView):
         )
 
 
-class EditProduct(PermissionRequiredMixin, UpdateView):
+class EditProduct(RequiredPermissionMixin, UpdateView):
     """
     View for editing an existing product.
 

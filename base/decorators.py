@@ -84,10 +84,10 @@ def _log_unauthorized_access(request, view_name, allowed_roles):
     )
 
 
-def require_permission(perm):
+def required_permission(perm):
     """
     Usage:
-        @require_permission('invoice.add_invoice')
+        @required_permission('invoice.add_invoice')
         def create_invoice(request): ...
     """
 
@@ -104,10 +104,10 @@ def require_permission(perm):
     return decorator
 
 
-class PermissionRequiredMixin:
+class RequiredPermissionMixin:
     """
     Usage:
-        class EditInvoiceView(PermissionRequiredMixin, UpdateView):
+        class EditInvoiceView(RequiredPermissionMixin, UpdateView):
             required_permission = 'invoice.change_invoice'
     """
 

@@ -13,35 +13,39 @@
         <i class="fas fa-arrow-left"></i>
         Back
       </a>
-      <a href="{% url 'user:edit' user.id %}" class="btn btn-primary">
-        <i class="fas fa-edit"></i>
-        Edit User
-      </a>
-      <a href="{% url 'user:reset_password' user.id %}"
-         class="btn btn-warning">
-        <i class="fas fa-key"></i>
-        Reset Password
-      </a>
-      {% if user.is_active %}
-        <form method="post"
-              action="{% url 'user:change_status' user.id %}"
-              class="d-inline">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-warning">
-            <i class="fas fa-user-slash"></i>
-            Deactivate
-          </button>
-        </form>
-      {% else %}
-        <form method="post"
-              action="{% url 'user:change_status' user.id %}"
-              class="d-inline">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-success">
-            <i class="fas fa-user-check"></i>
-            Activate
-          </button>
-        </form>
+      {% if perms.user.change_customuser %}
+        <a href="{% url 'user:edit' user.id %}" class="btn btn-primary">
+          <i class="fas fa-edit"></i>
+          Edit User
+        </a>
+      {% endif %}
+      {% if perms.user.change_customuser %}
+        <a href="{% url 'user:reset_password' user.id %}"
+           class="btn btn-warning">
+          <i class="fas fa-key"></i>
+          Reset Password
+        </a>
+        {% if user.is_active %}
+          <form method="post"
+                action="{% url 'user:change_status' user.id %}"
+                class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning">
+              <i class="fas fa-user-slash"></i>
+              Deactivate
+            </button>
+          </form>
+        {% else %}
+          <form method="post"
+                action="{% url 'user:change_status' user.id %}"
+                class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-user-check"></i>
+              Activate
+            </button>
+          </form>
+        {% endif %}
       {% endif %}
     </div>
   </div>
@@ -199,11 +203,13 @@
           <h3>
             <i class="fas fa-money-bill-wave"></i> Salary History
           </h3>
-          <a href="{% url 'user:salary_create' user.id %}"
-             class="btn btn-sm btn-primary">
-            <i class="fas fa-plus"></i>
-            Add Salary
-          </a>
+          {% if perms.user.add_salary %}
+            <a href="{% url 'user:salary_create' user.id %}"
+               class="btn btn-sm btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Salary
+            </a>
+          {% endif %}
         </div>
         <div class="table-container">
           {% if salaries %}
@@ -240,16 +246,20 @@
                     <td>{{ salary.created_at|date:"M d, Y" }}</td>
                     <td>
                       <div class="action-buttons">
-                        <a href="{% url 'user:salary_edit' user.id salary.id %}"
-                           class="btn btn-sm btn-outline"
-                           title="Edit">
-                          <i class="fas fa-edit"></i>
-                        </a>
-                        <a href="{% url 'user:salary_delete' user.id salary.id %}"
-                           class="btn btn-sm btn-danger"
-                           title="Delete">
-                          <i class="fas fa-trash"></i>
-                        </a>
+                        {% if perms.user.change_salary %}
+                          <a href="{% url 'user:salary_edit' user.id salary.id %}"
+                             class="btn btn-sm btn-outline"
+                             title="Edit">
+                            <i class="fas fa-edit"></i>
+                          </a>
+                        {% endif %}
+                        {% if perms.user.delete_salary %}
+                          <a href="{% url 'user:salary_delete' user.id salary.id %}"
+                             class="btn btn-sm btn-danger"
+                             title="Delete">
+                            <i class="fas fa-trash"></i>
+                          </a>
+                        {% endif %}
                       </div>
                     </td>
                   </tr>
@@ -259,10 +269,12 @@
           {% else %}
             <div class="text-center p-4">
               <p class="text-muted">No salary records found.</p>
-              <a href="{% url 'user:salary_create' user.id %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                Add First Salary
-              </a>
+              {% if perms.user.add_salary %}
+                <a href="{% url 'user:salary_create' user.id %}" class="btn btn-primary">
+                  <i class="fas fa-plus"></i>
+                  Add First Salary
+                </a>
+              {% endif %}
             </div>
           {% endif %}
         </div>
@@ -273,11 +285,13 @@
           <h3>
             <i class="fas fa-exchange-alt"></i> Transactions
           </h3>
-          <a href="{% url 'user:transaction_create' user.id %}"
-             class="btn btn-sm btn-primary">
-            <i class="fas fa-plus"></i>
-            Add Transaction
-          </a>
+          {% if perms.user.add_transaction %}
+            <a href="{% url 'user:transaction_create' user.id %}"
+               class="btn btn-sm btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Transaction
+            </a>
+          {% endif %}
         </div>
         <div class="table-container">
           {% if transactions %}
@@ -310,16 +324,20 @@
                     <td>{{ transaction.date|date:"M d, Y" }}</td>
                     <td>
                       <div class="action-buttons">
-                        <a href="{% url 'user:transaction_edit' user.id transaction.id %}"
-                           class="btn btn-sm btn-outline"
-                           title="Edit">
-                          <i class="fas fa-edit"></i>
-                        </a>
-                        <a href="{% url 'user:transaction_delete' user.id transaction.id %}"
-                           class="btn btn-sm btn-danger"
-                           title="Delete">
-                          <i class="fas fa-trash"></i>
-                        </a>
+                        {% if perms.user.change_transaction %}
+                          <a href="{% url 'user:transaction_edit' user.id transaction.id %}"
+                             class="btn btn-sm btn-outline"
+                             title="Edit">
+                            <i class="fas fa-edit"></i>
+                          </a>
+                        {% endif %}
+                        {% if perms.user.delete_transaction %}
+                          <a href="{% url 'user:transaction_delete' user.id transaction.id %}"
+                             class="btn btn-sm btn-danger"
+                             title="Delete">
+                            <i class="fas fa-trash"></i>
+                          </a>
+                        {% endif %}
                       </div>
                     </td>
                   </tr>
@@ -329,11 +347,13 @@
           {% else %}
             <div class="text-center p-4">
               <p class="text-muted">No transactions found.</p>
-              <a href="{% url 'user:transaction_create' user.id %}"
-                 class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                Add First Transaction
-              </a>
+              {% if perms.user.add_transaction %}
+                <a href="{% url 'user:transaction_create' user.id %}"
+                   class="btn btn-primary">
+                  <i class="fas fa-plus"></i>
+                  Add First Transaction
+                </a>
+              {% endif %}
             </div>
           {% endif %}
         </div>

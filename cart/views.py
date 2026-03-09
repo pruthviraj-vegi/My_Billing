@@ -18,7 +18,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, TemplateView, UpdateView
 
-from base.decorators import require_permission, PermissionRequiredMixin
+from base.decorators import required_permission, RequiredPermissionMixin
 
 from base.utility import render_paginated_response
 from inventory.models import BarcodeMapping, FavoriteVariant, ProductVariant
@@ -30,7 +30,7 @@ from .models import Cart, CartItem
 logger = logging.getLogger(__name__)
 
 
-class CartMainPageView(PermissionRequiredMixin, TemplateView):
+class CartMainPageView(RequiredPermissionMixin, TemplateView):
     """Template view to render the main cart management page"""
 
     template_name = "cart/main_page.html"
@@ -55,7 +55,7 @@ class CartMainPageView(PermissionRequiredMixin, TemplateView):
         return context
 
 
-@require_permission("cart.view_cart")
+@required_permission("cart.view_cart")
 def get_cart_data(request, pk):
     """
     Retrieve and display data for a specific cart along with other open carts.
@@ -109,7 +109,7 @@ def get_cart_data(request, pk):
     return render(request, template_name, context)
 
 
-class CreateCart(PermissionRequiredMixin, CreateView):
+class CreateCart(RequiredPermissionMixin, CreateView):
     """
     View for creating a new Cart instance.
 
@@ -159,7 +159,7 @@ class CreateCart(PermissionRequiredMixin, CreateView):
         return reverse("cart:get_cart_data", kwargs={"pk": self.object.id})
 
 
-class EditCart(PermissionRequiredMixin, UpdateView):
+class EditCart(RequiredPermissionMixin, UpdateView):
     """
     View for editing an existing Cart instance.
 
@@ -196,7 +196,7 @@ class EditCart(PermissionRequiredMixin, UpdateView):
         return reverse("cart:get_cart_data", kwargs={"pk": self.object.id})
 
 
-@require_permission("cart.view_cart")
+@required_permission("cart.view_cart")
 def auto_cart_create(request):
     """
     Automatically create a new cart or redirect to an existing empty open cart.
@@ -250,7 +250,7 @@ def custom_search(request):
 # API Views for Cart Operations
 
 
-@require_permission("cart.add_cartitem")
+@required_permission("cart.add_cartitem")
 @require_http_methods(["POST"])
 def scan_barcode(request):
     """
@@ -473,7 +473,7 @@ def manage_cart_item(request, item_id):
         )
 
 
-@require_permission("cart.change_cart")
+@required_permission("cart.change_cart")
 @require_http_methods(["POST"])
 def archive_cart(request, cart_id):
     """
@@ -497,7 +497,7 @@ def archive_cart(request, cart_id):
         )
 
 
-@require_permission("cart.delete_cartitem")
+@required_permission("cart.delete_cartitem")
 @require_http_methods(["POST"])
 def clear_cart(request, cart_id):
     """

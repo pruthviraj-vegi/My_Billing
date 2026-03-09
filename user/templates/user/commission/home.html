@@ -25,10 +25,12 @@
         <i class="fas fa-arrow-left"></i>
         Back
       </a>
-      <a href="{% url 'user:edit' user.id %}" class="btn btn-primary">
-        <i class="fas fa-edit"></i>
-        Edit User
-      </a>
+      {% if perms.user.change_user %}
+        <a href="{% url 'user:edit' user.id %}" class="btn btn-primary">
+          <i class="fas fa-edit"></i>
+          Edit User
+        </a>
+      {% endif %}
     </div>
   </div>
   <!-- Breadcrumb Navigation -->

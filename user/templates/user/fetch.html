@@ -55,28 +55,36 @@
             <td>{{ user.date_joined|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
-                    <a href="{% url 'user:detail' user.id %}"
-                       class="btn-action btn-view"
-                       title="View Details">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                    <a href="{% url 'user:edit' user.id %}"
-                       class="btn-action btn-edit"
-                       title="Edit User">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    {% if user.commission %}
-                        <a href="{% url 'user:commission' user.id %}"
-                           class="btn-action btn-info"
-                           title="View Commission">
-                            <i class="fas fa-percentage"></i>
+                    {% if perms.user.view_customuser %}
+                        <a href="{% url 'user:detail' user.id %}"
+                           class="btn-action btn-view"
+                           title="View Details">
+                            <i class="fas fa-eye"></i>
                         </a>
                     {% endif %}
-                    <a href="{% url 'user:delete' user.id %}"
-                       class="btn-action btn-delete"
-                       title="Delete User">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                    {% if perms.user.change_customuser %}
+                        <a href="{% url 'user:edit' user.id %}"
+                           class="btn-action btn-edit"
+                           title="Edit User">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    {% endif %}
+                    {% if perms.user.view_salary %}
+                        {% if user.commission %}
+                            <a href="{% url 'user:commission' user.id %}"
+                               class="btn-action btn-info"
+                               title="View Commission">
+                                <i class="fas fa-percentage"></i>
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                    {% if perms.user.delete_customuser %}
+                        <a href="{% url 'user:delete' user.id %}"
+                           class="btn-action btn-delete"
+                           title="Delete User">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    {% endif %}
                 </div>
             </td>
         </tr>
