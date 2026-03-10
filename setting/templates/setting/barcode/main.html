@@ -1,14 +1,18 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
-{% block title %}Barcode Configurations{% endblock %}
+{% block title %}
+    Barcode Configurations
+{% endblock title %}
 {% block content %}
     <div class="page-header">
         <h1 class="page-title">Barcode Configurations</h1>
         <div class="page-actions">
-            <a href="{% url 'setting:barcode_config_create' %}"
-               class="btn btn-primary">
-                <i class="fas fa-plus"></i> Add Configuration
-            </a>
+            {% if perms.setting.view_barcodeconfiguration %}
+                <a href="{% url 'setting:barcode_config_create' %}"
+                   class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Configuration
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->
@@ -84,21 +88,27 @@
                             </td>
                             <td>
                                 <div class="action-buttons">
-                                    <a href="{% url 'setting:barcode_config_detail' config.pk %}"
-                                       class="btn-action btn-view"
-                                       title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'setting:barcode_config_edit' config.pk %}"
-                                       class="btn-action btn-edit"
-                                       title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'setting:barcode_config_delete' config.pk %}"
-                                       class="btn-action btn-delete"
-                                       title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
+                                    {% if perms.setting.view_barcodeconfiguration %}
+                                        <a href="{% url 'setting:barcode_config_detail' config.pk %}"
+                                           class="btn-action btn-view"
+                                           title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.edit_barcodeconfiguration %}
+                                        <a href="{% url 'setting:barcode_config_edit' config.pk %}"
+                                           class="btn-action btn-edit"
+                                           title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.delete_barcodeconfiguration %}
+                                        <a href="{% url 'setting:barcode_config_delete' config.pk %}"
+                                           class="btn-action btn-delete"
+                                           title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -137,4 +147,4 @@
             </div>
         {% endif %}
     </div>
-{% endblock %}
+{% endblock content %}

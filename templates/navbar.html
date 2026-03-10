@@ -200,7 +200,7 @@
             </div>
          </li>
       {% endif %}
-      {% if perms.setting.view_setting %}
+      {% if perms.setting.view_shopdetails or perms.setting.view_reportconfiguration or perms.setting.view_paymentdetails or perms.setting.view_barcodeconfiguration %}
          <li class="nav-item">
             <a href="#"
                class="nav-link {% if 'setting' in request.resolver_match.namespace %}active{% endif %}">
@@ -208,16 +208,24 @@
                <span>Settings</span>
             </a>
             <div class="dropdown-menu">
-               <a href="{% url 'setting:shop_settings_dashboard' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'shop_settings_dashboard' %}active{% endif %}">Settings Dashboard</a>
-               <a href="{% url 'setting:shop_details_list' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'shop_details_list' %}active{% endif %}">Shop Details</a>
-               <a href="{% url 'setting:report_config_list' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'report_config_list' %}active{% endif %}">Report Configs</a>
-               <a href="{% url 'setting:payment_details_list' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'payment_details_list' %}active{% endif %}">Payment Methods</a>
-               <a href="{% url 'setting:barcode_config_list' %}"
-                  class="dropdown-item {% if request.resolver_match.url_name == 'barcode_config_list' %}active{% endif %}">Barcode Configs</a>
+               {% if perms.setting.view_shopdetails %}
+                  <a href="{% url 'setting:shop_settings_dashboard' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'shop_settings_dashboard' %}active{% endif %}">Settings Dashboard</a>
+                  <a href="{% url 'setting:shop_details_list' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'shop_details_list' %}active{% endif %}">Shop Details</a>
+               {% endif %}
+               {% if perms.setting.view_reportconfiguration %}
+                  <a href="{% url 'setting:report_config_list' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'report_config_list' %}active{% endif %}">Report Configs</a>
+               {% endif %}
+               {% if perms.setting.view_paymentdetails %}
+                  <a href="{% url 'setting:payment_details_list' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'payment_details_list' %}active{% endif %}">Payment Methods</a>
+               {% endif %}
+               {% if perms.setting.view_barcodeconfiguration %}
+                  <a href="{% url 'setting:barcode_config_list' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'barcode_config_list' %}active{% endif %}">Barcode Configs</a>
+               {% endif %}
             </div>
          </li>
       {% endif %}

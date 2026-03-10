@@ -11,23 +11,25 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from .forms import (
+from setting.forms import (
     BarcodeConfigurationForm,
     PaymentDetailsForm,
-    QuickReportConfigForm,
     ReportConfigurationForm,
     ShopDetailsForm,
 )
-from .models import (
+from setting.models import (
     BarcodeConfiguration,
     PaymentDetails,
     ReportConfiguration,
     ShopDetails,
 )
 
+from base.decorators import required_permission
+
 logger = logging.getLogger(__name__)
 
 
+@required_permission("setting.view_shopdetails")
 def shop_details_list(request):
     """List all shop details."""
 
@@ -57,9 +59,10 @@ def shop_details_list(request):
         "search_query": search_query,
         "page_title": "Shop Details",
     }
-    return render(request, "setting/shop/shop_details_list.html", context)
+    return render(request, "setting/shop/main.html", context)
 
 
+@required_permission("setting.add_shopdetails")
 def shop_details_create(request):
     """Create new shop details."""
     if request.method == "POST":
@@ -75,9 +78,10 @@ def shop_details_create(request):
         form = ShopDetailsForm()
 
     context = {"form": form, "page_title": "Add Shop Details", "form_action": "Create"}
-    return render(request, "setting/shop/shop_details_form.html", context)
+    return render(request, "setting/shop/form.html", context)
 
 
+@required_permission("setting.change_shopdetails")
 def shop_details_edit(request, pk):
     """Edit existing shop details."""
     shop = get_object_or_404(ShopDetails, pk=pk)
@@ -98,17 +102,19 @@ def shop_details_edit(request, pk):
         "page_title": "Edit Shop Details",
         "form_action": "Update",
     }
-    return render(request, "setting/shop/shop_details_form.html", context)
+    return render(request, "setting/shop/form.html", context)
 
 
+@required_permission("setting.view_shopdetails")
 def shop_details_detail(request, pk):
     """View shop details."""
     shop = get_object_or_404(ShopDetails, pk=pk)
 
     context = {"shop": shop, "page_title": f"Shop Details - {shop.shop_name}"}
-    return render(request, "setting/shop/shop_details_detail.html", context)
+    return render(request, "setting/shop/detail.html", context)
 
 
+@required_permission("setting.delete_shopdetails")
 def shop_details_delete(request, pk):
     """Delete shop details."""
     shop = get_object_or_404(ShopDetails, pk=pk)
@@ -122,9 +128,10 @@ def shop_details_delete(request, pk):
         return redirect("setting:shop_details_list")
 
     context = {"shop": shop, "page_title": f"Delete Shop - {shop.shop_name}"}
-    return render(request, "setting/shop/shop_details_delete.html", context)
+    return render(request, "setting/shop/delete.html", context)
 
 
+@required_permission("setting.view_reportconfiguration")
 def report_config_list(request):
     """List all report configurations."""
 
@@ -154,9 +161,10 @@ def report_config_list(request):
         "search_query": search_query,
         "page_title": "Report Configurations",
     }
-    return render(request, "setting/reports/report_config_list.html", context)
+    return render(request, "setting/reports/main.html", context)
 
 
+@required_permission("setting.add_reportconfiguration")
 def report_config_create(request):
     """Create new report configuration."""
     if request.method == "POST":
@@ -175,9 +183,10 @@ def report_config_create(request):
         "page_title": "Add Report Configuration",
         "form_action": "Create",
     }
-    return render(request, "setting/reports/report_config_form.html", context)
+    return render(request, "setting/reports/form.html", context)
 
 
+@required_permission("setting.change_reportconfiguration")
 def report_config_edit(request, pk):
     """Edit existing report configuration."""
     config = get_object_or_404(ReportConfiguration, pk=pk)
@@ -197,9 +206,10 @@ def report_config_edit(request, pk):
         "page_title": "Edit Report Configuration",
         "form_action": "Update",
     }
-    return render(request, "setting/reports/report_config_form.html", context)
+    return render(request, "setting/reports/form.html", context)
 
 
+@required_permission("setting.view_reportconfiguration")
 def report_config_detail(request, pk):
     """View report configuration."""
     config = get_object_or_404(ReportConfiguration, pk=pk)
@@ -208,9 +218,10 @@ def report_config_detail(request, pk):
         "config": config,
         "page_title": f"Report Configuration - {config.get_report_type_display()}",
     }
-    return render(request, "setting/reports/report_config_detail.html", context)
+    return render(request, "setting/reports/detail.html", context)
 
 
+@required_permission("setting.delete_reportconfiguration")
 def report_config_delete(request, pk):
     """Delete report configuration."""
     config = get_object_or_404(ReportConfiguration, pk=pk)
@@ -229,10 +240,11 @@ def report_config_delete(request, pk):
         "config": config,
         "page_title": f"Delete Configuration - {config.get_report_type_display()}",
     }
-    return render(request, "setting/reports/report_config_delete.html", context)
+    return render(request, "setting/reports/delete.html", context)
 
 
 @require_http_methods(["POST"])
+@required_permission("setting.change_reportconfiguration")
 def set_default_config(request, pk):
     """Set a configuration as default for its report type."""
     config = get_object_or_404(ReportConfiguration, pk=pk)
@@ -282,9 +294,10 @@ def shop_settings_dashboard(request):
         "default_configs": default_configs,
         "page_title": "Shop & Report Settings",
     }
-    return render(request, "setting/shop/shop_settings_dashboard.html", context)
+    return render(request, "setting/dashboard.html", context)
 
 
+@required_permission("setting.view_paymentdetails")
 def payment_details_list(request):
     """List all payment details."""
 
@@ -315,9 +328,10 @@ def payment_details_list(request):
         "search_query": search_query,
         "page_title": "Payment Methods",
     }
-    return render(request, "setting/payment/payment_details_list.html", context)
+    return render(request, "setting/payment/main.html", context)
 
 
+@required_permission("setting.add_paymentdetails")
 def payment_details_create(request):
     """Create new payment details."""
     if request.method == "POST":
@@ -343,9 +357,10 @@ def payment_details_create(request):
         "page_title": "Add Payment Method",
         "form_action": "Create",
     }
-    return render(request, "setting/payment/payment_details_form.html", context)
+    return render(request, "setting/payment/form.html", context)
 
 
+@required_permission("setting.change_paymentdetails")
 def payment_details_edit(request, pk):
     """Edit existing payment details."""
     payment = get_object_or_404(PaymentDetails, pk=pk)
@@ -367,9 +382,10 @@ def payment_details_edit(request, pk):
         "page_title": "Edit Payment Method",
         "form_action": "Update",
     }
-    return render(request, "setting/payment/payment_details_form.html", context)
+    return render(request, "setting/payment/form.html", context)
 
 
+@required_permission("setting.view_paymentdetails")
 def payment_details_detail(request, pk):
     """View payment details."""
     payment = get_object_or_404(PaymentDetails, pk=pk)
@@ -378,9 +394,10 @@ def payment_details_detail(request, pk):
         "payment": payment,
         "page_title": f"Payment Method - {payment.payment_name}",
     }
-    return render(request, "setting/payment/payment_details_detail.html", context)
+    return render(request, "setting/payment/detail.html", context)
 
 
+@required_permission("setting.delete_paymentdetails")
 def payment_details_delete(request, pk):
     """Delete payment details."""
     payment = get_object_or_404(PaymentDetails, pk=pk)
@@ -397,9 +414,10 @@ def payment_details_delete(request, pk):
         "payment": payment,
         "page_title": f"Delete Payment Method - {payment.payment_name}",
     }
-    return render(request, "setting/payment/payment_details_delete.html", context)
+    return render(request, "setting/payment/delete.html", context)
 
 
+@required_permission("setting.view_barcodeconfiguration")
 def barcode_config_list(request):
     """List all barcode configurations."""
 
@@ -425,9 +443,10 @@ def barcode_config_list(request):
         "search_query": search_query,
         "page_title": "Barcode Configurations",
     }
-    return render(request, "setting/barcode/barcode_config_list.html", context)
+    return render(request, "setting/barcode/home.html", context)
 
 
+@required_permission("setting.add_barcodeconfiguration")
 def barcode_config_create(request):
     """Create new barcode configuration."""
     if request.method == "POST":
@@ -453,9 +472,10 @@ def barcode_config_create(request):
         "page_title": "Add Barcode Configuration",
         "form_action": "Create",
     }
-    return render(request, "setting/barcode/barcode_config_form.html", context)
+    return render(request, "setting/barcode/form.html", context)
 
 
+@required_permission("setting.change_barcodeconfiguration")
 def barcode_config_edit(request, pk):
     """Edit existing barcode configuration."""
     config = get_object_or_404(BarcodeConfiguration, pk=pk)
@@ -477,9 +497,10 @@ def barcode_config_edit(request, pk):
         "page_title": "Edit Barcode Configuration",
         "form_action": "Update",
     }
-    return render(request, "setting/barcode/barcode_config_form.html", context)
+    return render(request, "setting/barcode/form.html", context)
 
 
+@required_permission("setting.view_barcodeconfiguration")
 def barcode_config_detail(request, pk):
     """View barcode configuration."""
     config = get_object_or_404(BarcodeConfiguration, pk=pk)
@@ -488,9 +509,10 @@ def barcode_config_detail(request, pk):
         "config": config,
         "page_title": f"Barcode Configuration - {config.config_name}",
     }
-    return render(request, "setting/barcode/barcode_config_detail.html", context)
+    return render(request, "setting/barcode/detail.html", context)
 
 
+@required_permission("setting.delete_barcodeconfiguration")
 def barcode_config_delete(request, pk):
     """Delete barcode configuration."""
     config = get_object_or_404(BarcodeConfiguration, pk=pk)
@@ -507,4 +529,4 @@ def barcode_config_delete(request, pk):
         "config": config,
         "page_title": f"Delete Configuration - {config.config_name}",
     }
-    return render(request, "setting/barcode/barcode_config_delete.html", context)
+    return render(request, "setting/barcode/delete.html", context)

@@ -1,14 +1,18 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
-{% block title %}Report Configurations{% endblock %}
+{% block title %}
+    Report Configurations
+{% endblock title %}
 {% block content %}
     <div class="page-header">
         <h1 class="page-title">Report Configurations</h1>
         <div class="page-actions">
-            <a href="{% url 'setting:report_config_create' %}"
-               class="btn btn-primary">
-                <i class="fas fa-plus"></i> Add Report Configuration
-            </a>
+            {% if perms.setting.add_reportconfiguration %}
+                <a href="{% url 'setting:report_config_create' %}"
+                   class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Report Configuration
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->
@@ -100,21 +104,27 @@
                             </td>
                             <td>
                                 <div class="action-buttons">
-                                    <a href="{% url 'setting:report_config_detail' cfg.pk %}"
-                                       class="btn-action btn-view"
-                                       title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'setting:report_config_edit' cfg.pk %}"
-                                       class="btn-action btn-edit"
-                                       title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'setting:report_config_delete' cfg.pk %}"
-                                       class="btn-action btn-delete"
-                                       title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
+                                    {% if perms.setting.view_reportconfiguration %}
+                                        <a href="{% url 'setting:report_config_detail' cfg.pk %}"
+                                           class="btn-action btn-view"
+                                           title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.change_reportconfiguration %}
+                                        <a href="{% url 'setting:report_config_edit' cfg.pk %}"
+                                           class="btn-action btn-edit"
+                                           title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.delete_reportconfiguration %}
+                                        <a href="{% url 'setting:report_config_delete' cfg.pk %}"
+                                           class="btn-action btn-delete"
+                                           title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    {% endif %}
                                     {% if not cfg.is_default %}
                                         <form method="post" action="{% url 'setting:set_default_config' cfg.pk %}">
                                             {% csrf_token %}

@@ -1,32 +1,36 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
-
-{% block title %}Payment Methods{% endblock %}
-
+{% block title %}
+    Payment Methods
+{% endblock title %}
 {% block content %}
     <div class="page-header">
         <h1 class="page-title">Payment Methods</h1>
         <div class="page-actions">
-            <a href="{% url 'setting:payment_details_create' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Add Payment Method
-            </a>
+            {% if perms.setting.view_paymentdetails %}
+                <a href="{% url 'setting:payment_details_create' %}"
+                   class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Payment Method
+                </a>
+            {% endif %}
         </div>
     </div>
-
-   <!-- Breadcrumb Navigation -->
-   <nav class="breadcrumb breadcrumb-right">
-        <a href="{% url 'setting:shop_settings_dashboard' %}" class="breadcrumb-item">Settings</a>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'setting:shop_settings_dashboard' %}"
+           class="breadcrumb-item">Settings</a>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Payment Methods</span>
     </nav>
-
     <!-- Search and Filter Section -->
     <div class="search-filter-section">
         <form method="get" class="search-filter-form">
             <div class="search-group search-expanded">
                 <i class="fas fa-search search-icon"></i>
-                <input type="text" name="search" class="search-input" 
-                       placeholder="Search by name, UPI ID, bank..." 
+                <input type="text"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search by name, UPI ID, bank..."
                        value="{{ search_query }}">
             </div>
             <button type="submit" class="btn btn-primary">
@@ -39,7 +43,6 @@
             {% endif %}
         </form>
     </div>
-
     <!-- Payment Details Table -->
     <div class="table-container">
         {% if payments %}
@@ -60,9 +63,7 @@
                             <td>
                                 <div class="supplier-info">
                                     <strong>{{ payment.payment_name }}</strong>
-                                    {% if payment.is_default %}
-                                        <span class="badge badge-success">Default</span>
-                                    {% endif %}
+                                    {% if payment.is_default %}<span class="badge badge-success">Default</span>{% endif %}
                                 </div>
                             </td>
                             <td>
@@ -100,25 +101,33 @@
                             <td>{{ payment.display_order }}</td>
                             <td>
                                 <div class="action-buttons">
-                                    <a href="{% url 'setting:payment_details_detail' payment.pk %}" 
-                                       class="btn-action btn-view" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'setting:payment_details_edit' payment.pk %}" 
-                                       class="btn-action btn-edit" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'setting:payment_details_delete' payment.pk %}" 
-                                       class="btn-action btn-delete" title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
+                                    {% if perms.setting.view_paymentdetails %}
+                                        <a href="{% url 'setting:payment_details_detail' payment.pk %}"
+                                           class="btn-action btn-view"
+                                           title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.change_paymentdetails %}
+                                        <a href="{% url 'setting:payment_details_edit' payment.pk %}"
+                                           class="btn-action btn-edit"
+                                           title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.delete_paymentdetails %}
+                                        <a href="{% url 'setting:payment_details_delete' payment.pk %}"
+                                           class="btn-action btn-delete"
+                                           title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
-
             <!-- Pagination -->
             {% if payments.paginator.num_pages > 1 %}
                 <div class="pagination-container">
@@ -127,33 +136,34 @@
                     </div>
                     <div class="pagination-controls">
                         {% if payments.has_previous %}
-                            <a href="?page={{ payments.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn btn-sm">Previous</a>
+                            <a href="?page={{ payments.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                               class="btn btn-sm">Previous</a>
                         {% endif %}
-                        
                         {% for num in payments.paginator.page_range %}
                             {% if payments.number == num %}
                                 <span class="btn btn-sm btn-primary">{{ num }}</span>
                             {% elif num > payments.number|add:'-3' and num < payments.number|add:'3' %}
-                                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn btn-sm">{{ num }}</a>
+                                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                                   class="btn btn-sm">{{ num }}</a>
                             {% endif %}
                         {% endfor %}
-                        
                         {% if payments.has_next %}
-                            <a href="?page={{ payments.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn btn-sm">Next</a>
+                            <a href="?page={{ payments.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                               class="btn btn-sm">Next</a>
                         {% endif %}
                     </div>
                 </div>
             {% endif %}
-            
         {% else %}
             <div class="empty-state">
                 <i class="fas fa-credit-card empty-state-icon"></i>
                 <h3>No Payment Methods Found</h3>
                 <p>Add payment methods to accept payments from your customers.</p>
-                <a href="{% url 'setting:payment_details_create' %}" class="btn btn-primary">
+                <a href="{% url 'setting:payment_details_create' %}"
+                   class="btn btn-primary">
                     <i class="fas fa-plus"></i> Add Payment Method
                 </a>
             </div>
         {% endif %}
     </div>
-{% endblock %}
+{% endblock content %}

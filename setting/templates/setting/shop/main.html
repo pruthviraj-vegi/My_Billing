@@ -1,14 +1,18 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
-{% block title %}Shop Details{% endblock %}
+{% block title %}
+    Shop Details
+{% endblock title %}
 {% block content %}
     <div class="page-header">
         <h1 class="page-title">Shop Details</h1>
         <div class="page-actions">
-            <a href="{% url 'setting:shop_details_create' %}"
-               class="btn btn-primary">
-                <i class="fas fa-plus"></i> Add Shop Details
-            </a>
+            {% if perms.setting.add_shopdetails %}
+                <a href="{% url 'setting:shop_details_create' %}"
+                   class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Shop Details
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->
@@ -31,11 +35,6 @@
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-search"></i> Search
             </button>
-            {% if search_query %}
-                <a href="{% url 'setting:shop_details_list' %}" class="btn">
-                    <i class="fas fa-times"></i> Clear
-                </a>
-            {% endif %}
         </form>
     </div>
     <!-- Shop Details Table -->
@@ -101,21 +100,27 @@
                     </td>
                     <td>
                         <div class="action-buttons">
-                            <a href="{% url 'setting:shop_details_detail' shop.pk %}"
-                               class="btn-action btn-view"
-                               title="View">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <a href="{% url 'setting:shop_details_edit' shop.pk %}"
-                               class="btn-action btn-edit"
-                               title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <a href="{% url 'setting:shop_details_delete' shop.pk %}"
-                               class="btn-action btn-delete"
-                               title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </a>
+                            {% if perms.setting.view_shopdetails %}
+                                <a href="{% url 'setting:shop_details_detail' shop.pk %}"
+                                   class="btn-action btn-view"
+                                   title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            {% endif %}
+                            {% if perms.setting.change_shopdetails %}
+                                <a href="{% url 'setting:shop_details_edit' shop.pk %}"
+                                   class="btn-action btn-edit"
+                                   title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            {% endif %}
+                            {% if perms.setting.delete_shopdetails %}
+                                <a href="{% url 'setting:shop_details_delete' shop.pk %}"
+                                   class="btn-action btn-delete"
+                                   title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>

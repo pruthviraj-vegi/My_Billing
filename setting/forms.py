@@ -291,54 +291,6 @@ class ReportConfigurationForm(forms.ModelForm):
         return cleaned_data
 
 
-class QuickReportConfigForm(forms.Form):
-    """Quick form for basic report settings."""
-
-    paper_size = forms.ChoiceField(
-        choices=ReportConfiguration.PaperSize.choices,
-        initial=ReportConfiguration.PaperSize.A5,
-        widget=forms.Select(attrs={"class": "form-select"}),
-    )
-
-    show_logo = forms.BooleanField(
-        required=False,
-        initial=True,
-        widget=forms.CheckboxInput(attrs={"class": "form-checkbox"}),
-    )
-
-    show_qr_code = forms.BooleanField(
-        required=False,
-        initial=True,
-        widget=forms.CheckboxInput(attrs={"class": "form-checkbox"}),
-    )
-
-    show_terms_conditions = forms.BooleanField(
-        required=False,
-        initial=True,
-        widget=forms.CheckboxInput(attrs={"class": "form-checkbox"}),
-    )
-
-    custom_terms = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "form-textarea",
-                "rows": 3,
-                "placeholder": "Custom terms and conditions (optional)...",
-            }
-        ),
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.fields["paper_size"].label = "Paper Size"
-        self.fields["show_logo"].label = "Show Logo"
-        self.fields["show_qr_code"].label = "Show QR Code"
-        self.fields["show_terms_conditions"].label = "Show Terms & Conditions"
-        self.fields["custom_terms"].label = "Custom Terms"
-
-
 class PaymentDetailsForm(forms.ModelForm):
     """Form for managing payment details."""
 
