@@ -443,7 +443,7 @@ def barcode_config_list(request):
         "search_query": search_query,
         "page_title": "Barcode Configurations",
     }
-    return render(request, "setting/barcode/home.html", context)
+    return render(request, "setting/barcode/main.html", context)
 
 
 @required_permission("setting.add_barcodeconfiguration")
