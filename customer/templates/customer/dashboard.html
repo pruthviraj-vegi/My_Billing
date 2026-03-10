@@ -26,10 +26,12 @@
                     <option value="full_date">Full Date</option>
                 </select>
             </form>
-            <a href="{% url 'customer:home' %}" class="btn">
-                <i class="fas fa-list"></i>
-                View All Customers
-            </a>
+            {% if perms.customer.add_customer %}
+                <a href="{% url 'customer:home' %}" class="btn">
+                    <i class="fas fa-list"></i>
+                    View All Customers
+                </a>
+            {% endif %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->

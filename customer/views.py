@@ -62,7 +62,6 @@ def dashboard(request):
     return render(request, "customer/dashboard.html", context)
 
 
-@required_permission("customer.view_dashboard")
 def get_comparison_data(date_filter, current_start, current_end):
     """Generate comparison data for line chart based on date filter"""
     previous_start, previous_end, period_type = get_periodic_data(
@@ -96,7 +95,6 @@ def get_comparison_data(date_filter, current_start, current_end):
     }
 
 
-@required_permission("customer.view_dashboard")
 def get_period_data(invoices, start_date, _end_date, period_type):
     """
     Get aggregated data for a specific period using database-level grouping

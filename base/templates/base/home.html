@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
 {% block title %}
   Dashboard - Billing System
@@ -7,6 +7,14 @@
   <!-- Page Header -->
   <div class="page-header">
     <h2 class="page-title">Dashboard</h2>
+    <div class="page-actions">
+      {% if perms.cart.add_cart %}
+        <a href="{% url 'cart:auto_cart_create' %}" class="btn">
+          <i class="fas fa-plus"></i>
+          New Cart
+        </a>
+      {% endif %}
+    </div>
   </div>
   <!-- Breadcrumb Navigation -->
   <nav class="breadcrumb breadcrumb-right">
