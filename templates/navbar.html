@@ -32,14 +32,14 @@
                <i class="fas fa-file-invoice-dollar"></i>
                <span>Invoices</span>
             </a>
-            <div class="dropdown-menu">
+            <div class="dropdown-menu dropdown-multicolumn col-2">
                {% if perms.invoice.view_dashboard %}
                   <a href="{% url 'invoice:dashboard' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'invoice' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
                {% endif %}
                {% if perms.invoice.view_invoice %}
                   <a href="{% url 'invoice:home' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">All Invoices</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'invoice' and request.resolver_match.url_name == 'home' %}active{% endif %}">All Invoices</a>
                   <a href="{% url 'invoice:search_invoices_home' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'search_invoices_home' %}active{% endif %}">Search Invoices</a>
                   <div class="dropdown-divider"></div>
@@ -67,10 +67,10 @@
                <i class="fas fa-boxes"></i>
                <span>Inventory</span>
             </a>
-            <div class="dropdown-menu">
+            <div class="dropdown-menu dropdown-multicolumn col-2">
                {% if perms.inventory.view_dashboard %}
                   <a href="{% url 'inventory:dashboard' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'inventory' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
                {% endif %}
                {% if perms.inventory.view_product %}
                   <a href="{% url 'inventory_products:home' %}"
@@ -129,15 +129,15 @@
             <div class="dropdown-menu">
                {% if perms.customer.view_dashboard %}
                   <a href="{% url 'customer:dashboard' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'customer' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
                {% endif %}
                {% if perms.customer.view_customer %}
                   <a href="{% url 'customer:home' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Customer List</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'customer' and request.resolver_match.url_name == 'home' %}active{% endif %}">Customer List</a>
                {% endif %}
                {% if perms.customer.add_customer %}
                   <a href="{% url 'customer:create' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add Customer</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'customer' and request.resolver_match.url_name == 'create' %}active{% endif %}">Add Customer</a>
                {% endif %}
                {% if perms.customer.view_customercreditsummary %}
                   <a href="{% url 'customer:credit_home' %}"
@@ -156,15 +156,15 @@
             <div class="dropdown-menu">
                {% if perms.supplier.view_dashboard %}
                   <a href="{% url 'supplier:dashboard' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'supplier' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
                {% endif %}
                {% if perms.supplier.view_supplier %}
                   <a href="{% url 'supplier:home' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Supplier List</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'supplier' and request.resolver_match.url_name == 'home' %}active{% endif %}">Supplier List</a>
                {% endif %}
                {% if perms.supplier.add_supplier %}
                   <a href="{% url 'supplier:create' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add Supplier</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'supplier' and request.resolver_match.url_name == 'create' %}active{% endif %}">Add Supplier</a>
                {% endif %}
             </div>
          </li>
@@ -176,14 +176,14 @@
                <i class="fas fa-users-cog"></i>
                <span>Users</span>
             </a>
-            <div class="dropdown-menu">
+            <div class="dropdown-menu dropdown-multicolumn col-2">
                {% if perms.user.view_customuser %}
                   <a href="{% url 'user:home' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">All Users</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'user' and request.resolver_match.url_name == 'home' %}active{% endif %}">All Users</a>
                {% endif %}
                {% if perms.user.add_customuser %}
                   <a href="{% url 'user:create' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'create' %}active{% endif %}">Add User</a>
+                     class="dropdown-item {% if request.resolver_match.namespace == 'user' and request.resolver_match.url_name == 'create' %}active{% endif %}">Add User</a>
                {% endif %}
                {% if perms.user.view_session %}
                   <a href="{% url 'user:sessions' %}"
@@ -207,7 +207,7 @@
                <i class="fas fa-cog"></i>
                <span>Settings</span>
             </a>
-            <div class="dropdown-menu">
+            <div class="dropdown-menu dropdown-multicolumn col-2">
                {% if perms.setting.view_shopdetails %}
                   <a href="{% url 'setting:shop_settings_dashboard' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'shop_settings_dashboard' %}active{% endif %}">Settings Dashboard</a>

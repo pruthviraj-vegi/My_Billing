@@ -109,13 +109,74 @@
     <script src="{% static 'assets/plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <!-- Critical UI functionality (load early) -->
     <script>
-      // Critical UI functions that need to work immediately
+      // Notification sound using Web Audio API (no external files)
+      const NotificationSound = (function() {
+        let audioCtx = null;
+        let activeOscCount = 0;
+
+        async function getContext() {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === 'suspended') await audioCtx.resume();
+          return audioCtx;
+        }
+
+        async function playTone(freq, duration, type, volume, delay) {
+          const ctx = await getContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = type || 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(volume || 0.15, ctx.currentTime + (delay || 0));
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (delay || 0) + duration);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          activeOscCount++;
+          osc.addEventListener('ended', () => {
+            activeOscCount--;
+            if (activeOscCount <= 0 && audioCtx && audioCtx.state === 'running') {
+              audioCtx.suspend();
+            }
+          });
+          osc.start(ctx.currentTime + (delay || 0));
+          osc.stop(ctx.currentTime + (delay || 0) + duration);
+        }
+
+        return {
+          success: function() {
+            playTone(523, 0.15, 'sine', 0.12, 0);     // C5
+            playTone(659, 0.2, 'sine', 0.12, 0.12);    // E5
+            playTone(784, 0.25, 'sine', 0.10, 0.22);   // G5
+          },
+          error: function() {
+            playTone(330, 0.2, 'square', 0.08, 0);     // E4
+            playTone(262, 0.3, 'square', 0.06, 0.15);   // C4
+          },
+          info: function() {
+            playTone(587, 0.2, 'sine', 0.10, 0);       // D5
+          },
+          warning: function() {
+            playTone(440, 0.15, 'triangle', 0.10, 0);  // A4
+            playTone(440, 0.15, 'triangle', 0.10, 0.2); // A4 repeat
+          }
+        };
+      })();
+
       function showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
+        notification.setAttribute('role', 'alert');
 
         document.body.appendChild(notification);
+
+        // Play sound based on type
+        try {
+          if (NotificationSound[type]) {
+            NotificationSound[type]();
+          } else {
+            NotificationSound.info();
+          }
+        } catch(e) { /* Audio not supported or blocked */ }
 
         setTimeout(() => {
           notification.classList.add('show');

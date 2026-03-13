@@ -12,3 +12,4 @@ ai/*
 *.md
 docs/*
 .pylintrc
+media/*
