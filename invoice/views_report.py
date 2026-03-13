@@ -8,9 +8,10 @@ from django.shortcuts import render
 
 from base.getDates import getDates
 from base.utility import render_paginated_response
+from base.decorators import required_permission
+
 from invoice.models import Invoice, ReturnInvoice
 
-from base.decorators import required_permission
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,6 @@ def invoice_report(request):
     return render(request, "invoice_report/main.html")
 
 
-@required_permission("invoice.view_audits")
 def get_invoice_report_data(date_range):
     """Get GST invoices within the given date range."""
     invoices = Invoice.objects.select_related("customer").filter(
@@ -31,7 +31,6 @@ def get_invoice_report_data(date_range):
     return invoices
 
 
-@required_permission("invoice.view_audits")
 def get_invoice_cancled_data(date_range):
     """Get cancelled GST invoices within the given date range."""
     invoices = Invoice.objects.select_related("customer").filter(
@@ -42,7 +41,6 @@ def get_invoice_cancled_data(date_range):
     return invoices
 
 
-@required_permission("invoice.view_audits")
 def get_invoice_return_data(date_range):
     """Get approved GST return invoices within the given date range."""
     invoices = ReturnInvoice.objects.select_related("invoice__customer").filter(
