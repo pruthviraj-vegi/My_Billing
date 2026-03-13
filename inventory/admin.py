@@ -15,7 +15,7 @@ from .models import (
     GSTHsnCode,
     Product,
     ProductVariant,
-    ProductImage,
+    VariantMedia,
     InventoryLog,
     FavoriteVariant,
 )
@@ -76,12 +76,12 @@ class SizeAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at"]
 
 
-class ProductImageInline(admin.TabularInline):
-    """Inline admin for ProductImage within ProductAdmin."""
+class VariantMediaInline(admin.TabularInline):
+    """Inline admin for VariantMedia within ProductVariantAdmin."""
 
-    model = ProductImage
+    model = VariantMedia
     extra = 1
-    fields = ["image", "image_url", "color", "alt_text", "is_featured"]
+    fields = ["file", "thumbnail", "media_type", "alt_text", "is_featured", "sort_order"]
 
 
 @admin.register(Product)
@@ -108,7 +108,7 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ["name", "brand", "description", "hsn_code"]
     ordering = ["brand", "name"]
     readonly_fields = ["created_at", "updated_at"]
-    inlines = [ProductImageInline]
+    inlines = []
 
     fieldsets = (
         ("Basic Information", {"fields": ("brand", "name", "description", "status")}),
@@ -197,7 +197,7 @@ class ProductVariantAdmin(admin.ModelAdmin):
         "total_quantity",
         "damage_percentage",
     ]
-    inlines = [InventoryLogInline]
+    inlines = [VariantMediaInline, InventoryLogInline]
 
     fieldsets = (
         (
@@ -351,14 +351,14 @@ class InventoryLogAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(ProductImage)
-class ProductImageAdmin(admin.ModelAdmin):
-    """Admin configuration for the ProductImage model."""
+@admin.register(VariantMedia)
+class VariantMediaAdmin(admin.ModelAdmin):
+    """Admin configuration for the VariantMedia model."""
 
-    list_display = ["product", "color", "is_featured", "alt_text"]
-    list_filter = ["is_featured", "color"]
-    search_fields = ["product__name", "product__brand", "alt_text"]
-    ordering = ["product__brand", "product__name"]
+    list_display = ["variant", "media_type", "is_featured", "file_size_display", "created_at"]
+    list_filter = ["media_type", "is_featured", "created_at"]
+    search_fields = ["variant__product__name", "variant__product__brand", "alt_text"]
+    ordering = ["-created_at"]
 
 
 @admin.register(FavoriteVariant)

@@ -60,7 +60,6 @@
                         <th>Name</th>
                         <th>Hex Code</th>
                         <th>Variants</th>
-                        <th>Images</th>
                         <th>Created</th>
                         <th class="text-right">Actions</th>
                     </tr>
@@ -83,9 +82,6 @@
                             <td>{{ color.hex_code|default:'No hex code' }}</td>
                             <td>
                                 <span class="badge badge-primary">{{ color.product_variants.count }}</span>
-                            </td>
-                            <td>
-                                <span class="badge badge-primary">{{ color.product_images.count }}</span>
                             </td>
                             <td>{{ color.created_at|date:'M d, Y' }}</td>
                             <td>

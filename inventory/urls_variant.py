@@ -45,4 +45,20 @@ urlpatterns = [
         views_variant.DamageCreate.as_view(),
         name="damage_create",
     ),
+    # Media Management
+    path(
+        "<int:variant_id>/media/upload/",
+        views_variant.variant_media_upload,
+        name="media_upload",
+    ),
+    path(
+        "media/<int:media_id>/delete/",
+        views_variant.variant_media_delete,
+        name="media_delete",
+    ),
+    path(
+        "media/<int:media_id>/featured/",
+        views_variant.variant_media_set_featured,
+        name="media_set_featured",
+    ),
 ]

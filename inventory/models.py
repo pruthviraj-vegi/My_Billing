@@ -732,42 +732,153 @@ class ProductVariant(SoftDeleteModel):
             super().save(*args, **kwargs)
 
 
-class ProductImage(models.Model):
-    """Image associated with a product, optionally linked to a colour."""
+class VariantMedia(models.Model):
+    """Media (image or video) associated with a product variant."""
 
-    product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="images"
+    class MediaType(models.TextChoices):
+        """Type of media file."""
+
+        IMAGE = "IMAGE", "Image"
+        VIDEO = "VIDEO", "Video"
+
+    IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"]
+    VIDEO_EXTENSIONS = ["mp4", "webm", "mov"]
+    THUMBNAIL_MAX_SIZE = (400, 400)
+    THUMBNAIL_QUALITY = 70
+
+    variant = models.ForeignKey(
+        ProductVariant,
+        on_delete=models.CASCADE,
+        related_name="media_files",
     )
-    image = models.ImageField(
-        upload_to="product_images/", help_text="The product image file."
+    file = models.FileField(
+        upload_to="variant_media/%Y/%m/originals/",
+        help_text="Original uploaded file (kept at full quality).",
     )
-    image_url = models.URLField(
-        max_length=255,
+    thumbnail = models.ImageField(
+        upload_to="variant_media/%Y/%m/thumbnails/",
         blank=True,
-        null=True,
-        help_text="The URL of the product image.",
+        help_text="Auto-generated optimised thumbnail for gallery view.",
     )
-    color = models.ForeignKey(
-        Color,
-        on_delete=models.SET_NULL,
-        related_name="product_images",
-        null=True,
-        blank=True,
+    media_type = models.CharField(
+        max_length=5,
+        choices=MediaType.choices,
+        default=MediaType.IMAGE,
     )
     alt_text = models.CharField(
         max_length=255,
         blank=True,
-        help_text="Alternative text for the image for accessibility.",
+        help_text="Alternative text for accessibility.",
     )
     is_featured = models.BooleanField(
-        default=False, help_text="Is this the main image for the product?"
+        default=False,
+        help_text="Is this the main media for the variant?",
     )
+    sort_order = models.PositiveIntegerField(default=0)
+    file_size = models.PositiveIntegerField(
+        default=0, help_text="Original file size in bytes.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-is_featured"]
+        ordering = ["-is_featured", "sort_order"]
 
     def __str__(self):
-        return f"Image for {self.product.brand}"
+        return f"{self.get_media_type_display()} for {self.variant}"
+
+    @property
+    def is_image(self):
+        """Check if the media is an image."""
+        return self.media_type == self.MediaType.IMAGE
+
+    @property
+    def is_video(self):
+        """Check if the media is a video."""
+        return self.media_type == self.MediaType.VIDEO
+
+    @property
+    def file_size_display(self):
+        """Return human-readable file size."""
+        if self.file_size < 1024:
+            return f"{self.file_size} B"
+        elif self.file_size < 1024 * 1024:
+            return f"{self.file_size / 1024:.1f} KB"
+        return f"{self.file_size / (1024 * 1024):.1f} MB"
+
+    @property
+    def gallery_url(self):
+        """URL for gallery grid view — thumbnail if available, else original."""
+        if self.thumbnail:
+            return self.thumbnail.url
+        return self.file.url
+
+    @property
+    def original_url(self):
+        """URL for full-resolution view / download."""
+        return self.file.url
+
+    def _generate_thumbnail(self):
+        """Create an optimised WebP thumbnail from the original image."""
+        import io
+        from pathlib import Path
+
+        from django.core.files.base import ContentFile
+        from PIL import Image as PilImage
+
+        try:
+            self.file.seek(0)
+            img = PilImage.open(self.file)
+            img.thumbnail(self.THUMBNAIL_MAX_SIZE, PilImage.Resampling.LANCZOS)
+
+            # Convert to RGB if needed (e.g. RGBA PNGs)
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+
+            buffer = io.BytesIO()
+            img.save(buffer, format="WEBP", quality=self.THUMBNAIL_QUALITY)
+            buffer.seek(0)
+
+            # Derive thumbnail filename from original
+            original_name = Path(self.file.name).stem
+            thumb_name = f"{original_name}_thumb.webp"
+
+            self.thumbnail.save(thumb_name, ContentFile(buffer.read()), save=False)
+        except Exception:  # noqa: BLE001
+            # If thumbnail generation fails, leave it blank — original will be used
+            pass
+
+    def save(self, *args, **kwargs):
+        """Auto-detect media type, generate thumbnail, enforce single featured."""
+        if self.file:
+            # Track file size
+            try:
+                self.file_size = self.file.size
+            except (OSError, AttributeError):
+                pass
+
+            # Auto-detect media type from extension
+            ext = self.file.name.rsplit(".", 1)[-1].lower()
+            if ext in self.VIDEO_EXTENSIONS:
+                self.media_type = self.MediaType.VIDEO
+            else:
+                self.media_type = self.MediaType.IMAGE
+
+        # Ensure only one featured media per variant
+        if self.is_featured:
+            VariantMedia.objects.filter(
+                variant=self.variant, is_featured=True
+            ).exclude(pk=self.pk).update(is_featured=False)
+
+        # Save first so the file is on disk
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+
+        # Generate thumbnail for new images (not videos)
+        if is_new and self.is_image and self.file and not self.thumbnail:
+            self._generate_thumbnail()
+            if self.thumbnail:
+                # Save again to persist thumbnail field (skip re-running full save)
+                super().save(update_fields=["thumbnail"])
 
 
 class InventoryLog(SoftDeleteModel):

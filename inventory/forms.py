@@ -15,6 +15,7 @@ from .models import (
     Size,
     SupplierInvoice,
     UOM,
+    VariantMedia,
 )
 
 logger = logging.getLogger(__name__)
@@ -873,3 +874,65 @@ class DamageForm(InventoryAdjustmentForm):
     def __init__(self, *args, **kwargs):
         kwargs["adjustment_type"] = "damage"
         super().__init__(*args, **kwargs)
+
+
+class VariantMediaForm(forms.ModelForm):
+    """Form for uploading media (images/videos) to a product variant."""
+
+    ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"]
+    ALLOWED_VIDEO_EXTENSIONS = ["mp4", "webm", "mov"]
+    MAX_IMAGE_SIZE = 50 * 1024 * 1024  # 50 MB — originals kept, thumbnails generated
+    MAX_VIDEO_SIZE = 200 * 1024 * 1024  # 200 MB
+
+    class Meta:
+        model = VariantMedia
+        fields = ["file", "alt_text", "is_featured"]
+        widgets = {
+            "file": forms.ClearableFileInput(
+                attrs={
+                    "accept": "image/*,video/mp4,video/webm,video/quicktime",
+                }
+            ),
+            "alt_text": forms.TextInput(
+                attrs={"placeholder": "Describe this media (optional)"}
+            ),
+            "is_featured": forms.CheckboxInput(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            if not isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs["class"] = "form-input"
+
+    def clean_file(self):
+        """Validate file extension and size."""
+        uploaded_file = self.cleaned_data.get("file")
+        if not uploaded_file:
+            return uploaded_file
+
+        # Get extension
+        name = uploaded_file.name
+        ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+
+        all_allowed = self.ALLOWED_IMAGE_EXTENSIONS + self.ALLOWED_VIDEO_EXTENSIONS
+        if ext not in all_allowed:
+            raise forms.ValidationError(
+                f"Unsupported file type '.{ext}'. " f"Allowed: {', '.join(all_allowed)}"
+            )
+
+        # Size validation
+        if ext in self.ALLOWED_VIDEO_EXTENSIONS:
+            if uploaded_file.size > self.MAX_VIDEO_SIZE:
+                raise forms.ValidationError(
+                    f"Video file too large ({uploaded_file.size // (1024 * 1024)} MB). "
+                    f"Maximum is {self.MAX_VIDEO_SIZE // (1024 * 1024)} MB."
+                )
+        else:
+            if uploaded_file.size > self.MAX_IMAGE_SIZE:
+                raise forms.ValidationError(
+                    f"Image file too large ({uploaded_file.size // (1024 * 1024)} MB). "
+                    f"Maximum is {self.MAX_IMAGE_SIZE // (1024 * 1024)} MB."
+                )
+
+        return uploaded_file

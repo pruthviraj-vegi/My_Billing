@@ -1,0 +1,748 @@
+<!-- Media Gallery Section for Variant Details -->
+<div class="table-section" id="mediaGallerySection">
+   <div class="table-header">
+      <h3>
+         <i class="fas fa-photo-video"></i>
+         Media Gallery (<span id="mediaCount">{{ media_files|length }}</span>)
+      </h3>
+      {% if perms.inventory.change_productvariant %}
+         <div class="page-actions">
+            <label for="mediaFileInput" class="btn btn-primary media-upload-label">
+               <i class="fas fa-upload"></i> Upload
+            </label>
+            <input type="file" id="mediaFileInput" multiple
+                   accept="image/*,video/mp4,video/webm,video/quicktime"
+                   class="media-file-input" />
+         </div>
+      {% endif %}
+   </div>
+
+   <!-- Drop Zone -->
+   {% if perms.inventory.change_productvariant %}
+      <div id="mediaDropZone" class="media-drop-zone">
+         <i class="fas fa-cloud-upload-alt"></i>
+         <p>Drag &amp; drop images or videos here</p>
+         <small>JPG, PNG, WEBP, GIF, MP4, WEBM, MOV — Max 25 MB images / 50 MB videos</small>
+      </div>
+   {% endif %}
+
+   <!-- Media Grid -->
+   <div class="media-grid" id="mediaGrid">
+      {% for media in media_files %}
+         <div class="media-card" data-id="{{ media.id }}" data-original="{{ media.original_url }}" data-type="{{ media.media_type }}">
+            {% if media.is_image %}
+               <img src="{{ media.gallery_url }}" alt="{{ media.alt_text|default:media.variant }}"
+                    loading="lazy" class="media-thumb" width="140" height="140" />
+            {% else %}
+               <div class="media-thumb video-poster">
+                  <i class="fas fa-film"></i>
+               </div>
+               <div class="media-badge-video"><i class="fas fa-play"></i></div>
+            {% endif %}
+            <div class="media-overlay">
+               {% if perms.inventory.change_productvariant %}
+                  <button class="media-btn media-btn-star {% if media.is_featured %}active{% endif %}"
+                          title="{% if media.is_featured %}Remove featured{% else %}Set as featured{% endif %}"
+                          data-url="{% url 'inventory_variant:media_set_featured' media.id %}">
+                     <i class="fas fa-star"></i>
+                  </button>
+                  <button class="media-btn media-btn-delete"
+                          title="Delete"
+                          data-url="{% url 'inventory_variant:media_delete' media.id %}">
+                     <i class="fas fa-trash"></i>
+                  </button>
+               {% endif %}
+            </div>
+            <div class="media-info">
+               <span class="media-size">{{ media.file_size_display }}</span>
+            </div>
+         </div>
+      {% empty %}
+         <div class="media-empty" id="mediaEmpty">
+            <i class="fas fa-image"></i>
+            <p>No media uploaded yet</p>
+         </div>
+      {% endfor %}
+   </div>
+</div>
+
+<!-- Lightbox -->
+<div id="mediaLightbox" class="media-lightbox">
+   <span class="media-lightbox-close" id="lightboxClose">&times;</span>
+   <a href="#" id="lightboxDownload" class="media-lightbox-download" download>
+      <i class="fas fa-download"></i> Download Original
+   </a>
+   <div class="media-lightbox-content" id="lightboxContent"></div>
+</div>
+
+<style>
+/* Upload button & hidden input */
+.media-upload-label { cursor: pointer; margin: 0; }
+.media-file-input { display: none; }
+
+/* Drop Zone */
+.media-drop-zone {
+   display: none;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   gap: 0.25rem;
+   padding: 1.5rem;
+   border: 2px dashed var(--border-color);
+   border-radius: 0.5rem;
+   text-align: center;
+   color: var(--text-secondary);
+   transition: all 0.3s ease;
+   margin: 0.5rem;
+}
+.media-drop-zone.dragover {
+   display: flex;
+   border-color: var(--primary);
+   background: rgba(59,130,246,0.05);
+   color: var(--primary);
+}
+.media-drop-zone i { font-size: 2rem; }
+.media-drop-zone small { font-size: 0.75rem; }
+
+/* Media Grid */
+.media-grid {
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+   gap: 0.75rem;
+   padding: 0.75rem;
+}
+.media-card {
+   position: relative;
+   border-radius: 0.5rem;
+   overflow: hidden;
+   border: 1px solid var(--border-color);
+   background: var(--bg-body);
+   aspect-ratio: 1;
+   cursor: pointer;
+   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.media-card:hover {
+   transform: translateY(-2px);
+   box-shadow: var(--shadow-md);
+}
+.media-thumb {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+   display: block;
+}
+.media-badge-video {
+   position: absolute;
+   top: 50%;
+   left: 50%;
+   transform: translate(-50%, -50%);
+   width: 36px;
+   height: 36px;
+   border-radius: 50%;
+   background: rgba(0,0,0,0.6);
+   color: #fff;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   pointer-events: none;
+}
+.video-poster {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   background: linear-gradient(135deg, #1e293b, #334155);
+   color: rgba(255,255,255,0.4);
+   font-size: 2rem;
+}
+.media-overlay {
+   position: absolute;
+   top: 0.25rem;
+   right: 0.25rem;
+   display: flex;
+   gap: 0.25rem;
+   opacity: 0;
+   transition: opacity 0.2s;
+}
+.media-card:hover .media-overlay { opacity: 1; }
+.media-btn {
+   width: 28px; height: 28px;
+   border: none;
+   border-radius: 50%;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   cursor: pointer;
+   font-size: 0.7rem;
+   transition: all 0.2s;
+}
+.media-btn-star {
+   background: rgba(0,0,0,0.5);
+   color: #ccc;
+}
+.media-btn-star.active,
+.media-btn-star:hover {
+   background: #f59e0b;
+   color: #fff;
+}
+.media-btn-delete {
+   background: rgba(220,53,69,0.8);
+   color: #fff;
+}
+.media-btn-delete:hover { background: #dc3545; }
+.media-info {
+   position: absolute;
+   bottom: 0;
+   left: 0; right: 0;
+   padding: 0.2rem 0.4rem;
+   background: linear-gradient(transparent, rgba(0,0,0,0.6));
+   color: #fff;
+   font-size: 0.65rem;
+   text-align: right;
+}
+.media-empty {
+   grid-column: 1 / -1;
+   text-align: center;
+   padding: 2rem;
+   color: var(--text-secondary);
+}
+.media-empty i { font-size: 2rem; margin-bottom: 0.5rem; }
+
+/* ============================
+   UPLOAD PROGRESS CARD
+   ============================ */
+.media-card.uploading {
+   cursor: default;
+}
+.media-card.uploading:hover {
+   transform: none;
+   box-shadow: none;
+}
+.upload-preview {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+   display: block;
+   filter: brightness(0.5);
+   transition: filter 0.3s ease;
+}
+.upload-progress-wrapper {
+   position: absolute;
+   bottom: 0;
+   left: 0; right: 0;
+   padding: 0.4rem;
+   background: linear-gradient(transparent, rgba(0,0,0,0.7));
+}
+.upload-progress-bar-bg {
+   width: 100%;
+   height: 6px;
+   background: rgba(255,255,255,0.2);
+   border-radius: 3px;
+   overflow: hidden;
+}
+.upload-progress-bar {
+   height: 100%;
+   width: 0%;
+   background: linear-gradient(90deg, #3b82f6, #60a5fa);
+   border-radius: 3px;
+   transition: width 0.15s ease;
+}
+.upload-progress-text {
+   color: #fff;
+   font-size: 0.65rem;
+   margin-top: 0.15rem;
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+}
+.upload-filename {
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   max-width: 75%;
+}
+
+/* Status overlays */
+.upload-status-overlay {
+   position: absolute;
+   inset: 0;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   gap: 0.25rem;
+   opacity: 0;
+   transition: opacity 0.3s ease;
+   pointer-events: none;
+}
+.upload-status-overlay.show {
+   opacity: 1;
+}
+.upload-status-overlay i {
+   font-size: 1.5rem;
+}
+.upload-status-overlay span {
+   font-size: 0.7rem;
+   font-weight: 600;
+}
+/* Success */
+.upload-status-success {
+   background: rgba(34,197,94,0.75);
+   color: #fff;
+}
+/* Failure */
+.upload-status-failed {
+   background: rgba(220,53,69,0.75);
+   color: #fff;
+}
+
+/* Lightbox */
+.media-lightbox {
+   position: fixed;
+   inset: 0;
+   background: rgba(0,0,0,0.85);
+   z-index: 3000;
+   display: none;
+   align-items: center;
+   justify-content: center;
+}
+.media-lightbox-close {
+   position: absolute;
+   top: 1rem; right: 1.5rem;
+   color: #fff;
+   font-size: 2rem;
+   cursor: pointer;
+   z-index: 3001;
+}
+.media-lightbox-download {
+   position: absolute;
+   bottom: 1.5rem; right: 1.5rem;
+   color: #fff;
+   background: rgba(59,130,246,0.85);
+   padding: 0.5rem 1rem;
+   border-radius: 0.5rem;
+   text-decoration: none;
+   font-size: 0.85rem;
+   font-weight: 500;
+   z-index: 3001;
+   transition: background 0.2s;
+}
+.media-lightbox-download:hover {
+   background: rgba(59,130,246,1);
+   color: #fff;
+}
+.media-lightbox-content img,
+.media-lightbox-content video {
+   max-width: 90vw;
+   max-height: 85vh;
+   border-radius: 0.5rem;
+}
+
+@media(max-width: 768px) {
+   .media-grid {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 0.5rem;
+      padding: 0.5rem;
+   }
+}
+</style>
+
+<script>
+(function() {
+   const uploadUrl = '{% url "inventory_variant:media_upload" variant.id %}';
+   const csrfToken = '{{ csrf_token }}';
+   const grid = document.getElementById('mediaGrid');
+   const dropZone = document.getElementById('mediaDropZone');
+   const fileInput = document.getElementById('mediaFileInput');
+   const countEl = document.getElementById('mediaCount');
+
+   const ALLOWED_IMAGE_EXT = ['jpg','jpeg','png','webp','gif'];
+   const ALLOWED_VIDEO_EXT = ['mp4','webm','mov'];
+   const MAX_IMAGE_SIZE = 25 * 1024 * 1024;  // 25 MB
+   const MAX_VIDEO_SIZE = 50 * 1024 * 1024;  // 50 MB
+
+   // ============================
+   //  CLIENT-SIDE VALIDATION
+   // ============================
+   function validateFile(file) {
+      const name = file.name;
+      const ext = name.includes('.') ? name.rsplit ? name.split('.').pop().toLowerCase() : name.slice(name.lastIndexOf('.')+1).toLowerCase() : '';
+      const allAllowed = ALLOWED_IMAGE_EXT.concat(ALLOWED_VIDEO_EXT);
+
+      if (!allAllowed.includes(ext)) {
+         return 'Unsupported type: .' + ext;
+      }
+
+      const isVideo = ALLOWED_VIDEO_EXT.includes(ext);
+      const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+      const maxLabel = isVideo ? '50 MB' : '25 MB';
+
+      if (file.size > maxSize) {
+         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+         return 'Too large: ' + fileSizeMB + ' MB (max ' + maxLabel + ')';
+      }
+      return null; // Valid
+   }
+
+   // ============================
+   //  UPLOAD WITH PROGRESS (per-file)
+   // ============================
+   function uploadFiles(fileList) {
+      if (!fileList.length) return;
+
+      // Remove empty state
+      const emptyEl = document.getElementById('mediaEmpty');
+      if (emptyEl) emptyEl.remove();
+
+      // Validate and upload each file individually
+      Array.from(fileList).forEach(function(file) {
+         const error = validateFile(file);
+         if (error) {
+            // Show instant rejection — no upload, no progress bar
+            showRejectedCard(file, error);
+         } else {
+            const card = createUploadCard(file);
+            grid.appendChild(card);
+            uploadSingleFile(file, card);
+         }
+      });
+   }
+
+   // Instant rejection card (no upload attempt)
+   function showRejectedCard(file, errorMsg) {
+      const card = document.createElement('div');
+      card.className = 'media-card uploading';
+
+      const isVideo = file.type.startsWith('video/');
+      let previewHtml = '';
+      if (isVideo) {
+         const videoUrl = URL.createObjectURL(file);
+         previewHtml = '<video src="' + videoUrl + '" class="upload-preview" muted preload="metadata"></video>';
+      } else {
+         const imgUrl = URL.createObjectURL(file);
+         previewHtml = '<img src="' + imgUrl + '" alt="Rejected" class="upload-preview" width="140" height="140" />';
+      }
+
+      const name = file.name.length > 18 ? file.name.slice(0,15) + '...' : file.name;
+
+      card.innerHTML = previewHtml +
+         '<div class="upload-progress-wrapper">' +
+            '<div class="upload-progress-bar-bg"><div class="upload-progress-bar" style="width:100%;background:linear-gradient(90deg,#ef4444,#f87171)"></div></div>' +
+            '<div class="upload-progress-text"><span class="upload-filename">' + name + '</span><span>Rejected</span></div>' +
+         '</div>' +
+         '<div class="upload-status-overlay upload-status-failed show">' +
+            '<i class="fas fa-times-circle"></i>' +
+            '<span>' + errorMsg + '</span>' +
+         '</div>';
+
+      // Dim preview immediately
+      var prev = card.querySelector('.upload-preview');
+      if (prev) prev.style.filter = 'brightness(0.4) saturate(0.5)';
+
+      grid.appendChild(card);
+
+      // Auto-remove after 3 seconds
+      setTimeout(function() {
+         card.style.transition = 'opacity 0.5s ease';
+         card.style.opacity = '0';
+         setTimeout(function() {
+            card.remove();
+            if (grid.querySelectorAll('.media-card').length === 0) {
+               grid.innerHTML = '<div class="media-empty" id="mediaEmpty"><i class="fas fa-image"></i><p>No media uploaded yet</p></div>';
+            }
+         }, 500);
+      }, 3000);
+   }
+
+   function createUploadCard(file) {
+      const card = document.createElement('div');
+      card.className = 'media-card uploading';
+
+      // Preview thumbnail
+      const isVideo = file.type.startsWith('video/');
+      let previewHtml = '';
+      if (isVideo) {
+         const videoUrl = URL.createObjectURL(file);
+         previewHtml = `<video src="${videoUrl}" class="upload-preview" muted preload="metadata"></video>
+                        <div class="media-badge-video"><i class="fas fa-play"></i></div>`;
+      } else {
+         const imgUrl = URL.createObjectURL(file);
+         previewHtml = `<img src="${imgUrl}" alt="Uploading..." class="upload-preview" width="140" height="140" />`;
+      }
+
+      // Truncate filename
+      const name = file.name.length > 18 ? file.name.slice(0,15) + '...' : file.name;
+      const sizeMB = (file.size / (1024*1024)).toFixed(1);
+
+      card.innerHTML = `
+         ${previewHtml}
+         <div class="upload-progress-wrapper">
+            <div class="upload-progress-bar-bg">
+               <div class="upload-progress-bar" data-bar></div>
+            </div>
+            <div class="upload-progress-text">
+               <span class="upload-filename">${name}</span>
+               <span data-percent>0%</span>
+            </div>
+         </div>
+         <div class="upload-status-overlay upload-status-success" data-success>
+            <i class="fas fa-check-circle"></i>
+            <span>Uploaded</span>
+         </div>
+         <div class="upload-status-overlay upload-status-failed" data-failed>
+            <i class="fas fa-times-circle"></i>
+            <span>Failed</span>
+         </div>
+      `;
+      return card;
+   }
+
+   function uploadSingleFile(file, card) {
+      const bar = card.querySelector('[data-bar]');
+      const pctText = card.querySelector('[data-percent]');
+      const successOverlay = card.querySelector('[data-success]');
+      const failedOverlay = card.querySelector('[data-failed]');
+      const preview = card.querySelector('.upload-preview');
+
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Progress event
+      xhr.upload.addEventListener('progress', function(e) {
+         if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            bar.style.width = pct + '%';
+            pctText.textContent = pct + '%';
+         }
+      });
+
+      // Success
+      xhr.addEventListener('load', function() {
+         if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+               const data = JSON.parse(xhr.responseText);
+               if (data.uploaded && data.uploaded.length > 0) {
+                  // Show success flash
+                  bar.style.width = '100%';
+                  bar.style.background = 'linear-gradient(90deg, #22c55e, #4ade80)';
+                  pctText.textContent = '100%';
+                  if (preview) preview.style.filter = 'brightness(0.7)';
+                  successOverlay.classList.add('show');
+
+                  // Update count
+                  if (data.total_media !== undefined) countEl.textContent = data.total_media;
+
+                  // After 1.5s, replace with real card
+                  setTimeout(function() {
+                     const m = data.uploaded[0];
+                     replaceWithRealCard(card, m);
+                  }, 1500);
+               } else {
+                  showFailure(card, failedOverlay, preview, data.errors);
+               }
+            } catch(e) {
+               showFailure(card, failedOverlay, preview);
+            }
+         } else {
+            showFailure(card, failedOverlay, preview);
+         }
+      });
+
+      // Network error
+      xhr.addEventListener('error', function() {
+         showFailure(card, failedOverlay, preview);
+      });
+
+      xhr.open('POST', uploadUrl);
+      xhr.setRequestHeader('X-CSRFToken', csrfToken);
+      xhr.send(formData);
+   }
+
+   function showFailure(card, failedOverlay, preview, errors) {
+      const bar = card.querySelector('[data-bar]');
+      bar.style.background = 'linear-gradient(90deg, #ef4444, #f87171)';
+      if (preview) preview.style.filter = 'brightness(0.4) saturate(0.5)';
+      failedOverlay.classList.add('show');
+
+      // Show error text if available
+      if (errors && errors.length > 0) {
+         const span = failedOverlay.querySelector('span');
+         span.textContent = errors[0].errors ? errors[0].errors[0] : 'Failed';
+      }
+
+      // Remove after 4 seconds
+      setTimeout(function() {
+         card.style.transition = 'opacity 0.5s ease';
+         card.style.opacity = '0';
+         setTimeout(function() {
+            card.remove();
+            // Re-show empty if needed
+            if (grid.querySelectorAll('.media-card').length === 0) {
+               grid.innerHTML = '<div class="media-empty" id="mediaEmpty"><i class="fas fa-image"></i><p>No media uploaded yet</p></div>';
+            }
+         }, 500);
+      }, 4000);
+   }
+
+   function replaceWithRealCard(oldCard, m) {
+      const card = document.createElement('div');
+      card.className = 'media-card';
+      card.dataset.id = m.id;
+
+      card.dataset.original = m.original_url || m.url;
+      card.dataset.type = m.media_type;
+
+      let inner = '';
+      if (m.media_type === 'IMAGE') {
+         inner = '<img src="' + m.url + '" alt="" loading="lazy" class="media-thumb" width="140" height="140" />';
+      } else {
+         inner = '<div class="media-thumb video-poster"><i class="fas fa-film"></i></div>' +
+                 '<div class="media-badge-video"><i class="fas fa-play"></i></div>';
+      }
+
+      const featuredUrl = uploadUrl.replace('/upload/', '').replace(/\/\d+\/media$/, '') + '/../media/' + m.id + '/featured/';
+      const deleteUrl = uploadUrl.replace('/upload/', '').replace(/\/\d+\/media$/, '') + '/../media/' + m.id + '/delete/';
+
+      inner += `<div class="media-overlay">
+         <button class="media-btn media-btn-star" data-url="${m.featured_url || ''}"><i class="fas fa-star"></i></button>
+         <button class="media-btn media-btn-delete" data-url="${m.delete_url || ''}"><i class="fas fa-trash"></i></button>
+      </div>`;
+      inner += `<div class="media-info"><span class="media-size">${m.file_size}</span></div>`;
+      card.innerHTML = inner;
+
+      // Animate in
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.9)';
+      oldCard.replaceWith(card);
+      requestAnimationFrame(function() {
+         card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+         card.style.opacity = '1';
+         card.style.transform = 'scale(1)';
+      });
+
+      bindCardEvents(card);
+   }
+
+   // --- File Input ---
+   if (fileInput) {
+      fileInput.addEventListener('change', function() {
+         uploadFiles(fileInput.files);
+         fileInput.value = '';
+      });
+   }
+
+   // --- Drag & Drop ---
+   if (dropZone) {
+      let dragCounter = 0;
+      document.addEventListener('dragenter', function(e) {
+         e.preventDefault();
+         dragCounter++;
+         dropZone.style.display = 'flex';
+         dropZone.classList.add('dragover');
+      });
+      document.addEventListener('dragleave', function(e) {
+         e.preventDefault();
+         dragCounter--;
+         if (dragCounter <= 0) {
+            dragCounter = 0;
+            dropZone.classList.remove('dragover');
+            dropZone.style.display = 'none';
+         }
+      });
+      document.addEventListener('dragover', function(e) { e.preventDefault(); });
+      dropZone.addEventListener('drop', function(e) {
+         e.preventDefault();
+         dragCounter = 0;
+         dropZone.classList.remove('dragover');
+         dropZone.style.display = 'none';
+         uploadFiles(e.dataTransfer.files);
+      });
+   }
+
+   // --- Card Events (star, delete, lightbox) ---
+   function bindCardEvents(card) {
+      // Star
+      const starBtn = card.querySelector('.media-btn-star');
+      if (starBtn) {
+         starBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fetch(starBtn.dataset.url, {
+               method: 'POST',
+               headers: {'X-CSRFToken': csrfToken},
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+               if (data.success) {
+                  grid.querySelectorAll('.media-btn-star').forEach(function(b) { b.classList.remove('active'); });
+                  if (data.is_featured) starBtn.classList.add('active');
+               }
+            });
+         });
+      }
+      // Delete
+      const delBtn = card.querySelector('.media-btn-delete');
+      if (delBtn) {
+         delBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (!confirm('Delete this media?')) return;
+            fetch(delBtn.dataset.url, {
+               method: 'POST',
+               headers: {'X-CSRFToken': csrfToken},
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+               if (data.success) {
+                  card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                  card.style.opacity = '0';
+                  card.style.transform = 'scale(0.8)';
+                  setTimeout(function() { card.remove(); }, 300);
+                  countEl.textContent = data.total_media;
+                  if (data.total_media === 0) {
+                     grid.innerHTML = '<div class="media-empty" id="mediaEmpty"><i class="fas fa-image"></i><p>No media uploaded yet</p></div>';
+                  }
+               }
+            });
+         });
+      }
+      // Lightbox — use original full-resolution image
+      card.addEventListener('click', function() {
+         var lightbox = document.getElementById('mediaLightbox');
+         var content = document.getElementById('lightboxContent');
+         var dlBtn = document.getElementById('lightboxDownload');
+         var originalUrl = card.dataset.original;
+         var mediaType = card.dataset.type;
+
+         if (mediaType === 'IMAGE') {
+            content.innerHTML = '<img src="' + originalUrl + '" alt="" />';
+         } else {
+            content.innerHTML = '<video src="' + originalUrl + '" controls autoplay></video>';
+         }
+
+         // Show download button with original file
+         dlBtn.href = originalUrl;
+         dlBtn.style.display = 'inline-block';
+
+         lightbox.style.display = 'flex';
+      });
+   }
+
+   // Bind existing cards
+   grid.querySelectorAll('.media-card').forEach(bindCardEvents);
+
+   // --- Lightbox close ---
+   var lbClose = document.getElementById('lightboxClose');
+   var lightbox = document.getElementById('mediaLightbox');
+   if (lbClose) lbClose.addEventListener('click', function() {
+      lightbox.style.display = 'none';
+      var vid = lightbox.querySelector('video');
+      if (vid) vid.pause();
+   });
+   if (lightbox) lightbox.addEventListener('click', function(e) {
+      if (e.target === lightbox) {
+         lightbox.style.display = 'none';
+         var vid = lightbox.querySelector('video');
+         if (vid) vid.pause();
+      }
+   });
+})();
+</script>

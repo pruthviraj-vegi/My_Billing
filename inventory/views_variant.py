@@ -1,6 +1,4 @@
-"""
-Views for handling product variant creation, editing, and stock operations.
-"""
+"""Product variant management views."""
 
 import logging
 from decimal import Decimal
@@ -10,14 +8,16 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import F, Q, Sum, DecimalField
 from django.db.utils import IntegrityError
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, UpdateView
 
 from base.decorators import RequiredPermissionMixin, required_permission
 from base.utility import render_paginated_response, table_sorting
 
-from .forms import (
+from inventory.forms import (
     AdjustmentInForm,
     AdjustmentOutForm,
     ColorForm,
@@ -25,9 +25,18 @@ from .forms import (
     SizeForm,
     StockInForm,
     VariantForm,
+    VariantMediaForm,
 )
-from .models import Category, Color, InventoryLog, Product, ProductVariant, Size
-from .services import InventoryService
+from inventory.models import (
+    Category,
+    Color,
+    InventoryLog,
+    Product,
+    ProductVariant,
+    Size,
+    VariantMedia,
+)
+from inventory.services import InventoryService
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +196,9 @@ def variant_details(request, variant_id):
         "supplier_invoice", "supplier_invoice__supplier"
     ).order_by("-timestamp")[:20]
 
+    # Get media files for this variant
+    media_files = variant.media_files.all()
+
     # Calculate stock statistics
     stock_stats = {
         "total_quantity": variant.total_quantity,
@@ -204,6 +216,8 @@ def variant_details(request, variant_id):
         "product": variant.product,
         "recent_logs": recent_logs,
         "stock_stats": stock_stats,
+        "media_files": media_files,
+        "media_form": VariantMediaForm(),
     }
 
     return render(request, "inventory/product_variant/details.html", context)
@@ -899,3 +913,93 @@ class DamageCreate(RequiredPermissionMixin, CreateView):
         logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
+
+
+# ========================================
+#  VARIANT MEDIA VIEWS (AJAX)
+# ========================================
+
+
+@require_POST
+@required_permission("inventory.change_productvariant")
+def variant_media_upload(request, variant_id):
+    """AJAX endpoint to upload media files for a variant."""
+    variant = get_object_or_404(ProductVariant, id=variant_id)
+    files = request.FILES.getlist("file")
+
+    if not files:
+        return JsonResponse(
+            {"success": False, "error": "No files provided."}, status=400
+        )
+
+    uploaded = []
+    errors = []
+
+    for f in files:
+        form = VariantMediaForm(
+            data={"alt_text": "", "is_featured": False}, files={"file": f}
+        )
+        if form.is_valid():
+            media = form.save(commit=False)
+            media.variant = variant
+            media.save()
+            uploaded.append(
+                {
+                    "id": media.id,
+                    "url": media.gallery_url,
+                    "original_url": media.original_url,
+                    "media_type": media.media_type,
+                    "file_size": media.file_size_display,
+                    "is_featured": media.is_featured,
+                    "featured_url": reverse(
+                        "inventory_variant:media_set_featured", args=[media.id]
+                    ),
+                    "delete_url": reverse(
+                        "inventory_variant:media_delete", args=[media.id]
+                    ),
+                }
+            )
+        else:
+            errors.append(
+                {"file": f.name, "errors": form.errors.get("file", ["Unknown error"])}
+            )
+
+    return JsonResponse(
+        {
+            "success": len(uploaded) > 0,
+            "uploaded": uploaded,
+            "errors": errors,
+            "total_media": variant.media_files.count(),
+        }
+    )
+
+
+@require_POST
+@required_permission("inventory.change_productvariant")
+def variant_media_delete(request, media_id):
+    """AJAX endpoint to delete a single media item."""
+    media = get_object_or_404(VariantMedia, id=media_id)
+    variant_id = media.variant_id
+    media.file.delete(save=False)  # Delete the physical file
+    media.delete()
+    return JsonResponse(
+        {
+            "success": True,
+            "total_media": VariantMedia.objects.filter(variant_id=variant_id).count(),
+        }
+    )
+
+
+@require_POST
+@required_permission("inventory.change_productvariant")
+def variant_media_set_featured(request, media_id):
+    """AJAX endpoint to toggle featured status of a media item."""
+    media = get_object_or_404(VariantMedia, id=media_id)
+    media.is_featured = not media.is_featured
+    media.save()  # save() handles un-featuring others
+    return JsonResponse(
+        {
+            "success": True,
+            "is_featured": media.is_featured,
+        }
+    )
