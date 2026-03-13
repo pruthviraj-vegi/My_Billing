@@ -181,9 +181,11 @@ CSRF_USE_SESSIONS = (
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # SSL/HTTPS Settings (enabled in production)
-SECURE_SSL_REDIRECT = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", cast=bool, default=not DEBUG)
+
+# Cookies — secure only over Cloudflare (https), not LAN (http)
+SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", cast=bool, default=False)
+CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", cast=bool, default=False)
 
 # Proxy settings
 USE_X_FORWARDED_HOST = True
