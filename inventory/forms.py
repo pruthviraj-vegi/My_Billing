@@ -264,18 +264,34 @@ class CategoryForm(forms.ModelForm):
         return parent
 
     def clean_name(self):
-        """Ensure category name is unique (case-insensitive)"""
+        """Strip whitespace from category name."""
         name = self.cleaned_data.get("name")
         if name:
             name = name.strip()
-            # Check for duplicate (case-insensitive), excluding current instance
-            qs = Category.objects.filter(name__iexact=name)
+        return name
+
+    def clean(self):
+        """Ensure category name is unique within the same parent (case-insensitive).
+
+        Allows duplicate names under different parents, e.g.:
+        Women → Inners, Men → Inners, Kids → Inners
+        """
+        cleaned_data = super().clean()
+        name = cleaned_data.get("name")
+        parent = cleaned_data.get("parent")
+
+        if name:
+            # Check for duplicate name under the same parent
+            qs = Category.objects.filter(name__iexact=name, parent=parent)
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
 
             if qs.exists():
-                raise forms.ValidationError("A category with this name already exists.")
-        return name
+                parent_label = f'under "{parent.name}"' if parent else "at root level"
+                raise forms.ValidationError(
+                    f'A category named "{name}" already exists {parent_label}.'
+                )
+        return cleaned_data
 
 
 class ColorForm(forms.ModelForm):

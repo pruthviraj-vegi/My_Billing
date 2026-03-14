@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-{% block title %}Invoice Dashboard{% endblock %}
+{% block title %}
+    Invoice Dashboard
+{% endblock title %}
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
 {% endblock extra_css %}
@@ -213,6 +215,8 @@
     {% load static %}
     <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
     <script src="{% static 'js/modern-charts.js' %}"></script>
+    <script src="{% static 'js/dropdown_style.js' %}"></script>
+    <script src="{% static 'js/counting.js' %}"></script>
     <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Charts
@@ -307,12 +311,28 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
-    // Event Listeners
-    const dateFilter = document.getElementById('dateFilter');
-    if (dateFilter) {
-        dateFilter.addEventListener('change', (e) => {
-            fetchDashboardData(e.target.value);
+    // Initialize styled date filter dropdown
+    let dateFilterStyled = null;
+    function getDateFilterValue() {
+        if (dateFilterStyled) return dateFilterStyled.getValue();
+        const el = document.getElementById('dateFilter');
+        return el ? el.value : 'today';
+    }
+
+    if (typeof convertSelectToStyledDropdown !== 'undefined') {
+        dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
+            onChange: function(data) {
+                fetchDashboardData(data.value);
+            }
         });
+    } else {
+        // Fallback: use native select change event
+        const dateFilter = document.getElementById('dateFilter');
+        if (dateFilter) {
+            dateFilter.addEventListener('change', (e) => {
+                fetchDashboardData(e.target.value);
+            });
+        }
     }
 
     const retryBtn = document.getElementById('retryDashboardBtn');
@@ -320,13 +340,12 @@ document.addEventListener('DOMContentLoaded', function() {
         retryBtn.addEventListener('click', () => {
             document.getElementById('dashboardError').style.display = 'none';
             document.getElementById('dashboardContent').style.display = 'block';
-            fetchDashboardData(dateFilter ? dateFilter.value : 'today');
+            fetchDashboardData(getDateFilterValue());
         });
     }
 
     // Re-render charts when theme changes
     document.addEventListener('themeChanged', function() {
-        // Wait for CSS variables to settle after theme attribute change
         requestAnimationFrame(function() {
             // Destroy existing chart instances
             revenueChart.destroy();
@@ -341,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
             categoryChart = ModernCharts.initDoughnut(categoryCtx);
 
             // Re-fetch data to populate the new chart instances
-            fetchDashboardData(dateFilter ? dateFilter.value : 'today');
+            fetchDashboardData(getDateFilterValue());
         });
     });
 

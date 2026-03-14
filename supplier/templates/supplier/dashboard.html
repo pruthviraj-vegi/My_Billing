@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
-{% block title %}Supplier Dashboard{% endblock %}
+{% block title %}
+    Supplier Dashboard
+{% endblock title %}
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
 {% endblock extra_css %}
@@ -311,12 +313,28 @@
             );
         }
 
-        // Event Listeners
-        const dateFilter = document.getElementById('dateFilter');
-        if (dateFilter) {
-            dateFilter.addEventListener('change', (e) => {
-                fetchDashboardData(e.target.value);
+        // Initialize styled date filter dropdown
+        let dateFilterStyled = null;
+        function getDateFilterValue() {
+            if (dateFilterStyled) return dateFilterStyled.getValue();
+            const el = document.getElementById('dateFilter');
+            return el ? el.value : 'this_month';
+        }
+
+        if (typeof convertSelectToStyledDropdown !== 'undefined') {
+            dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
+                onChange: function(data) {
+                    fetchDashboardData(data.value);
+                }
             });
+        } else {
+            // Fallback: use native select change event
+            const dateFilter = document.getElementById('dateFilter');
+            if (dateFilter) {
+                dateFilter.addEventListener('change', (e) => {
+                    fetchDashboardData(e.target.value);
+                });
+            }
         }
 
         const retryBtn = document.getElementById('retryDashboardBtn');
@@ -324,7 +342,7 @@
             retryBtn.addEventListener('click', () => {
                 document.getElementById('dashboardError').style.display = 'none';
                 document.getElementById('dashboardContent').style.display = 'block';
-                fetchDashboardData(dateFilter ? dateFilter.value : 'this_month');
+                fetchDashboardData(getDateFilterValue());
             });
         }
 
@@ -344,7 +362,7 @@
                 typeChart = ModernCharts.initDoughnut(typeCtx);
 
                 // Re-fetch data to populate the new chart instances
-                fetchDashboardData(dateFilter ? dateFilter.value : 'this_month');
+                fetchDashboardData(getDateFilterValue());
             });
         });
 

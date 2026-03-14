@@ -255,12 +255,28 @@
         );
     }
 
-    // Event Listeners
-    const dateFilter = document.getElementById('dateFilter');
-    if (dateFilter) {
-        dateFilter.addEventListener('change', (e) => {
-            fetchDashboardData(e.target.value);
+    // Initialize styled date filter dropdown
+    let dateFilterStyled = null;
+    function getDateFilterValue() {
+        if (dateFilterStyled) return dateFilterStyled.getValue();
+        const el = document.getElementById('dateFilter');
+        return el ? el.value : 'today';
+    }
+
+    if (typeof convertSelectToStyledDropdown !== 'undefined') {
+        dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
+            onChange: function(data) {
+                fetchDashboardData(data.value);
+            }
         });
+    } else {
+        // Fallback: use native select change event
+        const dateFilter = document.getElementById('dateFilter');
+        if (dateFilter) {
+            dateFilter.addEventListener('change', (e) => {
+                fetchDashboardData(e.target.value);
+            });
+        }
     }
 
     const retryBtn = document.getElementById('retryDashboardBtn');
@@ -268,7 +284,7 @@
         retryBtn.addEventListener('click', () => {
             document.getElementById('dashboardError').style.display = 'none';
             document.getElementById('dashboardContent').style.display = 'block';
-            fetchDashboardData(dateFilter ? dateFilter.value : 'today');
+            fetchDashboardData(getDateFilterValue());
         });
     }
 
@@ -304,7 +320,7 @@
             supplierOutChart = ModernCharts.initDoughnut(supplierOutCtx);
 
             // Re-fetch data to populate the dynamic chart instances
-            fetchDashboardData(dateFilter ? dateFilter.value : 'today');
+            fetchDashboardData(getDateFilterValue());
 
             // Re-apply cached data for the total stock chart
             if (initialTotalStockData && initialTotalStockData.labels && initialTotalStockData.values) {

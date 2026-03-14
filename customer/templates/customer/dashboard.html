@@ -307,12 +307,28 @@
             );
         }
 
-        // Event Listeners
-        const dateFilter = document.getElementById('dateFilter');
-        if (dateFilter) {
-            dateFilter.addEventListener('change', (e) => {
-                fetchDashboardData(e.target.value);
+        // Initialize styled date filter dropdown
+        let dateFilterStyled = null;
+        function getDateFilterValue() {
+            if (dateFilterStyled) return dateFilterStyled.getValue();
+            const el = document.getElementById('dateFilter');
+            return el ? el.value : 'today';
+        }
+
+        if (typeof convertSelectToStyledDropdown !== 'undefined') {
+            dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
+                onChange: function(data) {
+                    fetchDashboardData(data.value);
+                }
             });
+        } else {
+            // Fallback: use native select change event
+            const dateFilter = document.getElementById('dateFilter');
+            if (dateFilter) {
+                dateFilter.addEventListener('change', (e) => {
+                    fetchDashboardData(e.target.value);
+                });
+            }
         }
 
         const retryBtn = document.getElementById('retryDashboardBtn');
@@ -320,9 +336,29 @@
             retryBtn.addEventListener('click', () => {
                 document.getElementById('dashboardError').style.display = 'none';
                 document.getElementById('dashboardContent').style.display = 'block';
-                fetchDashboardData(dateFilter ? dateFilter.value : 'today');
+                fetchDashboardData(getDateFilterValue());
             });
         }
+
+        // Re-render charts when theme changes
+        document.addEventListener('themeChanged', function() {
+            requestAnimationFrame(function() {
+                // Destroy existing chart instances
+                comparisonChart.destroy();
+                invoiceStatusChart.destroy();
+                paymentTypeChart.destroy();
+                customerChart.destroy();
+
+                // Re-initialize with fresh theme colors
+                comparisonChart = ModernCharts.initRevenueChart(comparisonCtx);
+                invoiceStatusChart = ModernCharts.initDoughnut(invoiceStatusCtx);
+                paymentTypeChart = ModernCharts.initDoughnut(paymentTypeCtx);
+                customerChart = ModernCharts.initDoughnut(customerCtx);
+
+                // Re-fetch data to populate the new chart instances
+                fetchDashboardData(getDateFilterValue());
+            });
+        });
 
         // Initial Load
         fetchDashboardData('today');
