@@ -12,4 +12,5 @@ urlpatterns = [
     path("", views.HomeView.as_view(), name="home"),
     path("login/", views.CustomLoginView.as_view(), name="login"),
     path("logout/", views.logout_view, name="logout"),
+    path("dashboard-stats/", views.dashboard_stats, name="dashboard_stats"),
 ]

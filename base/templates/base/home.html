@@ -3,11 +3,28 @@
 {% block title %}
   Dashboard - Billing System
 {% endblock title %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
+{% endblock extra_css %}
 {% block content %}
   <!-- Page Header -->
-  <div class="page-header">
+  <div class="page-header page-header-sticky">
     <h2 class="page-title">Dashboard</h2>
     <div class="page-actions">
+      <!-- Date Filter Dropdown -->
+      <form method="get" class="d-inline" id="dateFilterForm">
+        <select name="date_filter" class="form-select" id="dateFilter">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="this_month">This Month</option>
+          <option value="last_month">Last Month</option>
+          <option value="this_finance">This Finance</option>
+          <option value="last_finance">Last Finance</option>
+          <option value="this_quarter">This Quarter</option>
+          <option value="last_quarter">Last Quarter</option>
+          <option value="this_year">This Year</option>
+        </select>
+      </form>
       {% if perms.cart.add_cart %}
         <a href="{% url 'cart:auto_cart_create' %}" class="btn">
           <i class="fas fa-plus"></i>
@@ -22,9 +39,248 @@
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">Overview</span>
   </nav>
-  <!-- Welcome Section -->
-  <div class="welcome-section">
-    <h1 class="welcome-title">Welcome back, {{ user.full_name }}!</h1>
-    <p class="welcome-subtitle">Here's what's happening with your billing system today.</p>
+  <!-- Loading State - Hidden for seamless updates -->
+  <div id="dashboardLoading" class="loading-container hidden">
+    <div class="loading">
+      <i class="fas fa-spinner fa-spin"></i>
+      Loading dashboard data...
+    </div>
+  </div>
+  <!-- Dashboard Content -->
+  <div id="dashboardContent" class="dashboardContent">
+    <!-- Quick Stats -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-rupee-sign"></i>
+        </div>
+        <div class="stat-content">
+          <h3 class="stat-number counting-number" id="totalReceived" data-count="0">0</h3>
+          <p class="stat-label">Total Received</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-content">
+          <h3 class="stat-number counting-number"
+              id="customerReceivable"
+              data-count="0">0</h3>
+          <p class="stat-label">Customer Receivable</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-user-plus"></i>
+        </div>
+        <div class="stat-content">
+          <h3 class="stat-number counting-number"
+              id="totalCustomers"
+              data-count="0">0</h3>
+          <p class="stat-label">Total Customers</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-truck"></i>
+        </div>
+        <div class="stat-content">
+          <h3 class="stat-number counting-number"
+              id="supplierBalance"
+              data-count="0">0</h3>
+          <p class="stat-label">Supplier Balance</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-boxes"></i>
+        </div>
+        <div class="stat-content">
+          <h3 class="stat-number counting-number" id="totalProducts" data-count="0">0</h3>
+          <p class="stat-label">Total Products</p>
+        </div>
+      </div>
+    </div>
+    <!-- Payment Analytics -->
+    <div class="activity-section">
+      <h2 class="section-title">Payment Analytics</h2>
+      <div class="breakdown-grid">
+        <!-- Combined Payment Method (Invoices + Payments) -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Payment Method</h3>
+          </div>
+          <div class="payment-chart-wrapper">
+            <div class="payment-chart-container">
+              <canvas id="paymentMethodChart"></canvas>
+            </div>
+            <div id="paymentMethodLegend" class="custom-legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Sales Comparison Chart -->
+    <div class="activity-section">
+      <h2 class="section-title">Sales Comparison</h2>
+      <div class="chart-card revenue-chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">Sales Analytics</h3>
+          <div class="chart-summary-stats">
+            <div class="stat-item">
+              <span class="stat-label-small"><span class="legend-dot bg-primary"></span>Current</span>
+              <span class="stat-value-small" id="revCurrentTotal">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label-small"><span class="legend-dot bg-secondary"></span>Previous</span>
+              <span class="stat-value-small" id="revPreviousTotal">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label-small">Change</span>
+              <span class="stat-change" id="revChange">--</span>
+            </div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="comparisonChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Error State -->
+  <div id="dashboardError" class="error-container hidden">
+    <div class="error-message">
+      <i class="fas fa-exclamation-triangle"></i>
+      <h3>Failed to load dashboard data</h3>
+      <p>Please try again or contact support if the problem persists.</p>
+      <button type="button" class="btn btn-primary" id="retryDashboardBtn">
+        <i class="fas fa-refresh"></i>
+        Retry
+      </button>
+    </div>
   </div>
 {% endblock content %}
+{% block extra_js %}
+  <!-- Chart.js Library -->
+  <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
+  <script src="{% static 'js/modern-charts.js' %}"></script>
+  <script src="{% static 'js/dropdown_style.js' %}"></script>
+  <script src="{% static 'js/counting.js' %}"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Charts
+    const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+    const paymentMethodCtx = document.getElementById('paymentMethodChart').getContext('2d');
+
+    let comparisonChart = ModernCharts.initRevenueChart(comparisonCtx);
+    let paymentMethodChart = ModernCharts.initDoughnut(paymentMethodCtx);
+
+    // Set static values (don't change with date filter)
+    updateCount('customerReceivable', "{{customer_receivable}}");
+    updateCount('totalCustomers', "{{total_customers}}");
+    updateCount('supplierBalance', "{{supplier_balance}}");
+    updateCount('totalProducts', "{{total_products}}");
+
+    // Fetch Data Function
+    async function fetchDashboardData(filter) {
+      try {
+        document.getElementById('dashboardError').style.display = 'none';
+
+        // Subtle loading indication
+        document.getElementById('dashboardContent').style.opacity = '0.6';
+
+        const response = await fetch(`{% url "base:dashboard_stats" %}?date_filter=${filter}`);
+        const data = await response.json();
+
+        if (data.success) {
+          updateDashboard(data);
+          document.getElementById('dashboardContent').style.opacity = '1';
+        } else {
+          throw new Error(data.message || 'Failed to fetch data');
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        document.getElementById('dashboardContent').style.opacity = '1';
+        document.getElementById('dashboardError').style.display = 'flex';
+      }
+    }
+
+    function updateDashboard(data) {
+      // Update Stats
+      updateCount('totalReceived', data.stats.total_received);
+
+      // Update Payment Method Chart (combined invoices + payments)
+      ModernCharts.updateDoughnut(
+        paymentMethodChart,
+        'paymentMethodLegend',
+        data.payment_method_breakdown,
+        { label: 'payment_method', count: 'count', amount: 'amount', percentage: 'percentage' }
+      );
+
+      // Update Revenue Comparison Chart
+      if (data.comparison_data) {
+        const { currentData, previousData } = ModernCharts.updateRevenueChart(comparisonChart, data.comparison_data);
+
+        // Update Summary Totals
+        ModernCharts.updateSummaryStats(currentData, previousData, {
+          current: 'revCurrentTotal',
+          previous: 'revPreviousTotal',
+          change: 'revChange'
+        });
+      }
+    }
+
+    // Initialize styled date filter dropdown
+    let dateFilterStyled = null;
+    function getDateFilterValue() {
+      if (dateFilterStyled) return dateFilterStyled.getValue();
+      const el = document.getElementById('dateFilter');
+      return el ? el.value : 'today';
+    }
+
+    if (typeof convertSelectToStyledDropdown !== 'undefined') {
+      dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
+        onChange: function(data) {
+          fetchDashboardData(data.value);
+        }
+      });
+    } else {
+      // Fallback: use native select change event
+      const dateFilter = document.getElementById('dateFilter');
+      if (dateFilter) {
+        dateFilter.addEventListener('change', (e) => {
+          fetchDashboardData(e.target.value);
+        });
+      }
+    }
+
+    const retryBtn = document.getElementById('retryDashboardBtn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => {
+        document.getElementById('dashboardError').style.display = 'none';
+        document.getElementById('dashboardContent').style.display = 'block';
+        fetchDashboardData(getDateFilterValue());
+      });
+    }
+
+    // Re-render charts when theme changes
+    document.addEventListener('themeChanged', function() {
+      requestAnimationFrame(function() {
+        // Destroy existing chart instances
+        comparisonChart.destroy();
+        paymentMethodChart.destroy();
+
+        // Re-initialize with fresh theme colors
+        comparisonChart = ModernCharts.initRevenueChart(comparisonCtx);
+        paymentMethodChart = ModernCharts.initDoughnut(paymentMethodCtx);
+
+        // Re-fetch data to populate the new chart instances
+        fetchDashboardData(getDateFilterValue());
+      });
+    });
+
+    // Initial Load
+    fetchDashboardData('today');
+  });
+  </script>
+{% endblock extra_js %}
