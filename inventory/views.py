@@ -568,94 +568,83 @@ def _supplier_invoice_queryset(request):
     search_query = request.GET.get("search", "").strip()
     supplier_filter = request.GET.get("supplier", "").strip()
 
-    supplier_invoices = (
-        SupplierInvoice.objects.select_related("supplier")
-        .filter(is_deleted=False)
-        .annotate(
-            stock_in_quantity=Coalesce(
-                Sum(
-                    Case(
-                        When(
-                            inventory_logs__transaction_type__in=[
-                                "STOCK_IN",
-                                "INITIAL",
-                            ],
-                            then=F("inventory_logs__quantity_change"),
-                        ),
-                        default=Decimal("0"),
-                        output_field=models.DecimalField(),
-                    )
-                ),
-                Decimal("0"),
-            ),
-            sales_quantity=Coalesce(
-                Sum(
-                    Case(
-                        When(
-                            inventory_logs__transaction_type="SALE",
-                            then=Abs(F("inventory_logs__quantity_change")),
-                        ),
-                        default=Decimal("0"),
-                        output_field=models.DecimalField(),
-                    )
-                ),
-                Decimal("0"),
-            )
-            - Coalesce(
-                Sum(
-                    Case(
-                        When(
-                            inventory_logs__transaction_type="RETURN",
-                            then=Abs(F("inventory_logs__quantity_change")),
-                        ),
-                        default=Decimal("0"),
-                        output_field=models.DecimalField(),
-                    )
-                ),
-                Decimal("0"),
-            )
-            - Coalesce(
-                Sum(
-                    Case(
-                        When(
-                            inventory_logs__transaction_type="DAMAGE",
-                            then=Abs(F("inventory_logs__quantity_change")),
-                        ),
-                        default=Decimal("0"),
-                        output_field=models.DecimalField(),
-                    )
-                ),
-                Decimal("0"),
-            ),
-            stock_amount=Coalesce(
-                Sum(
-                    Case(
-                        When(
-                            inventory_logs__transaction_type__in=[
-                                "STOCK_IN",
-                                "INITIAL",
-                            ],
-                            then=ExpressionWrapper(
-                                F("inventory_logs__quantity_change")
-                                * F("inventory_logs__purchase_price"),
-                                output_field=DecimalField(
-                                    max_digits=16, decimal_places=2
-                                ),
-                            ),
-                        ),
-                        default=Value(0),
-                        output_field=DecimalField(max_digits=16, decimal_places=2),
-                    )
-                ),
-                Value(0),
-                output_field=DecimalField(max_digits=16, decimal_places=2),
-            ),
-            products_count=Count(
-                "inventory_logs__variant__product",
-                filter=Q(inventory_logs__transaction_type__in=["STOCK_IN", "INITIAL"]),
-                distinct=True,
-            ),
+    supplier_invoices = SupplierInvoice.objects.filter(is_deleted=False).select_related(
+        "supplier"
+    )
+
+    if search_query:
+        supplier_invoices = supplier_invoices.filter(
+            Q(invoice_number__icontains=search_query)
+            | Q(supplier__name__icontains=search_query)
         )
+
+    if supplier_filter:
+        supplier_invoices = supplier_invoices.filter(supplier_id=supplier_filter)
+
+    supplier_invoices = supplier_invoices.annotate(
+        stock_in_quantity=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        inventory_logs__transaction_type__in=[
+                            "STOCK_IN",
+                            "INITIAL",
+                        ],
+                        then=F("inventory_logs__quantity_change"),
+                    ),
+                    default=Decimal("0"),
+                    output_field=models.DecimalField(),
+                )
+            ),
+            Decimal("0"),
+        ),
+        sales_quantity=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        inventory_logs__transaction_type="SALE",
+                        then=Abs(F("inventory_logs__quantity_change")),
+                    ),
+                    When(
+                        inventory_logs__transaction_type__in=[
+                            "RETURN",
+                            "CANCEL",
+                            "DAMAGE",
+                        ],
+                        then=-Abs(F("inventory_logs__quantity_change")),
+                    ),
+                    default=Decimal("0"),
+                    output_field=models.DecimalField(),
+                )
+            ),
+            Decimal("0"),
+        ),
+        stock_amount=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        inventory_logs__transaction_type__in=[
+                            "STOCK_IN",
+                            "INITIAL",
+                        ],
+                        then=ExpressionWrapper(
+                            F("inventory_logs__quantity_change")
+                            * F("inventory_logs__purchase_price"),
+                            output_field=DecimalField(max_digits=16, decimal_places=2),
+                        ),
+                    ),
+                    default=Value(0),
+                    output_field=DecimalField(max_digits=16, decimal_places=2),
+                )
+            ),
+            Value(0),
+            output_field=DecimalField(max_digits=16, decimal_places=2),
+        ),
+        products_count=Count(
+            "inventory_logs__variant__product",
+            filter=Q(inventory_logs__transaction_type__in=["STOCK_IN", "INITIAL"]),
+            distinct=True,
+        ),
     )
     supplier_invoices = supplier_invoices.annotate(
         remaining_quantity=ExpressionWrapper(
@@ -665,7 +654,7 @@ def _supplier_invoice_queryset(request):
     )
 
     supplier_invoices = supplier_invoices.annotate(
-        remaining_percentage=Case(
+        sold_percentage=Case(
             When(
                 stock_in_quantity__gt=0,
                 then=ExpressionWrapper(
@@ -679,15 +668,6 @@ def _supplier_invoice_queryset(request):
         )
     ).filter(stock_in_quantity__gt=0)
 
-    if search_query:
-        supplier_invoices = supplier_invoices.filter(
-            Q(invoice_number__icontains=search_query)
-            | Q(supplier__name__icontains=search_query)
-        )
-
-    if supplier_filter:
-        supplier_invoices = supplier_invoices.filter(supplier_id=supplier_filter)
-
     ordering_map = {
         "invoice_number": "invoice_number",
         "supplier_name": "supplier__name",
@@ -696,7 +676,7 @@ def _supplier_invoice_queryset(request):
         "stock_in_quantity": "stock_in_quantity",
         "sales_quantity": "sales_quantity",
         "remaining_quantity": "remaining_quantity",
-        "remaining_percentage": "remaining_percentage",
+        "sold_percentage": "sold_percentage",
         "stock_amount": "stock_amount",
     }
 
@@ -717,14 +697,24 @@ def supplier_invoice_fetch(request):
 
 @required_permission("inventory.view_supplier_invoice_details")
 def supplier_invoice_details(request, invoice_id):
-    """View to show detailed breakdown of a specific supplier invoice"""
+    """View to show detailed breakdown of a specific supplier invoice."""
 
     search_query = request.GET.get("search", "")
     status_filter = request.GET.get("status", "")
     sort_by = request.GET.get("sort", "-stock_in_quantity")
 
+    # Get invoice info directly from SupplierInvoice (avoids extra InventoryLog query)
+    invoice = get_object_or_404(
+        SupplierInvoice.objects.select_related("supplier"),
+        id=invoice_id,
+        is_deleted=False,
+    )
+
+    quantity_field = models.DecimalField(max_digits=16, decimal_places=3)
+
+    # Build per-product breakdown with all annotations at DB level
     products_query = (
-        InventoryLog.objects.filter(supplier_invoice__id=invoice_id)
+        InventoryLog.objects.filter(supplier_invoice_id=invoice_id)
         .values(
             "variant__product__brand",
             "variant__product__name",
@@ -744,11 +734,11 @@ def supplier_invoice_details(request, invoice_id):
                             then=F("purchase_price"),
                         ),
                         default=Value(0),
-                        output_field=models.DecimalField(),
+                        output_field=quantity_field,
                     )
                 ),
                 Value(0),
-                output_field=models.DecimalField(),
+                output_field=quantity_field,
             ),
             selling_price=Coalesce(
                 Sum(
@@ -758,11 +748,17 @@ def supplier_invoice_details(request, invoice_id):
                             then=F("mrp"),
                         ),
                         default=Value(0),
-                        output_field=models.DecimalField(),
+                        output_field=quantity_field,
                     )
                 ),
                 Value(0),
-                output_field=models.DecimalField(),
+                output_field=quantity_field,
+            ),
+            remaining_quantity=ExpressionWrapper(
+                Coalesce(F("stock_in_quantity"), Value(0))
+                + Coalesce(F("sales_quantity"), Value(0))
+                + Coalesce(F("damage_quantity"), Value(0)),
+                output_field=quantity_field,
             ),
         )
     )
@@ -774,73 +770,51 @@ def supplier_invoice_details(request, invoice_id):
             | Q(variant__barcode__icontains=search_query)
         )
 
-    # Apply sorting for stock-in data
+    # Apply status filter at DB level
+    if status_filter == "sold_out":
+        products_query = products_query.filter(remaining_quantity__lte=0)
+    elif status_filter == "in_stock":
+        products_query = products_query.filter(remaining_quantity__gt=0)
+    elif status_filter == "low_stock":
+        products_query = products_query.filter(
+            remaining_quantity__gt=0, remaining_quantity__lte=5
+        )
+
+    # All sorting at DB level
     sort_mapping = {
         "brand": "variant__product__brand",
         "-brand": "-variant__product__brand",
         "stock_in_quantity": "stock_in_quantity",
         "-stock_in_quantity": "-stock_in_quantity",
+        "sales_quantity": "sales_quantity",
+        "-sales_quantity": "-sales_quantity",
+        "remaining_quantity": "remaining_quantity",
+        "-remaining_quantity": "-remaining_quantity",
     }
 
     order_field = sort_mapping.get(sort_by, "-stock_in_quantity")
     products_in_invoice = list(products_query.order_by(order_field))
 
+    # Abs-format sales & damage for display (they come as negative from with_stock_summary)
     for product in products_in_invoice:
-        stock_in = product.get("stock_in_quantity") or Decimal("0")
-        sales_quantity = abs(product.get("sales_quantity") or Decimal("0"))
-        damage_quantity = abs(product.get("damage_quantity") or Decimal("0"))
+        product["sales_quantity"] = abs(product.get("sales_quantity") or Decimal("0"))
+        product["damage_quantity"] = abs(product.get("damage_quantity") or Decimal("0"))
 
-        product["sales_quantity"] = sales_quantity
-        product["damage_quantity"] = damage_quantity
-        product["remaining_quantity"] = stock_in - sales_quantity - damage_quantity
-
-    # Apply status filter after calculating remaining quantities
-    if status_filter == "sold_out":
-        products_in_invoice = [
-            p for p in products_in_invoice if p["remaining_quantity"] <= 0
-        ]
-    elif status_filter == "in_stock":
-        products_in_invoice = [
-            p for p in products_in_invoice if p["remaining_quantity"] > 0
-        ]
-    elif status_filter == "low_stock":
-        products_in_invoice = [
-            p for p in products_in_invoice if 0 < p["remaining_quantity"] <= 5
-        ]
-
-    # Apply additional sorting after calculating sales quantities
-    if sort_by in [
-        "sales_quantity",
-        "-sales_quantity",
-        "remaining_quantity",
-        "-remaining_quantity",
-    ]:
-        is_reverse = sort_by.startswith("-")
-        field = sort_by.lstrip("-")
-        products_in_invoice.sort(key=lambda x: x[field], reverse=is_reverse)
-
-    # Single query for totals using aggregation
-    totals = InventoryLog.objects.filter(supplier_invoice__id=invoice_id).aggregate(
+    # Totals — single query with consolidated aggregations
+    totals = InventoryLog.objects.filter(supplier_invoice_id=invoice_id).aggregate(
         total_sales=Coalesce(
             Sum(
                 Case(
-                    When(transaction_type="SALE", then=F("quantity_change")),
+                    When(
+                        transaction_type__in=["SALE", "RETURN", "CANCEL"],
+                        then=F("quantity_change"),
+                    ),
+                    When(
+                        transaction_type="DAMAGE",
+                        then=-F("quantity_change"),
+                    ),
                     default=Decimal("0"),
-                    output_field=models.DecimalField(),
-                )
-            )
-            + Sum(
-                Case(
-                    When(transaction_type="RETURN", then=F("quantity_change")),
-                    default=Decimal("0"),
-                    output_field=models.DecimalField(),
-                )
-            )
-            - Sum(
-                Case(
-                    When(transaction_type="DAMAGE", then=F("quantity_change")),
-                    default=Decimal("0"),
-                    output_field=models.DecimalField(),
+                    output_field=quantity_field,
                 )
             ),
             Decimal("0"),
@@ -853,30 +827,22 @@ def supplier_invoice_details(request, invoice_id):
                         then=F("quantity_change"),
                     ),
                     default=Decimal("0"),
-                    output_field=models.DecimalField(),
+                    output_field=quantity_field,
                 )
             ),
             Decimal("0"),
         ),
     )
 
-    # Get invoice info in single query
-    invoice_info = (
-        InventoryLog.objects.filter(supplier_invoice__id=invoice_id)
-        .select_related("supplier_invoice__supplier")
-        .values(
-            "supplier_invoice__supplier__name",
-            "supplier_invoice__invoice_date",
-            "supplier_invoice__invoice_number",
-        )
-        .first()
-    )
-
     context = {
-        "invoice_number": invoice_info["supplier_invoice__invoice_number"],
-        "invoice_info": invoice_info,
+        "invoice_number": invoice.invoice_number,
+        "invoice_info": {
+            "supplier_invoice__supplier__name": invoice.supplier.name,
+            "supplier_invoice__invoice_date": invoice.invoice_date,
+            "supplier_invoice__invoice_number": invoice.invoice_number,
+        },
         "products_in_invoice": products_in_invoice,
-        "title": f"Invoice - {invoice_info['supplier_invoice__invoice_number']}",
+        "title": f"Invoice - {invoice.invoice_number}",
         "total_sales": abs(totals["total_sales"]),
         "total_stock_in": totals["total_stock_in"],
         "total_remaining": totals["total_stock_in"] - abs(totals["total_sales"]),

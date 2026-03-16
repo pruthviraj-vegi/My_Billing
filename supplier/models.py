@@ -203,6 +203,18 @@ class SupplierInvoice(SoftDeleteModel):
     class Meta:
         unique_together = ("supplier", "invoice_number", "invoice_date")
         ordering = ["-invoice_date"]
+        indexes = [
+            # .filter(is_deleted=False) — from SoftDeleteModel, used in every query
+            models.Index(fields=["is_deleted"]),
+            # default ordering and sort
+            models.Index(fields=["invoice_date"]),
+            # .filter(is_deleted=False) + ordering combined — most common query pattern
+            models.Index(fields=["is_deleted", "invoice_date"]),
+            # sorting by total_amount
+            models.Index(fields=["total_amount"]),
+            # invoice_number search (icontains — partial benefit)
+            models.Index(fields=["invoice_number"]),
+        ]
 
     def __str__(self):
         date_str = (

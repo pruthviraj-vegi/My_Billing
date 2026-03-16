@@ -105,7 +105,7 @@ class InventoryLogQuerySet(models.QuerySet):
                 Sum(
                     Case(
                         When(
-                            transaction_type__in=["SALE", "RETURN"],
+                            transaction_type__in=["SALE", "RETURN", "CANCEL"],
                             then=F("quantity_change"),
                         ),
                         default=Value(0),

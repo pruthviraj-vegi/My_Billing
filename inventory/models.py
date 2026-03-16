@@ -776,7 +776,8 @@ class VariantMedia(models.Model):
     )
     sort_order = models.PositiveIntegerField(default=0)
     file_size = models.PositiveIntegerField(
-        default=0, help_text="Original file size in bytes.",
+        default=0,
+        help_text="Original file size in bytes.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -865,9 +866,9 @@ class VariantMedia(models.Model):
 
         # Ensure only one featured media per variant
         if self.is_featured:
-            VariantMedia.objects.filter(
-                variant=self.variant, is_featured=True
-            ).exclude(pk=self.pk).update(is_featured=False)
+            VariantMedia.objects.filter(variant=self.variant, is_featured=True).exclude(
+                pk=self.pk
+            ).update(is_featured=False)
 
         # Save first so the file is on disk
         is_new = self.pk is None
@@ -992,9 +993,14 @@ class InventoryLog(SoftDeleteModel):
     class Meta:
         ordering = ["-timestamp"]
         indexes = [
+            # Existing
             models.Index(fields=["variant", "timestamp"]),
             models.Index(fields=["transaction_type", "timestamp"]),
             models.Index(fields=["created_by", "timestamp"]),
+            # Add these
+            models.Index(
+                fields=["supplier_invoice", "transaction_type", "quantity_change"]
+            ),  # covering index for Sum/Case annotations
         ]
 
     def __str__(self):

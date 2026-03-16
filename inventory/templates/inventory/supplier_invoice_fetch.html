@@ -13,8 +13,8 @@
             <td>{{ invoice.sales_quantity|floatformat:0 }}</td>
             <td>{{ invoice.remaining_quantity|floatformat:0 }}</td>
             <td>
-                <span class="badge {% if invoice.remaining_percentage < 25 %}text-danger{% elif invoice.remaining_percentage < 50 %}text-warning{% else %}text-success{% endif %}">
-                    {{ invoice.remaining_percentage|floatformat:2 }}%
+                <span class="badge {% if invoice.sold_percentage < 25 %}text-danger{% elif invoice.sold_percentage < 50 %}text-warning{% else %}text-success{% endif %}">
+                    {{ invoice.sold_percentage|floatformat:2 }}%
                 </span>
             </td>
             <td>{{ invoice.products_count }}</td>
