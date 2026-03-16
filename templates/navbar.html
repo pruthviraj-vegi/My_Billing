@@ -78,9 +78,9 @@
                   <a href="{% url 'inventory_variant:home' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'variant_home' %}active{% endif %}">All Variants</a>
                {% endif %}
-               {% if perms.inventory.view_supplier_invoice_tracking %}
-                  <a href="{% url 'inventory:supplier_invoice_tracking' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'supplier_invoice_tracking' %}active{% endif %}">Supplier Invoices</a>
+               {% if perms.inventory.view_supplier_invoice %}
+                  <a href="{% url 'inventory:supplier_invoice' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'supplier_invoice' %}active{% endif %}">Supplier Invoices</a>
                {% endif %}
                {% if perms.inventory.view_low_stock %}
                   <a href="{% url 'inventory:low_stock' %}"

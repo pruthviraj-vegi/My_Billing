@@ -297,6 +297,7 @@ def low_stock_page(request):
         ProductVariant.objects.filter(
             is_deleted=False,
             status=ProductVariant.VariantStatus.ACTIVE,
+            minimum_quantity__gt=0,
             quantity__lte=F("minimum_quantity"),
         )
         .select_related("product")
@@ -546,7 +547,24 @@ def variant_update(request, pk):
     return render(request, "inventory/variant_update.html", context)
 
 
-def _supplier_invoice_tracking_queryset(request):
+@required_permission("inventory.view_supplier_invoice")
+def supplier_invoice(request):
+    """Render main page; data loads via AJAX fetch endpoint."""
+    suppliers = (
+        Supplier.objects.filter(is_deleted=False).order_by("name").values("id", "name")
+    )
+    context = {
+        "suppliers": suppliers,
+    }
+
+    return render(
+        request,
+        "inventory/supplier_invoice.html",
+        context,
+    )
+
+
+def _supplier_invoice_queryset(request):
     search_query = request.GET.get("search", "").strip()
     supplier_filter = request.GET.get("supplier", "").strip()
 
@@ -686,30 +704,14 @@ def _supplier_invoice_tracking_queryset(request):
     return supplier_invoices.order_by(*final_sorts)
 
 
-@required_permission("inventory.view_supplier_invoice_tracking")
-def supplier_invoice_tracking(request):
-    """Render main page; data loads via AJAX fetch endpoint."""
-    suppliers = Supplier.objects.filter(is_deleted=False).order_by("name")
-
-    return render(
-        request,
-        "inventory/supplier_invoice_tracking.html",
-        {
-            "suppliers": suppliers,
-            "search_query": request.GET.get("search", ""),
-            "supplier_filter": request.GET.get("supplier", ""),
-        },
-    )
-
-
-@required_permission("inventory.view_supplier_invoice_tracking")
-def supplier_invoice_tracking_fetch(request):
+@required_permission("inventory.view_supplier_invoice")
+def supplier_invoice_fetch(request):
     """AJAX endpoint powering supplier invoice tracking table."""
-    invoices = _supplier_invoice_tracking_queryset(request)
+    invoices = _supplier_invoice_queryset(request)
     return render_paginated_response(
         request,
         invoices,
-        "inventory/supplier_invoice_tracking_fetch.html",
+        "inventory/supplier_invoice_fetch.html",
     )
 
 

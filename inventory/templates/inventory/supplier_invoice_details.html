@@ -9,7 +9,7 @@
     <div class="page-header">
         <h2 class="page-title">Invoice {{ invoice_number }}</h2>
         <div class="page-actions">
-            <a href="{% url 'inventory:supplier_invoice_tracking' %}"
+            <a href="{% url 'inventory:supplier_invoice' %}"
                class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i>
                 Back to Tracking
@@ -20,7 +20,7 @@
     <nav class="breadcrumb breadcrumb-right">
         <a href="{% url 'supplier:dashboard' %}" class="breadcrumb-item">Dashboard</a>
         <span class="breadcrumb-separator">/</span>
-        <a href="{% url 'inventory:supplier_invoice_tracking' %}"
+        <a href="{% url 'inventory:supplier_invoice' %}"
            class="breadcrumb-item">Supplier Invoices</a>
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">{{ invoice_number }}</span>

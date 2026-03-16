@@ -107,13 +107,13 @@ urlpatterns = [
     # Supplier Invoice Tracking
     path(
         "supplier-invoices/",
-        views.supplier_invoice_tracking,
-        name="supplier_invoice_tracking",
+        views.supplier_invoice,
+        name="supplier_invoice",
     ),
     path(
         "supplier-invoices/fetch/",
-        views.supplier_invoice_tracking_fetch,
-        name="supplier_invoice_tracking_fetch",
+        views.supplier_invoice_fetch,
+        name="supplier_invoice_fetch",
     ),
     path(
         "supplier-invoices/<int:invoice_id>/",
