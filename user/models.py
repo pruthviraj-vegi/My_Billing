@@ -1,6 +1,3 @@
-# ------------------------------------------------------------------
-# File: accounts/models.py
-# ------------------------------------------------------------------
 """Models for the user app."""
 
 from decimal import Decimal
@@ -94,16 +91,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.phone_number})"
-
-    @property
-    def is_owner(self):
-        """Check if the user is an owner."""
-        return self.groups.filter(name__iexact="owner").exists()
-
-    @property
-    def is_manager(self):
-        """Check if the user is a manager."""
-        return self.groups.filter(name__iregex=r"owner|manager").exists()  #
 
     @property
     def username(self):

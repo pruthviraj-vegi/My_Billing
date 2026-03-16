@@ -140,7 +140,7 @@
         </thead>
         <tbody id="cartItemsBody">
             {% for data in cart_list %}
-                {% include 'cart/models/item_fetch.html' with item=data %}
+                {% include "cart/models/item_fetch.html" with item=data %}
             {% endfor %}
         </tbody>
     </table>
