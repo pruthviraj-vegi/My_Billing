@@ -695,25 +695,61 @@ def supplier_invoice_fetch(request):
     )
 
 
-@required_permission("inventory.view_supplier_invoice_details")
-def supplier_invoice_details(request, invoice_id):
-    """View to show detailed breakdown of a specific supplier invoice."""
+def _supplier_invoice_totals(invoice_id):
+    """Aggregate totals for a supplier invoice (summary cards).
 
-    search_query = request.GET.get("search", "")
-    status_filter = request.GET.get("status", "")
-    sort_by = request.GET.get("sort", "-stock_in_quantity")
+    Returns a dict with total_sales, total_stock_in, total_remaining.
+    """
+    quantity_field = models.DecimalField(max_digits=16, decimal_places=3)
 
-    # Get invoice info directly from SupplierInvoice (avoids extra InventoryLog query)
-    invoice = get_object_or_404(
-        SupplierInvoice.objects.select_related("supplier"),
-        id=invoice_id,
-        is_deleted=False,
+    totals = InventoryLog.objects.filter(supplier_invoice_id=invoice_id).aggregate(
+        total_sales=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["SALE", "RETURN", "CANCEL", "DAMAGE"],
+                        then=F("quantity_change"),
+                    ),
+                    default=Decimal("0"),
+                    output_field=quantity_field,
+                )
+            ),
+            Decimal("0"),
+        ),
+        total_stock_in=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["STOCK_IN", "INITIAL"],
+                        then=F("quantity_change"),
+                    ),
+                    default=Decimal("0"),
+                    output_field=quantity_field,
+                )
+            ),
+            Decimal("0"),
+        ),
     )
+
+    return {
+        "total_sales": abs(totals["total_sales"]),
+        "total_stock_in": totals["total_stock_in"],
+        "total_remaining": totals["total_stock_in"] - abs(totals["total_sales"]),
+    }
+
+
+def _supplier_invoice_details_products_qs(request, invoice_id):
+    """Return a lazy queryset of per-product breakdown for a supplier invoice.
+
+    Supports search, status filter, and sorting via query params.
+    Sales/damage quantities are abs-converted at DB level for display.
+    """
+    search_query = request.GET.get("search", "").strip()
+    status_filter = request.GET.get("status", "").strip()
 
     quantity_field = models.DecimalField(max_digits=16, decimal_places=3)
 
-    # Build per-product breakdown with all annotations at DB level
-    products_query = (
+    products_qs = (
         InventoryLog.objects.filter(supplier_invoice_id=invoice_id)
         .values(
             "variant__product__brand",
@@ -760,11 +796,19 @@ def supplier_invoice_details(request, invoice_id):
                 + Coalesce(F("damage_quantity"), Value(0)),
                 output_field=quantity_field,
             ),
+            # Abs-format sales & damage at DB level (they are negative
+            # from with_stock_summary)
+            abs_sales_quantity=Abs(
+                Coalesce(F("sales_quantity"), Value(0), output_field=quantity_field)
+            ),
+            abs_damage_quantity=Abs(
+                Coalesce(F("damage_quantity"), Value(0), output_field=quantity_field)
+            ),
         )
     )
 
     if search_query:
-        products_query = products_query.filter(
+        products_qs = products_qs.filter(
             Q(variant__product__brand__icontains=search_query)
             | Q(variant__product__name__icontains=search_query)
             | Q(variant__barcode__icontains=search_query)
@@ -772,67 +816,34 @@ def supplier_invoice_details(request, invoice_id):
 
     # Apply status filter at DB level
     if status_filter == "sold_out":
-        products_query = products_query.filter(remaining_quantity__lte=0)
+        products_qs = products_qs.filter(remaining_quantity__lte=0)
     elif status_filter == "in_stock":
-        products_query = products_query.filter(remaining_quantity__gt=0)
+        products_qs = products_qs.filter(remaining_quantity__gt=0)
     elif status_filter == "low_stock":
-        products_query = products_query.filter(
+        products_qs = products_qs.filter(
             remaining_quantity__gt=0, remaining_quantity__lte=5
         )
 
-    # All sorting at DB level
-    sort_mapping = {
+    ordering_map = {
         "brand": "variant__product__brand",
-        "-brand": "-variant__product__brand",
         "stock_in_quantity": "stock_in_quantity",
-        "-stock_in_quantity": "-stock_in_quantity",
-        "sales_quantity": "sales_quantity",
-        "-sales_quantity": "-sales_quantity",
+        "sales_quantity": "abs_sales_quantity",
         "remaining_quantity": "remaining_quantity",
-        "-remaining_quantity": "-remaining_quantity",
     }
 
-    order_field = sort_mapping.get(sort_by, "-stock_in_quantity")
-    products_in_invoice = list(products_query.order_by(order_field))
+    final_sorts = table_sorting(request, ordering_map, "-stock_in_quantity")
+    return products_qs.order_by(*final_sorts)
 
-    # Abs-format sales & damage for display (they come as negative from with_stock_summary)
-    for product in products_in_invoice:
-        product["sales_quantity"] = abs(product.get("sales_quantity") or Decimal("0"))
-        product["damage_quantity"] = abs(product.get("damage_quantity") or Decimal("0"))
 
-    # Totals — single query with consolidated aggregations
-    totals = InventoryLog.objects.filter(supplier_invoice_id=invoice_id).aggregate(
-        total_sales=Coalesce(
-            Sum(
-                Case(
-                    When(
-                        transaction_type__in=["SALE", "RETURN", "CANCEL"],
-                        then=F("quantity_change"),
-                    ),
-                    When(
-                        transaction_type="DAMAGE",
-                        then=-F("quantity_change"),
-                    ),
-                    default=Decimal("0"),
-                    output_field=quantity_field,
-                )
-            ),
-            Decimal("0"),
-        ),
-        total_stock_in=Coalesce(
-            Sum(
-                Case(
-                    When(
-                        transaction_type__in=["STOCK_IN", "INITIAL"],
-                        then=F("quantity_change"),
-                    ),
-                    default=Decimal("0"),
-                    output_field=quantity_field,
-                )
-            ),
-            Decimal("0"),
-        ),
+@required_permission("inventory.view_supplier_invoice_details")
+def supplier_invoice_details(request, invoice_id):
+    """Shell view — products load via AJAX fetch endpoint."""
+    invoice = get_object_or_404(
+        SupplierInvoice.objects.select_related("supplier"),
+        id=invoice_id,
+        is_deleted=False,
     )
+    totals = _supplier_invoice_totals(invoice_id)
 
     context = {
         "invoice_number": invoice.invoice_number,
@@ -841,13 +852,23 @@ def supplier_invoice_details(request, invoice_id):
             "supplier_invoice__invoice_date": invoice.invoice_date,
             "supplier_invoice__invoice_number": invoice.invoice_number,
         },
-        "products_in_invoice": products_in_invoice,
         "title": f"Invoice - {invoice.invoice_number}",
-        "total_sales": abs(totals["total_sales"]),
-        "total_stock_in": totals["total_stock_in"],
-        "total_remaining": totals["total_stock_in"] - abs(totals["total_sales"]),
-        "search_query": search_query,
-        "status_filter": status_filter,
-        "sort_by": sort_by,
+        "invoice_id": invoice_id,
+        **totals,
     }
     return render(request, "inventory/supplier_invoice_details.html", context)
+
+
+@required_permission("inventory.view_supplier_invoice_details")
+def supplier_invoice_details_fetch(request, invoice_id):
+    """AJAX endpoint powering supplier invoice details product table."""
+    # Validate invoice exists
+    get_object_or_404(SupplierInvoice, id=invoice_id, is_deleted=False)
+
+    products_qs = _supplier_invoice_details_products_qs(request, invoice_id)
+    return render_paginated_response(
+        request,
+        products_qs,
+        "inventory/supplier_invoice_details_fetch.html",
+        per_page=12,
+    )

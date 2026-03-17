@@ -376,11 +376,36 @@ def get_sale_percentage(remaining_quantity, total_quantity):
         - "secondary" (gray): No stock/invalid
     """
     if total_quantity == 0:
-        return "secondary"
+        return 0
     try:
         # Calculate SOLD percentage
         sold_quantity = total_quantity - remaining_quantity
         sold_percentage = (sold_quantity / total_quantity) * 100
+        return round(sold_percentage, 2)
+    except (ValueError, TypeError):
+        return 0
+
+
+@register.filter(name="sale_percentage_label")
+def get_sale_percentage_label(remaining_quantity, total_quantity):
+    """
+    Calculate sold percentage and return status badge class.
+
+    Args:
+        remaining_quantity: Units still in stock
+        total_quantity: Total units received
+
+    Returns:
+        - "active" (green): >90% sold - Excellent!
+        - "warning" (yellow): 50-90% sold - OK
+        - "danger" (red): <50% sold - Poor/Slow moving
+        - "secondary" (gray): No stock/invalid
+    """
+    if total_quantity == 0:
+        return "secondary"
+    try:
+        # Calculate SOLD percentage
+        sold_percentage = get_sale_percentage(remaining_quantity, total_quantity)
 
         if sold_percentage >= 90:
             return "active"  # Green - Awesome! Almost sold out

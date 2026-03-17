@@ -120,14 +120,9 @@ urlpatterns = [
         views.supplier_invoice_details,
         name="supplier_invoice_details",
     ),
-    # path(
-    #     "variant/<int:variant_id>/invoice-analytics/",
-    #     views.product_invoice_analytics,
-    #     name="product_invoice_analytics",
-    # ),
-    # path(
-    #     "supplier/<int:supplier_id>/analytics/",
-    #     views.supplier_analytics,
-    #     name="supplier_analytics",
-    # ),
+    path(
+        "supplier-invoices/<int:invoice_id>/fetch/",
+        views.supplier_invoice_details_fetch,
+        name="supplier_invoice_details_fetch",
+    ),
 ]

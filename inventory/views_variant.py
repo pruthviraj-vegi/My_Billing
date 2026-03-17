@@ -978,9 +978,47 @@ def variant_media_upload(request, variant_id):
 @required_permission("inventory.change_productvariant")
 def variant_media_delete(request, media_id):
     """AJAX endpoint to delete a single media item."""
+    import gc
+    import time
+
     media = get_object_or_404(VariantMedia, id=media_id)
     variant_id = media.variant_id
-    media.file.delete(save=False)  # Delete the physical file
+
+    # Collect file paths before deleting the DB record
+    file_fields = []
+    if media.file:
+        file_fields.append(media.file)
+    if media.thumbnail:
+        file_fields.append(media.thumbnail)
+
+    # Close any open file handles (Pillow lazy-loads on Windows)
+    for field in file_fields:
+        try:
+            field.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Force garbage collection to release lingering file handles
+    gc.collect()
+
+    # Delete the physical files with retry for Windows file-locking
+    for field in file_fields:
+        for attempt in range(3):
+            try:
+                field.storage.delete(field.name)
+                break
+            except PermissionError:
+                if attempt < 2:
+                    gc.collect()
+                    time.sleep(0.2)
+                else:
+                    logger.warning(
+                        "Could not delete file %s — it may be locked by another "
+                        "process. The DB record will still be removed.",
+                        field.name,
+                    )
+
+    # Always delete the DB record
     media.delete()
     return JsonResponse(
         {

@@ -9,6 +9,12 @@
     <div class="page-header">
         <h2 class="page-title">Invoice {{ invoice_number }}</h2>
         <div class="page-actions">
+            <button type="button"
+                    class="btn btn-secondary"
+                    onclick="reloadTable('invoiceProductsTable')">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
             <a href="{% url 'inventory:supplier_invoice' %}"
                class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i>
@@ -51,10 +57,6 @@
                                 <i class="fas fa-calendar"></i>
                                 <span><strong>Invoice Date:</strong> {{ invoice_info.supplier_invoice__invoice_date|date:"M d, Y" }}</span>
                             </div>
-                            <div class="contact-item">
-                                <i class="fas fa-boxes"></i>
-                                <span><strong>Total Products:</strong> {{ products_in_invoice|length }}</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -83,39 +85,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="summary-card-compact" id="statusSummaryCard">
-                    <div class="summary-icon-compact">
-                        <i class="fas fa-chart-pie"></i>
-                    </div>
-                    <div class="summary-content-compact">
-                        <h4>Status Summary</h4>
-                        <div class="summary-stats-compact">
-                            {% with in_stock=0 sold_out=0 low_stock=0 %}
-                                {% for product in products_in_invoice %}
-                                    {% if product.remaining_quantity > 5 %}
-                                        {% with in_stock=in_stock|add:1 %}{% endwith %}
-                                    {% elif product.remaining_quantity > 0 %}
-                                        {% with low_stock=low_stock|add:1 %}{% endwith %}
-                                    {% else %}
-                                        {% with sold_out=sold_out|add:1 %}{% endwith %}
-                                    {% endif %}
-                                {% endfor %}
-                                <div class="stat-item-compact">
-                                    <span class="stat-number-compact">{{ in_stock }}</span>
-                                    <span class="stat-label-compact">In Stock</span>
-                                </div>
-                                <div class="stat-item-compact">
-                                    <span class="stat-number-compact">{{ low_stock }}</span>
-                                    <span class="stat-label-compact">Low Stock</span>
-                                </div>
-                                <div class="stat-item-compact">
-                                    <span class="stat-number-compact">{{ sold_out }}</span>
-                                    <span class="stat-label-compact">Sold Out</span>
-                                </div>
-                            {% endwith %}
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
         <!-- Right Column - Products Table -->
@@ -124,163 +93,92 @@
             <div class="table-section" id="productsSection">
                 <div class="table-header">
                     <h3>
-                        <i class="fas fa-list"></i> Products in Invoice ({{ products_in_invoice|length }})
+                        <i class="fas fa-list"></i> Products in Invoice
                     </h3>
                 </div>
                 <!-- Search and Filter Section -->
                 <div class="search-filter-section">
-                    <form method="get" class="search-filter-form" id="searchForm">
+                    <form method="get" class="search-filter-form" id="searchForm" autocomplete="off">
                         <div class="search-group search-expanded">
                             <i class="fas fa-search search-icon"></i>
                             <input type="search"
                                    name="search"
                                    class="search-input"
                                    placeholder="Search products in invoice..."
-                                   value="{{ search_query }}"
                                    id="searchInput"
                                    autofocus>
                         </div>
+                        <select name="status" class="filter-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="in_stock">In Stock</option>
+                            <option value="low_stock">Low Stock</option>
+                            <option value="sold_out">Sold Out</option>
+                        </select>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-search"></i>
                             Search
                         </button>
                     </form>
                 </div>
-                {% if products_in_invoice %}
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Size</th>
-                                    <th>Color</th>
-                                    <th>Barcode</th>
-                                    <th>Stock In</th>
-                                    <th>Sales</th>
-                                    <th>Remaining</th>
-                                    <th>Purchase Price</th>
-                                    <th>Selling Price</th>
-                                    <th>Stock Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for product in products_in_invoice %}
-                                    <tr>
-                                        <td>
-                                            <div class="product-info">
-                                                <div class="product-brand">{{ product.variant__product__brand }}</div>
-                                                {% if product.variant__product__name %}
-                                                    <small class="text-muted">{{ product.variant__product__name }}</small>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {% if product.variant__size__name %}
-                                                <span class="badge badge-secondary">{{ product.variant__size__name }}</span>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if product.variant__color__name %}
-                                                <div class="d-inline-flex align-items-center gap-2">
-                                                    <div class="color-swatch-small"
-                                                         style="background-color: {{ product.variant__color__hex_code|default:'#ccc' }}">
-                                                    </div>
-                                                    {{ product.variant__color__name }}
-                                                </div>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <code data-copy="{{ product.variant__barcode }}">{{ product.variant__barcode }}</code>
-                                        </td>
-                                        <td>
-                                            <strong>{{ product.stock_in_quantity|floatformat:0 }}</strong>
-                                        </td>
-                                        <td>{{ product.sales_quantity|floatformat:0 }}</td>
-                                        <td>{{ product.remaining_quantity|floatformat:0 }}</td>
-                                        <td>{{ product.purchase_price|currency }}</td>
-                                        <td>{{ product.selling_price|currency }}</td>
-                                        <td>
-                                            <span class="status-badge status-{{ product.remaining_quantity|sale_percentage:product.sales_quantity }}">
-                                                {% if product.remaining_quantity == 0 %}
-                                                    Sold Out!
-                                                {% elif product.remaining_quantity < product.total_quantity|floatformat:0|mul:0.1 %}
-                                                    Almost Sold!
-                                                {% elif product.remaining_quantity < product.total_quantity|floatformat:0|mul:0.5 %}
-                                                    Selling Well
-                                                {% else %}
-                                                    Slow Moving
-                                                {% endif %}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="action-buttons">
-                                                <a href="{% url 'inventory_variant:details' product.variant__id %}"
-                                                   class="btn-action btn-view"
-                                                   title="View Product Details">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-boxes"></i>
-                        <h4>No Products Found</h4>
-                        <p>No products found in this invoice. Try adjusting your search criteria.</p>
-                    </div>
-                {% endif %}
+                <div class="table-container">
+                    <table class="data-table"
+                           id="invoiceProductsTable"
+                           data-sort="-stock_in_quantity">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="brand">Product</th>
+                                <th>Size</th>
+                                <th>Color</th>
+                                <th>Barcode</th>
+                                <th class="sortable" data-sort="stock_in_quantity">Stock In</th>
+                                <th class="sortable" data-sort="sales_quantity">Sales</th>
+                                <th class="sortable" data-sort="remaining_quantity">Remaining</th>
+                                <th>Purchase Price</th>
+                                <th>Selling Price</th>
+                                <th>Sold %</th>
+                                <th>Stock Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="12" class="text-center empty-state-container p-3">
+                                    <div class="empty-state">
+                                        <i class="fas fa-boxes"></i>
+                                        <h4>No Products Found</h4>
+                                        <p>No products found in this invoice.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 {% endblock content %}
 {% block extra_js %}
+    <script src="{% static 'js/fetchData.js' %}"></script>
     <script>
-    // Search and filter functionality
     document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchInput');
-        const statusFilter = document.getElementById('statusFilter');
-        const sortSelect = document.getElementById('sortSelect');
-        const searchForm = document.getElementById('searchForm');
-        
-        // Auto-submit form on filter change
-        statusFilter.addEventListener('change', function() {
-            searchForm.submit();
-        });
-        
-        sortSelect.addEventListener('change', function() {
-            searchForm.submit();
-        });
-        
-        // Debounced search
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(function() {
-                searchForm.submit();
-            }, 500);
-        });
+        const fetchUrl = '{% url "inventory:supplier_invoice_details_fetch" invoice_id %}';
+
+        initTableAjax('searchForm', 'invoiceProductsTable', fetchUrl, {
+            loadingText: 'Loading products...',
+            autoLoad: true,
+        }, true);
+
+        initTableSorting('invoiceProductsTable');
 
         // Summary card click handlers
         const stockSummaryCard = document.getElementById('stockSummaryCard');
-        const statusSummaryCard = document.getElementById('statusSummaryCard');
         const productsSection = document.getElementById('productsSection');
-        
-        stockSummaryCard.addEventListener('click', function() {
-            productsSection.scrollIntoView({ behavior: 'smooth' });
-        });
-        
-        statusSummaryCard.addEventListener('click', function() {
-            productsSection.scrollIntoView({ behavior: 'smooth' });
-        });
+
+        if (stockSummaryCard && productsSection) {
+            stockSummaryCard.addEventListener('click', function() {
+                productsSection.scrollIntoView({ behavior: 'smooth' });
+            });
+        }
     });
     </script>
 {% endblock extra_js %}
