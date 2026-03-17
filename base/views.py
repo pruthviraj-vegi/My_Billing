@@ -8,7 +8,7 @@ from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.db.models import Count, DecimalField, F, Q, Sum
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Abs, Coalesce, TruncDate, TruncMonth, TruncWeek
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
@@ -16,10 +16,10 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
 
 from base.getDates import getDates
+from base.utility import get_period_label, get_periodic_data
 
 from customer.models import Customer, CustomerCreditSummary, Payment
-from customer.views import get_comparison_data
-from inventory.models import ProductVariant
+from inventory.models import InventoryLog, ProductVariant
 from invoice.models import Invoice
 from invoice.choices import PaymentTypeChoices
 from supplier.models import SupplierInvoice, SupplierPayment
@@ -255,8 +255,8 @@ def dashboard_stats(request):
         for method, data in sorted(combined.items())
     ]
 
-    # Comparison data for revenue chart
-    comparison_data = get_comparison_data(date_filter, start_date, end_date)
+    # Comparison data for stock in vs stock out chart
+    comparison_data = get_inventory_comparison_data(date_filter, start_date, end_date)
 
     return JsonResponse(
         {
@@ -274,3 +274,103 @@ def dashboard_stats(request):
             },
         }
     )
+
+
+def get_inventory_comparison_data(date_filter, current_start, current_end):
+    """Generate stock in vs stock out comparison data for the line chart.
+
+    Returns current and previous period data in the same format as
+    ``customer.views.get_comparison_data`` so the frontend can reuse
+    ``ModernCharts.updateRevenueChart``.
+    """
+    previous_start, previous_end, period_type = get_periodic_data(
+        date_filter, current_start, current_end
+    )
+
+    current_logs = InventoryLog.objects.filter(
+        variant__is_deleted=False,
+        timestamp__date__range=[current_start, current_end],
+    )
+    current_data = _get_inventory_period_data(
+        current_logs, current_start, current_end, period_type
+    )
+
+    previous_logs = InventoryLog.objects.filter(
+        variant__is_deleted=False,
+        timestamp__date__range=[previous_start, previous_end],
+    )
+    previous_data = _get_inventory_period_data(
+        previous_logs, previous_start, previous_end, period_type
+    )
+
+    return {
+        "current_period": {
+            "label": get_period_label(current_start, current_end, period_type),
+            "data": current_data,
+        },
+        "previous_period": {
+            "label": get_period_label(previous_start, previous_end, period_type),
+            "data": previous_data,
+        },
+        "period_type": period_type,
+    }
+
+
+def _get_inventory_period_data(logs_qs, start_date, _end_date, period_type):
+    """Aggregate stock-in and stock-out values by time bucket.
+
+    Each data point contains both ``amount`` (stock in value) and
+    ``stock_out`` (stock out value) so the frontend can plot two lines.
+    """
+    amount_field = DecimalField(max_digits=16, decimal_places=2)
+
+    stock_in_sum = Coalesce(
+        Sum(
+            Abs(F("quantity_change")) * F("purchase_price"),
+            filter=Q(transaction_type__in=["STOCK_IN", "INITIAL"]),
+            output_field=amount_field,
+        ),
+        Decimal("0"),
+    )
+    stock_out_sum = Coalesce(
+        Sum(
+            Abs(F("quantity_change")) * F("purchase_price"),
+            filter=Q(transaction_type="SALE"),
+            output_field=amount_field,
+        ),
+        Decimal("0"),
+    )
+
+    if period_type == "daily":
+        agg = logs_qs.aggregate(stock_in=stock_in_sum, stock_out=stock_out_sum)
+        return [
+            {
+                "date": start_date.strftime("%Y-%m-%d"),
+                "amount": float(agg["stock_in"]),
+                "stock_out": float(agg["stock_out"]),
+            }
+        ]
+
+    # Choose the truncation function
+    trunc_map = {
+        "monthly": ("day", TruncDate("timestamp")),
+        "quarterly": ("week", TruncWeek("timestamp")),
+        "yearly": ("month", TruncMonth("timestamp")),
+    }
+    bucket_name, trunc_fn = trunc_map.get(period_type, ("day", TruncDate("timestamp")))
+
+    rows = (
+        logs_qs.annotate(bucket=trunc_fn)
+        .values("bucket")
+        .annotate(stock_in=stock_in_sum, stock_out=stock_out_sum)
+        .order_by("bucket")
+    )
+
+    return [
+        {
+            "date": row["bucket"].strftime("%Y-%m-%d"),
+            "amount": float(row["stock_in"]),
+            "stock_out": float(row["stock_out"]),
+        }
+        for row in rows
+    ]

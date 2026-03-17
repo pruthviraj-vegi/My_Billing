@@ -120,19 +120,19 @@
         </div>
       </div>
     </div>
-    <!-- Sales Comparison Chart -->
+    <!-- Stock Comparison Chart -->
     <div class="activity-section">
-      <h2 class="section-title">Sales Comparison</h2>
+      <h2 class="section-title">Stock Comparison</h2>
       <div class="chart-card revenue-chart-card">
         <div class="chart-header">
-          <h3 class="chart-title">Sales Analytics</h3>
+          <h3 class="chart-title">Stock In vs Stock Out</h3>
           <div class="chart-summary-stats">
             <div class="stat-item">
-              <span class="stat-label-small"><span class="legend-dot bg-primary"></span>Current</span>
+              <span class="stat-label-small"><span class="legend-dot bg-success"></span>Stock In</span>
               <span class="stat-value-small" id="revCurrentTotal">0</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label-small"><span class="legend-dot bg-secondary"></span>Previous</span>
+              <span class="stat-label-small"><span class="legend-dot bg-danger"></span>Stock Out</span>
               <span class="stat-value-small" id="revPreviousTotal">0</span>
             </div>
             <div class="stat-item">
@@ -226,7 +226,7 @@
           current: 'revCurrentTotal',
           previous: 'revPreviousTotal',
           change: 'revChange'
-        });
+        }, { inverted: true });
       }
     }
 

@@ -443,27 +443,54 @@
             let currentData = [];
             let previousData = [];
 
-            // Current Period
-            if (comparisonData.current_period) {
-                const cData = comparisonData.current_period.data;
+            // Detect dual-series mode (stock_in vs stock_out)
+            const cData = comparisonData.current_period ? comparisonData.current_period.data : [];
+            const isDualSeries = cData.length > 0 && cData[0].stock_out !== undefined;
+
+            if (isDualSeries) {
+                // Stock In vs Stock Out mode — both series come from current_period
                 chart.data.labels = cData.map(d => {
                     const date = new Date(d.date);
                     return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
                 });
-                currentData = cData.map(d => d.amount);
-                chart.data.datasets[0].data = currentData;
-            }
+                currentData = cData.map(d => d.amount);       // Stock In
+                previousData = cData.map(d => d.stock_out);    // Stock Out
 
-            // Previous Period
-            if (comparisonData.previous_period) {
-                const pData = comparisonData.previous_period.data;
-                previousData = pData.map(d => d.amount);
+                chart.data.datasets[0].label = 'Stock In';
+                chart.data.datasets[0].data = currentData;
+                chart.data.datasets[0].borderColor = colors.green;
+
+                chart.data.datasets[1].label = 'Stock Out';
                 chart.data.datasets[1].data = previousData;
+                chart.data.datasets[1].borderColor = colors.red;
+                chart.data.datasets[1].pointBorderColor = colors.red;
+            } else {
+                // Original current vs previous period mode
+                if (comparisonData.current_period) {
+                    chart.data.labels = cData.map(d => {
+                        const date = new Date(d.date);
+                        return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+                    });
+                    currentData = cData.map(d => d.amount);
+                    chart.data.datasets[0].data = currentData;
+                }
+
+                if (comparisonData.previous_period) {
+                    const pData = comparisonData.previous_period.data;
+                    previousData = pData.map(d => d.amount);
+                    chart.data.datasets[1].data = previousData;
+                }
             }
 
             // Calculate Growth %
             const growthData = currentData.map((curr, index) => {
                 const prev = previousData[index] || 0;
+                if (isDualSeries) {
+                    // Dual-series: growth = (stockOut - stockIn) / stockIn
+                    // Positive when selling more than buying (good)
+                    if (curr === 0) return 0;
+                    return ((prev - curr) / curr) * 100;
+                }
                 if (prev === 0) return 0;
                 return ((curr - prev) / prev) * 100;
             });
@@ -475,11 +502,19 @@
         },
 
         // Update Summary Stats Header
-        updateSummaryStats: function (currentData, previousData, elementIds) {
+        updateSummaryStats: function (currentData, previousData, elementIds, options) {
             // elementIds: { current: 'id', previous: 'id', change: 'id' }
+            // options: { inverted: true } — when higher previousData (stock out) is positive
+            const opts = options || {};
             const totalCurrent = currentData.reduce((a, b) => a + b, 0);
             const totalPrevious = previousData.reduce((a, b) => a + b, 0);
-            const totalChange = totalPrevious > 0 ? ((totalCurrent - totalPrevious) / totalPrevious) * 100 : 0;
+            let totalChange;
+            if (opts.inverted) {
+                // Stock mode: positive when stockOut > stockIn
+                totalChange = totalCurrent > 0 ? ((totalPrevious - totalCurrent) / totalCurrent) * 100 : 0;
+            } else {
+                totalChange = totalPrevious > 0 ? ((totalCurrent - totalPrevious) / totalPrevious) * 100 : 0;
+            }
 
             const currentEl = document.getElementById(elementIds.current);
             if (currentEl) currentEl.textContent = totalCurrent.toLocaleString('en-IN');
