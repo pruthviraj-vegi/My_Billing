@@ -1,0 +1,33 @@
+
+{% load custom_filters %}
+{% load static %}
+<!-- Table Body Content -->
+{% if page_obj %}
+    {% for ev in page_obj %}
+                    <tr>
+                        <td>{{ ev.timestamp|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            {% if ev.user %}
+                                {{ ev.user.full_name|default:ev.user.phone_number }}
+                            {% else %}
+                                <span class="text-muted">Anonymous / Deleted</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ev.view_name }}</td>
+                        <td>{{ ev.required_roles }}</td>
+                        <td>{{ ev.ip_address|default:"-" }}</td>
+                        <td>
+                            <span title="{{ ev.url_path }}">{{ ev.url_path|default:"-"|truncatechars:32 }}</span>
+                        </td>
+                    </tr>
+                {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="100" class="text-center p-2">
+            <div class="empty-state">
+                <i class="fas fa-exclamation-circle"></i>
+                No events found.
+            </div>
+        </td>
+    </tr>
+{% endif %}

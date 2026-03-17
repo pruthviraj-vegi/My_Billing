@@ -1,0 +1,36 @@
+{% load custom_filters %}
+{% load static %}
+<!-- Table Body Content -->
+{% if page_obj %}
+    {% for event in page_obj %}
+        <tr>
+            <td>{{ event.occurred_at|date:"Y-m-d H:i:s" }}</td>
+            <td>{{ event.user.full_name|default:event.user.get_username }}</td>
+            <td>{{ event.get_event_type_display }}</td>
+            <td>{{ event.ip_address|default:"-" }}</td>
+            <td>
+                {% if event.user_agent %}
+                    <span title="{{ event.user_agent }}">{{ event.user_agent|truncatechars:32 }}</span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>
+                <code>{{ event.session_key|default:"-" }}</code>
+            </td>
+        </tr>
+    {% endfor %}
+{% else %}
+    <!-- Empty state -->
+    <tr>
+        <td colspan="6" class="text-center p-2">
+            <div class="empty-state">
+                <i class="fas fa-users f-3 mb-1 text-secondary"></i>
+                <h4 class="mb-1 text-primary">No Login Events Found</h4>
+                <p class="mb-3 text-secondary">
+                    No login events match your search criteria. Try adjusting your filters or add a new customer.
+                </p>
+            </div>
+        </td>
+    </tr>
+{% endif %}

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}
-    Unauthorized Access Activity
+    Login Activity
 {% endblock title %}
 {% block content %}
     <div class="page-header">
-        <h2 class="page-title">Unauthorized Access Activity</h2>
+        <h2 class="page-title">Login Activity</h2>
         <div class="page-actions">
             <a href="{% url 'user:home' %}" class="btn">
                 <i class="fas fa-arrow-left"></i>
@@ -16,7 +16,7 @@
     <nav class="breadcrumb breadcrumb-right">
         <a href="{% url 'user:home' %}" class="breadcrumb-item">Users</a>
         <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-active">Unauthorized Access</span>
+        <span class="breadcrumb-active">Login Activity</span>
     </nav>
     <div class="search-filter-section">
         <form method="#"
@@ -43,15 +43,16 @@
         <table class="data-table" id="data_table" data-sort="">
             <thead>
                 <tr>
-                    <th class="sortable" data-sort="timestamp">Date</th>
+                    <th class="sortable" data-sort="occurred_at">When</th>
                     <th class="sortable" data-sort="user">User</th>
-                    <th class="sortable" data-sort="view_name">View Name</th>
-                    <th class="sortable" data-sort="required_roles">Required Roles</th>
-                    <th class="sortable" data-sort="ip_address">IP Address</th>
-                    <th class="sortable" data-sort="url_path">URL Path</th>
+                    <th class="sortable" data-sort="event_type">Event</th>
+                    <th class="sortable" data-sort="ip_address">IP</th>
+                    <th class="sortable" data-sort="user_agent">User Agent</th>
+                    <th>Session</th>
                 </tr>
             </thead>
-            <tbody id="tableBody">
+            <tbody id="table_body">
+                 <!-- Empty table body - data will be loaded via AJAX -->
                 <tr>
                     <td colspan="100" class="text-center loading-cell">
                         <div class="loading">
@@ -68,7 +69,7 @@
     <script src="{% static 'js/fetchData.js' %}"></script>
     <script>
         urls = {
-            fetch: '{% url "user:fetch_unauthorised" %}',
+            fetch: '{% url "user:fetch_logins" %}',
         }
         // Simple, clean initialization - just like Select2!
         document.addEventListener('DOMContentLoaded', function() {
