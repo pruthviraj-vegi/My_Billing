@@ -111,11 +111,16 @@
           <div class="chart-header">
             <h3 class="chart-title">Payment Method</h3>
           </div>
-          <div class="payment-chart-wrapper">
-            <div class="payment-chart-container">
-              <canvas id="paymentMethodChart"></canvas>
+          <div class="chart-row">
+            <div class="donut-wrap">
+              <canvas id="paymentMethodChart" width="260" height="260"></canvas>
+              <div class="center-info">
+                <div class="center-label" id="pmCenterLabel">total value</div>
+                <div class="center-pct" id="pmCenterPct"></div>
+                <div class="center-val" id="pmCenterVal">₹0</div>
+              </div>
             </div>
-            <div id="paymentMethodLegend" class="custom-legend"></div>
+            <div class="legend" id="paymentMethodLegend"></div>
           </div>
         </div>
       </div>

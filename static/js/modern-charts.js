@@ -72,12 +72,13 @@
                     chart.getDatasetMeta(i).data.forEach((datapoint, index) => {
                         const { x, y } = datapoint.tooltipPosition();
 
-                        // Get percentage
+                        // Get percentage — only label segments >= 4% to avoid crowding
                         const value = dataset.data[index];
                         const total = dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                        const pctNum = total > 0 ? (value / total) * 100 : 0;
 
-                        if (value > 0) { // Only draw if value exists
+                        if (pctNum >= 3) {
+                            const percentage = pctNum.toFixed(1) + '%';
                             ctx.save();
                             ctx.font = 'bold 10px Inter, sans-serif';
                             ctx.fillStyle = '#ffffff';
@@ -91,51 +92,11 @@
             }
         },
 
-        // Custom Plugin to draw total amount in the center of doughnut chart
-        centerTextPlugin: {
-            id: 'centerText',
-            afterDatasetsDraw(chart, args, options) {
-                const { ctx, chartArea: { left, top, right, bottom, width, height } } = chart;
-
-                // Calculate center position
-                const centerX = (left + right) / 2;
-                const centerY = (top + bottom) / 2;
-
-                // Get total amount from chart data
-                const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-
-                // Don't show anything if total is null or 0
-                if (!total || total === 0) {
-                    return;
-                }
-
-                // Get colors from CSS variables for theme support
-                const style = getComputedStyle(document.body);
-                const textColor = style.getPropertyValue('--text-primary').trim() || '#f8fafc';
-
-                ctx.save();
-
-                // Format and draw the total amount (without label)
-                const formattedTotal = total.toLocaleString('en-IN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-
-                ctx.font = 'bold 16px Inter, sans-serif';
-                ctx.fillStyle = textColor;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(formattedTotal, centerX, centerY);
-
-                ctx.restore();
-            }
-        },
 
         // Initialize a Doughnut Chart
         initDoughnut: function (ctx) {
             const colors = this.getColors();
-            // Use background color for border to create gap effect
-            const borderColor = colors.tooltipBg;
+            const borderColor = colors.doughnutBorder;
             return new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -143,90 +104,183 @@
                     datasets: [{
                         data: [],
                         backgroundColor: [],
-                        borderWidth: 3, // Add border for gap between segments
-                        borderColor: borderColor // Use background color to create gap
+                        borderColor: borderColor,
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        hoverOffset: 10,
+                        hoverBorderWidth: 2,
+                        hoverBorderColor: borderColor
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '60%',
+                    responsive: false,
+                    cutout: '64%',
+                    animation: { animateRotate: true, duration: 900, easing: 'easeInOutQuart' },
                     plugins: {
                         legend: { display: false },
                         tooltip: { enabled: false }
                     }
                 },
-                plugins: [this.doughnutLabelPlugin, this.centerTextPlugin]
+                plugins: [this.doughnutLabelPlugin]
             });
         },
 
         // Update Doughnut Chart Data and Legend
         updateDoughnut: function (chart, legendId, items, keys, colorMap = null) {
-            // keys: { label: 'key_for_label', count: 'key_for_count', amount: 'key_for_amount', percentage: 'key_for_percentage' (optional) }
+            // keys: { label, count, amount, percentage (optional) }
             if (!items || !chart) return;
 
             const colors = this.getColors();
             const labels = items.map(d => d[keys.label]);
             const counts = items.map(d => d[keys.count]);
             const amounts = items.map(d => d[keys.amount] || 0);
+            const totalAmount = amounts.reduce((a, b) => a + b, 0);
 
             chart.data.labels = labels;
-            // Use amounts for chart display (pie size based on financial value, not count)
             chart.data.datasets[0].data = amounts;
-            chart.data.datasets[0].borderWidth = 3; // Add border for gap between segments
-            chart.data.datasets[0].borderColor = colors.tooltipBg; // Use background color to create gap
+            chart.data.datasets[0].borderColor = colors.doughnutBorder;
+            chart.data.datasets[0].borderWidth = 2;
+            chart.data.datasets[0].borderRadius = 6;
+            chart.data.datasets[0].hoverOffset = 10;
+            chart.data.datasets[0].hoverBorderWidth = 2;
+            chart.data.datasets[0].hoverBorderColor = colors.doughnutBorder;
 
-            // Generate colors
-            const defaultColors = [
-                colors.blue, colors.green, colors.yellow,
-                colors.red, colors.purple, colors.pink, colors.cyan
+            // Color palette
+            const defaultPalette = [
+                '#378ADD', '#1D9E75', '#EF9F27', '#D85A30', '#D4537E',
+                '#7F77DD', '#639922', '#BA7517', '#993556', '#534AB7',
+                '#3B6D11', '#854F0B', '#A32D2D', '#0F6E56'
             ];
 
             let bgColors;
             if (colorMap) {
                 bgColors = labels.map(l => colorMap[l] || colors.slate);
             } else {
-                bgColors = labels.map((_, i) => defaultColors[i % defaultColors.length]);
+                bgColors = labels.map((_, i) => defaultPalette[i % defaultPalette.length]);
             }
 
             chart.data.datasets[0].backgroundColor = bgColors;
+
+            // Hover callback: highlight legend items and update center-info
+            const canvasEl = chart.canvas;
+            const chartId = canvasEl.id;
+            // Derive center-info element IDs from the legend container ID pattern
+            const prefix = legendId.replace('Legend', '').replace('legend', '');
+            // Look for center-info elements (pmCenterLabel, pmCenterPct, pmCenterVal)
+            // We'll search for them near the canvas container
+            const donutWrap = canvasEl.closest('.donut-wrap');
+            const cLabelEl = donutWrap ? donutWrap.querySelector('.center-label') : null;
+            const cPctEl = donutWrap ? donutWrap.querySelector('.center-pct') : null;
+            const cValEl = donutWrap ? donutWrap.querySelector('.center-val') : null;
+
+            const formattedTotal = '₹' + totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            // Update center with total initially
+            if (cLabelEl) cLabelEl.textContent = 'total value';
+            if (cPctEl) cPctEl.textContent = '';
+            if (cValEl) cValEl.textContent = formattedTotal;
+            // setActive helper for hover interaction
+            function setActive(idx) {
+                const legendContainer = document.getElementById(legendId);
+                if (!legendContainer) return;
+                legendContainer.querySelectorAll('.leg-item').forEach(function (el, i) {
+                    el.style.opacity = idx === null ? '1' : (i === idx ? '1' : '0.3');
+                });
+
+                // Highlight the chart segment and dim others
+                if (idx === null) {
+                    chart.setActiveElements([]);
+                    chart.data.datasets[0].backgroundColor = bgColors;
+                } else {
+                    chart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+                    // Dim non-active segments
+                    chart.data.datasets[0].backgroundColor = bgColors.map(function (c, i) {
+                        if (i === idx) return c;
+                        // Convert hex to rgba with 30% opacity
+                        var r = parseInt(c.slice(1, 3), 16);
+                        var g = parseInt(c.slice(3, 5), 16);
+                        var b = parseInt(c.slice(5, 7), 16);
+                        return 'rgba(' + r + ',' + g + ',' + b + ',0.25)';
+                    });
+                }
+                chart.update('none');
+
+                if (idx === null) {
+                    if (cLabelEl) cLabelEl.textContent = 'total value';
+                    if (cPctEl) cPctEl.textContent = '';
+                    if (cValEl) cValEl.textContent = formattedTotal;
+                } else {
+                    const item = items[idx];
+                    let pct;
+                    if (keys.percentage && item[keys.percentage] !== undefined) {
+                        pct = item[keys.percentage];
+                    } else {
+                        pct = totalAmount > 0 ? ((item[keys.amount] || 0) / totalAmount * 100).toFixed(1) : '0';
+                    }
+                    if (cLabelEl) cLabelEl.textContent = item[keys.label];
+                    if (cPctEl) cPctEl.textContent = pct + '%';
+                    if (cValEl) cValEl.textContent = '₹' + (item[keys.amount] || 0).toLocaleString('en-IN');
+                }
+            }
+
+            // Chart hover callback
+            chart.options.onHover = function (e, els) {
+                if (els.length) setActive(els[0].index);
+                else setActive(null);
+            };
+
+            // Mouse leave on canvas resets
+            canvasEl.onmouseleave = function () { setActive(null); };
+
             chart.update();
 
-            // Generate Legend
+            // Compute max percentage for bar scaling
+            const percentages = items.map(function (item) {
+                if (keys.percentage && item[keys.percentage] !== undefined) {
+                    return parseFloat(item[keys.percentage]);
+                }
+                return totalAmount > 0 ? ((item[keys.amount] || 0) / totalAmount * 100) : 0;
+            });
+            const maxPct = Math.max.apply(null, percentages) || 1;
+
+            // Generate Legend with bar-track style
             const legendContainer = document.getElementById(legendId);
             if (legendContainer) {
                 legendContainer.innerHTML = '';
 
-                items.forEach((item, index) => {
-                    // Use backend-calculated percentage if available, otherwise fallback to calculation
-                    let percentage;
-                    if (keys.percentage && item[keys.percentage] !== undefined) {
-                        // Use backend percentage
-                        percentage = item[keys.percentage] + '%';
-                    } else {
-                        // Fallback: calculate percentage (for backward compatibility)
-                        const total = counts.reduce((a, b) => a + b, 0);
-                        percentage = total > 0 ? ((item[keys.count] / total) * 100).toFixed(1) + '%' : '0%';
-                    }
+                items.forEach(function (item, index) {
+                    var pct = percentages[index];
+                    var pctStr = pct.toFixed(1) + '%';
+                    var color = bgColors[index];
+                    var amount = item[keys.amount] || 0;
+                    var formattedAmount = amount.toLocaleString('en-IN');
 
-                    const color = bgColors[index];
-                    const amount = item[keys.amount] || 0;
-                    const formattedAmount = amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    var div = document.createElement('div');
+                    div.className = 'leg-item';
+                    div.dataset.idx = index;
+                    div.innerHTML = '<span class="leg-dot" style="background:' + color + '"></span>' +
+                        '<span class="leg-name">' + item[keys.label] + '</span>' +
+                        '<span class="leg-pct">' + pctStr + '</span>' +
+                        '<span class="leg-val">&nbsp;' + formattedAmount + '</span>';
 
-                    // New Design Structure
-                    const itemHtml = `
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background-color: ${color}"></div>
-                            <div class="legend-content">
-                                <div class="legend-label">
-                                    ${item[keys.label]} — ${item[keys.count]} (${percentage})
-                                </div>
-                                <div class="legend-amount">${formattedAmount}</div>
-                            </div>
-                        </div>
-                        ${index < items.length - 1 ? '<hr class="legend-separator">' : ''}
-                    `;
-                    legendContainer.insertAdjacentHTML('beforeend', itemHtml);
+                    var track = document.createElement('div');
+                    track.className = 'bar-track';
+                    var fill = document.createElement('div');
+                    fill.className = 'bar-fill';
+                    fill.style.background = color;
+                    fill.style.width = '0';
+                    track.appendChild(fill);
+                    div.appendChild(track);
+                    legendContainer.appendChild(div);
+
+                    // Animate bar fill
+                    setTimeout(function () {
+                        fill.style.width = (pct / maxPct * 100) + '%';
+                    }, 300 + index * 40);
+
+                    // Hover events on legend items
+                    div.addEventListener('mouseenter', function () { setActive(index); });
+                    div.addEventListener('mouseleave', function () { setActive(null); });
                 });
             }
         },
