@@ -104,7 +104,6 @@ class Customer(SoftDeleteModel):
             models.Index(fields=["phone_number"], name="customer_phone_number_idx"),
             models.Index(fields=["created_at"], name="customer_created_at_idx"),
             models.Index(fields=["store_credit_balance"], name="customer_credit_idx"),
-            models.Index(fields=["referred_by"], name="customer_referred_by_idx"),
         ]
         ordering = ["-created_at"]
         verbose_name = "Customer"
@@ -218,6 +217,14 @@ class Payment(SoftDeleteModel):
 
     def __str__(self) -> str:
         return f"{self.customer} - {self.amount} ({self.get_payment_type_display()}) via {self.get_method_display()}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["customer", "payment_type", "is_deleted"]),
+            models.Index(fields=["payment_type", "payment_date"]),
+            models.Index(fields=["customer", "payment_date", "id"]),
+            models.Index(fields=["is_deleted", "payment_type"]),
+        ]
 
 
 class CustomerCreditSummary(models.Model):

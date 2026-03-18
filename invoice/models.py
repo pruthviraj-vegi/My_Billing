@@ -890,6 +890,7 @@ class ReturnInvoice(models.Model):
             models.Index(fields=["refund_type"]),
             models.Index(fields=["financial_year"]),
             models.Index(fields=["invoice"]),
+            models.Index(fields=["status", "customer", "created_at"]),
         ]
         constraints = [
             models.CheckConstraint(

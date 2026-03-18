@@ -13,3 +13,4 @@ ai/*
 docs/*
 .pylintrc
 media/*
+.claude/*

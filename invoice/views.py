@@ -2,7 +2,7 @@
 
 import logging
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.contrib import messages
 from django.db import transaction
@@ -135,7 +135,11 @@ def invoice_dashboard_fetch(request):
 
     # Calculate margin percentage (Profit / Net Revenue * 100)
     margin_percentage = (
-        round((total_profit / net_amount) * 100, 2) if net_amount > 0 else Decimal("0")
+        (total_profit / net_amount * 100).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        if net_amount > 0
+        else Decimal("0")
     )
 
     # Get comparison data for line chart

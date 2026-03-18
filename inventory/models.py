@@ -5,7 +5,6 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
-from django.db.models import Sum
 from django.urls import reverse
 
 from base.manager import SoftDeleteModel
@@ -13,6 +12,11 @@ from base.utility import StringProcessor
 from supplier.models import SupplierInvoice
 
 from .manager import InventoryLogManager, ProductVariantManager
+from .mixins import (
+    ProductVariantNamingMixin,
+    ProductVariantPricingMixin,
+    ProductVariantStockMixin,
+)
 
 User = settings.AUTH_USER_MODEL
 
@@ -299,7 +303,12 @@ class Product(SoftDeleteModel):
         return self.brand
 
 
-class ProductVariant(SoftDeleteModel):
+class ProductVariant(
+    ProductVariantNamingMixin,
+    ProductVariantStockMixin,
+    ProductVariantPricingMixin,
+    SoftDeleteModel,
+):
     """Specific SKU of a product with size, colour, pricing, and stock."""
 
     class VariantStatus(models.TextChoices):
@@ -468,220 +477,6 @@ class ProductVariant(SoftDeleteModel):
         except (AttributeError, TypeError):
             # Fallback if anything goes wrong
             return f"Product Variant #{self.id}"
-
-    def get_name(self, include_barcode=True, include_variants=True):
-        """
-        Get a clean, formatted name for the product variant
-
-        Args:
-            include_barcode (bool): Whether to include barcode in the name
-            include_variants (bool): Whether to include size/color info
-
-        Returns:
-            str: Formatted product name
-        """
-        try:
-            # Get base product name
-            product_name = getattr(self.product, "brand", "Unknown Product")
-
-            # Add product name if available
-            if hasattr(self.product, "name") and self.product.name:
-                product_name = f"{product_name} - {self.product.name}"
-
-            # Add variant info if requested
-            if include_variants:
-                variant_parts = []
-
-                if self.size and hasattr(self.size, "name"):
-                    variant_parts.append(self.size.name)
-
-                if self.color and hasattr(self.color, "name"):
-                    variant_parts.append(self.color.name)
-
-                if variant_parts:
-                    product_name = f"{product_name} ({', '.join(variant_parts)})"
-
-            # Add barcode if requested
-            if include_barcode and hasattr(self, "barcode") and self.barcode:
-                product_name = f"{product_name} - {self.barcode}"
-
-            return product_name
-
-        except (AttributeError, TypeError):
-            return f"Product Variant #{self.id}"
-
-    @property
-    def simple_name(self):
-        """Simple name without barcode for display purposes"""
-
-        product_name = getattr(self.product, "name", "Unknown Product")
-
-        # Add size if it exists
-        if hasattr(self, "size") and self.size:
-            product_name += f" - {self.size.name}"
-
-        # Add color if it exists
-        if hasattr(self, "color") and self.color:
-            product_name += f" - {self.color.name}"
-
-        return product_name
-
-    @property
-    def full_name(self):
-        """Full name with all details"""
-        return self.get_name(include_barcode=True, include_variants=True)
-
-    @property
-    def price_name(self):
-        """Short name without barcode for display purposes"""
-        return self.product.brand + " - " + self.simple_name
-
-    @property
-    def barcode_with_name(self):
-        """Short name without barcode for display purposes"""
-
-        name = ""
-
-        # Add size if it exists
-        if hasattr(self, "size") and self.size:
-            name += f"{self.size.name}"
-
-        # Add color if it exists
-        if hasattr(self, "color") and self.color:
-            name += f" - {self.color.name}"
-
-        if name:
-            return name
-        return None
-
-    @property
-    def is_low_stock(self):
-        """Check if the stock is low"""
-        if self.minimum_quantity == 0:
-            return False
-        return self.quantity <= self.minimum_quantity
-
-    @property
-    def total_quantity(self):
-        """Total quantity including damaged items"""
-        return self.quantity + self.damaged_quantity
-
-    @property
-    def available_quantity(self):
-        """Quantity available for sale (excluding damaged)"""
-        return self.quantity
-
-    @property
-    def damage_percentage(self):
-        """Percentage of total stock that is damaged"""
-        if self.total_quantity > 0:
-            return (self.damaged_quantity / self.total_quantity) * 100
-        return 0
-
-    @property
-    def stock_status(self):
-        """Return a human-readable stock status label."""
-        if self.quantity == 0:
-            return "Out of Stock"
-        elif self.is_low_stock:
-            return "Low Stock"
-        return "In Stock"
-
-    @property
-    def final_price(self):
-        """Calculate final price after discount"""
-        if self.discount_percentage > 0:
-            return self.mrp * (1 - self.discount_percentage / 100)
-        return self.mrp
-
-    @property
-    def profit_margin(self):
-        """Calculate profit margin percentage"""
-        if self.mrp > 0:
-            return ((self.mrp - self.purchase_price) / self.mrp) * 100
-        return 0
-
-    @property
-    def total_value(self):
-        """Calculate total inventory value"""
-        return round(self.quantity * self.purchase_price, 2)
-
-    @property
-    def damaged_value(self):
-        """Calculate value of damaged inventory"""
-        return self.damaged_quantity * self.purchase_price
-
-    @property
-    def stock_health(self):
-        """Get stock health status"""
-        if self.quantity == 0:
-            return "critical"
-        elif self.quantity <= self.minimum_quantity:
-            return "low"
-        return "healthy"
-
-    @property
-    def get_gst_percentage(self):
-        """Get GST percentage"""
-        if self.product.hsn_code:
-            return self.product.hsn_code.gst_percentage
-        return Decimal("0")
-
-    @property
-    def actual_purchased_price(self):
-        """Calculate actual purchased price"""
-        return self.purchase_price * (1 + (self.get_gst_percentage / 100))
-
-    @property
-    def get_amount(self):
-        """Calculate amount"""
-        if self.discount_percentage > 0:
-            return round(
-                self.mrp * (1 - self.discount_percentage / 100) * self.quantity,
-                2,
-            )
-        return round(self.mrp * self.quantity, 2)
-
-    @property
-    def get_barcode_qty(self):
-        """
-        Get the minimum of:
-        1. Current quantity (self.quantity)
-        2. Quantity change from first INITIAL transaction
-        3. Quantity change from first STOCK_IN transaction
-        """
-        quantities = [self.quantity]
-
-        # Get the first transaction (INITIAL or STOCK_IN) by timestamp
-        first_log = (
-            self.inventory_logs.filter(
-                transaction_type__in=[
-                    InventoryLog.TransactionTypes.INITIAL,
-                    InventoryLog.TransactionTypes.STOCK_IN,
-                ]
-            )
-            .order_by("-updated_at")
-            .first()
-        )
-
-        if first_log:
-            quantities.append(first_log.quantity_change)
-
-        qty = min(quantities) if quantities else 0
-        return max(1, int(qty + 1) // 2) if qty > 0 else 1
-
-    @property
-    def cart_qty(self):
-        """Get the cart quantity for the variant"""
-        return (
-            self.cart_items.aggregate(total_quantity=Sum("quantity"))["total_quantity"]
-            or 0
-        )
-
-    @property
-    def billing_stock(self):
-        """Get the billing stock for the variant"""
-        return max(0, self.quantity - self.cart_qty)
 
     def clean(self):
         """Custom validation"""
@@ -993,14 +788,16 @@ class InventoryLog(SoftDeleteModel):
     class Meta:
         ordering = ["-timestamp"]
         indexes = [
-            # Existing
+            # Existing indexes
             models.Index(fields=["variant", "timestamp"]),
             models.Index(fields=["transaction_type", "timestamp"]),
             models.Index(fields=["created_by", "timestamp"]),
-            # Add these
             models.Index(
                 fields=["supplier_invoice", "transaction_type", "quantity_change"]
-            ),  # covering index for Sum/Case annotations
+            ),
+            # New indexes for FIFO allocation optimization
+            models.Index(fields=["transaction_type", "variant", "remaining_quantity"]),
+            models.Index(fields=["variant", "transaction_type", "timestamp"]),
         ]
 
     def __str__(self):
