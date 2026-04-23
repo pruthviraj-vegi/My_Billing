@@ -11,7 +11,7 @@
                     <span class="font-weight-bold">{{ user.full_name }}</span>
                 </div>
             </td>
-            <td>{{ user.phone_number }}</td>
+            <td>{{ user.phone_number|phone_number }}</td>
             <td>{{ user.email|default:"-" }}</td>
             <td>
                 <span class="badge badge-primary">{{ user.groups.all|first|default:"User" }}</span>

@@ -10,18 +10,30 @@
     <h2 class="page-title">{{ user.full_name }} - Commission Report</h2>
     <div class="page-actions">
       <!-- Date Filter Dropdown -->
-      <form method="get" class="d-inline" id="dateFilterForm">
-        <select name="date_range" class="form-select" id="dateFilter">
-          <option value="today">Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="this_month">This Month</option>
-          <option value="last_month">Last Month</option>
-          <option value="this_finance">This Finance</option>
-          <option value="last_finance">Last Finance</option>
-          <option value="full_date">Full Date</option>
-        </select>
-      </form>
-      <a href="{% url 'user:detail' user.id %}" class="btn btn-secondary">
+      <div class="d-inline-flex flex-column align-items-start position-relative">
+        <form method="get" class="d-inline" id="dateFilterForm">
+          <select name="date_range" class="form-select" id="dateFilter">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this_month">This Month</option>
+            <option value="last_month">Last Month</option>
+            <option value="this_finance">This Finance</option>
+            <option value="last_finance">Last Finance</option>
+            <option value="full_date">Full Date</option>
+            <option value="custom">Custom Dates</option>
+          </select>
+        </form>
+        
+        <!-- Standalone Custom Date Inputs -->
+        <div id="standaloneCustomDates" class="d-none mt-2 p-2 border rounded bg-white shadow-sm" style="position: absolute; top: 100%; z-index: 10;">
+          <div class="d-flex gap-2 mb-2">
+            <input type="date" id="standaloneFrom" class="form-control form-control-sm" aria-label="From Date">
+            <input type="date" id="standaloneTo" class="form-control form-control-sm" aria-label="To Date">
+          </div>
+          <button type="button" class="btn btn-sm w-100" id="standaloneSubmit" style="background: var(--primary); color: #fff; border: none; justify-content: center;">Submit</button>
+        </div>
+      </div>
+      <a href="{% url 'user:detail' user.id %}" class="btn btn-secondary ms-2">
         <i class="fas fa-arrow-left"></i>
         Back
       </a>
@@ -215,7 +227,7 @@
 {% block extra_js %}
   <script src="{% static 'js/fetchData.js' %}"></script>
   <!-- Visual Select to Styled Dropdown Converter -->
-  <script src="{% static 'js/dropdown_style.js' %}"></script>
+  <script src="{% static 'js/dropdown_style.js' %}?v=1.3"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       // Summary card click handlers
@@ -351,36 +363,141 @@
         }, 100);
       }
 
-      // Initialize styled dropdown for date filter
-      if (typeof convertSelectToStyledDropdown !== 'undefined') {
-        setTimeout(() => {
-          const dateFilterSelect = document.getElementById('dateFilter');
-          
-          // Ensure initial value is set on original select before conversion
-          if (dateFilterSelect && currentFilter) {
-             dateFilterSelect.value = currentFilter;
-          }
-
-          if (dateFilterSelect && !window.dateFilter_styled) {
-             window.dateFilter_styled = convertSelectToStyledDropdown('dateFilter', {
-              onChange: function(data) {
-                // Skip callback on initial load logic if handled manually, 
-                // but here 'isInitialLoad' flag helps prevent double-firing if the lib fires on init.
-                if (isInitialLoad) return;
-                
-                debouncedUpdate();
-              }
-            });
-            
-            // Initial data load
-            updateCommissionSummary();
-            reloadCommissionTable();
-            isInitialLoad = false;
-          } else if (!dateFilterSelect) {
-             console.warn('Date filter element not found');
-          }
-        }, 100);
+      // Set the original select value BEFORE conversion to ensure correct initial value
+      const originalSelect = document.getElementById('dateFilter');
+      if (originalSelect && currentFilter) {
+        originalSelect.value = currentFilter;
       }
+
+      // Use common waitForDropdownReady if available, otherwise define locally
+      const waitForDropdownReady = window.DashboardCommon?.waitForDropdownReady || function(callback, maxAttempts = 10) {
+        let attempts = 0;
+        const checkReady = () => {
+          const styledRef = window.dateFilter_styled;
+          if (styledRef?.hiddenSelect) {
+            callback(styledRef);
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            requestAnimationFrame(checkReady);
+          } else {
+            console.warn('Dropdown not ready after max attempts, using fallback');
+            const dateFilter = document.getElementById('dateFilter');
+            if (dateFilter) {
+              callback({ hiddenSelect: dateFilter, label: null });
+            } else {
+              console.error('Could not find date filter element');
+            }
+          }
+        };
+        requestAnimationFrame(checkReady);
+      };
+
+      // Handle standalone submit
+      const standaloneSubmitBtn = document.getElementById('standaloneSubmit');
+      if (standaloneSubmitBtn) {
+        standaloneSubmitBtn.addEventListener('click', function() {
+          const fromVal = document.getElementById('standaloneFrom').value;
+          const toVal = document.getElementById('standaloneTo').value;
+          
+          if (!fromVal || !toVal) {
+            if (typeof showNotification === 'function') showNotification('Please select both dates', 'error');
+            return;
+          }
+          
+          if (new Date(fromVal) > new Date(toVal)) {
+            if (typeof showNotification === 'function') showNotification('From date must be before To date', 'error');
+            return;
+          }
+          
+          const hiddenSelect = window.dateFilter_styled?.hiddenSelect || document.getElementById('dateFilter');
+          if (hiddenSelect) {
+            hiddenSelect.setAttribute('data-from-date', fromVal);
+            hiddenSelect.setAttribute('data-to-date', toVal);
+            hiddenSelect.value = 'custom';
+          }
+          
+          // Hide standalone box after submit
+          document.getElementById('standaloneCustomDates').classList.add('d-none');
+          
+          // Trigger update
+          debouncedUpdate();
+        });
+      }
+
+      // Convert select to styled dropdown with onChange callback
+      if (typeof convertSelectToStyledDropdown !== 'undefined') {
+        window.dateFilter_styled = convertSelectToStyledDropdown('dateFilter', {
+          onChange: function(data) {
+            const standaloneBox = document.getElementById('standaloneCustomDates');
+            
+            if (data.value === 'custom') {
+              if (standaloneBox) standaloneBox.classList.remove('d-none');
+              
+              // Also map internal dropdown dates if they were submitted somehow
+              if (data.fromDate && data.toDate) {
+                const hiddenSelect = window.dateFilter_styled?.hiddenSelect;
+                if (hiddenSelect) {
+                  hiddenSelect.setAttribute('data-from-date', data.fromDate);
+                  hiddenSelect.setAttribute('data-to-date', data.toDate);
+                }
+              }
+              // Wait for standalone submit
+              return;
+            } else {
+              if (standaloneBox) standaloneBox.classList.add('d-none');
+            }
+            
+            // Skip callback on initial load (will be handled separately)
+            if (isInitialLoad) return;
+            
+            // Update summary and reload table when date filter changes
+            debouncedUpdate();
+          }
+        });
+        
+        // Hide the internal custom date inputs from the styled dropdown panel 
+        // to force the user to use the standalone inputs
+        const style = document.createElement('style');
+        style.textContent = `
+          .date-dropdown-panel .date-list:nth-of-type(2) {
+            display: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      // Wait for dropdown to be ready, then set initial value and load data
+      waitForDropdownReady((styledRef) => {
+        const dateFilter = styledRef.hiddenSelect;
+        
+        // Set initial value (JS will auto-update the label)
+        if (dateFilter && currentFilter) {
+          // Clear any existing selection first
+          Array.from(dateFilter.options).forEach(opt => opt.selected = false);
+          
+          // Set the desired value
+          const targetOption = Array.from(dateFilter.options).find(opt => opt.value === currentFilter);
+          if (targetOption) {
+            targetOption.selected = true;
+            dateFilter.value = currentFilter;
+            
+            // Update visual label if converted
+            if (styledRef.label) {
+              styledRef.label.textContent = targetOption.text;
+            }
+          } else {
+            // Fallback: set by value directly
+            dateFilter.value = currentFilter;
+          }
+        }
+        
+        // Load initial data (only once)
+        updateCommissionSummary();
+        reloadCommissionTable();
+        
+        // Mark initial load as complete
+        isInitialLoad = false;
+      });
     })
   </script>
 {% endblock extra_js %}
