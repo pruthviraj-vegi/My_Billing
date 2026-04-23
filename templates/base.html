@@ -81,10 +81,29 @@
         </a>
       </div>
       <div class="topbar-right">
-        <button class="top-bar-btn notification-btn" id="notificationBtn">
-          <i class="fas fa-bell"></i>
-          <span class="notification-badge">3</span>
-        </button>
+        <a href="{% url 'report:downloads_page' %}" class="top-bar-btn" title="Downloads">
+          <i class="fas fa-download"></i>
+        </a>
+        <div class="notification-wrapper" id="notificationWrapper">
+          <button class="top-bar-btn notification-btn" id="notificationBtn" aria-label="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationBadge" style="display:none;"></span>
+          </button>
+          <!-- Notification Dropdown Panel -->
+          <div class="notification-panel" id="notificationPanel">
+            <div class="notification-panel-header">
+              <span class="notification-panel-title">Notifications</span>
+              <button class="notification-panel-mark-all" id="markAllReadBtn" title="Mark all as read">
+                <i class="fas fa-check-double"></i> Mark all read
+              </button>
+            </div>
+            <div class="notification-panel-body" id="notificationPanelBody">
+              <div class="notification-panel-loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </div>
+            </div>
+          </div>
+        </div>
         <button class="top-bar-btn theme-toggle" id="themeToggle">
           <i class="fas fa-moon"></i>
         </button>
@@ -163,7 +182,7 @@
 
       function showNotification(message, type = 'info') {
         const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
+        notification.className = `toast toast-${type}`;
         notification.textContent = message;
         notification.setAttribute('role', 'alert');
 
@@ -225,24 +244,156 @@
           }
         }
 
-        // Notification functionality
-        const notificationBtn = document.getElementById('notificationBtn');
-        if (notificationBtn) {
-          notificationBtn.addEventListener('click', () => {
-            showNotification('Notifications feature coming soon!', 'info');
-            
-            const badge = notificationBtn.querySelector('.notification-badge');
-            if (badge) {
-              const currentCount = parseInt(badge.textContent) || 0;
-              if (currentCount > 0) {
-                badge.textContent = currentCount - 1;
-                if (currentCount - 1 === 0) {
-                  badge.style.display = 'none';
-                }
+        // ── Notification Panel Logic ──────────────────────────
+        function escapeHtml(str) {
+          if (!str) return '';
+          var div = document.createElement('div');
+          div.appendChild(document.createTextNode(str));
+          return div.innerHTML;
+        }
+        function escapeAttr(str) {
+          return escapeHtml(str).replace(/"/g, '&quot;');
+        }
+        const NOTIF_URLS = {
+          count: "{% url 'notification:count' %}",
+          list:  "{% url 'notification:list' %}",
+          markAllRead: "{% url 'notification:mark_all_read' %}",
+          markRead: "{% url 'notification:mark_read' notification_id=0 %}".replace('/0/', '/{id}/')
+        };
+        const csrfToken = '{{ csrf_token }}';
+
+        const notifBtn      = document.getElementById('notificationBtn');
+        const notifPanel     = document.getElementById('notificationPanel');
+        const notifBadge     = document.getElementById('notificationBadge');
+        const notifBody      = document.getElementById('notificationPanelBody');
+        const markAllBtn     = document.getElementById('markAllReadBtn');
+        const notifWrapper   = document.getElementById('notificationWrapper');
+
+        // Update badge count
+        function updateNotifBadge() {
+          fetch(NOTIF_URLS.count)
+            .then(res => res.json())
+            .then(data => {
+              const count = data.unread_count || 0;
+              if (count > 0) {
+                notifBadge.textContent = count > 99 ? '99+' : count;
+                notifBadge.style.display = 'flex';
+              } else {
+                notifBadge.style.display = 'none';
               }
-            }
+            }).catch(console.error);
+        }
+
+        // Render notification items
+        function renderNotifications(notifications) {
+          if (!notifications.length) {
+            notifBody.innerHTML =
+              '<div class="notification-panel-empty">' +
+              '<i class="fas fa-bell-slash"></i>' +
+              '<p>No notifications</p>' +
+              '</div>';
+            return;
+          }
+          let html = '';
+          notifications.forEach(function(n) {
+            const readClass = n.is_read ? 'is-read' : '';
+            const actionBtn = n.action_url && n.action_label
+              ? '<a href="' + escapeAttr(n.action_url) + '" class="notif-action-btn">' + escapeHtml(n.action_label) + '</a>'
+              : '';
+            html +=
+              '<div class="notif-item ' + readClass + '" data-id="' + n.id + '">' +
+              '  <div class="notif-icon" style="color:' + escapeAttr(n.color) + '">' +
+              '    <i class="fas ' + escapeAttr(n.icon) + '"></i>' +
+              '  </div>' +
+              '  <div class="notif-content">' +
+              '    <div class="notif-header-row">' +
+              '      <div class="notif-title">' + escapeHtml(n.title) + '</div>' +
+              '      <span class="notif-time">' + escapeHtml(n.created_at) + '</span>' +
+              '    </div>' +
+              '    <div class="notif-message">' + escapeHtml(n.message) + '</div>' +
+              '    <div class="notif-meta">' +
+              '      <span class="notif-badge-label">' + escapeHtml(n.badge_label) + '</span>' +
+              '    </div>' +
+              '    ' + actionBtn +
+              '  </div>' +
+              '</div>';
+          });
+          notifBody.innerHTML = html;
+
+          // Click to mark as read
+          notifBody.querySelectorAll('.notif-item:not(.is-read)').forEach(function(el) {
+            el.addEventListener('click', function() {
+              const id = el.dataset.id;
+              fetch(NOTIF_URLS.markRead.replace('{id}', id), {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken}
+              }).then(() => {
+                  el.classList.add('is-read');
+                  updateNotifBadge();
+              }).catch(console.error);
+            });
           });
         }
+
+        // Fetch and show notifications
+        function loadNotifications() {
+          notifBody.innerHTML =
+            '<div class="notification-panel-loading">' +
+            '<i class="fas fa-spinner fa-spin"></i> Loading...' +
+            '</div>';
+          fetch(NOTIF_URLS.list)
+            .then(res => {
+              if (!res.ok) throw new Error('Network failure');
+              return res.json();
+            })
+            .then(data => {
+              renderNotifications(data.notifications || []);
+            })
+            .catch(() => {
+              notifBody.innerHTML =
+                '<div class="notification-panel-empty">' +
+                '<i class="fas fa-exclamation-triangle"></i>' +
+                '<p>Failed to load</p>' +
+                '</div>';
+            });
+        }
+
+        // Toggle panel
+        if (notifBtn) {
+          notifBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isOpen = notifPanel.classList.toggle('open');
+            if (isOpen) loadNotifications();
+          });
+        }
+
+        // Mark all read
+        if (markAllBtn) {
+          markAllBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fetch(NOTIF_URLS.markAllRead, {
+              method: 'POST',
+              headers: {'X-CSRFToken': csrfToken}
+            }).then(() => {
+                notifBody.querySelectorAll('.notif-item').forEach(function(el) {
+                  el.classList.add('is-read');
+                });
+                updateNotifBadge();
+                showNotification('All notifications marked as read', 'success');
+            }).catch(console.error);
+          });
+        }
+
+        // Close panel on outside click
+        document.addEventListener('click', function(e) {
+          if (notifWrapper && !notifWrapper.contains(e.target)) {
+            notifPanel.classList.remove('open');
+          }
+        });
+
+        // Poll unread count every 60 seconds
+        updateNotifBadge();
+        setInterval(updateNotifBadge, 60000);
 
         // Performance toggle functionality
         const perfToggle = document.getElementById('performanceToggle');

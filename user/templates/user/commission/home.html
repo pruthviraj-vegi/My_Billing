@@ -10,7 +10,7 @@
     <h2 class="page-title">{{ user.full_name }} - Commission Report</h2>
     <div class="page-actions">
       <!-- Date Filter Dropdown -->
-      <div class="d-inline-flex flex-column align-items-start position-relative">
+      <div class="d-inline-flex align-items-center position-relative">
         <form method="get" class="d-inline" id="dateFilterForm">
           <select name="date_range" class="form-select" id="dateFilter">
             <option value="today">Today</option>
@@ -23,14 +23,13 @@
             <option value="custom">Custom Dates</option>
           </select>
         </form>
-        
-        <!-- Standalone Custom Date Inputs -->
-        <div id="standaloneCustomDates" class="d-none mt-2 p-2 border rounded bg-white shadow-sm" style="position: absolute; top: 100%; z-index: 10;">
+        <!-- Custom Date Inputs (shown dynamically via JS) -->
+        <div id="standaloneCustomDates" class="custom-date-popup d-none">
           <div class="d-flex gap-2 mb-2">
             <input type="date" id="standaloneFrom" class="form-control form-control-sm" aria-label="From Date">
             <input type="date" id="standaloneTo" class="form-control form-control-sm" aria-label="To Date">
           </div>
-          <button type="button" class="btn btn-sm w-100" id="standaloneSubmit" style="background: var(--primary); color: #fff; border: none; justify-content: center;">Submit</button>
+          <button type="button" class="btn btn-sm btn-submit w-100" id="standaloneSubmit">Submit</button>
         </div>
       </div>
       <a href="{% url 'user:detail' user.id %}" class="btn btn-secondary ms-2">
