@@ -20,7 +20,6 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.utils import timezone
 
 from inventory.models import InventoryLog, ProductVariant
 
@@ -45,6 +44,10 @@ CANCEL_TYPES = {
 
 
 class Command(BaseCommand):
+    """
+    Recalculate FIFO allocations and fix inventory log linkages
+    """
+
     help = "Recalculate FIFO allocations and fix inventory log linkages"
 
     def add_arguments(self, parser):
@@ -308,8 +311,13 @@ class Command(BaseCommand):
                             selling_price=log.selling_price,
                             source_inventory_log=source_log,
                             allocated_quantity=allocatable,
-                            purchase_price=source_log.purchase_price or log.purchase_price,
-                            total_value=(allocatable * log.selling_price) if log.selling_price else None,
+                            purchase_price=source_log.purchase_price
+                            or log.purchase_price,
+                            total_value=(
+                                (allocatable * log.selling_price)
+                                if log.selling_price
+                                else None
+                            ),
                             supplier_invoice=source_log.supplier_invoice,
                             created_by=log.created_by,
                             notes=f"FIFO split: {allocatable} units from {source_log.timestamp.date()}",
@@ -443,9 +451,7 @@ class Command(BaseCommand):
 
                 # Create new split logs (multi-batch FIFO)
                 if new_logs_to_create:
-                    InventoryLog.objects.bulk_create(
-                        new_logs_to_create, batch_size=500
-                    )
+                    InventoryLog.objects.bulk_create(new_logs_to_create, batch_size=500)
 
                 # Update variant quantity
                 if result["quantity_mismatch"]:

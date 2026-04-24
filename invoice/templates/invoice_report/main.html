@@ -159,7 +159,7 @@
       report: '{% url "invoice:report_fetch" %}',
       report_cancled: '{% url "invoice:report_cancled_fetch" %}',
       report_return: '{% url "invoice:report_return_fetch" %}',
-      download_pdf: '{% url "report:invoice_report_pdf" %}',
+      request_pdf: '{% url "report:request_invoice_report_pdf" %}',
     }
   </script>
   <script>
@@ -210,12 +210,56 @@
         }, 100)
       }
 
-      // Download Report function using fetchData.js helper
+      // Request Async Report Generation
       const downloadReportBtn = document.getElementById('downloadReportBtn')
       if (downloadReportBtn) {
-        downloadReportBtn.addEventListener('click', function(e) {
+        downloadReportBtn.addEventListener('click', async function(e) {
           e.preventDefault()
-          downloadTablePDF('dateFilterForm', 'report_table', urls.download_pdf)
+          
+          // Disable button and show spinner
+          const originalHTML = downloadReportBtn.innerHTML
+          downloadReportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Requesting...'
+          downloadReportBtn.disabled = true
+          
+          try {
+            // Get form parameters using helper
+            const params = getTableQueryParams('dateFilterForm', 'report_table')
+            
+            // Send POST request
+            const response = await fetch(urls.request_pdf, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: params
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Show success toast (assuming a global toast function exists)
+                if (typeof showToast === 'function') {
+                    showToast('success', data.message);
+                } else {
+                    alert(data.message);
+                }
+            } else {
+                if (typeof showToast === 'function') {
+                    showToast('error', data.message || 'Failed to request report.');
+                } else {
+                    alert(data.message || 'Failed to request report.');
+                }
+            }
+          } catch (error) {
+              console.error('Error requesting report:', error);
+              alert('An error occurred while requesting the report.');
+          } finally {
+              // Restore button
+              downloadReportBtn.innerHTML = originalHTML;
+              downloadReportBtn.disabled = false;
+          }
         })
       }
     })

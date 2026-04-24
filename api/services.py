@@ -112,7 +112,7 @@ def generate_invoice_pdf(invoice, request):
     filename = f"{invoice.invoice_number}"
 
     pdf_response = generate_pdf(
-        template, filename, context, request, report_type="INVOICE", upload_to_r2=True
+        template, filename, context, report_type="INVOICE", upload_to_r2=True
     )
 
     # Check if R2 upload was successful
@@ -213,7 +213,6 @@ def generate_statement_pdf(customer, start_date, end_date, request):
         template,
         filename,
         context,
-        request,
         report_type="STATEMENT",
         upload_to_r2=True,
     )

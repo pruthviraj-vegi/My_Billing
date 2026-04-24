@@ -3,11 +3,12 @@ URL patterns for the report app.
 """
 
 from django.urls import path
-from . import statements, views
+from . import statements, views, views_jobs
 
 app_name = "report"
 
 urlpatterns = [
+    # ── PDF rendering (synchronous) ────────────────────────────
     path("invoice/<int:pk>/", views.create_invoice, name="invoice_pdf"),
     path("estimate/<int:pk>/", views.estimate_invoice, name="estimate_pdf"),
     path("barcode/<int:pk>/", views.generate_barcode, name="barcode"),
@@ -37,6 +38,25 @@ urlpatterns = [
         views.generate_invoice_report_pdf,
         name="invoice_report_pdf",
     ),
+    # ── Async PDF jobs ─────────────────────────────────────────
+    path(
+        "variants/pdf/request/",
+        views_jobs.request_variants_pdf,
+        name="request_variants_pdf",
+    ),
+    path(
+        "invoice/report/pdf/request/",
+        views_jobs.request_invoice_report_pdf,
+        name="request_invoice_report_pdf",
+    ),
+    path(
+        "pdf-job/<int:job_id>/status/",
+        views_jobs.check_pdf_job_status,
+        name="pdf_job_status",
+    ),
+    path("downloads/", views_jobs.downloads_page, name="downloads_page"),
+    path("downloads/fetch/", views_jobs.downloads_fetch, name="downloads_fetch"),
+    # ── WhatsApp / messaging ───────────────────────────────────
     path("send-invoice/<int:pk>/", statements.send_invoice, name="send_invoice"),
     path(
         "send-statement/<int:pk>/", statements.send_statement, name="send_pdf_statement"

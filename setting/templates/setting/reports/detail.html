@@ -15,10 +15,10 @@
                 <a href="{% url 'setting:report_config_edit' config.id %}"
                    class="btn btn-primary">Edit</a>
             {% endif %}
-            {% if perms.setting.view_reportconfiguration %}
+            {% comment %} {% if perms.setting.view_reportconfiguration %}
                 <a href="{% url 'setting:delete_config_delete' config.id %}"
                    class="btn btn-danger">Delete</a>
-            {% endif %}
+            {% endif %} {% endcomment %}
         </div>
     </div>
     <div class="table-container">

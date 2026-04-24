@@ -1,5 +1,6 @@
 """Report views for generating PDFs, invoices, barcodes, and reports."""
 
+# pylint: disable=too-many-locals
 import base64
 import io
 import logging
@@ -12,7 +13,7 @@ from barcode import Code128
 from barcode.base import Barcode
 from barcode.writer import SVGWriter
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import F, Q, Sum, DecimalField
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
@@ -20,6 +21,7 @@ from django.template.loader import get_template
 from weasyprint import HTML
 
 from base.getDates import getDates
+
 from cart.models import Cart, CartItem
 from customer.models import Customer
 from customer.views import get_data as get_customers_data
@@ -32,11 +34,6 @@ from customer.views_credit import (
 from inventory.models import ProductVariant
 from inventory.views_variant import get_variants_data, total_inventory_value
 from invoice.models import Invoice, InvoiceItem
-from invoice.views_report import (
-    get_invoice_report_data,
-    get_invoice_cancled_data,
-    get_invoice_return_data,
-)
 from setting.models import (
     ShopDetails,
     ReportConfiguration,
@@ -51,6 +48,8 @@ from supplier.views import (
     get_supplier_report_data,
 )
 
+from .helper import build_invoice_report_context
+
 Barcode.default_writer_options["write_text"] = False
 
 logger = logging.getLogger(__name__)
@@ -62,11 +61,37 @@ except Exception:  # pylint: disable=broad-exception-caught
     raise
 
 
+def _render_pdf_html(template_name, context, report_type="INVOICE"):
+    """Prepare HTML string ready for WeasyPrint.
+
+    Shared pipeline: injects shop details, report config, renders the
+    template, and replaces the QR-code placeholder if present.
+
+    Args:
+        template_name: Template filename inside ``report/``.
+        context: Template context dict (mutated in-place).
+        report_type: ``INVOICE``, ``STATEMENT``, or ``ESTIMATE``.
+
+    Returns:
+        Rendered HTML string.
+    """
+    context["shop_details"] = ShopDetails.objects.filter(is_active=True).first()
+    context["report_config"] = ReportConfiguration.get_default_config(report_type)
+
+    html = get_template(f"report/{template_name}").render(context)
+
+    if "qrcode" in context:
+        html = html.replace(
+            "{{ qrcode }}",
+            f'<img src="data:image/png;base64, {context["qrcode"]}"/>',
+        )
+    return html
+
+
 def generate_pdf(
     template_name,
     _file_name,
     context,
-    request,
     report_type="INVOICE",
     upload_to_r2=False,
 ):
@@ -80,26 +105,9 @@ def generate_pdf(
         report_type: Type of report (INVOICE or STATEMENT).
         upload_to_r2: Set to True when you want to upload this specific PDF.
     """
-    # Get shop details
-    shop_details = ShopDetails.objects.filter(is_active=True).first()
-    context["shop_details"] = shop_details
+    html = _render_pdf_html(template_name, context, report_type)
 
-    # Get report configuration
-    report_config = ReportConfiguration.get_default_config(report_type)
-    context["report_config"] = report_config
-
-    template = get_template(f"report/{template_name}")
-    html = template.render(context)
-
-    # Insert barcode image into HTML
-    if "qrcode" in context:
-        barcode_data = context["qrcode"]
-        html = html.replace(
-            "{{ qrcode }}", f'<img src="data:image/png;base64, {barcode_data}"/>'
-        )
-
-    # Generate PDF
-    pdf_file = HTML(string=html, base_url=settings.STATIC_ROOT).write_pdf(
+    pdf_file = HTML(string=html, base_url=str(settings.STATIC_ROOT)).write_pdf(
         presentational_hints=True
     )
 
@@ -129,6 +137,16 @@ def generate_pdf(
     response["Content-Disposition"] = f'filename="{filename}"'
     response["pdfkit-dpi"] = "800"
     return response
+
+
+def generate_pdf_bytes(template_name, context, base_url=None):
+    """Return raw PDF bytes — used by Celery tasks (no HttpResponse, no R2)."""
+    report_type = context.get("report_type", "INVOICE")
+    html = _render_pdf_html(template_name, context, report_type)
+
+    return HTML(string=html, base_url=base_url or str(settings.STATIC_ROOT)).write_pdf(
+        presentational_hints=True
+    )
 
 
 def create_invoice(request, pk):
@@ -256,7 +274,7 @@ def generate_customers_pdf(request):
 
     filename = "customers"
 
-    return generate_pdf(template, filename, context, request)
+    return generate_pdf(template, filename, context)
 
 
 def generate_credit_pdf(request):
@@ -280,7 +298,7 @@ def generate_credit_pdf(request):
     template = "customer_credit.html"
     filename = "credit_customers"
 
-    return generate_pdf(template, filename, context, request)
+    return generate_pdf(template, filename, context)
 
 
 def generate_credit_ind_pdf(request, pk):
@@ -306,7 +324,7 @@ def generate_credit_ind_pdf(request, pk):
     }
     template = "customer_credit_ind.html"
     filename = "credit_individual_customer"
-    return generate_pdf(template, filename, context, request)
+    return generate_pdf(template, filename, context)
 
 
 def generate_suppliers_pdf(request):
@@ -330,7 +348,7 @@ def generate_suppliers_pdf(request):
     template = "suppliers_pdf.html"
     filename = "suppliers"
 
-    return generate_pdf(template, filename, context, request)
+    return generate_pdf(template, filename, context)
 
 
 def generate_variants_pdf(request):
@@ -350,7 +368,106 @@ def generate_variants_pdf(request):
     template = "variants_pdf.html"
     filename = "variants"
 
-    return generate_pdf(template, filename, context, request)
+    return generate_pdf(template, filename, context)
+
+
+def build_variants_context(params):
+    """Pure function — no request needed.
+
+    Builds the full context dict for the variants PDF template using
+    filter/sort parameters stored in PdfJob.parameters.
+
+    Args:
+        params: dict with optional keys: search, category, color,
+                size, status, stock, sort.
+    """
+
+    filters = Q()
+
+    search_query = params.get("search", "")
+    if search_query:
+        terms = search_query.split()
+        for term in terms:
+            filters &= (
+                Q(product__brand__icontains=term)
+                | Q(product__name__icontains=term)
+                | Q(barcode__icontains=term)
+                | Q(product__description__icontains=term)
+                | Q(product__category__name__icontains=term)
+                | Q(size__name__icontains=term)
+                | Q(color__name__icontains=term)
+                | Q(mrp__icontains=term)
+                | Q(purchase_price__icontains=term)
+            )
+
+    category_filter = params.get("category", "")
+    if category_filter:
+        try:
+            filters &= Q(product__category_id=int(category_filter))
+        except ValueError:
+            filters &= Q(product__category__name__icontains=category_filter)
+
+    color_filter = params.get("color", "")
+    if color_filter:
+        try:
+            filters &= Q(color_id=int(color_filter))
+        except ValueError:
+            filters &= Q(color__name__icontains=color_filter)
+
+    size_filter = params.get("size", "")
+    if size_filter:
+        try:
+            filters &= Q(size_id=int(size_filter))
+        except ValueError:
+            filters &= Q(size__name__icontains=size_filter)
+
+    status_filter = params.get("status", "")
+    if status_filter:
+        filters &= Q(status=status_filter)
+
+    stock_filter = params.get("stock", "")
+    if stock_filter == "in_stock":
+        filters &= Q(quantity__gt=0)
+    elif stock_filter == "out_of_stock":
+        filters &= Q(quantity=0)
+    elif stock_filter == "low_stock":
+        filters &= Q(quantity__lte=F("minimum_quantity"), quantity__gt=0)
+
+    variants = (
+        ProductVariant.objects.select_related(
+            "product", "product__category", "size", "color"
+        )
+        .prefetch_related("favorite_variants")
+        .filter(filters)
+    )
+
+    # Sorting — replicate table_sorting logic without request
+    sort_param = params.get("sort", "")
+    if sort_param:
+        from inventory.views_variant import VALID_SORT_FIELDS
+
+        sort_fields = [f.strip() for f in sort_param.split(",") if f.strip()]
+        final_sorts = []
+        for field in sort_fields:
+            clean = field.lstrip("-")
+            if clean in VALID_SORT_FIELDS:
+                final_sorts.append(field)
+        variants = variants.order_by(*(final_sorts or ["-created_at"]))
+    else:
+        variants = variants.order_by("-created_at")
+
+    total_value = ProductVariant.objects.aggregate(
+        total_value=Sum(
+            F("quantity") * F("purchase_price"),
+            output_field=DecimalField(max_digits=16, decimal_places=2),
+        )
+    )["total_value"]
+
+    return {
+        "variants": variants,
+        "total_outstanding": total_value,
+        "total_count": variants.count(),
+    }
 
 
 def generate_purchase_orders_pdf(request):
@@ -389,7 +506,7 @@ def generate_purchase_orders_pdf(request):
 
     template = "supplier_purchased_pdf.html"
     filename = "purchase_orders"
-    return generate_pdf(template, filename, context, request)
+    return generate_pdf(template, filename, context)
 
 
 def generate_supplier_ind_pdf(request, pk):
@@ -412,113 +529,16 @@ def generate_supplier_ind_pdf(request, pk):
     template = "supplier_ind_report_pdf.html"
     filename = "supplier_individual_report"
 
-    return generate_pdf(template, filename, context, request)
+    return generate_pdf(template, filename, context)
 
 
 def generate_invoice_report_pdf(request):
     """Generate a comprehensive invoice report PDF including cancelled and returned invoices."""
-    context = {}
     start_date, end_date = getDates(request)
-    date_range = [start_date, end_date]
-    invoices_data = get_invoice_report_data(date_range)
-
-    context["start_date"] = start_date
-    context["end_date"] = end_date
-
-    total_count = invoices_data.count()
-    total_net = Decimal("0")
-    total_cgst_amount = Decimal("0")
-    total_gst = Decimal("0")
-    total_amount = Decimal("0")
-
-    if invoices_data:
-        for invoice in invoices_data:
-            total_net += invoice.total_tax_value
-            total_cgst_amount += invoice.cgst_amount
-            total_gst += invoice.total_gst_amount
-            total_amount += invoice.total_payable
-
-    context["invoices"] = {
-        "data": invoices_data,
-        "start_date": start_date,
-        "end_date": end_date,
-        "total_count": total_count,
-        "total_net": total_net,
-        "total_cgst_amount": total_cgst_amount,
-        "total_gst": total_gst,
-        "total_amount": total_amount,
-    }
-
-    invoices_cancelled_data = get_invoice_cancled_data(date_range)
-    total_count = invoices_cancelled_data.count()
-    total_net = Decimal("0")
-    total_cgst_amount = Decimal("0")
-    total_gst = Decimal("0")
-    total_amount = Decimal("0")
-
-    if invoices_cancelled_data:
-        for invoice in invoices_cancelled_data:
-            total_net += invoice.total_tax_value
-            total_cgst_amount += invoice.cgst_amount
-            total_gst += invoice.total_gst_amount
-            total_amount += invoice.total_payable
-
-    context["invoices_cancelled"] = {
-        "data": invoices_cancelled_data,
-        "start_date": start_date,
-        "end_date": end_date,
-        "total_count": total_count,
-        "total_net": total_net,
-        "total_cgst_amount": total_cgst_amount,
-        "total_gst": total_gst,
-        "total_amount": total_amount,
-    }
-
-    invoices_return_data = get_invoice_return_data(date_range)
-    total_count = invoices_return_data.count()
-    total_net = Decimal("0")
-    total_cgst_amount = Decimal("0")
-    total_gst = Decimal("0")
-    total_amount = Decimal("0")
-
-    if invoices_return_data:
-        for invoice in invoices_return_data:
-            total_net += invoice.total_tax_value
-            total_cgst_amount += invoice.cgst_amount
-            total_gst += invoice.total_gst_amount
-            total_amount += invoice.refund_amount
-
-    context["invoices_return"] = {
-        "data": invoices_return_data,
-        "start_date": start_date,
-        "end_date": end_date,
-        "total_count": total_count,
-        "total_net": total_net,
-        "total_cgst_amount": total_cgst_amount,
-        "total_gst": total_gst,
-        "total_amount": total_amount,
-    }
-
-    context["summery"] = {
-        "count": context["invoices"]["total_count"]
-        + context["invoices_cancelled"]["total_count"]
-        + context["invoices_return"]["total_count"],
-        "net": context["invoices"]["total_net"]
-        - context["invoices_cancelled"]["total_net"]
-        - context["invoices_return"]["total_net"],
-        "cgst": context["invoices"]["total_cgst_amount"]
-        - context["invoices_cancelled"]["total_cgst_amount"]
-        - context["invoices_return"]["total_cgst_amount"],
-        "gst": context["invoices"]["total_gst"]
-        - context["invoices_cancelled"]["total_gst"]
-        - context["invoices_return"]["total_gst"],
-        "amount": context["invoices"]["total_amount"]
-        - context["invoices_cancelled"]["total_amount"]
-        - context["invoices_return"]["total_amount"],
-    }
+    context = build_invoice_report_context(start_date, end_date)
 
     template = "invoice_report_pdf.html"
     filename = (
         f"invoice_report_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
     )
-    return generate_pdf(template, filename, context, request)
+    return generate_pdf(template, filename, context)

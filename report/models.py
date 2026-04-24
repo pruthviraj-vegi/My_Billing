@@ -284,3 +284,103 @@ class CustomerStatementPDF(models.Model):
         )
 
         return pdf_record
+
+
+class StatusChoices(models.TextChoices):
+    """Status choices for PDF job"""
+
+    PENDING = "pending", "Pending"
+    PROCESSING = "processing", "Processing"
+    DONE = "done", "Done"
+    FAILED = "failed", "Failed"
+
+
+class PdfJob(models.Model):
+    """PDF job model"""
+
+    status = models.CharField(
+        max_length=20, choices=StatusChoices.choices, default=StatusChoices.PENDING
+    )
+    job_type = models.CharField(max_length=100)  # e.g. 'invoice_report'
+    parameters = models.JSONField(default=dict)  # start_date, end_date, filters etc.
+
+    file = models.FileField(upload_to="pdf_jobs/", null=True, blank=True)
+    error_message = models.TextField(blank=True)
+
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def title(self):
+        """Returns a human-readable title including dates if available."""
+        name = self.job_type.replace("_", " ").title()
+        start = self.parameters.get("start_date")
+        end = self.parameters.get("end_date")
+        if start and end:
+            return f"{name} ({start} to {end})"
+        return name
+
+    def __str__(self):
+        return f"{self.job_type} | {self.status} | {self.created_by}"
+
+    @classmethod
+    def cleanup_stale_jobs(cls, minutes=10):
+        """Mark jobs stuck in pending/processing for too long as failed.
+
+        Handles orphaned jobs caused by server/worker restarts during
+        development or unexpected crashes in production.
+
+        Args:
+            minutes: How many minutes before a job is considered stale.
+
+        Returns:
+            int: Number of jobs marked as failed.
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+
+        stale_cutoff = timezone.now() - timedelta(minutes=minutes)
+        count = cls.objects.filter(
+            status__in=[StatusChoices.PENDING, StatusChoices.PROCESSING],
+            created_at__lt=stale_cutoff,
+        ).update(
+            status=StatusChoices.FAILED,
+            error_message="Job timed out — likely caused by a server or worker restart.",
+        )
+        if count:
+            logger.warning("Cleaned up %d stale PDF job(s).", count)
+        return count
+
+    @classmethod
+    def cleanup_old(cls, days=30):
+        """Delete completed/failed PDF jobs older than `days` days.
+
+        Also removes the associated PDF files from storage.
+
+        Returns:
+            int: Number of jobs deleted.
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+
+        cutoff = timezone.now() - timedelta(days=days)
+        old_jobs = cls.objects.filter(
+            created_at__lt=cutoff,
+            status__in=[StatusChoices.DONE, StatusChoices.FAILED],
+        )
+        count = 0
+        for job in old_jobs.iterator():
+            if job.file:
+                try:
+                    job.file.delete(save=False)
+                except Exception:
+                    logger.warning("Could not delete file for PdfJob %s.", job.id)
+            job.delete()
+            count += 1
+        if count:
+            logger.info("Deleted %d old PDF job(s) older than %d days.", count, days)
+        return count

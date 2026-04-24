@@ -162,7 +162,6 @@ def get_variants_data(request):
     return variants
 
 
-@required_permission("inventory.view_productvariant")
 def total_inventory_value(request) -> float:
     """Calculate total inventory value."""
     total_value = ProductVariant.objects.aggregate(

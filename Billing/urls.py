@@ -35,6 +35,7 @@ urlpatterns = [
     path("setting/", include("setting.urls")),
     path("suggestions/", include("base.urls_suggestions")),
     path("api/", include("api.urls")),
+    path("notifications/", include("notification.urls")),
 ]
 
 handler404 = "base.views.custom_404_view"
