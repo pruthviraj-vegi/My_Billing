@@ -433,13 +433,9 @@ def build_variants_context(params):
     elif stock_filter == "low_stock":
         filters &= Q(quantity__lte=F("minimum_quantity"), quantity__gt=0)
 
-    variants = (
-        ProductVariant.objects.select_related(
-            "product", "product__category", "size", "color"
-        )
-        .prefetch_related("favorite_variants")
-        .filter(filters)
-    )
+    variants = ProductVariant.objects.select_related(
+        "product", "product__category", "size", "color"
+    ).filter(filters)
 
     # Sorting — replicate table_sorting logic without request
     sort_param = params.get("sort", "")

@@ -21,6 +21,5 @@ urlpatterns = [
     ),
     path("api/archive-cart/<int:cart_id>/", views.archive_cart, name="archive_cart"),
     path("api/clear-cart/<int:cart_id>/", views.clear_cart, name="clear_cart"),
-    path("favorites/", views.get_favorites, name="get_favorites"),
-    path("custom-search/", views.custom_search, name="custom_search"),
+    path("barcode-suggestions/", views.barcode_suggestions, name="barcode_suggestions"),
 ]

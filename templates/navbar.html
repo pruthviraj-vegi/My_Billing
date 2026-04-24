@@ -60,7 +60,7 @@
             </div>
          </li>
       {% endif %}
-      {% if perms.inventory.view_product or perms.inventory.view_variant or perms.inventory.view_category or perms.inventory.view_clothtype or perms.inventory.view_color or perms.inventory.view_size or perms.inventory.view_uom or perms.inventory.view_gsthsncode or perms.inventory.view_favoritevariant %}
+      {% if perms.inventory.view_product or perms.inventory.view_variant or perms.inventory.view_category or perms.inventory.view_clothtype or perms.inventory.view_color or perms.inventory.view_size or perms.inventory.view_uom or perms.inventory.view_gsthsncode %}
          <li class="nav-item">
             <a href="#"
                class="nav-link {% if 'inventory' in request.resolver_match.namespace %}active{% endif %}">
@@ -111,11 +111,7 @@
                   <a href="{% url 'inventory:gst_hsn_home' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'gst_hsn_home' %}active{% endif %}">GST HSN Codes</a>
                {% endif %}
-               <div class="dropdown-divider"></div>
-               {% if perms.inventory.view_favoritevariant %}
-                  <a href="{% url 'inventory:favorites_home' %}"
-                     class="dropdown-item {% if request.resolver_match.url_name == 'favorites_home' %}active{% endif %}">Favorites</a>
-               {% endif %}
+
             </div>
          </li>
       {% endif %}

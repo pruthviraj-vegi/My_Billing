@@ -151,7 +151,6 @@ def get_variants_data(request):
         ProductVariant.objects.select_related(
             "product", "product__category", "size", "color"
         )
-        .prefetch_related("favorite_variants")
         .filter(filters)
     )
 

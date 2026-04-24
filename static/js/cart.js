@@ -108,6 +108,7 @@ class CartManager {
 
         this.initDropdown();
         this.initPriceToggle();
+        this.initBarcodeSuggestions();
     }
 
     /*** ───────── OFFLINE DETECTION ───────── ***/
@@ -1190,6 +1191,170 @@ class CartManager {
                 backdrop.remove();
             }
         }
+    }
+
+    /*** ───────── BARCODE SUGGESTIONS ───────── ***/
+    initBarcodeSuggestions() {
+        const input = this.dom.input;
+        const form = this.dom.form;
+        const searchSection = document.querySelector('.search-filter-section');
+        if (!input || !form) return;
+
+        let debounceTimer = null;
+        let isSelecting = false;
+
+        const dropdown = document.createElement('div');
+        dropdown.id = 'barcodeSuggestions';
+        dropdown.className = 'barcode-suggestions-dropdown';
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'suggestion-backdrop';
+        document.body.appendChild(backdrop);
+
+        backdrop.addEventListener('mousedown', () => {
+            closeDropdown();
+            input.blur();
+        });
+
+        input.parentElement.style.position = 'relative';
+        input.parentElement.appendChild(dropdown);
+
+        const self = this;
+
+        function renderDropdown(items) {
+            dropdown.innerHTML = '';
+            if (!items.length) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            items.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'suggestion-row';
+                row.dataset.barcode = item.barcode;
+
+                const variant = [item.color, item.size].filter(Boolean).join(' / ');
+                const productLabel = item.brand ? `${item.brand} - ${item.product}` : item.product;
+
+                row.innerHTML = `
+                    <div class="suggestion-header">
+                        <span class="suggestion-product">${productLabel}</span>
+                        <span class="suggestion-price">${item.mrp}</span>
+                    </div>
+                    <div class="suggestion-meta">
+                        <span class="suggestion-barcode">${item.barcode}</span>
+                        ${variant ? `<span class="suggestion-variant">· ${variant}</span>` : ''}
+                        ${item.brand ? `<span class="suggestion-brand">· ${item.brand}</span>` : ''}
+                    </div>
+                `;
+
+                row.addEventListener('mouseenter', () => {
+                    clearActiveHighlight();
+                    row.classList.add('suggestion-active');
+                });
+                row.addEventListener('mouseleave', () => {
+                    row.classList.remove('suggestion-active');
+                });
+
+                row.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    isSelecting = true;
+                    selectSuggestion(item.barcode);
+                });
+
+                dropdown.appendChild(row);
+            });
+
+            dropdown.style.display = 'block';
+            backdrop.classList.add('active');
+            if (searchSection) searchSection.classList.add('suggestion-elevated');
+        }
+
+        function selectSuggestion(barcode) {
+            closeDropdown();
+            input.value = barcode;
+            isSelecting = false;
+            requestAnimationFrame(() => {
+                form.requestSubmit();
+            });
+        }
+
+        function closeDropdown() {
+            dropdown.style.display = 'none';
+            dropdown.innerHTML = '';
+            backdrop.classList.remove('active');
+            if (searchSection) searchSection.classList.remove('suggestion-elevated');
+        }
+
+        function clearActiveHighlight() {
+            dropdown.querySelectorAll('.suggestion-active').forEach(el => {
+                el.classList.remove('suggestion-active');
+            });
+        }
+
+        function fetchSuggestions(query) {
+            const url = `${self.urls.barcodeSuggestions}?q=${encodeURIComponent(query)}`;
+            fetch(url, {
+                headers: { 'X-CSRFToken': self.csrf }
+            })
+            .then(r => r.json())
+            .then(renderDropdown)
+            .catch(() => closeDropdown());
+        }
+
+        input.addEventListener('input', function () {
+            const val = this.value.trim();
+            clearTimeout(debounceTimer);
+            if (!val || /^\d+$/.test(val) || val.length < 2) {
+                closeDropdown();
+                return;
+            }
+            debounceTimer = setTimeout(() => fetchSuggestions(val), CartManager.DEBOUNCE_DELAY);
+        });
+
+        input.addEventListener('blur', function () {
+            if (!isSelecting) closeDropdown();
+        });
+
+        input.addEventListener('keydown', function (e) {
+            const rows = Array.from(dropdown.querySelectorAll('.suggestion-row'));
+            if (!rows.length) return;
+
+            const activeRow = dropdown.querySelector('.suggestion-active');
+            const activeIdx = activeRow ? rows.indexOf(activeRow) : -1;
+
+            if (e.key === 'Escape') {
+                closeDropdown();
+                return;
+            }
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const nextIdx = activeIdx < rows.length - 1 ? activeIdx + 1 : 0;
+                clearActiveHighlight();
+                rows[nextIdx].classList.add('suggestion-active');
+                rows[nextIdx].scrollIntoView({ block: 'nearest' });
+                return;
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prevIdx = activeIdx > 0 ? activeIdx - 1 : rows.length - 1;
+                clearActiveHighlight();
+                rows[prevIdx].classList.add('suggestion-active');
+                rows[prevIdx].scrollIntoView({ block: 'nearest' });
+                return;
+            }
+
+            if (e.key === 'Enter') {
+                if (activeRow) {
+                    e.preventDefault();
+                    const barcode = activeRow.dataset.barcode;
+                    selectSuggestion(barcode);
+                }
+                closeDropdown();
+            }
+        });
     }
 
     initDropdown() {

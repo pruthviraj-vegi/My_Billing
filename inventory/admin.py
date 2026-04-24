@@ -17,7 +17,6 @@ from .models import (
     ProductVariant,
     VariantMedia,
     InventoryLog,
-    FavoriteVariant,
 )
 
 
@@ -361,19 +360,6 @@ class VariantMediaAdmin(admin.ModelAdmin):
     ordering = ["-created_at"]
 
 
-@admin.register(FavoriteVariant)
-class FavoriteVariantAdmin(admin.ModelAdmin):
-    """Admin configuration for the FavoriteVariant model."""
-
-    list_display = ["user", "variant", "created_at"]
-    list_filter = ["created_at"]
-    search_fields = [
-        "user__username",
-        "variant__product__name",
-        "variant__product__brand",
-    ]
-    ordering = ["-created_at"]
-    readonly_fields = ["created_at"]
 
 
 # Custom admin site configuration
