@@ -1293,7 +1293,7 @@ class CartManager {
         }
 
         function fetchSuggestions(query) {
-            const url = `${self.urls.barcodeSuggestions}?q=${encodeURIComponent(query)}`;
+            const url = `${self.urls.barcodeSuggestions}?search=${encodeURIComponent(query)}`;
             fetch(url, {
                 headers: { 'X-CSRFToken': self.csrf }
             })

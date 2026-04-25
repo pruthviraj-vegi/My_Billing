@@ -9,7 +9,6 @@ cart contents.
 import json
 import logging
 from decimal import Decimal, InvalidOperation
-from django.db.models import Q
 
 from django.contrib import messages
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
@@ -22,6 +21,7 @@ from django.views.generic import CreateView, TemplateView, UpdateView
 from base.decorators import required_permission, RequiredPermissionMixin
 
 from inventory.models import BarcodeMapping, ProductVariant
+from inventory.views_variant import get_variants_data
 
 from .forms import CartForm
 from .models import Cart, CartItem
@@ -223,46 +223,24 @@ def barcode_suggestions(request):
     Return JSON list of product variants matching the query string.
     Used for live barcode suggestion dropdown in cart page.
     """
-    q = request.GET.get("q", "").strip()
-    if len(q) < 2:
+    search = request.GET.get("search", "").strip()
+    if len(search) < 2:
         return JsonResponse([], safe=False)
 
-    filters = Q()
-    for term in q.split():
-        filters &= (
-            Q(barcode__icontains=term)
-            | Q(product__name__icontains=term)
-            | Q(product__brand__icontains=term)
-            | Q(product__description__icontains=term)
-            | Q(product__category__name__icontains=term)
-            | Q(color__name__icontains=term)
-            | Q(size__name__icontains=term)
-            | Q(mrp__icontains=term)
-        )
-
-    results = (
-        ProductVariant.objects.filter(filters)
-        .select_related("product", "product__category", "color", "size")
-        .values(
-            "barcode",
-            "product__name",
-            "product__brand",
-            "color__name",
-            "size__name",
-            "mrp",
-        )[:10]
-    )
+    variants = get_variants_data(request)[:10]
+    if not variants:
+        return JsonResponse([], safe=False)
 
     data = [
         {
-            "barcode": r["barcode"],
-            "product": r["product__name"],
-            "brand": r["product__brand"] or "",
-            "color": r["color__name"] or "",
-            "size": r["size__name"] or "",
-            "mrp": str(r["mrp"]),
+            "barcode": v.barcode,
+            "product": v.product.name,
+            "brand": v.product.brand or "",
+            "color": v.color.name if v.color else "",
+            "size": v.size.name if v.size else "",
+            "mrp": str(v.mrp),
         }
-        for r in results
+        for v in variants
     ]
     return JsonResponse(data, safe=False)
 
