@@ -165,14 +165,14 @@
             </div>
          </li>
       {% endif %}
-      {% if perms.user.view_customuser or perms.user.view_loginevent or perms.user.view_unauthorizedaccess %}
+      {% if perms.user.view_customuser %}
          <li class="nav-item">
             <a href="#"
                class="nav-link {% if 'user' in request.resolver_match.namespace %}active{% endif %}">
                <i class="fas fa-users-cog"></i>
                <span>Users</span>
             </a>
-            <div class="dropdown-menu dropdown-multicolumn col-2">
+            <div class="dropdown-menu">
                {% if perms.user.view_customuser %}
                   <a href="{% url 'user:home' %}"
                      class="dropdown-item {% if request.resolver_match.namespace == 'user' and request.resolver_match.url_name == 'home' %}active{% endif %}">All Users</a>
@@ -185,12 +185,23 @@
                   <a href="{% url 'user:sessions' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'sessions' %}active{% endif %}">Sessions</a>
                {% endif %}
-               {% if perms.user.view_loginevent %}
-                  <a href="{% url 'user:logins' %}"
+            </div>
+         </li>
+      {% endif %}
+      {% if perms.security.view_loginevent or perms.security.view_unauthorizedaccess %}
+         <li class="nav-item">
+            <a href="#"
+               class="nav-link {% if 'security' in request.resolver_match.namespace %}active{% endif %}">
+               <i class="fas fa-shield-alt"></i>
+               <span>Security</span>
+            </a>
+            <div class="dropdown-menu">
+               {% if perms.security.view_loginevent %}
+                  <a href="{% url 'security:logins' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'logins' %}active{% endif %}">Login Activity</a>
                {% endif %}
-               {% if perms.user.view_unauthorizedaccess %}
-                  <a href="{% url 'user:unauthorized' %}"
+               {% if perms.security.view_unauthorizedaccess %}
+                  <a href="{% url 'security:unauthorized' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'unauthorized' %}active{% endif %}">Unauthorized Activity</a>
                {% endif %}
             </div>

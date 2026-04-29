@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "base",
     "user",
+    "security",
     "supplier",
     "setting",
     "customer",

@@ -11,7 +11,7 @@ from django.contrib.sessions.models import Session
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from .models import CustomUser, LoginEvent
+from .models import CustomUser
 
 
 @admin.register(CustomUser)
@@ -246,16 +246,3 @@ class SessionAdmin(admin.ModelAdmin):
     invalidate_sessions.short_description = "Invalidate selected sessions"
 
 
-@admin.register(LoginEvent)
-class LoginEventAdmin(admin.ModelAdmin):
-    """Admin interface for viewing login events."""
-
-    list_display = ("occurred_at", "user", "event_type", "ip_address", "session_key")
-    list_filter = ("event_type", "occurred_at")
-    search_fields = (
-        "user__first_name",
-        "user__phone_number",
-        "ip_address",
-        "session_key",
-    )
-    date_hierarchy = "occurred_at"

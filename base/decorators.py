@@ -73,7 +73,7 @@ def get_client_ip(request):
 
 def _log_unauthorized_access(request, view_name, allowed_roles):
     """Shared helper to log unauthorized access attempts."""
-    from user.models import UnauthorizedAccess
+    from security.models import UnauthorizedAccess
 
     UnauthorizedAccess.objects.create(
         user=request.user,
