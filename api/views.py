@@ -61,6 +61,24 @@ def get_balance(request, phone_number):
 
 
 @login_not_required
+def get_balance_by_id(request, customer_id):
+    """Return the current credit balance for a customer by customer ID."""
+    customer = Customer.objects.filter(id=customer_id).first()
+    if not customer:
+        return JsonResponse({"error": "Customer not found"}, status=404)
+
+    balance = customer.credit_summary.balance_amount
+    return JsonResponse(
+        {
+            "balance": balance,
+            "date": datetime.now().strftime("%d-%m-%Y"),
+            "name": customer.name,
+        },
+        status=200,
+    )
+
+
+@login_not_required
 def get_last_invoice(request, phone_number):
     """Return the last invoice PDF for a customer by phone number."""
     try:
