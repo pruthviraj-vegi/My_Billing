@@ -172,9 +172,18 @@ class SupplierInvoiceForm(forms.ModelForm):
             "class"
         ] = "form-input indian-number"
 
-        # Set initial values for GST fields (new invoices only)
+        # Set initial values for new invoices
         if not self.instance.pk:
-            self.fields["gst_type"].initial = "CGST_SGST"
+            if self.supplier:
+                last_invoice = self.supplier.invoices.filter(is_deleted=False).order_by("-invoice_date").first()
+                if last_invoice:
+                    self.fields["invoice_type"].initial = last_invoice.invoice_type
+                    self.fields["gst_type"].initial = last_invoice.gst_type or "CGST_SGST"
+                else:
+                    self.fields["gst_type"].initial = "CGST_SGST"
+            else:
+                self.fields["gst_type"].initial = "CGST_SGST"
+
             for field_name in [
                 "sub_total",
                 "cgst_amount",

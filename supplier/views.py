@@ -761,6 +761,17 @@ class CreatePayment(RequiredPermissionMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Create Payment"
         context["supplier"] = self.supplier
+        
+        # Most repeated payment amounts
+        top_payments = (
+            self.supplier.payments_made.filter(is_deleted=False)
+            .values("amount")
+            .annotate(count=Count("amount"))
+            .order_by("-count", "-amount")[:5]
+        )
+        context["top_payments"] = [p["amount"] for p in top_payments]
+        context["present_balance"] = self.supplier.balance_due
+        
         return context
 
     def get_form_kwargs(self):
@@ -814,6 +825,16 @@ class EditPayment(RequiredPermissionMixin, UpdateView):
         )
         context["total_allocated"] = total_allocated
         context["has_allocations"] = total_allocated > 0
+
+        # Most repeated payment amounts
+        top_payments = (
+            self.supplier.payments_made.filter(is_deleted=False)
+            .values("amount")
+            .annotate(count=Count("amount"))
+            .order_by("-count", "-amount")[:5]
+        )
+        context["top_payments"] = [p["amount"] for p in top_payments]
+        context["present_balance"] = self.supplier.balance_due
 
         return context
 

@@ -75,6 +75,17 @@
                 {% endif %}
                 <span class="form-help-text">Enter the amount of the payment</span>
               </small>
+              {% if top_payments or present_balance %}
+                <div class="payment-suggestions mt-2 d-flex flex-wrap gap-2">
+                  <span class="text-muted small align-self-center">Suggestions: </span>
+                  {% if present_balance %}
+                    <button type="button" class="btn btn-sm btn-outline-primary suggestion-btn" data-amount="{{ present_balance|stringformat:'.2f' }}">{{ present_balance|currency }} (Balance)</button>
+                  {% endif %}
+                  {% for amount in top_payments %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-amount="{{ amount|stringformat:'.2f' }}">{{ amount|currency }}</button>
+                  {% endfor %}
+                </div>
+              {% endif %}
             </div>
           </div>
           <div class="row">
@@ -202,6 +213,27 @@
       if (amountField) {
         amountField.addEventListener('input', function() {
           this.classList.remove('error-highlight')
+        })
+      }
+      
+      // Handle suggestion clicks
+      const suggestionBtns = document.querySelectorAll('.suggestion-btn')
+      if (suggestionBtns.length > 0 && amountField) {
+        suggestionBtns.forEach(btn => {
+          btn.addEventListener('click', function() {
+            amountField.value = this.getAttribute('data-amount')
+            amountField.classList.remove('error-highlight')
+            
+            // Optional: visual feedback on the button
+            const originalText = this.innerHTML
+            this.innerHTML = '<i class="fas fa-check"></i> Applied'
+            setTimeout(() => {
+              this.innerHTML = originalText
+            }, 1000)
+            
+            // Trigger input event to clear errors if needed
+            amountField.dispatchEvent(new Event('input'))
+          })
         })
       }
     })
