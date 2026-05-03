@@ -1,4 +1,12 @@
-"""Cart models for managing temporary item collections and estimates."""
+"""
+Cart models for managing temporary item collections and estimates.
+
+Imported fields from:
+- decimal.Decimal
+- django.conf.settings
+- django.core.validators
+- django.db.models
+"""
 
 from decimal import Decimal
 from django.conf import settings
@@ -43,6 +51,7 @@ class Cart(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        """Meta options for Cart model."""
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["status"]),
@@ -52,7 +61,7 @@ class Cart(models.Model):
 
     def __str__(self):
         if self.advance_payment > 0:
-            return f"Cart #{self.id} - {self.name} - ({self.advance_payment})"
+            return f"Cart #{self.id} - {self.name} - ({self.advance_payment})" 
         else:
             return f"Cart #{self.id} - {self.name}"
 

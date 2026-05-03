@@ -1233,7 +1233,10 @@ class CartManager {
                 row.className = 'suggestion-row';
                 row.dataset.barcode = item.barcode;
 
-                const variant = [item.color, item.size].filter(Boolean).join(' / ');
+                let variant = [item.color, item.size].filter(Boolean).join(' / ');
+                if (item.stock !== undefined) {
+                    variant = variant ? `${variant} (Qty: ${item.stock})` : `Qty: ${item.stock}`;
+                }
                 const productLabel = item.brand ? `${item.brand} - ${item.product}` : item.product;
 
                 row.innerHTML = `
@@ -1297,9 +1300,9 @@ class CartManager {
             fetch(url, {
                 headers: { 'X-CSRFToken': self.csrf }
             })
-            .then(r => r.json())
-            .then(renderDropdown)
-            .catch(() => closeDropdown());
+                .then(r => r.json())
+                .then(renderDropdown)
+                .catch(() => closeDropdown());
         }
 
         input.addEventListener('input', function () {

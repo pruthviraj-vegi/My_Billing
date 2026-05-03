@@ -239,6 +239,7 @@ def barcode_suggestions(request):
             "color": v.color.name if v.color else "",
             "size": v.size.name if v.size else "",
             "mrp": str(v.mrp),
+            "stock": str(v.billing_stock),
         }
         for v in variants
     ]
