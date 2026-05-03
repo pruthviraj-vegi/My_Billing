@@ -306,54 +306,102 @@ def change_user_status(request, user_id):
     return redirect("user:home")
 
 
-
-
-
 def sessions_overview(request):
     """List active sessions and users' last login details."""
+    from django.conf import settings
+    from importlib import import_module
+    
     now = timezone.now()
-    active_sessions = Session.objects.filter(expire_date__gt=now)
-
     sessions_data = []
+    active_count = 0
     session_key_to_is_current = (
         {request.session.session_key: True} if request.session.session_key else {}
     )
 
-    for session in active_sessions:
-        data = session.get_decoded()
-        user_id = data.get("_auth_user_id")
-        if not user_id:
-            continue
+    if settings.SESSION_ENGINE in ["django.contrib.sessions.backends.db", "django.contrib.sessions.backends.cached_db"]:
+        active_sessions = Session.objects.filter(expire_date__gt=now)
+        active_count = active_sessions.count()
+        
+        for session in active_sessions:
+            data = session.get_decoded()
+            user_id = data.get("_auth_user_id")
+            if not user_id:
+                continue
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                continue
+
+            sessions_data.append(
+                {
+                    "session_key": session.session_key,
+                    "user": user,
+                    "last_login": user.last_login,
+                    "expire_date": session.expire_date,
+                    "is_current": session_key_to_is_current.get(session.session_key, False),
+                    "ip_address": data.get("ip_address"),
+                    "user_agent": data.get("user_agent"),
+                    "last_activity": data.get("last_activity"),
+                }
+            )
+            
+    elif settings.SESSION_ENGINE == "django.contrib.sessions.backends.cache":
+        from django.core.cache import caches
+        cache = caches[settings.SESSION_CACHE_ALIAS]
+        SessionStore = import_module(settings.SESSION_ENGINE).SessionStore
+        prefix = SessionStore().cache_key_prefix
+        
         try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            continue
-
-        ip_address = data.get("ip_address")
-        user_agent = data.get("user_agent")
-        last_activity = data.get("last_activity")
-
-        sessions_data.append(
-            {
-                "session_key": session.session_key,
-                "user": user,
-                "last_login": user.last_login,
-                "expire_date": session.expire_date,
-                "is_current": session_key_to_is_current.get(session.session_key, False),
-                "ip_address": ip_address,
-                "user_agent": user_agent,
-                "last_activity": last_activity,
-            }
-        )
+            for key in cache.iter_keys(f"{prefix}*"):
+                if isinstance(key, bytes):
+                    key = key.decode("utf-8")
+                
+                session_key = key.replace(prefix, "")
+                session_store = SessionStore(session_key=session_key)
+                if session_store.is_empty():
+                    continue
+                    
+                data = session_store.load()
+                user_id = data.get("_auth_user_id")
+                if not user_id:
+                    continue
+                    
+                try:
+                    user = User.objects.get(id=user_id)
+                except User.DoesNotExist:
+                    continue
+                
+                # Approximate expire date based on Redis TTL
+                try:
+                    ttl = cache.ttl(key)
+                    expire_date = now + timezone.timedelta(seconds=ttl) if ttl else now
+                except Exception:
+                    expire_date = now + timezone.timedelta(seconds=settings.SESSION_COOKIE_AGE)
+                    
+                sessions_data.append(
+                    {
+                        "session_key": session_key,
+                        "user": user,
+                        "last_login": user.last_login,
+                        "expire_date": expire_date,
+                        "is_current": session_key_to_is_current.get(session_key, False),
+                        "ip_address": data.get("ip_address"),
+                        "user_agent": data.get("user_agent"),
+                        "last_activity": data.get("last_activity"),
+                    }
+                )
+            active_count = len(sessions_data)
+        except Exception as e:
+            logger.error(f"Error fetching cache sessions: {e}")
 
     # Sort by user then expire_date desc
     sessions_data.sort(
-        key=lambda s: (s["user"].full_name or "", -int(s["expire_date"].timestamp()))
+        key=lambda s: (s["user"].full_name or "", -int(s["expire_date"].timestamp()) if s["expire_date"] else 0)
     )
 
     context = {
         "sessions": sessions_data,
-        "active_count": active_sessions.count(),
+        "active_count": active_count,
     }
 
     return render(request, "user/sessions.html", context)
@@ -362,10 +410,32 @@ def sessions_overview(request):
 @require_POST
 def invalidate_all_sessions(request):
     """Invalidate all active sessions (logs everyone out)."""
-    now = timezone.now()
-    qs = Session.objects.filter(expire_date__gt=now)
-    deleted = qs.count()
-    qs.delete()
+    from django.conf import settings
+    from importlib import import_module
+    
+    deleted = 0
+    if settings.SESSION_ENGINE in ["django.contrib.sessions.backends.db", "django.contrib.sessions.backends.cached_db"]:
+        now = timezone.now()
+        qs = Session.objects.filter(expire_date__gt=now)
+        deleted = qs.count()
+        qs.delete()
+    elif settings.SESSION_ENGINE == "django.contrib.sessions.backends.cache":
+        from django.core.cache import caches
+        cache = caches[settings.SESSION_CACHE_ALIAS]
+        SessionStore = import_module(settings.SESSION_ENGINE).SessionStore
+        prefix = SessionStore().cache_key_prefix
+        
+        try:
+            keys_to_delete = []
+            for key in cache.iter_keys(f"{prefix}*"):
+                keys_to_delete.append(key)
+            
+            if keys_to_delete:
+                cache.delete_many(keys_to_delete)
+                deleted = len(keys_to_delete)
+        except Exception as e:
+            logger.error(f"Error invalidating cache sessions: {e}")
+            
     messages.success(request, f"Invalidated {deleted} active session(s).")
     return redirect("user:sessions")
 
@@ -373,12 +443,23 @@ def invalidate_all_sessions(request):
 @require_POST
 def invalidate_session(request, session_key):
     """Invalidate a specific session by key."""
+    from django.conf import settings
+    from importlib import import_module
+    SessionStore = import_module(settings.SESSION_ENGINE).SessionStore
+    
     try:
-        session = Session.objects.get(session_key=session_key)
-        session.delete()
+        session_store = SessionStore(session_key=session_key)
+        session_store.delete()
+        
+        # Also try to delete from DB if it exists (for robustness)
+        if settings.SESSION_ENGINE in ["django.contrib.sessions.backends.db", "django.contrib.sessions.backends.cached_db"]:
+            Session.objects.filter(session_key=session_key).delete()
+            
         messages.success(request, "Session invalidated.")
-    except Session.DoesNotExist:
-        messages.error(request, "Session not found.")
+    except Exception as e:
+        logger.error(f"Error invalidating session {session_key}: {e}")
+        messages.error(request, "Session not found or error invalidating.")
+        
     return redirect("user:sessions")
 
 
