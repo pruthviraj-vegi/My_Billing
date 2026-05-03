@@ -130,8 +130,7 @@
           <!-- Advance Amount Field -->
           <div class="col-md-4">
             <div class="form-group {% if form.advance_amount.errors %}has-error{% endif %}">
-              <label for="{{ form.advance_amount.id_for_label }}" class="form-label">{{ form.advance_amount.label
-                }}</label>
+              <label for="{{ form.advance_amount.id_for_label }}" class="form-label">{{ form.advance_amount.label }}</label>
               {{ form.advance_amount }}
               {% if form.advance_amount.errors %}
               {% for error in form.advance_amount.errors %}
@@ -148,8 +147,7 @@
           <!-- Discount Amount Field -->
           <div class="col-md-4">
             <div class="form-group {% if form.discount_amount.errors %}has-error{% endif %}">
-              <label for="{{ form.discount_amount.id_for_label }}" class="form-label">{{ form.discount_amount.label
-                }}</label>
+              <label for="{{ form.discount_amount.id_for_label }}" class="form-label">{{ form.discount_amount.label }}</label>
               {{ form.discount_amount }}
               {% if form.discount_amount.errors %}
               {% for error in form.discount_amount.errors %}
@@ -203,8 +201,7 @@
         <div class="row">
           <!-- Payment Method Field -->
           <div class="col-md-6 mb-2 {% if form.payment_method.errors %}has-error{% endif %}">
-            <label for="{{ form.payment_method.id_for_label }}" class="form-label">{{ form.payment_method.label
-              }}</label>
+            <label for="{{ form.payment_method.id_for_label }}" class="form-label">{{ form.payment_method.label }}</label>
             {{ form.payment_method }}
             <small class="form-help {% if form.payment_method.errors %}has-error{% endif %}">
               {% if form.payment_method.errors %}
