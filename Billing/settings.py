@@ -35,7 +35,6 @@ ALLOWED_HOSTS = config(
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
 
-
 LOGIN_URL = "/login/"
 
 # Session/inactivity settings (3 hours)
@@ -50,7 +49,7 @@ SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_NAME = "billing_sessionid"  # Obscure default name
 
 
-SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
 
@@ -127,8 +126,11 @@ WSGI_APPLICATION = "Billing.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/topics/cache/
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
-        "LOCATION": "my_cache_table",
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": config("REDIS_CACHE_URL", default="redis://127.0.0.1:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
     }
 }
 # Database
