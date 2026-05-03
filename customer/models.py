@@ -1,6 +1,7 @@
 """Models for the customer app, including Customer, Payment, and CustomerCreditSummary."""
 
 from decimal import Decimal
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -479,7 +480,6 @@ class CustomerCreditSummary(models.Model):
                     last_inv_date = first_unpaid["invoice_date"]
 
             # ===== CALCULATE OVERDUE STATUS =====
-            from datetime import timedelta
 
             six_months_ago = timezone.now() - timedelta(days=180)
             is_overdue = bool(last_inv_date and last_inv_date < six_months_ago)
@@ -504,15 +504,11 @@ class CustomerCreditSummary(models.Model):
             return summary
 
     def get_status_display(self):
-        """Human-readable status"""
         if self.balance_amount < 0:
             return f"Credit Balance: {abs(self.balance_amount):,.2f}"
-        elif self.balance_amount == 0:
+        if self.balance_amount == 0:
             return "Cleared"
-        elif self.is_overdue:
-            return "Overdue"
-        else:
-            return "Outstanding"
+        return "Overdue" if self.is_overdue else "Outstanding"
 
     @property
     def has_credit_balance(self):

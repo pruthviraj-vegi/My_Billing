@@ -50,20 +50,14 @@ def cancel_invoice(request, pk):
                         request,
                         f"Invoice {invoice.invoice_number} has been cancelled successfully.",
                     )
-                    logger.info(
-                        "Invoice %s cancelled by %s. Reason: %s",
-                        invoice.invoice_number,
-                        request.user.username,
-                        reason,
-                    )
                     return redirect("invoice:detail", pk=pk)
-                else:
-                    messages.error(request, f"Failed to cancel invoice: {message}")
-                    logger.error(
-                        "Failed to cancel invoice %s: %s",
-                        invoice.invoice_number,
-                        message,
-                    )
+                    
+                messages.error(request, f"Failed to cancel invoice: {message}")
+                logger.error(
+                    "Failed to cancel invoice %s: %s",
+                    invoice.invoice_number,
+                    message,
+                )
         except Exception as e:  # pylint: disable=broad-except
             messages.error(request, f"Failed to cancel invoice: {str(e)}")
             logger.error(

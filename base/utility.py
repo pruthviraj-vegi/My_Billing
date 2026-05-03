@@ -8,6 +8,8 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 
+from base.getDates import DatesManipulation, quarter_start_end
+
 
 def get_financial_year(value):
     """
@@ -127,7 +129,6 @@ def get_periodic_data(date_filter, current_start, current_end):
     Return previous_start, previous_end, period_type for a given date filter.
     Uses the existing DatesManipulation class to avoid code duplication.
     """
-    from base.getDates import DatesManipulation
 
     dates = DatesManipulation()
 
@@ -183,7 +184,6 @@ def get_periodic_data(date_filter, current_start, current_end):
 
     elif date_filter == "last_quarter":
         # Get 2 quarters ago (6 months back)
-        from base.getDates import quarter_start_end
 
         last_month = current_start.month - 6
         year = current_start.year

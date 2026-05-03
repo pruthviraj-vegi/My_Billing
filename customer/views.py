@@ -622,5 +622,6 @@ def create_customer_ajax(request):
                     "data": {"id": customer.id, "name": customer.name},
                 }
             )
+        return JsonResponse({"success": False, "message": str(form.errors)})
     except Exception as e:  # pylint: disable=broad-except
         return JsonResponse({"success": False, "message": str(e)})

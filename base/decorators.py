@@ -9,6 +9,8 @@ from django.conf import settings
 from django.db import connection
 from django.shortcuts import render
 
+from security.models import UnauthorizedAccess
+
 
 def timed(fn):
     """
@@ -73,7 +75,6 @@ def get_client_ip(request):
 
 def _log_unauthorized_access(request, view_name, allowed_roles):
     """Shared helper to log unauthorized access attempts."""
-    from security.models import UnauthorizedAccess
 
     UnauthorizedAccess.objects.create(
         user=request.user,

@@ -4,6 +4,7 @@ Utility module for handling date ranges and date calculations.
 """
 from datetime import datetime, timedelta
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -141,8 +142,6 @@ def getDates(request):
     - For custom dates: from_date/to_date (dd-mm-yyyy) or start_date/end_date (yyyy-mm-dd)
     Supports both GET query parameters and POST JSON body.
     """
-    import json
-
     today = datetime.now()
 
     # Try to parse JSON body for POST requests

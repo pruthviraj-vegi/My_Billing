@@ -150,7 +150,7 @@ class CartItem(models.Model):
     def amount(self):
         """Calculate the total for this item with caching"""
         if not hasattr(self, "_amount_cache"):
-            self._amount_cache = round(self.quantity * self.price, 2)
+            self._amount_cache = round(self.quantity * self.price, 2)  # pylint: disable=attribute-defined-outside-init
         return self._amount_cache
 
     @property
@@ -162,7 +162,7 @@ class CartItem(models.Model):
     def product_name(self):
         """Get product name with caching"""
         if not hasattr(self, "_product_name_cache"):
-            self._product_name_cache = self.product_variant.full_name
+            self._product_name_cache = self.product_variant.full_name  # pylint: disable=attribute-defined-outside-init
         return self._product_name_cache
 
     @property
@@ -170,12 +170,12 @@ class CartItem(models.Model):
         """Calculate discount percentage with caching"""
         if not hasattr(self, "_discount_cache"):
             if not self.product_variant.mrp or self.product_variant.mrp <= 0:
-                self._discount_cache = 0
+                self._discount_cache = 0  # pylint: disable=attribute-defined-outside-init
             else:
                 discount = (
                     (self.product_variant.mrp - self.price) / self.product_variant.mrp
                 ) * 100
-                self._discount_cache = round(max(0, discount), 2)
+                self._discount_cache = round(max(0, discount), 2)  # pylint: disable=attribute-defined-outside-init
         return self._discount_cache
 
     def save(self, *args, **kwargs):

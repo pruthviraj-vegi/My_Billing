@@ -6,6 +6,7 @@ import base64
 import locale
 import logging
 from datetime import datetime, timedelta
+import re
 
 from django import template
 from django.conf import settings
@@ -25,6 +26,8 @@ formate = {
 }
 
 
+_CURRENCY_SYMBOLS = str.maketrans("", "", "₹$€£,")
+
 def _convert_to_numeric(value):
     """
     Bulletproof string-to-number converter that handles various input formats.
@@ -38,53 +41,31 @@ def _convert_to_numeric(value):
     if value is None:
         return None
 
-    # If already a number, return as-is
     if isinstance(value, (int, float)):
         return value
 
-    # Convert to string and clean
-    str_value = str(value).strip()
+    cleaned = str(value).strip().translate(_CURRENCY_SYMBOLS)
 
-    if not str_value:
+    if not cleaned:
         return None
 
-    # Handle empty string
-    if str_value == "":
+    # Extract sign and percentage flags via regex
+    match = re.fullmatch(r"(-?)(\d+(?:\.\d+)?)(%%?)?", cleaned)
+    if not match:
+        logger.warning("Failed to convert '%s' to numeric", value)
         return None
 
-    # Remove common currency symbols and whitespace
-    cleaned_value = (
-        str_value.replace("₹", "")
-        .replace("$", "")
-        .replace("€", "")
-        .replace("£", "")
-        .replace(",", "")
-        .strip()
-    )
-
-    # Handle negative numbers
-    is_negative = cleaned_value.startswith("-")
-    if is_negative:
-        cleaned_value = cleaned_value[1:]
-
-    # Handle percentage
-    is_percentage = cleaned_value.endswith("%")
-    if is_percentage:
-        cleaned_value = cleaned_value[:-1]
+    is_negative = bool(match.group(1))
+    is_percentage = bool(match.group(3))
 
     try:
-        # Try to convert to float first (handles decimals)
-        numeric_value = float(cleaned_value)
+        numeric_value = float(match.group(2))
 
-        # Apply percentage conversion if needed
         if is_percentage:
-            numeric_value = numeric_value / 100
-
-        # Apply negative sign if needed
+            numeric_value /= 100
         if is_negative:
             numeric_value = -numeric_value
 
-        # Return as int if it's a whole number and not too large
         if numeric_value.is_integer() and abs(numeric_value) < 1e15:
             return int(numeric_value)
 
@@ -295,17 +276,19 @@ def mul(value, arg):
         return 0
 
 
+_STATUS_BADGE_MAP = {
+    "active": "bg-success", "success": "bg-success",
+    "true": "bg-success", "accepted": "bg-success",
+    "inactive": "bg-danger", "error": "bg-danger",
+    "danger": "bg-danger", "false": "bg-danger", "rejected": "bg-danger",
+    "pending": "bg-warning", "warning": "bg-warning",
+}
+
 @register.filter(name="status_badge")
 def status_badge(value):
     """Return a bootstrap badge color class based on status string value."""
-    if str(value).lower() in ["active", "success", "true", "accepted"]:
-        return "badge bg-success"
-    elif str(value).lower() in ["inactive", "error", "danger", "false", "rejected"]:
-        return "badge bg-danger"
-    elif str(value).lower() in ["pending", "warning"]:
-        return "badge bg-warning"
-    else:
-        return "badge bg-secondary"
+    key = str(value).lower()
+    return f"badge {_STATUS_BADGE_MAP.get(key, 'bg-secondary')}"
 
 
 @register.filter(name="add_class")
@@ -386,32 +369,17 @@ def get_sale_percentage(remaining_quantity, total_quantity):
         return 0
 
 
+_SALE_THRESHOLDS = (
+    (90, "active"),    # ≥90% sold → green
+    (50, "warning"),   # ≥50% sold → yellow
+    (0,  "danger"),    # <50%  sold → red
+)
+
 @register.filter(name="sale_percentage_label")
 def get_sale_percentage_label(remaining_quantity, total_quantity):
-    """
-    Calculate sold percentage and return status badge class.
-
-    Args:
-        remaining_quantity: Units still in stock
-        total_quantity: Total units received
-
-    Returns:
-        - "active" (green): >90% sold - Excellent!
-        - "warning" (yellow): 50-90% sold - OK
-        - "danger" (red): <50% sold - Poor/Slow moving
-        - "secondary" (gray): No stock/invalid
-    """
-    if total_quantity == 0:
-        return "secondary"
     try:
-        # Calculate SOLD percentage
-        sold_percentage = get_sale_percentage(remaining_quantity, total_quantity)
-
-        if sold_percentage >= 90:
-            return "active"  # Green - Awesome! Almost sold out
-        elif sold_percentage >= 50:
-            return "warning"  # Yellow - OK, decent sales
-        else:
-            return "danger"  # Red - Poor, slow moving stock
-    except (ValueError, TypeError):
+        sold_pct = get_sale_percentage(remaining_quantity, total_quantity)
+    except (ValueError, TypeError, ZeroDivisionError):
         return "secondary"
+
+    return next(label for threshold, label in _SALE_THRESHOLDS if sold_pct >= threshold)

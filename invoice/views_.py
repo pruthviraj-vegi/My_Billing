@@ -16,10 +16,11 @@ from django.utils import timezone
 from django.views.generic.edit import CreateView, DeleteView, View
 
 from base.utility import render_paginated_response, table_sorting
+from base.decorators import required_permission, RequiredPermissionMixin
+
 from invoice.form import AuditTableForm
 from invoice.models import AuditTable, Invoice, InvoiceAudit, InvoiceSequence
 
-from base.decorators import required_permission, RequiredPermissionMixin
 
 logger = logging.getLogger(__name__)
 

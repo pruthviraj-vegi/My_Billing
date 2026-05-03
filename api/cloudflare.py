@@ -172,7 +172,7 @@ def delete_from_r2(
     except botocore.exceptions.ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
 
-        if error_code == "404" or error_code == "NoSuchKey":
+        if error_code in ["404", "NoSuchKey"]:
             logger.warning(
                 "File '%s' not found in '%s' bucket "
                 "(already deleted or never existed)",
@@ -309,7 +309,7 @@ def check_file_exists(
     except botocore.exceptions.ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
 
-        if error_code == "404" or error_code == "NoSuchKey":
+        if error_code in ["404", "NoSuchKey"]:
             logger.debug(
                 "File '%s' not found in '%s' bucket", filename, bucket_type.value
             )
@@ -373,7 +373,7 @@ def get_file_metadata(
 
     except botocore.exceptions.ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
-        if error_code == "404" or error_code == "NoSuchKey":
+        if error_code in ["404", "NoSuchKey"]:
             logger.warning("File '%s' not found", filename)
         else:
             logger.error("Error getting metadata: %s", str(e))

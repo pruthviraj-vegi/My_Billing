@@ -45,7 +45,7 @@ class InvoiceFinancialMixin:
     @property
     def amount_cleared(self):
         """Amount cleared from customer"""
-        return True if self.remaining_amount <= 0 else False
+        return self.remaining_amount <= 0
 
     @property
     def total_received(self):
