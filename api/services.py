@@ -6,9 +6,9 @@ import logging
 from datetime import datetime
 
 import qrcode
-import requests
 from django.contrib.auth.views import login_not_required
 
+from api.cloudflare import check_file_exists
 from customer.views_credit import _build_ledger_rows, get_opening_balance
 from invoice.models import InvoiceItem
 from report.models import InvoicePDF, CustomerStatementPDF
@@ -39,19 +39,13 @@ def generate_invoice_pdf(invoice, request):
     """
     # Check if valid PDF exists (not outdated)
     existing_pdf = InvoicePDF.get_valid_pdf(invoice)
-    if existing_pdf:
-        # Validate that the URL is actually accessible
-        try:
-            response = requests.head(existing_pdf.pdf_url, timeout=5)
-            if response.status_code == 200:
-                return {
-                    "url": existing_pdf.pdf_url,
-                    "generated_at": existing_pdf.generated_at.isoformat(),
-                    "pdf_status": "cached",
-                    "filename": existing_pdf.filename,
-                }
-        except (requests.RequestException, OSError):
-            pass
+    if existing_pdf and check_file_exists(existing_pdf.pdf_url):
+        return {
+            "url": existing_pdf.pdf_url,
+            "generated_at": existing_pdf.generated_at.isoformat(),
+            "pdf_status": "cached",
+            "filename": existing_pdf.filename,
+        }
 
     # PDF doesn't exist, is outdated, or URL is invalid; generate new one
 
@@ -115,19 +109,17 @@ def generate_invoice_pdf(invoice, request):
         template, filename, context, report_type="INVOICE", upload_to_r2=True
     )
 
-    # Check if R2 upload was successful
-    if isinstance(pdf_response, str):
-        r2_url = pdf_response
-    elif hasattr(pdf_response, "r2_url") and pdf_response.r2_url:
-        r2_url = pdf_response.r2_url
-    else:
-        logger.error("Failed to upload PDF to R2")
-        raise RuntimeError("Failed to upload PDF to cloud storage")
+    if not pdf_response:
+        logger.error("Failed to generate PDF")
+        raise RuntimeError("Failed to generate PDF")
+
+    pdf_url = pdf_response
+    logger.info("PDF generated: %s", pdf_url)
 
     # Create new PDF record with current invoice timestamp
     pdf_record = InvoicePDF.create_pdf_record(
         invoice=invoice,
-        pdf_url=r2_url,
+        pdf_url=pdf_url,
         filename=f"{filename}.pdf",
         generated_by=request.user if request.user.is_authenticated else None,
     )
@@ -168,18 +160,19 @@ def generate_statement_pdf(customer, start_date, end_date, request):
         customer, start_date, end_date, customer.credit_summary.balance_amount
     )
 
-    if existing_pdf:
-        try:
-            response = requests.head(existing_pdf.pdf_url, timeout=5)
-            if response.status_code == 200:
-                return {
-                    "url": existing_pdf.pdf_url,
-                    "generated_at": existing_pdf.generated_at.isoformat(),
-                    "pdf_status": "cached",
-                    "filename": existing_pdf.filename,
-                }
-        except (requests.RequestException, OSError):
-            pass
+    if existing_pdf and check_file_exists(existing_pdf.pdf_url):
+        logger.debug(
+            "Using cached statement PDF for customer %s (%s - %s)",
+            customer.phone_number,
+            start_date,
+            end_date,
+        )
+        return {
+            "url": existing_pdf.pdf_url,
+            "generated_at": existing_pdf.generated_at.isoformat(),
+            "pdf_status": "cached",
+            "filename": existing_pdf.filename,
+        }
 
     ledger = _build_ledger_rows(customer, start_date, end_date)
     opening_balance = get_opening_balance(customer, start_date)
@@ -217,19 +210,17 @@ def generate_statement_pdf(customer, start_date, end_date, request):
         upload_to_r2=True,
     )
 
-    # Check if R2 upload was successful
-    if isinstance(pdf_response, str):
-        r2_url = pdf_response
-    elif hasattr(pdf_response, "r2_url") and pdf_response.r2_url:
-        r2_url = pdf_response.r2_url
-    else:
-        logger.error("Failed to upload PDF to R2")
-        raise RuntimeError("Failed to upload PDF to cloud storage")
+    if not pdf_response:
+        logger.error("Failed to generate statement PDF")
+        raise RuntimeError("Failed to generate PDF")
+
+    pdf_url = pdf_response
+    logger.info("Statement PDF generated: %s", pdf_url)
 
     # Create new PDF record with current invoice timestamp
     CustomerStatementPDF.create_pdf_record(
         customer=customer,
-        pdf_url=r2_url,
+        pdf_url=pdf_url,
         from_date=start_date,
         to_date=end_date,
         closing_balance=customer.credit_summary.balance_amount,
@@ -238,7 +229,7 @@ def generate_statement_pdf(customer, start_date, end_date, request):
     )
 
     data = {
-        "url": r2_url,
+        "url": pdf_url,
         "generated_at": datetime.now().isoformat(),
         "pdf_status": "newly_generated",
         "filename": f"{filename}.pdf",

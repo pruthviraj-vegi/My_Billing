@@ -1,8 +1,8 @@
 """Cloudflare R2 storage integration module."""
 
 import logging
-from functools import lru_cache
-from typing import BinaryIO, Tuple
+from threading import Lock
+from typing import BinaryIO
 from urllib.parse import urlparse
 from enum import Enum
 
@@ -12,6 +12,9 @@ from botocore.config import Config
 from decouple import config
 
 logger = logging.getLogger(__name__)
+
+_client = None
+_client_lock = Lock()
 
 
 class BucketType(Enum):
@@ -25,17 +28,8 @@ class R2StorageError(Exception):
     """Custom exception for R2 storage operations."""
 
 
-@lru_cache(maxsize=1)
-def get_r2_client() -> boto3.client:
-    """
-    Get a cached R2 client instance with retry configuration.
-
-    Returns:
-        boto3.client: Configured R2 S3-compatible client
-
-    Raises:
-        R2StorageError: If required credentials are missing
-    """
+def _create_r2_client() -> boto3.client:
+    """Create a new R2 client with optimized configuration."""
     try:
         r2_access_key = config("R2_ACCESS_KEY")
         r2_secret_key = config("R2_SECRET_KEY")
@@ -46,11 +40,11 @@ def get_r2_client() -> boto3.client:
             f"Missing required R2 credentials in environment: {str(e)}"
         ) from e
 
-    # Configure retry strategy
     boto_config = Config(
-        retries={"max_attempts": 3, "mode": "adaptive"},
+        retries={"max_attempts": 3, "mode": "standard"},
         connect_timeout=5,
-        read_timeout=10,
+        read_timeout=30,
+        max_pool_connections=10,
     )
 
     session = boto3.session.Session()
@@ -64,9 +58,36 @@ def get_r2_client() -> boto3.client:
     )
 
 
+def get_r2_client() -> boto3.client:
+    """
+    Get a singleton R2 client instance with thread-safe initialization.
+
+    Returns:
+        boto3.client: Configured R2 S3-compatible client
+
+    Raises:
+        R2StorageError: If required credentials are missing
+    """
+    global _client
+    if _client is None:
+        with _client_lock:
+            if _client is None:
+                logger.info("Creating new R2 client singleton")
+                _client = _create_r2_client()
+    return _client
+
+
+def reset_r2_client():
+    """Reset the R2 client (useful for testing or reconfiguration)."""
+    global _client
+    with _client_lock:
+        _client = None
+        logger.info("R2 client reset")
+
+
 def get_bucket_info(
     bucket_type: BucketType, use_custom_domain: bool = False
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """
     Get bucket name and domain URL for the specified bucket type.
 
@@ -222,10 +243,10 @@ def upload_pdf_to_r2(
         use_custom_domain: If True, return custom domain URL. If False, return R2 public URL.
 
     Returns:
-        Public URL of the uploaded file
+        str: Public URL of the uploaded file.
 
     Raises:
-        R2StorageError: If upload fails or configuration is invalid
+        R2StorageError: If upload fails
         ValueError: If filename is invalid
     """
     if not filename:
@@ -238,16 +259,11 @@ def upload_pdf_to_r2(
         client = get_r2_client()
         bucket_name, domain_url = get_bucket_info(bucket_type, use_custom_domain)
 
-        # Ensure file pointer is at the beginning
         if hasattr(file_obj, "seek"):
             file_obj.seek(0)
 
-        # Prepare upload arguments
         extra_args = {"ContentType": "application/pdf"}
-        if make_public:
-            extra_args["ACL"] = "public-read"
 
-        # Upload to R2
         client.upload_fileobj(
             Fileobj=file_obj,
             Bucket=bucket_name,
@@ -297,6 +313,9 @@ def check_file_exists(
     Returns:
         True if file exists, False otherwise
     """
+    if not file_url:
+        return False
+
     try:
         client = get_r2_client()
         bucket_name, _ = get_bucket_info(bucket_type, use_custom_domain)

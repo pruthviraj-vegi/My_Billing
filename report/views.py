@@ -9,9 +9,6 @@ from decimal import Decimal
 from io import BytesIO
 
 import qrcode
-from barcode import Code128
-from barcode.base import Barcode
-from barcode.writer import SVGWriter
 from django.conf import settings
 from django.db.models import F, Q, Sum, DecimalField
 from django.db.models.functions import Coalesce
@@ -19,6 +16,10 @@ from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.template.loader import get_template
 from weasyprint import HTML
+
+from barcode import Code128
+from barcode.base import Barcode
+from barcode.writer import SVGWriter
 
 from base.getDates import getDates
 
@@ -50,9 +51,9 @@ from supplier.views import (
 
 from .helper import build_invoice_report_context
 
-Barcode.default_writer_options["write_text"] = False
-
 logger = logging.getLogger(__name__)
+
+Barcode.default_writer_options["write_text"] = False
 
 try:
     from api.cloudflare import upload_pdf_to_r2, BucketType, R2StorageError
@@ -101,7 +102,6 @@ def generate_pdf(
         template_name: Name of the template to render.
         _file_name: Reserved for future use (filename hint).
         context: Template context dictionary.
-        request: The HTTP request object.
         report_type: Type of report (INVOICE or STATEMENT).
         upload_to_r2: Set to True when you want to upload this specific PDF.
     """
@@ -122,7 +122,9 @@ def generate_pdf(
             )
 
             r2_url = upload_pdf_to_r2(
-                file_obj=pdf_buffer, filename=filename, bucket_type=bucket_type
+                file_obj=pdf_buffer,
+                filename=filename,
+                bucket_type=bucket_type,
             )
 
             logger.info("PDF uploaded to R2: %s", r2_url)
