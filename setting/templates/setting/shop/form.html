@@ -58,7 +58,7 @@
                         <div class="col-md-6">
                             <div class="form-group {% if form.is_active.errors %}has-error{% endif %}">
                                 <label for="{{ form.is_active.id_for_label }}" class="form-label">{{ form.is_active.label }}</label>
-                                <div style="margin-top: 0.5rem;">{{ form.is_active }}</div>
+                                <div class="mt-half-rem">{{ form.is_active }}</div>
                                 <small class="form-help">
                                     {% if form.is_active.errors %}
                                         {% for error in form.is_active.errors %}

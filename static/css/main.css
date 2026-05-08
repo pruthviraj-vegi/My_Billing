@@ -7828,3 +7828,30 @@ a:hover {
   position: relative;
   z-index: 9999;
 }
+
+/* ===== Utility Classes ===== */
+.d-none { display: none !important; }
+.d-flex { display: flex !important; }
+.d-inline-flex { display: inline-flex !important; }
+.align-items-center { align-items: center !important; }
+.justify-content-between { justify-content: space-between !important; }
+.justify-content-center { justify-content: center !important; }
+
+.text-decoration-none { text-decoration: none !important; }
+
+.p-2rem { padding: 2rem !important; }
+.mt-half-rem { margin-top: 0.5rem !important; }
+.mb-20px { margin-bottom: 20px !important; }
+
+.max-width-200 { max-width: 200px !important; }
+
+.opacity-50 { opacity: 0.5 !important; }
+.opacity-50-transparent { opacity: 0.5; cursor: default; }
+
+.cursor-default { cursor: default !important; }
+
+/* Notification dynamic color - used inline */
+.notif-icon { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Alert flex container utility */
+.alert-flex-hidden { display: none; align-items: center; justify-content: space-between; margin-bottom: 20px; }

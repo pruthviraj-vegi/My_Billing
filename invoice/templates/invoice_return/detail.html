@@ -185,7 +185,7 @@
                                     <tr>
                                         <td>
                                             <div class="product-info">
-                                                <strong><a style="text-decoration: none;
+                                                <strong><a class="text-decoration-none"
           color: inherit"
    href="{% url 'inventory_products:details' item.product_variant.product.id %}"
    target="_blank">{{ item.product_variant.product.brand }}</a></strong>
@@ -195,7 +195,7 @@
                                         </td>
                                         <td>
                                             <div class="variant-info">
-                                                <strong><a style="text-decoration: none;
+                                                <strong><a class="text-decoration-none"
           color: inherit"
    href="{% url 'inventory_variant:details' item.product_variant.id %}"
    target="_blank">{{ item.product_variant.simple_name }}</a></strong>

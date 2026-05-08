@@ -56,10 +56,6 @@
         font-family: 'Font Awesome 5 Free', 'Font Awesome 5 Brands', sans-serif; 
         font-weight: 900;
       }
-      .fa-bell:before { content: "🔔"; }
-      .fa-moon:before { content: "🌙"; }
-      .fa-sign-out-alt:before { content: "🚪"; }
-      .fa-tachometer-alt:before { content: "📊"; }
     </style>
     {% block extra_css %}
     {% endblock extra_css %}
@@ -87,7 +83,7 @@
         <div class="notification-wrapper" id="notificationWrapper">
           <button class="top-bar-btn notification-btn" id="notificationBtn" aria-label="Notifications">
             <i class="fas fa-bell"></i>
-            <span class="notification-badge" id="notificationBadge" style="display:none;"></span>
+            <span class="notification-badge d-none" id="notificationBadge"></span>
           </button>
           <!-- Notification Dropdown Panel -->
           <div class="notification-panel" id="notificationPanel">

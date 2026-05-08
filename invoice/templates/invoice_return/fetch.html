@@ -14,7 +14,7 @@
             <td>
                 <div>
                     <span class="font-weight-bold text-primary">
-                        <a style="text-decoration: none"
+                        <a class="text-decoration-none"
                            href="{% url 'customer:detail' return_invoice.customer.id %}"
                            target="_blank">{{ return_invoice.customer.name|default:"N/A" }}</a>
                     </span>
@@ -27,7 +27,7 @@
             <td>
                 <div>
                     <span class="font-weight-bold text-primary">
-                        <a style="text-decoration: none"
+                        <a class="text-decoration-none"
                            href="{% url 'invoice:detail' return_invoice.invoice.id %}"
                            target="_blank">{{ return_invoice.invoice.invoice_number|default:"N/A" }}</a>
                     </span>
