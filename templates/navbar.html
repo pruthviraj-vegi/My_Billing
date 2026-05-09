@@ -111,6 +111,9 @@
                   <a href="{% url 'inventory:gst_hsn_home' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'gst_hsn_home' %}active{% endif %}">GST HSN Codes</a>
                {% endif %}
+               <div class="dropdown-divider"></div>
+               <a href="{% url 'inventory:media_gallery' %}"
+                  class="dropdown-item {% if request.resolver_match.url_name == 'media_gallery' %}active{% endif %}">Media Gallery</a>
 
             </div>
          </li>

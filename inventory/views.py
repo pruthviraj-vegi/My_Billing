@@ -43,7 +43,7 @@ from .forms import (
     UOMForm,
     VariantForm,
 )
-from .models import InventoryLog, Product, ProductVariant
+from .models import InventoryLog, Product, ProductVariant, VariantMedia
 from .services import InventoryService
 
 logger = logging.getLogger(__name__)
@@ -871,4 +871,47 @@ def supplier_invoice_details_fetch(request, invoice_id):
         products_qs,
         "inventory/supplier_invoice_details_fetch.html",
         per_page=12,
+    )
+
+
+@required_permission("inventory.view_dashboard")
+def media_gallery(request):
+    """Media Gallery page with search and filter functionality."""
+    return render(request, "inventory/media/home.html")
+
+
+@required_permission("inventory.view_dashboard")
+def media_gallery_fetch(request):
+    """
+    AJAX endpoint for media gallery with real-time search/filter.
+    Searches across: product brand, name, color, size, cloth_type, extra_attributes.
+    """
+    search_query = request.GET.get("search", "").strip()
+
+    media_qs = VariantMedia.objects.filter(
+        variant__is_deleted=False,
+        variant__status=ProductVariant.VariantStatus.ACTIVE,
+    ).select_related(
+        "variant__product__category",
+        "variant__product__cloth_type",
+        "variant__color",
+        "variant__size",
+    )
+
+    if search_query:
+        media_qs = media_qs.filter(
+            Q(variant__product__brand__icontains=search_query)
+            | Q(variant__product__name__icontains=search_query)
+            | Q(variant__color__name__icontains=search_query)
+            | Q(variant__size__name__icontains=search_query)
+            | Q(variant__product__cloth_type__name__icontains=search_query)
+            | Q(variant__barcode__icontains=search_query)
+            | Q(variant__extra_attributes__icontains=search_query)
+        )
+
+    return render_paginated_response(
+        request,
+        media_qs,
+        "inventory/media/fetch.html",
+        per_page=24,
     )

@@ -1,0 +1,652 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Media Gallery - Billing System{% endblock %}
+{% block extra_css %}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 24px;
+}
+.gallery-card {
+    background: var(--bg-surface);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    will-change: transform;
+}
+.gallery-card:hover {
+    transform: scale(1.04);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.14);
+}
+.gallery-card-image-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--bg-surface-hover);
+    overflow: hidden;
+}
+.gallery-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+}
+.gallery-card:hover .gallery-card-image {
+    transform: scale(1.08);
+}
+.gallery-card-image-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+.gallery-card-image-overlay i {
+    color: #fff;
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+}
+.gallery-card:hover .gallery-card-image-overlay {
+    opacity: 1;
+}
+.gallery-card-video-icon {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+}
+.gallery-card-discount {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+}
+.gallery-card-info {
+    padding: 16px;
+    font-family: 'Inter', sans-serif;
+}
+.gallery-card-heading {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    transition: color 0.15s;
+}
+.gallery-card-heading:hover {
+    color: var(--primary);
+}
+.gallery-card-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.gallery-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+.gallery-card-tag {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--bg-surface-hover);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+.gallery-card-divider {
+    height: 1px;
+    background: rgba(0,0,0,0.06);
+    margin: 12px 0;
+}
+.gallery-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.gallery-card-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+.gallery-card-stock {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.gallery-card-stock.low { color: #f59e0b; }
+.gallery-card-stock.out { color: #ef4444; }
+.gallery-card-price-wrap {
+    text-align: right;
+}
+.gallery-card-mrp {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+.gallery-card-original-price {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-decoration: line-through;
+    margin-top: 1px;
+}
+.gallery-card-sku {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--bg-surface-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+.gallery-card-sku:hover {
+    background: var(--primary);
+    color: #fff;
+}
+.gallery-card-sku .fa-check { color: #22c55e; }
+.gallery-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+    border-radius: 16px;
+}
+.gallery-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 60px;
+    background: var(--bg-surface);
+    border-radius: 16px;
+}
+.gm-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 1050;
+    justify-content: center; align-items: center;
+    padding: 24px;
+}
+.gm-overlay.active { display: flex; }
+.gm-content {
+    background: var(--bg-surface);
+    border-radius: 16px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: row;
+    animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.gm-image-panel {
+    width: 42%;
+    min-width: 320px;
+    background: var(--bg-body);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+}
+.gm-image-container {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+}
+.gm-image { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.gm-image-placeholder {
+    color: var(--text-secondary);
+    text-align: center; display: flex; flex-direction: column; align-items: center;
+}
+.gm-image-placeholder i { font-size: 5rem; opacity: 0.7; }
+.gm-image-placeholder-text {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    margin-top: 16px; color: var(--text-secondary);
+}
+.gm-media-badge {
+    position: absolute; bottom: 20px; left: 20px;
+    background: var(--bg-surface); border: 1px solid var(--border-color);
+    color: var(--text-secondary); padding: 6px 12px; border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.gm-close {
+    position: absolute; top: 20px; right: 20px;
+    width: 32px; height: 32px;
+    background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--text-secondary); z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.gm-close:hover { color: var(--text-primary); }
+.gm-info-panel {
+    flex: 1; display: flex; flex-direction: column;
+    overflow-y: auto; padding: 32px 32px 24px;
+    background: var(--bg-surface);
+}
+.gm-eyebrow {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--warning); font-weight: 600; margin-bottom: 4px;
+}
+.gm-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 28px; font-weight: 600; color: var(--text-primary);
+    line-height: 1.2; margin-top: 0; margin-bottom: 6px;
+}
+.gm-subtitle {
+    font-size: 13px; color: var(--text-secondary); margin-bottom: 24px;
+}
+.gm-pricing-block {
+    background: var(--bg-surface-hover);
+    border-radius: 12px; padding: 16px; margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+.gm-mrp-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+}
+.gm-mrp {
+    font-family: 'DM Sans', sans-serif; font-size: 28px; font-weight: 700;
+    color: var(--text-primary); line-height: 1;
+}
+.gm-purchase {
+    font-size: 13px; color: var(--text-secondary); margin-bottom: 0;
+}
+.gm-purchase strong { font-weight: 600; color: var(--text-primary); }
+.gm-badges { display: flex; gap: 8px; }
+.gm-badge {
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.gm-badge-discount { background: var(--success-bg); color: var(--success); }
+.gm-badge-stock { background: var(--warning-bg); color: var(--warning); }
+.gm-details-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--border-color); border-radius: 8px;
+    overflow: hidden; margin-bottom: 24px;
+}
+.gm-detail-cell {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+.gm-detail-cell:nth-child(even) { border-right: none; }
+.gm-detail-cell:nth-last-child(-n+2) { border-bottom: none; }
+.gm-detail-cell .label {
+    font-size: 10px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;
+}
+.gm-detail-cell .value { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+
+.gm-footer {
+    border-top: 1px solid var(--border-color); padding-top: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--text-secondary); margin-top: auto;
+}
+.gm-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--primary); flex-shrink: 0; margin-right: 6px;
+}
+.gm-footer-meta { display: flex; align-items: center; }
+.gm-footer-links { display: flex; gap: 16px; }
+.gm-footer-links a {
+    color: var(--primary); text-decoration: none; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+}
+.gm-footer-links a:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+    .gm-content { flex-direction: column; }
+    .gm-image-panel { width: 100%; min-width: unset; height: 300px; }
+    .gm-info-panel { padding: 24px; }
+}
+</style>
+{% endblock %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2 class="heading page-title">Media Gallery</h2>
+        <div class="page-actions">
+            <button type="button"
+                    class="btn btn-secondary"
+                    id="refreshGallery">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Inventory</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Media Gallery</span>
+    </nav>
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <form method="get"
+              class="search-filter-form"
+              id="searchForm"
+              autocomplete="off">
+            <div class="search-group search-expanded">
+                <i class="fas fa-search search-icon"></i>
+                <input type="search"
+                       name="search"
+                       class="search-input"
+                       placeholder="Search by SKU, name, color, material..."
+                       id="searchInput"
+                       autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+        </form>
+    </div>
+
+    <div id="galleryContent">
+        <div class="gallery-loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+
+<div class="gm-overlay" id="mediaModal">
+    <div class="gm-content">
+        <div class="gm-image-panel">
+            <button class="gm-close" id="modalClose" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="gm-image-container" id="modalImageContainer">
+                <img src="" alt="" class="gm-image" id="modalImage">
+            </div>
+        </div>
+        <div class="gm-info-panel">
+            <div id="modalTitle"></div>
+            <div id="modalPricingBlock"></div>
+            <div id="modalDetailsGrid"></div>
+            <div class="gm-footer" id="modalFooter"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+    const refreshBtn = document.getElementById('refreshGallery');
+    const galleryContent = document.getElementById('galleryContent');
+    const modal = document.getElementById('mediaModal');
+    const modalClose = document.getElementById('modalClose');
+    const modalImageContainer = document.getElementById('modalImageContainer');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalPricingBlock = document.getElementById('modalPricingBlock');
+    const modalDetailsGrid = document.getElementById('modalDetailsGrid');
+    const modalFooter = document.getElementById('modalFooter');
+
+    let searchTimeout = null;
+    let currentSearch = '';
+
+    function fetchGallery(search, page) {
+        galleryContent.innerHTML = '<div class="gallery-loading"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        var params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (page) params.set('page', page);
+        var queryString = params.toString();
+        var url = '{% url "inventory:media_gallery_fetch" %}' + (queryString ? '?' + queryString : '');
+        fetch(url)
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    galleryContent.innerHTML = data.html + (data.pagination || '');
+                    bindPaginationLinks();
+                    bindCardEvents();
+                } else {
+                    galleryContent.innerHTML = '<div class="gallery-empty"><p>Failed to load gallery</p></div>';
+                }
+            })
+            .catch(function() {
+                galleryContent.innerHTML = '<div class="gallery-empty"><p>Failed to load gallery</p></div>';
+            });
+    }
+
+    function bindPaginationLinks() {
+        galleryContent.querySelectorAll('.pagination a[href]').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                var href = link.getAttribute('href');
+                var urlParams = new URLSearchParams(href.split('?')[1] || '');
+                var page = urlParams.get('page');
+                fetchGallery(currentSearch, page);
+                galleryContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    }
+
+    function bindCardEvents() {
+        galleryContent.querySelectorAll('.gallery-card-sku[data-barcode]').forEach(function(el) {
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var barcode = el.dataset.barcode;
+                if (!barcode) return;
+                navigator.clipboard.writeText(barcode).then(function() {
+                    var icon = el.querySelector('.fa-copy');
+                    if (icon) {
+                        icon.className = 'fas fa-check';
+                        setTimeout(function() { icon.className = 'fas fa-copy'; }, 1500);
+                    }
+                });
+            });
+        });
+    }
+
+    // Form submit — AJAX instead of page reload
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentSearch = searchInput.value.trim();
+        fetchGallery(currentSearch);
+    });
+
+    // Debounced search on input
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        var value = this.value.trim();
+        searchTimeout = setTimeout(function() {
+            currentSearch = value;
+            fetchGallery(value);
+        }, 400);
+    });
+
+    // Refresh button
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            fetchGallery(currentSearch);
+        });
+    }
+
+    // Card click — image opens modal, rest goes to variant
+    document.addEventListener('click', function(e) {
+        var card = e.target.closest('.gallery-card');
+        if (!card) return;
+
+        if (e.target.closest('.gallery-card-image-wrap')) {
+            showModal(card);
+        } else if (!e.target.closest('.gallery-card-heading')) {
+            var variantUrl = card.dataset.variantUrl;
+            if (variantUrl) {
+                window.location.href = variantUrl;
+            }
+        }
+    });
+
+    // Copy barcode
+    galleryContent.addEventListener('click', function(e) {
+        var sku = e.target.closest('.gallery-card-sku');
+        if (!sku) return;
+        e.stopPropagation();
+        var barcode = sku.dataset.barcode;
+        if (!barcode) return;
+        navigator.clipboard.writeText(barcode).then(function() {
+            var icon = sku.querySelector('i');
+            if (icon) {
+                icon.className = 'fas fa-check';
+                setTimeout(function() { icon.className = 'fas fa-copy'; }, 1500);
+            }
+        });
+    });
+
+    function bindCardEvents() {
+        // nothing extra needed — delegated above
+    }
+
+    function showModal(card) {
+        var originalUrl = card.dataset.original || '';
+        var variantName = card.dataset.variantName || '';
+        var mediaType = card.dataset.mediaType || '';
+        var fileSize = card.dataset.fileSize || '';
+        var variantUrl = card.dataset.variantUrl || '';
+        var barcode = card.dataset.barcode || '';
+        var qty = parseInt(card.dataset.quantity) || 0;
+        var discount = parseFloat(card.dataset.discount) || 0;
+        var mrp = card.dataset.mrpDisplay || card.dataset.mrp || '0';
+        var purchase = card.dataset.purchasePriceDisplay || card.dataset.purchasePrice || '0';
+        var selling = card.dataset.sellingPriceDisplay || card.dataset.sellingPrice || mrp;
+        var color = card.dataset.color || '';
+        var size = card.dataset.size || '';
+        var material = card.dataset.material || '';
+        var category = card.dataset.category || '';
+        var hsn = card.dataset.hsn || '';
+        var gst = card.dataset.gst || '';
+
+        var brand = card.dataset.brand || 'Product';
+        var productName = card.dataset.productName || (variantName.split(' / ')[0] || variantName);
+
+        if (originalUrl) {
+            var badges = '';
+            if (fileSize) {
+                badges = '<div class="gm-media-badge"><i class="far fa-image"></i> ' + fileSize + ' - 1 image</div>';
+            } else {
+                badges = '<div class="gm-media-badge"><i class="far fa-image"></i> 1 image</div>';
+            }
+            modalImageContainer.innerHTML = '<img src="' + originalUrl + '" alt="' + variantName + '" class="gm-image">' + badges;
+        } else {
+            modalImageContainer.innerHTML = '<div class="gm-image-placeholder"><i class="fas fa-tshirt"></i><div class="gm-image-placeholder-text">PRODUCT IMAGE</div></div>';
+        }
+
+        modalTitle.innerHTML = '<div class="gm-eyebrow">' + brand.toUpperCase() + ' COLLECTION</div><h2 class="gm-title">' + productName + '</h2><div class="gm-subtitle">SKU - ' + barcode + ' &nbsp;&middot;&nbsp; Category: ' + (category || 'Unknown') + '</div>';
+
+        var stockText = qty + ' units';
+        var stockClass = 'gm-badge-stock';
+        if (qty === 0) { stockClass += ' out'; stockText = 'Out of Stock'; }
+        else if (qty <= 5) { stockClass += ' low'; }
+
+        var discountBadge = discount > 0 ? '<span class="gm-badge gm-badge-discount"><i class="fas fa-tag" style="font-size:10px;"></i> ' + discount + '% off</span>' : '';
+        var stockBadge = qty <= 5 || qty === 0 ? '<span class="gm-badge ' + stockClass + '"><i class="fas fa-exclamation-circle" style="font-size:10px;"></i> Low stock</span>' : '';
+
+        var mrpNum = parseFloat(mrp.replace(/[^\d.]/g,'')) || 0;
+        var selNum = parseFloat(selling.replace(/[^\d.]/g,'')) || 0;
+        var savings = mrpNum - selNum;
+
+        modalPricingBlock.innerHTML =
+            '<div class="gm-pricing-block">' +
+                '<div class="gm-mrp-row">' +
+                    '<span class="gm-mrp">₹' + selNum.toLocaleString('en-IN') + '</span>' +
+                    '<div class="gm-badges">' + discountBadge + stockBadge + '</div>' +
+                '</div>' +
+                (mrpNum > selNum ? '<div class="gm-purchase">Original MRP <strong style="text-decoration:line-through;">₹' + mrpNum.toLocaleString('en-IN') + '</strong> &nbsp;&middot;&nbsp; You save ₹' + savings.toLocaleString('en-IN') + '</div>' : '') +
+            '</div>';
+
+        var detailCells = '';
+        var stockColor = qty === 0 ? 'var(--danger)' : (qty <= 5 ? 'var(--warning)' : 'var(--text-primary)');
+        var detailData = [
+            { label: 'PRODUCT', value: brand || '-' },
+            { label: 'MATERIAL', value: material || '-' },
+            { label: 'CATEGORY', value: category || '-' },
+            { label: 'STOCK', value: '<span style="color: ' + stockColor + ';">' + qty.toFixed(2) + ' units</span>' },
+        ];
+
+        detailData.forEach(function(d) {
+            detailCells += '<div class="gm-detail-cell"><div class="label">' + d.label + '</div><div class="value">' + d.value + '</div></div>';
+        });
+
+        modalDetailsGrid.innerHTML = '<div class="gm-details-grid">' + detailCells + '</div>';
+
+        modalFooter.innerHTML =
+            '<div class="gm-footer-meta"><span class="gm-dot"></span> Last updated 2 days ago</div>' +
+            '<div class="gm-footer-links"><a href="' + variantUrl + '"><i class="fas fa-external-link-square-alt"></i> Full details</a></div>';
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    modalClose.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    // Initial load
+    fetchGallery();
+})();
+</script>
+{% endblock %}

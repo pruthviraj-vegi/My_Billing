@@ -1,0 +1,82 @@
+{% load static %}{% load custom_filters %}
+{% if page_obj %}
+<div class="gallery-grid">
+    {% for media in page_obj %}
+    <div class="gallery-card"
+         data-variant-id="{{ media.variant.id }}"
+         data-variant-url="{% url 'inventory_variant:details' media.variant.id %}"
+         data-variant-name="{{ media.variant.full_name_slash|escapejs }}"
+         data-barcode="{{ media.variant.barcode|escapejs }}"
+         data-brand="{{ media.variant.product.brand|escapejs }}"
+         data-product-name="{{ media.variant.product.name|default:'-'|escapejs }}"
+         data-color="{{ media.variant.color.name|default_if_none:''|escapejs }}"
+         data-size="{{ media.variant.size.name|default_if_none:''|escapejs }}"
+         data-material="{{ media.variant.product.cloth_type.name|default_if_none:''|escapejs }}"
+         data-category="{{ media.variant.product.category.name|default_if_none:''|escapejs }}"
+         data-quantity="{{ media.variant.quantity }}"
+         data-purchase-price="{{ media.variant.purchase_price|default:'0' }}"
+         data-selling-price="{{ media.variant.final_price|default:'0' }}"
+         data-mrp="{{ media.variant.mrp|default:'0' }}"
+         data-discount="{{ media.variant.discount_percentage|default:'0' }}"
+         data-purchase-price-display="{{ media.variant.purchase_price|currency }}"
+         data-selling-price-display="{{ media.variant.final_price|currency }}"
+         data-mrp-display="{{ media.variant.mrp|currency }}"
+         data-media-type="{{ media.media_type }}"
+         data-file-size="{{ media.file_size_display }}"
+         data-thumbnail="{{ media.gallery_url }}"
+         data-original="{{ media.original_url }}">
+        <div class="gallery-card-image-wrap">
+            <img src="{{ media.gallery_url }}"
+                 alt="{{ media.alt_text|default:media.variant.product.brand|default:'Media' }}"
+                 class="gallery-card-image"
+                 loading="lazy">
+            <div class="gallery-card-image-overlay">
+                <i class="fas fa-expand"></i>
+            </div>
+            {% if media.is_video %}
+            <div class="gallery-card-video-icon">
+                <i class="fas fa-film"></i>
+            </div>
+            {% endif %}
+            {% if media.variant.discount_percentage > 0 %}
+            <div class="gallery-card-discount">{{ media.variant.discount_percentage|floatformat:0 }}% off</div>
+            {% endif %}
+        </div>
+        <div class="gallery-card-info">
+            <a href="{% url 'inventory_variant:details' media.variant.id %}" class="gallery-card-heading" onclick="event.stopPropagation();">{{ media.variant.product.brand|default:'Unknown' }}</a>
+            {% if media.variant.product.name %}
+            <div class="gallery-card-subtitle">{{ media.variant.product.name }}</div>
+            {% endif %}
+            <div class="gallery-card-tags">
+                {% if media.variant.color %}<span class="gallery-card-tag">{{ media.variant.color.name }}</span>{% endif %}
+                {% if media.variant.size %}<span class="gallery-card-tag">{{ media.variant.size.name }}</span>{% endif %}
+                {% if media.variant.product.cloth_type %}<span class="gallery-card-tag">{{ media.variant.product.cloth_type.name }}</span>{% endif %}
+            </div>
+            <div class="gallery-card-divider"></div>
+            <div class="gallery-card-bottom">
+                <div>
+                    <div class="gallery-card-label">Stock</div>
+                    <div class="gallery-card-stock {% if media.variant.quantity == 0 %}out{% elif media.variant.quantity <= 5 %}low{% endif %}">
+                        {{ media.variant.quantity }}
+                    </div>
+                </div>
+                <div class="gallery-card-price-wrap">
+                    <div class="gallery-card-mrp">{{ media.variant.final_price|currency }}</div>
+                    {% if media.variant.discount_percentage > 0 %}
+                    <div class="gallery-card-original-price">{{ media.variant.mrp|currency }}</div>
+                    {% endif %}
+                </div>
+                <div class="gallery-card-sku" data-barcode="{{ media.variant.barcode }}" onclick="event.stopPropagation();">
+                    <i class="fas fa-copy"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="gallery-empty">
+    <i class="fas fa-images fa-3x mb-3" style="opacity: 0.5;"></i>
+    <p>No media found. Try adjusting your search.</p>
+</div>
+{% endif %}

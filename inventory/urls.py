@@ -111,4 +111,11 @@ urlpatterns = [
         views.supplier_invoice_details_fetch,
         name="supplier_invoice_details_fetch",
     ),
+    # Media Gallery
+    path("media-gallery/", views.media_gallery, name="media_gallery"),
+    path(
+        "media-gallery/fetch/",
+        views.media_gallery_fetch,
+        name="media_gallery_fetch",
+    ),
 ]

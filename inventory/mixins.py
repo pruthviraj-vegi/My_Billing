@@ -22,26 +22,27 @@ class ProductVariantNamingMixin:
             product_name += f" - {self.color.name}"
         return product_name
 
-    def _build_name(self, include_barcode=True, include_variants=True):
+    def _build_name(self, include_barcode=True, include_variants=True, use_slash=False):
         """
-        Build a clean, formatted name for the product variant
+        Build a clean, formatted name for the product variant.
 
         Args:
             include_barcode (bool): Whether to include barcode in the name
             include_variants (bool): Whether to include size/color info
+            use_slash (bool): Use ` / ` separator for display-friendly headings
 
         Returns:
             str: Formatted product name
         """
         try:
-            # Get base product name
+            sep = " / " if use_slash else " - "
+            dot = " / " if use_slash else ", "
+
             product_name = getattr(self.product, "brand", "Unknown Product")
 
-            # Add product name if available
             if hasattr(self.product, "name") and self.product.name:
-                product_name = f"{product_name} - {self.product.name}"
+                product_name = f"{product_name}{sep}{self.product.name}"
 
-            # Add variant info if requested
             if include_variants:
                 variant_parts = []
 
@@ -52,11 +53,10 @@ class ProductVariantNamingMixin:
                     variant_parts.append(self.color.name)
 
                 if variant_parts:
-                    product_name = f"{product_name} ({', '.join(variant_parts)})"
+                    product_name = f"{product_name}{dot}{', '.join(variant_parts)}"
 
-            # Add barcode if requested
             if include_barcode and hasattr(self, "barcode") and self.barcode:
-                product_name = f"{product_name} - {self.barcode}"
+                product_name = f"{product_name}{sep}{self.barcode}"
 
             return product_name
 
@@ -65,8 +65,13 @@ class ProductVariantNamingMixin:
 
     @property
     def full_name(self):
-        """Full name with all details"""
+        """Full name with all details, cleaned for display."""
         return self._build_name(include_barcode=True, include_variants=True)
+
+    @property
+    def full_name_slash(self):
+        """Display-friendly name using ` / ` separators."""
+        return self._build_name(include_barcode=True, include_variants=True, use_slash=True)
 
     @property
     def price_name(self):
