@@ -360,5 +360,48 @@
   .breakdown-grid {
     grid-template-columns: 1fr;
   }
+
+  /* Hide legend details on mobile for pie/donut charts and center the graph */
+  .legend {
+    display: none !important;
+  }
+
+  .chart-row {
+    justify-content: center !important;
+    gap: 0 !important;
+    padding: 0.5rem !important;
+  }
+
+  /* Align stats in a single row on mobile */
+  .chart-summary-stats {
+    flex-wrap: nowrap !important;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.5rem !important;
+    margin-left: 0;
+  }
+
+  .stat-item {
+    flex: 1;
+    min-width: 0 !important;
+    padding: 0.5rem 0.25rem !important;
+    align-items: center;
+    text-align: center;
+  }
+
+  .stat-value-small {
+    font-size: 0.85rem !important;
+  }
+
+  .stat-label-small {
+    font-size: 0.7rem !important;
+    justify-content: center;
+  }
+
+  .stat-change {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.35rem !important;
+  }
 }
+
 

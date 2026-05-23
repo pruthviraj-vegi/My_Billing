@@ -268,35 +268,28 @@
     
     /* Responsive adjustments */
     @media (max-width: 768px) {
-        .nav-arrow {
-            width: 35px;
-            height: 35px;
+        /* Hide the horizontal scroller on mobile */
+        .nav-arrow-left,
+        .nav-arrow-right,
+        .cart-buttons-container {
+            display: none !important;
         }
-        
+
         .cart-navigation {
-            gap: 8px;
+            max-width: none;
+            gap: 0;
+            overflow: visible;
         }
-        
-        .cart-buttons-container {
-            max-width: calc(100vw - 100px); /* Adjust for smaller arrows */
-            min-width: 150px;
-        }
-        
-        .cart-btn {
-            max-width: 150px;
-            font-size: 0.9em;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .cart-buttons-container {
-            max-width: calc(100vw - 80px);
-        }
-        
-        .cart-btn {
-            max-width: 120px;
-            font-size: 0.8em;
-            padding: 8px 12px;
+
+        /* Make list button the primary nav element */
+        .list-cart-btn {
+            margin-left: 0;
+            width: auto;
+            height: 32px;
+            border-radius: 0.5rem;
+            padding: 0 0.6rem;
+            font-size: 0.8rem;
+            gap: 0.35rem;
         }
     }
     

@@ -1,7 +1,4 @@
-<nav class="navbar">
-   <button class="mobile-menu-toggle" id="mobileMenuToggle">
-      <i class="fas fa-bars"></i>
-   </button>
+<nav class="navbar sidebar" id="sidebar">
    <ul class="nav-menu" id="navMenu">
       <li class="nav-item">
          <a href="{% url 'base:home' %}"
@@ -12,7 +9,7 @@
       </li>
       <li class="nav-item">
          <a href="#"
-            class="nav-link {% if 'cart' in request.resolver_match.namespace %}active{% endif %}">
+            class="nav-link has-dropdown {% if 'cart' in request.resolver_match.namespace %}active{% endif %}">
             <i class="fas fa-shopping-cart"></i>
             <span>Carts</span>
          </a>
@@ -28,7 +25,7 @@
       {% if perms.invoice.view_invoice or perms.invoice.view_audittable or perms.invoice.view_returninvoice %}
          <li class="nav-item">
             <a href="#"
-               class="nav-link {% if 'invoice' in request.resolver_match.namespace %}active{% endif %}">
+               class="nav-link has-dropdown {% if 'invoice' in request.resolver_match.namespace %}active{% endif %}">
                <i class="fas fa-file-invoice-dollar"></i>
                <span>Invoices</span>
             </a>
@@ -63,7 +60,7 @@
       {% if perms.inventory.view_product or perms.inventory.view_variant or perms.inventory.view_category or perms.inventory.view_clothtype or perms.inventory.view_color or perms.inventory.view_size or perms.inventory.view_uom or perms.inventory.view_gsthsncode %}
          <li class="nav-item">
             <a href="#"
-               class="nav-link {% if 'inventory' in request.resolver_match.namespace %}active{% endif %}">
+               class="nav-link has-dropdown {% if 'inventory' in request.resolver_match.namespace %}active{% endif %}">
                <i class="fas fa-boxes"></i>
                <span>Inventory</span>
             </a>
@@ -121,7 +118,7 @@
       {% if perms.customer.view_customer or perms.customer.add_customer or perms.customer.view_credit or perms.customer.add_credit %}
          <li class="nav-item">
             <a href="#"
-               class="nav-link {% if 'customer' in request.resolver_match.namespace %}active{% endif %}">
+               class="nav-link has-dropdown {% if 'customer' in request.resolver_match.namespace %}active{% endif %}">
                <i class="fas fa-users"></i>
                <span>Customers</span>
             </a>
@@ -148,7 +145,7 @@
       {% if perms.supplier.view_supplier or perms.supplier.add_supplier %}
          <li class="nav-item">
             <a href="#"
-               class="nav-link {% if 'supplier' in request.resolver_match.namespace %}active{% endif %}">
+               class="nav-link has-dropdown {% if 'supplier' in request.resolver_match.namespace %}active{% endif %}">
                <i class="fas fa-truck"></i>
                <span>Suppliers</span>
             </a>
@@ -171,7 +168,7 @@
       {% if perms.user.view_customuser %}
          <li class="nav-item">
             <a href="#"
-               class="nav-link {% if 'user' in request.resolver_match.namespace %}active{% endif %}">
+               class="nav-link has-dropdown {% if 'user' in request.resolver_match.namespace %}active{% endif %}">
                <i class="fas fa-users-cog"></i>
                <span>Users</span>
             </a>
@@ -194,7 +191,7 @@
       {% if perms.security.view_loginevent or perms.security.view_unauthorizedaccess %}
          <li class="nav-item">
             <a href="#"
-               class="nav-link {% if 'security' in request.resolver_match.namespace %}active{% endif %}">
+               class="nav-link has-dropdown {% if 'security' in request.resolver_match.namespace %}active{% endif %}">
                <i class="fas fa-shield-alt"></i>
                <span>Security</span>
             </a>
@@ -213,7 +210,7 @@
       {% if perms.setting.view_shopdetails or perms.setting.view_reportconfiguration or perms.setting.view_paymentdetails or perms.setting.view_barcodeconfiguration %}
          <li class="nav-item">
             <a href="#"
-               class="nav-link {% if 'setting' in request.resolver_match.namespace %}active{% endif %}">
+               class="nav-link has-dropdown {% if 'setting' in request.resolver_match.namespace %}active{% endif %}">
                <i class="fas fa-cog"></i>
                <span>Settings</span>
             </a>
@@ -240,4 +237,14 @@
          </li>
       {% endif %}
    </ul>
+   <!-- Mobile Sidebar Footer: User Info (visible on mobile only) -->
+   <div class="mobile-sidebar-footer">
+      <div class="sidebar-user-avatar">
+         <i class="fas fa-user-circle"></i>
+      </div>
+      <div class="sidebar-user-info">
+         <span class="sidebar-user-name">{{ request.user.full_name|default:request.user.phone_number }}</span>
+         <span class="sidebar-user-role">Staff</span>
+      </div>
+   </div>
 </nav>

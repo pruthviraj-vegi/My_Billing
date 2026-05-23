@@ -39,70 +39,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Mobile Menu Toggle
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const navMenu = document.getElementById('navMenu');
-    const mobileOverlay = document.getElementById('mobileOverlay');
-
-    mobileMenuToggle.addEventListener('click', () => {
-        navMenu.classList.toggle('active');
-        mobileOverlay.classList.toggle('active');
-    });
-
-    mobileOverlay.addEventListener('click', () => {
-        navMenu.classList.remove('active');
-        mobileOverlay.classList.remove('active');
-    });
-
-    // Close mobile menu on window resize
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 768) {
-            navMenu.classList.remove('active');
-            mobileOverlay.classList.remove('active');
-        }
-    });
-
-    // Mobile Dropdown Toggle
-    const navItemsWithDropdown = document.querySelectorAll('.nav-item');
-    navItemsWithDropdown.forEach(item => {
-        const dropdownMenu = item.querySelector('.dropdown-menu');
-        if (dropdownMenu) {
-            const navLink = item.querySelector('.nav-link');
-
-            // Add dropdown indicator for mobile
-            if (navLink) {
-                navLink.classList.add('has-dropdown');
-            }
-
-            // Handle mobile dropdown toggle
-            navLink.addEventListener('click', (e) => {
-                if (window.innerWidth <= 768) {
-                    e.preventDefault();
-                    item.classList.toggle('dropdown-open');
-                }
-            });
-        }
-    });
-
-    // Notification functionality
-    const notificationBtn = document.getElementById('notificationBtn');
-    notificationBtn.addEventListener('click', () => {
-        // Toggle notification panel or show notifications
-        showNotification('Notifications feature coming soon!', 'info');
-
-        // You can implement a notification panel here
-        // For now, we'll just show a demo notification
-        const badge = notificationBtn.querySelector('.notification-badge');
-        if (badge) {
-            const currentCount = parseInt(badge.textContent) || 0;
-            if (currentCount > 0) {
-                badge.textContent = Math.max(0, currentCount - 1);
-                if (badge.textContent === '0') {
-                    badge.style.display = 'none';
-                }
-            }
-        }
-    });
+    // Legacy mobile menu toggle removed — sidebar.js handles this on mobile.
+    // Legacy mobile dropdown toggle removed — sidebar.js handles accordion on mobile.
 
     // Auto-detect system theme preference
     if (localStorage.getItem('theme') === null) {
@@ -151,10 +89,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Parallax effect for navbar
+    // Parallax effect for navbar (desktop only — on mobile .navbar is the sidebar)
     let ticking = false;
     function updateNavbar() {
+        if (window.innerWidth <= 768) return; // Sidebar mode: skip parallax
         const navbar = document.querySelector('.navbar');
+        if (!navbar) return;
         const scrolled = window.pageYOffset;
         const rate = scrolled * -0.5;
 
