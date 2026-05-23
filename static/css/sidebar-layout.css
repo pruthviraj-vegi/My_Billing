@@ -524,6 +524,7 @@
     padding-right: 0 !important;
   }
 
+
   /* Gap between left column (details+summaries) and right column (tables) */
   .col-md-2.d-flex.flex-column,
   .col-md-3.d-flex.flex-column {
@@ -667,6 +668,31 @@
   .table-header .row-lg-6 .value {
     font-size: 0.85rem;
     color: var(--text-primary);
+  }
+
+  /* Cart: stack sidebar below table on mobile */
+  .cart-detail-layout.col.d-flex.flex-row {
+    flex-direction: column !important;
+  }
+
+  .cart-detail-layout .col-md-9 {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .cart-detail-layout .col-md-3 {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .cart-summary-sidebar {
+    position: static !important;
+    max-height: none !important;
+    order: 2;
+  }
+
+  .cart-detail-layout > .col-md-9 {
+    order: 1;
   }
 
   /* Form layout & text spacing consistency on mobile */

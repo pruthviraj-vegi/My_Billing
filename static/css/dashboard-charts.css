@@ -220,7 +220,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .revenue-chart-card {
+  body:not([data-theme="light"]) .revenue-chart-card {
     border: 1px solid var(--border-color-dark-subtle, rgba(255, 255, 255, 0.05));
   }
 }
@@ -248,7 +248,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .chart-title {
+  body:not([data-theme="light"]) .chart-title {
     color: var(--text-primary, #f8fafc);
   }
 }
@@ -291,11 +291,11 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .stat-item {
+  body:not([data-theme="light"]) .stat-item {
     background: var(--bg-dark-card, rgba(15, 23, 42, 0.4));
   }
 
-  .stat-item:hover {
+  body:not([data-theme="light"]) .stat-item:hover {
     background: var(--bg-dark-card-hover, rgba(15, 23, 42, 0.6));
   }
 }
@@ -315,7 +315,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .stat-label-small {
+  body:not([data-theme="light"]) .stat-label-small {
     color: var(--text-secondary, #94a3b8);
   }
 }
@@ -333,7 +333,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .stat-value-small {
+  body:not([data-theme="light"]) .stat-value-small {
     color: var(--text-primary, #f8fafc);
   }
 }

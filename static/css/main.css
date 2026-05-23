@@ -161,7 +161,7 @@
   --card-padding-form: 1.5rem;
   --stat-card-padding: 1.25rem;
   --stat-icon-size: 48px;
-  --stat-number-size: 1.25rem;
+  --stat-number-size: 1.0rem;
   --stat-label-size: 0.8125rem;
   --page-title-size: 0.875rem;
   --breadcrumb-padding: 0.25rem 0.75rem;
@@ -4142,6 +4142,146 @@ form.submitting * {
 
 .table-header .col-lg-6:last-child {
   gap: 0.5rem;
+}
+
+/* Cart detail two-column layout */
+.cart-detail-layout {
+  gap: 1rem;
+}
+
+.cart-detail-layout .table-container {
+  overflow-x: auto;
+}
+
+@media (min-width: 769px) {
+  .cart-detail-layout.col.d-flex.flex-row,
+  .cart-detail-layout.d-flex.flex-row {
+    flex-direction: row !important;
+  }
+
+  .cart-detail-layout .col-md-9 {
+    flex: 1 1 0;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .cart-detail-layout .col-md-3 {
+    flex: 0 0 280px;
+    width: 280px !important;
+    max-width: 280px !important;
+  }
+}
+
+/* Cart summary sidebar — sticky while scrolling the table */
+.cart-summary-sidebar {
+  position: sticky;
+  top: calc(var(--navbar-height, 60px) + 0.5rem);
+  max-height: calc(100vh - var(--navbar-height, 60px) - 1rem);
+  overflow-y: auto;
+}
+
+/* Card header - same bg color as card background */
+.cart-summary-sidebar .column-header {
+  background: var(--bg-surface) !important;
+  padding: 1rem 1.25rem !important;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cart-summary-sidebar .column-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+/* Svg icon inside the header */
+.cart-summary-sidebar .column-header h3 svg.header-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: var(--primary);
+}
+
+/* Body / details info compact padding and gaps */
+.cart-summary-sidebar .details-info-compact {
+  padding: 1rem 1.25rem !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* Summary rows: NO borders in between! */
+.cart-summary-sidebar .summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0;
+  border-bottom: none !important;
+  font-size: 0.85rem;
+}
+
+.cart-summary-sidebar .summary-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+  margin-bottom: 0;
+}
+
+.cart-summary-sidebar .summary-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Total row at the bottom with a divider */
+.cart-summary-sidebar .total-row {
+  border-top: 1px solid var(--border-color) !important;
+  padding-top: 0.75rem !important;
+  margin-top: 0.25rem !important;
+}
+
+.cart-summary-sidebar .total-row .summary-label {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.cart-summary-sidebar .total-row .summary-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Sidebar actions footer */
+.cart-summary-sidebar .cart-sidebar-actions {
+  padding: 0 1.25rem 1.25rem 1.25rem !important;
+  border-top: none !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Custom button overrides inside the summary sidebar to match the layout exactly */
+.cart-summary-sidebar .btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 1rem !important;
+  border-radius: 0.375rem !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+}
+
+.cart-summary-sidebar .btn svg.btn-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
 }
 
 /* Animation for dropdown */

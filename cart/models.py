@@ -114,6 +114,21 @@ class Cart(models.Model):
         """Calculate net amount using database aggregation for better performance"""
         return self.total_amount - self.advance_payment
 
+    @property
+    def total_profit(self):
+        """Calculate total profit using database aggregation for better performance"""
+        # Sum of: quantity * (price - product_variant__purchase_price)
+        profit = self.cart_items.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F("quantity") * (F("price") - F("product_variant__purchase_price")),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                )
+            )
+        )["total"] or Decimal(0)
+
+        return round(profit, 2)
+
 
 class CartItem(models.Model):
     """Model for storing individual items within a cart."""

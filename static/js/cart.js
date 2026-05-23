@@ -422,10 +422,16 @@ class CartManager {
     initPriceToggle() {
         // Initialize price display format after DOM is ready
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.formatPriceDisplays());
+            document.addEventListener('DOMContentLoaded', () => {
+                this.formatPriceDisplays();
+                this.initProfitRowClickListener();
+            });
         } else {
             // DOM already loaded
-            setTimeout(() => this.formatPriceDisplays(), CartManager.DOM_READY_DELAY);
+            setTimeout(() => {
+                this.formatPriceDisplays();
+                this.initProfitRowClickListener();
+            }, CartManager.DOM_READY_DELAY);
         }
 
         // Listen for F9 key press
@@ -435,6 +441,15 @@ class CartManager {
                 this.togglePriceDisplay();
             }
         });
+    }
+
+    initProfitRowClickListener() {
+        const profitRow = document.getElementById('profitRow');
+        if (profitRow) {
+            profitRow.addEventListener('click', () => {
+                this.togglePriceDisplay();
+            });
+        }
     }
 
     formatPriceDisplays() {
@@ -507,6 +522,12 @@ class CartManager {
                 this.animatePriceChange(displaySpan, currentPrice, targetPrice, CartManager.ANIMATION_DURATION);
             }
         });
+
+        // Toggle profit row visibility
+        const profitRow = document.getElementById('profitRow');
+        if (profitRow) {
+            profitRow.style.display = this.priceToggleState ? 'flex' : 'none';
+        }
     }
 
     /*** ───────── UI EVENTS ───────── ***/
@@ -938,14 +959,18 @@ class CartManager {
 
         let totalQty = 0;
         let totalSelling = 0;
+        let totalProfit = 0;
 
         rows.forEach(row => {
             const qtyInput = row.querySelector('.quantity-input');
             const priceToggleCell = row.querySelector('.price-toggle-cell');
+            const priceInput = row.querySelector('.price-input');
 
             if (qtyInput && priceToggleCell) {
                 const qty = parseFloat(qtyInput.value) || 0;
                 const sell = parseFloat(priceToggleCell.dataset.sellingPrice) || 0;
+                const purchase = parseFloat(priceToggleCell.dataset.purchasePrice) || 0;
+                const actualPrice = priceInput ? parseFloat(priceInput.value) || 0 : sell;
 
                 if (!isNaN(qty)) {
                     totalQty += qty;
@@ -953,18 +978,47 @@ class CartManager {
                 if (!isNaN(qty) && !isNaN(sell) && qty > 0 && sell > 0) {
                     totalSelling += qty * sell;
                 }
+                if (!isNaN(qty) && !isNaN(purchase) && qty > 0) {
+                    totalProfit += qty * (actualPrice - purchase);
+                }
             }
         });
 
         // Round and format
         const roundedQty = Math.round(totalQty * 100) / 100;
         const roundedSelling = Math.round(totalSelling * 100) / 100;
+        const roundedProfit = Math.round(totalProfit * 100) / 100;
 
         if (this.dom.totalItems) {
             this.dom.totalItems.textContent = roundedQty.toFixed(2);
         }
         if (this.dom.totalSelling) {
             this.dom.totalSelling.textContent = this.format(isNaN(roundedSelling) || !isFinite(roundedSelling) ? 0 : roundedSelling);
+        }
+
+        // Calculate derived values: discountedAmount and netAmount
+        const totalAmountStr = this.dom.totalAmount ? this.dom.totalAmount.textContent.replace(/[^\d.-]/g, '') : '0';
+        const totalAmount = parseFloat(totalAmountStr) || 0;
+        
+        const advancePaymentEl = document.getElementById('advancePayment');
+        const advance = advancePaymentEl ? parseFloat(advancePaymentEl.dataset.advance || '0') || 0 : 0;
+        
+        const discount = Math.max(0, roundedSelling - totalAmount);
+        const netAmount = Math.max(0, totalAmount - advance);
+        
+        const discountedAmountEl = document.getElementById('discountedAmount');
+        if (discountedAmountEl) {
+            discountedAmountEl.textContent = this.format(discount);
+        }
+        
+        const estimatedProfitEl = document.getElementById('estimatedProfit');
+        if (estimatedProfitEl) {
+            estimatedProfitEl.textContent = this.format(isNaN(roundedProfit) || !isFinite(roundedProfit) ? 0 : roundedProfit);
+        }
+        
+        const netAmountEl = document.getElementById('netAmount');
+        if (netAmountEl) {
+            netAmountEl.textContent = this.format(netAmount);
         }
     }
 

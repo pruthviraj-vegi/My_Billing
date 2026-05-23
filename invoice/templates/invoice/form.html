@@ -252,9 +252,7 @@
       <!-- Amount Summary Section -->
       <div class="form-section">
         <div class="section-title">
-          Amount Summary :<span class="text-success">
-            {% if cart.advance_payment > 0 %}(Advance Payment: {{ cart.advance_payment|currency }}){% endif %}
-          </span>
+          Amount Summary :
         </div>
         <div class="total-amount-display">
           <div class="total-row">
@@ -269,6 +267,12 @@
             <span class="total-label">Total:</span>
             <span class="total-value" id="totalDisplay">0.00</span>
           </div>
+          {% if cart.advance_payment > 0 %}
+          <div class="total-row">
+            <span class="total-label">Cart Advance:</span>
+            <span class="total-value text-success" id="cartAdvanceDisplay">{{ cart.advance_payment|currency }}</span>
+          </div>
+          {% endif %}
           <div class="total-row">
             <span class="total-label">Advance:</span>
             <span class="total-value text-success" id="advanceDisplay">0.00</span>
@@ -428,6 +432,8 @@
     const advanceDisplay = document.getElementById('advanceDisplay');
     const balanceDisplay = document.getElementById('balanceDisplay');
 
+    const cartAdvanceVal = {% if cart %}{{ cart.advance_payment|default:0 }}{% else %}0{% endif %};
+
     updateTotals = function () {
       // Strip out formatting commas before parsing to float
       const subTotal = parseFloat(amountField.value.replace(/,/g, '')) || 0;
@@ -435,11 +441,14 @@
       const advance = parseFloat(advanceAmountField.value.replace(/,/g, '')) || 0;
 
       const total = subTotal - discount;
-      const balance = total - advance;
+      const balance = total - cartAdvanceVal - advance;
 
       subTotalDisplay.textContent = formatCurrency(subTotal);
       discountDisplay.textContent = formatCurrency(discount);
       totalDisplay.textContent = formatCurrency(total);
+      if (document.getElementById('cartAdvanceDisplay')) {
+        document.getElementById('cartAdvanceDisplay').textContent = formatCurrency(cartAdvanceVal);
+      }
       advanceDisplay.textContent = formatCurrency(advance);
       balanceDisplay.textContent = formatCurrency(balance);
     };

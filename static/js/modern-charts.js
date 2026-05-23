@@ -101,8 +101,8 @@
 
                         if (pctNum >= 3) {
                             const percentage = pctNum.toFixed(1) + '%';
-                            const isDark = document.body.getAttribute('data-theme') === 'dark' ||
-                                window.matchMedia('(prefers-color-scheme: dark)').matches;
+                            const theme = document.body.getAttribute('data-theme');
+                            const isDark = theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
                             ctx.save();
                             ctx.font = 'bold 10px Inter, sans-serif';
                             ctx.fillStyle = isDark ? '#ffffff' : '#1e293b';
