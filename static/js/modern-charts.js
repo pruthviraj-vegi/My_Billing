@@ -19,12 +19,7 @@
                 bgSurface === '#334155' || bgSurface.toLowerCase().includes('334155');
             const isDarkMode = hasDarkTheme || (prefersDark && !hasDarkTheme && isDarkColor) || isDarkColor;
 
-            // Border color for doughnut charts - white in light mode, dark surface in dark mode
-            // In light mode, use white to blend seamlessly with white background (no awkward black border)
-            // In dark mode, use the dark surface color for a subtle dark border
-            const doughnutBorder = isDarkMode ? bgSurface : '#ffffff'; // White for light mode to blend with background
-
-            return {
+            const palette = {
                 blue: style.getPropertyValue('--primary').trim() || '#3b82f6',
                 green: style.getPropertyValue('--success').trim() || '#10b981',
                 yellow: style.getPropertyValue('--warning').trim() || '#f59e0b',
@@ -37,8 +32,36 @@
                 textPrimary: style.getPropertyValue('--text-primary').trim() || '#f8fafc',
                 textSecondary: style.getPropertyValue('--text-secondary').trim() || '#94a3b8',
                 tooltipBg: bgSurface,
-                doughnutBorder: doughnutBorder
             };
+
+            // Lighter shades matching stat-card icon colors (used for strokes and fill base)
+            // Reference: bg-blue = bg rgba(59,130,246,0.15) + color #60a5fa
+            var lightShades = [
+                '#60a5fa', // blue light
+                '#a78bfa', // purple light
+                '#34d399', // green light
+                '#f87171', // red light
+                '#22d3ee', // cyan light
+                '#f472b6', // pink light
+                '#fbbf24', // yellow light
+                '#818cf8', // indigo light
+                '#2dd4bf', // teal light
+                '#fb923c', // orange light
+                '#a3e635', // lime light
+                '#94a3b8', // slate
+            ];
+
+            function fade(hex) {
+                var r = parseInt(hex.slice(1, 3), 16);
+                var g = parseInt(hex.slice(3, 5), 16);
+                var b = parseInt(hex.slice(5, 7), 16);
+                return 'rgba(' + r + ',' + g + ',' + b + ',0.45)';
+            }
+
+            palette.doughnutStrokes = lightShades;
+            palette.doughnutFills = lightShades.map(function(h) { return fade(h); });
+
+            return palette;
         },
 
         // Format number to Indian currency format (Crores, Lakhs, Thousands)
@@ -72,19 +95,24 @@
                     chart.getDatasetMeta(i).data.forEach((datapoint, index) => {
                         const { x, y } = datapoint.tooltipPosition();
 
-                        // Get percentage — only label segments >= 4% to avoid crowding
                         const value = dataset.data[index];
                         const total = dataset.data.reduce((a, b) => a + b, 0);
                         const pctNum = total > 0 ? (value / total) * 100 : 0;
 
                         if (pctNum >= 3) {
                             const percentage = pctNum.toFixed(1) + '%';
+                            const isDark = document.body.getAttribute('data-theme') === 'dark' ||
+                                window.matchMedia('(prefers-color-scheme: dark)').matches;
                             ctx.save();
                             ctx.font = 'bold 10px Inter, sans-serif';
-                            ctx.fillStyle = '#ffffff';
+                            ctx.fillStyle = isDark ? '#ffffff' : '#1e293b';
+                            ctx.shadowColor = isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.4)';
+                            ctx.shadowBlur = isDark ? 3 : 0;
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
                             ctx.fillText(percentage, x, y);
+                            ctx.shadowBlur = 0;
+                            ctx.shadowColor = 'transparent';
                             ctx.restore();
                         }
                     });
@@ -96,7 +124,6 @@
         // Initialize a Doughnut Chart
         initDoughnut: function (ctx) {
             const colors = this.getColors();
-            const borderColor = colors.doughnutBorder;
             return new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -104,12 +131,11 @@
                     datasets: [{
                         data: [],
                         backgroundColor: [],
-                        borderColor: borderColor,
+                        borderColor: [],
                         borderWidth: 2,
                         borderRadius: 6,
                         hoverOffset: 10,
                         hoverBorderWidth: 2,
-                        hoverBorderColor: borderColor
                     }]
                 },
                 options: {
@@ -138,28 +164,26 @@
 
             chart.data.labels = labels;
             chart.data.datasets[0].data = amounts;
-            chart.data.datasets[0].borderColor = colors.doughnutBorder;
             chart.data.datasets[0].borderWidth = 2;
             chart.data.datasets[0].borderRadius = 6;
             chart.data.datasets[0].hoverOffset = 10;
             chart.data.datasets[0].hoverBorderWidth = 2;
-            chart.data.datasets[0].hoverBorderColor = colors.doughnutBorder;
 
-            // Color palette
-            const defaultPalette = [
-                '#378ADD', '#1D9E75', '#EF9F27', '#D85A30', '#D4537E',
-                '#7F77DD', '#639922', '#BA7517', '#993556', '#534AB7',
-                '#3B6D11', '#854F0B', '#A32D2D', '#0F6E56'
-            ];
+            // Semi-transparent palette matching stat-card icon colors
+            const fills = colors.doughnutFills;
+            const strokes = colors.doughnutStrokes;
 
-            let bgColors;
+            let bgColors, borderColors;
             if (colorMap) {
                 bgColors = labels.map(l => colorMap[l] || colors.slate);
+                borderColors = labels.map(l => colorMap[l] || colors.slate);
             } else {
-                bgColors = labels.map((_, i) => defaultPalette[i % defaultPalette.length]);
+                bgColors = labels.map((_, i) => fills[i % fills.length]);
+                borderColors = labels.map((_, i) => strokes[i % strokes.length]);
             }
 
             chart.data.datasets[0].backgroundColor = bgColors;
+            chart.data.datasets[0].borderColor = borderColors;
 
             // Hover callback: highlight legend items and update center-info
             const canvasEl = chart.canvas;
@@ -187,20 +211,29 @@
                     el.style.opacity = idx === null ? '1' : (i === idx ? '1' : '0.3');
                 });
 
-                // Highlight the chart segment and dim others
-                if (idx === null) {
-                    chart.setActiveElements([]);
-                    chart.data.datasets[0].backgroundColor = bgColors;
-                } else {
-                    chart.setActiveElements([{ datasetIndex: 0, index: idx }]);
-                    // Dim non-active segments
-                    chart.data.datasets[0].backgroundColor = bgColors.map(function (c, i) {
-                        if (i === idx) return c;
-                        // Convert hex to rgba with 30% opacity
+                // Dim non-active segments
+                function dimColor(c, alpha) {
+                    if (!c) return c;
+                    if (c.startsWith('#')) {
                         var r = parseInt(c.slice(1, 3), 16);
                         var g = parseInt(c.slice(3, 5), 16);
                         var b = parseInt(c.slice(5, 7), 16);
-                        return 'rgba(' + r + ',' + g + ',' + b + ',0.25)';
+                        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+                    }
+                    return c.replace(/[\d.]+\)$/, alpha + ')');
+                }
+
+                if (idx === null) {
+                    chart.setActiveElements([]);
+                    chart.data.datasets[0].backgroundColor = bgColors;
+                    chart.data.datasets[0].borderColor = borderColors;
+                } else {
+                    chart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+                    chart.data.datasets[0].backgroundColor = bgColors.map(function (c, i) {
+                        return i === idx ? c : dimColor(c, 0.06);
+                    });
+                    chart.data.datasets[0].borderColor = borderColors.map(function (c, i) {
+                        return i === idx ? c : dimColor(c, 0.25);
                     });
                 }
                 chart.update('none');
@@ -251,14 +284,15 @@
                 items.forEach(function (item, index) {
                     var pct = percentages[index];
                     var pctStr = pct.toFixed(1) + '%';
-                    var color = bgColors[index];
+                    var fillColor = bgColors[index];
+                    var strokeColor = borderColors[index];
                     var amount = item[keys.amount] || 0;
                     var formattedAmount = amount.toLocaleString('en-IN');
 
                     var div = document.createElement('div');
                     div.className = 'leg-item';
                     div.dataset.idx = index;
-                    div.innerHTML = '<span class="leg-dot" style="background:' + color + '"></span>' +
+                    div.innerHTML = '<span class="leg-dot" style="background:' + strokeColor + '"></span>' +
                         '<span class="leg-name">' + item[keys.label] + '</span>' +
                         '<span class="leg-pct">' + pctStr + '</span>' +
                         '<span class="leg-val">&nbsp;' + formattedAmount + '</span>';
@@ -267,7 +301,7 @@
                     track.className = 'bar-track';
                     var fill = document.createElement('div');
                     fill.className = 'bar-fill';
-                    fill.style.background = color;
+                    fill.style.background = strokeColor;
                     fill.style.width = '0';
                     track.appendChild(fill);
                     div.appendChild(track);
@@ -289,23 +323,15 @@
         initRevenueChart: function (ctx) {
             const colors = this.getColors();
 
-            // Detect dark mode for gradient opacity
-            const bgSurface = colors.tooltipBg;
-            const hasDarkTheme = document.body.getAttribute('data-theme') === 'dark';
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const isDarkColor = bgSurface === '#1e293b' || bgSurface.toLowerCase().includes('1e293b') ||
-                bgSurface === '#334155' || bgSurface.toLowerCase().includes('334155');
-            const isDarkMode = hasDarkTheme || (prefersDark && !hasDarkTheme && isDarkColor) || isDarkColor;
-
-            // Gradient opacity - lighter in light mode, darker in dark mode
-            const gradientOpacity = isDarkMode ? 0.5 : 0.15; // Much lighter in light mode
+            // Semi-transparent fills matching stat-card icon style (~0.45 alpha)
             const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, `rgba(59, 130, 246, ${gradientOpacity})`);
-            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+            gradient.addColorStop(0, colors.doughnutFills[0]);
+            gradient.addColorStop(1, 'rgba(96, 165, 250, 0.0)');
 
-            // Previous period background - lighter in light mode
-            const previousBgOpacity = isDarkMode ? 0.2 : 0.08; // Much lighter in light mode
-            const previousBackground = `rgba(148, 163, 184, ${previousBgOpacity})`;
+            const previousBg = colors.doughnutFills[11];
+
+            const blueLight = colors.doughnutStrokes[0];
+            const greenLight = colors.doughnutStrokes[2];
 
             return new Chart(ctx, {
                 type: 'line',
@@ -314,11 +340,11 @@
                     datasets: [{
                         label: 'Present',
                         data: [],
-                        borderColor: colors.blue,
+                        borderColor: blueLight,
                         backgroundColor: gradient,
                         borderWidth: 2,
                         pointBackgroundColor: colors.tooltipBg,
-                        pointBorderColor: colors.blue,
+                        pointBorderColor: blueLight,
                         pointBorderWidth: 2,
                         pointRadius: 5,
                         pointHoverRadius: 8,
@@ -332,7 +358,7 @@
                         label: 'Past',
                         data: [],
                         borderColor: colors.slate,
-                        backgroundColor: previousBackground, // Theme-aware background
+                        backgroundColor: previousBg,
                         borderWidth: 2,
                         pointBackgroundColor: colors.tooltipBg,
                         pointBorderColor: colors.slate,
@@ -348,12 +374,12 @@
                     {
                         label: 'Growth %',
                         data: [],
-                        borderColor: colors.green,
+                        borderColor: greenLight,
                         backgroundColor: 'transparent',
                         borderWidth: 2,
                         borderDash: [4, 4],
                         pointBackgroundColor: colors.tooltipBg,
-                        pointBorderColor: colors.green,
+                        pointBorderColor: greenLight,
                         pointBorderWidth: 2,
                         pointRadius: 3,
                         pointHoverRadius: 5,
@@ -377,7 +403,7 @@
                             backgroundColor: colors.tooltipBg,
                             titleColor: colors.textPrimary,
                             bodyColor: colors.textPrimary,
-                            borderColor: colors.blue,
+                            borderColor: blueLight,
                             borderWidth: 2,
                             padding: 14,
                             cornerRadius: 12,
@@ -439,7 +465,7 @@
                             position: 'right',
                             grid: { drawOnChartArea: false },
                             ticks: {
-                                color: colors.green,
+                                color: greenLight,
                                 callback: function (value) { return value.toFixed(2) + '%'; }
                             }
                         },
@@ -456,38 +482,24 @@
         updateRevenueChart: function (chart, comparisonData) {
             if (!comparisonData || !chart) return;
 
-            // Refresh colors in case theme changed
             const colors = this.getColors();
 
-            // Detect dark mode for gradient opacity
-            const bgSurface = colors.tooltipBg;
-            const hasDarkTheme = document.body.getAttribute('data-theme') === 'dark';
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const isDarkColor = bgSurface === '#1e293b' || bgSurface.toLowerCase().includes('1e293b') ||
-                bgSurface === '#334155' || bgSurface.toLowerCase().includes('334155');
-            const isDarkMode = hasDarkTheme || (prefersDark && !hasDarkTheme && isDarkColor) || isDarkColor;
-
-            // Update gradient with theme-aware opacity
-            const gradientOpacity = isDarkMode ? 0.5 : 0.15;
+            // Semi-transparent fills matching stat-card icon style
             const ctx = chart.canvas.getContext('2d');
             const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, `rgba(59, 130, 246, ${gradientOpacity})`);
-            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+            gradient.addColorStop(0, colors.doughnutFills[0]);
+            gradient.addColorStop(1, 'rgba(96, 165, 250, 0.0)');
 
-            // Update previous period background with theme-aware opacity
-            const previousBgOpacity = isDarkMode ? 0.2 : 0.08;
-            const previousBackground = `rgba(148, 163, 184, ${previousBgOpacity})`;
+            const previousBg = colors.doughnutFills[11];
 
-            // Update chart options with new colors
             chart.options.scales.y.grid.color = colors.grid;
             chart.options.plugins.tooltip.backgroundColor = colors.tooltipBg;
             chart.options.plugins.tooltip.titleColor = colors.textPrimary;
             chart.options.plugins.tooltip.bodyColor = colors.textSecondary;
             chart.options.plugins.tooltip.borderColor = colors.grid;
 
-            // Update dataset colors with theme-aware values
-            chart.data.datasets[0].backgroundColor = gradient; // Current period gradient
-            chart.data.datasets[1].backgroundColor = previousBackground; // Previous period background
+            chart.data.datasets[0].backgroundColor = gradient;
+            chart.data.datasets[1].backgroundColor = previousBg;
 
             // Update point backgrounds
             chart.data.datasets.forEach(dataset => {
@@ -510,14 +522,25 @@
                 currentData = cData.map(d => d.amount);       // Stock In
                 previousData = cData.map(d => d.stock_out);    // Stock Out
 
+                // Semi-transparent fills matching stat-card icon colors
+                const stockInGradient = ctx.createLinearGradient(0, 0, 0, 400);
+                stockInGradient.addColorStop(0, colors.doughnutFills[2]); // green light at 0.45
+                stockInGradient.addColorStop(1, 'rgba(52, 211, 153, 0.0)');
+
+                const stockOutGradient = ctx.createLinearGradient(0, 0, 0, 400);
+                stockOutGradient.addColorStop(0, colors.doughnutFills[3]); // red light at 0.45
+                stockOutGradient.addColorStop(1, 'rgba(248, 113, 113, 0.0)');
+
                 chart.data.datasets[0].label = 'Stock In';
                 chart.data.datasets[0].data = currentData;
-                chart.data.datasets[0].borderColor = colors.green;
+                chart.data.datasets[0].borderColor = colors.doughnutStrokes[2]; // green light
+                chart.data.datasets[0].backgroundColor = stockInGradient;
 
                 chart.data.datasets[1].label = 'Stock Out';
                 chart.data.datasets[1].data = previousData;
-                chart.data.datasets[1].borderColor = colors.red;
-                chart.data.datasets[1].pointBorderColor = colors.red;
+                chart.data.datasets[1].borderColor = colors.doughnutStrokes[3]; // red light
+                chart.data.datasets[1].pointBorderColor = colors.doughnutStrokes[3];
+                chart.data.datasets[1].backgroundColor = stockOutGradient;
             } else {
                 // Original current vs previous period mode
                 if (comparisonData.current_period) {
@@ -595,7 +618,24 @@
             slate: '#94a3b8',
             grid: 'rgba(148, 163, 184, 0.1)',
             textPrimary: '#f8fafc',
-            textSecondary: '#94a3b8'
+            textSecondary: '#94a3b8',
+            // Light shades for strokes (matching stat-card icon foreground colors)
+            strokes: [
+                '#60a5fa', '#a78bfa', '#34d399', '#f87171',
+                '#22d3ee', '#f472b6', '#fbbf24',
+                '#818cf8', '#2dd4bf', '#fb923c', '#a3e635',
+                '#94a3b8',
+            ],
+            // Semi-transparent fills (~0.45 alpha) for readable chart segments
+            fills: [
+                'rgba(96, 165, 250, 0.45)', 'rgba(167, 139, 250, 0.45)',
+                'rgba(52, 211, 153, 0.45)', 'rgba(248, 113, 113, 0.45)',
+                'rgba(34, 211, 238, 0.45)', 'rgba(244, 114, 182, 0.45)',
+                'rgba(251, 191, 36, 0.45)',
+                'rgba(129, 140, 248, 0.45)', 'rgba(45, 212, 191, 0.45)',
+                'rgba(251, 146, 96, 0.45)', 'rgba(163, 230, 53, 0.45)',
+                'rgba(148, 163, 184, 0.45)',
+            ],
         }
     };
 

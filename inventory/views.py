@@ -56,10 +56,8 @@ def inventory_dashboard(request):
         is_deleted=False, status=ProductVariant.VariantStatus.ACTIVE
     )
 
-    # Additional metrics
     total_products = Product.objects.filter(is_deleted=False).count()
 
-    # Calculate total inventory value (quantity * purchase_price)
     variant_metrics = active_variants.aggregate(
         total_variants=Count("id"),
         low_stock_count=Count("id", filter=Q(quantity__lte=F("minimum_quantity"))),
@@ -69,17 +67,56 @@ def inventory_dashboard(request):
         ),
     )
 
+    total_inventory_value = float(variant_metrics["total_inventory_value"])
+
+    # Calculate valuation trend (month-over-month)
+    from datetime import timedelta
+    from django.utils import timezone
+
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    period_changes = InventoryLog.objects.filter(
+        variant__is_deleted=False,
+        variant__status=ProductVariant.VariantStatus.ACTIVE,
+        timestamp__gte=thirty_days_ago,
+    ).aggregate(
+        stock_in_value=Coalesce(
+            Sum(
+                Abs(F("quantity_change")) * F("purchase_price"),
+                filter=Q(transaction_type__in=["STOCK_IN", "INITIAL"]),
+                output_field=DecimalField(),
+            ),
+            Decimal("0"),
+        ),
+        stock_out_value=Coalesce(
+            Sum(
+                Abs(F("quantity_change")) * F("purchase_price"),
+                filter=Q(transaction_type="SALE"),
+                output_field=DecimalField(),
+            ),
+            Decimal("0"),
+        ),
+    )
+
+    stock_in_value = float(period_changes["stock_in_value"])
+    stock_out_value = float(period_changes["stock_out_value"])
+    valuation_change = stock_in_value - stock_out_value
+    previous_valuation = total_inventory_value - valuation_change
+
+    if previous_valuation > 0:
+        trend_pct = round((valuation_change / previous_valuation) * 100, 1)
+    else:
+        trend_pct = 0
+
     total_stock_data = _calculate_total_stock_by_supplier()
 
     context = {
         "total_products": total_products,
         "total_variants": variant_metrics["total_variants"],
         "low_stock_variants": variant_metrics["low_stock_count"],
-        "total_inventory_value": float(variant_metrics["total_inventory_value"]),
+        "total_inventory_value": total_inventory_value,
+        "valuation_trend": trend_pct,
         "date_filter": request.GET.get("date_filter", "this_month"),
-        "total_stock_data_json": json.dumps(
-            total_stock_data
-        ),  # Pass as JSON string for template
+        "total_stock_data_json": json.dumps(total_stock_data),
     }
 
     return render(request, "inventory/dashboard.html", context)
