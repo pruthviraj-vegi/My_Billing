@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 import logging
+import sys
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -134,8 +135,6 @@ CACHES = {
         }
     }
 }
-import sys
-
 if 'test' in sys.argv:
     DATABASES = {
         "default": {

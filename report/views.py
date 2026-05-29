@@ -27,13 +27,15 @@ from cart.models import Cart, CartItem
 from customer.models import Customer
 from customer.views import get_data as get_customers_data
 from customer.views_credit import (
-    _build_ledger_rows,
-    credit_customers_data,
-    total_credit_customers_data,
+    _build_ledger_rows as build_ledger_rows,
+    credit_customers_data as get_credit_customers_data,
     get_opening_balance,
+    total_credit_customers_data as get_total_credit_outstanding,
 )
+
 from inventory.models import ProductVariant
 from inventory.views_variant import get_variants_data, total_inventory_value
+
 from invoice.models import Invoice, InvoiceItem
 from setting.models import (
     ShopDetails,
@@ -41,13 +43,8 @@ from setting.models import (
     PaymentDetails,
     BarcodeConfiguration,
 )
-from supplier.views import (
-    get_suppliers_data,
-    get_total_outstanding_balance as supplier_total_outstanding_balance,
-    Supplier,
-    SupplierInvoice,
-    get_supplier_report_data,
-)
+from supplier.models import Supplier, SupplierInvoice
+from supplier.views import get_suppliers_data, get_total_outstanding_balance, get_supplier_report_data
 
 from .helper import build_invoice_report_context
 
@@ -221,7 +218,9 @@ def estimate_invoice(request, pk):
     """Render an estimate invoice page for the given estimate ID."""
     template = "report/estimate.html"
     estimate = Cart.objects.get(id=pk)
-    values = CartItem.objects.filter(cart__id=pk)
+    values = CartItem.objects.filter(cart__id=pk).select_related(
+        "product_variant__product"
+    )
     shop_details = ShopDetails.objects.filter(is_active=True).first()
     report_config = ReportConfiguration.get_default_config(
         ReportConfiguration.ReportType.ESTIMATE
@@ -262,7 +261,7 @@ def generate_barcode(request, pk):
 def generate_customers_pdf(request):
     """Generate PDF for customers list with search and sort parameters."""
 
-    # Get customers using the same logic as fetch_customers
+    # Reuse the same query logic as the customer list view
     customers = get_customers_data(request)
 
     # Prepare context
@@ -281,8 +280,8 @@ def generate_customers_pdf(request):
 
 def generate_credit_pdf(request):
     """Generate PDF for credit customers list with search and sort parameters."""
-    customers = credit_customers_data(request)
-    total_outstanding = total_credit_customers_data(request)
+    customers = get_credit_customers_data(request)
+    total_outstanding = get_total_credit_outstanding(request)
 
     if isinstance(customers, list):
         count = len(customers)
@@ -307,7 +306,7 @@ def generate_credit_ind_pdf(request, pk):
     """Generate PDF for credit individual customer with search and sort parameters."""
     customer = get_object_or_404(Customer, pk=pk)
     start_date, end_date = getDates(request)
-    ledger = _build_ledger_rows(customer, start_date, end_date)
+    ledger = build_ledger_rows(customer, start_date, end_date)
     opening_balance = get_opening_balance(customer, start_date)
 
     ledger.sort(key=lambda r: (r["date"] or datetime.min, r["type"]))
@@ -332,7 +331,7 @@ def generate_credit_ind_pdf(request, pk):
 def generate_suppliers_pdf(request):
     """Generate PDF for suppliers list with search and sort parameters."""
     suppliers = get_suppliers_data(request)
-    total_outstanding = supplier_total_outstanding_balance()
+    total_outstanding = get_total_outstanding_balance()
 
     if isinstance(suppliers, list):
         count = len(suppliers)
@@ -441,14 +440,25 @@ def build_variants_context(params):
 
     # Sorting — replicate table_sorting logic without request
     sort_param = params.get("sort", "")
+    valid_sorts = {
+        "id": "id",
+        "product__name": "product__name",
+        "product__brand": "product__brand",
+        "size__name": "size__name",
+        "color__name": "color__name",
+        "mrp": "mrp",
+        "purchase_price": "purchase_price",
+        "quantity": "quantity",
+        "created_at": "created_at",
+        "status": "status",
+    }
     if sort_param:
-        from inventory.views_variant import VALID_SORT_FIELDS
 
         sort_fields = [f.strip() for f in sort_param.split(",") if f.strip()]
         final_sorts = []
         for field in sort_fields:
             clean = field.lstrip("-")
-            if clean in VALID_SORT_FIELDS:
+            if clean in valid_sorts:
                 final_sorts.append(field)
         variants = variants.order_by(*(final_sorts or ["-created_at"]))
     else:
@@ -477,7 +487,7 @@ def generate_purchase_orders_pdf(request):
         is_deleted=False,
         invoice_type=SupplierInvoice.InvoiceType.GST_APPLICABLE,
         invoice_date__range=(start_date, end_date),
-    )
+    ).select_related("supplier")
 
     total_count = purchase_orders.count()
 
