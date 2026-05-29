@@ -798,6 +798,9 @@ class InventoryLog(SoftDeleteModel):
             # New indexes for FIFO allocation optimization
             models.Index(fields=["transaction_type", "variant", "remaining_quantity"]),
             models.Index(fields=["variant", "transaction_type", "timestamp"]),
+            # Performance indexes for cross-model FK lookups
+            models.Index(fields=["invoice_item"]),
+            models.Index(fields=["source_inventory_log"]),
         ]
 
     def __str__(self):
