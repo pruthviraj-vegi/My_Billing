@@ -1,14 +1,18 @@
-"""Django signals for customer payment allocation, invoice tracking, and credit summary updates."""
+"""
+Django signals for customer payment allocation, invoice tracking, and credit summary updates.
+
+Signal handlers are thin dispatchers — all business logic lives in customer/services.py.
+"""
 
 import logging
 from collections import defaultdict
-from decimal import Decimal
 
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from customer.models import CustomerCreditSummary
+from customer.services import CustomerPaymentService
 from invoice.models import Invoice, PaymentAllocation
 
 from .models import Customer, Payment
@@ -17,25 +21,14 @@ logger = logging.getLogger(__name__)
 
 
 @receiver(pre_save, sender=Payment)
-def track_payment_changes(
-    sender, instance, **kwargs
-):  # pylint: disable=unused-argument
-    """
-    Track payment changes before saving to detect amount and is_deleted changes.
-    """
-    if instance.pk:  # Only for existing payments
+def track_payment_changes(sender, instance, **kwargs):  # pylint: disable=unused-argument
+    """Track payment changes before saving for change detection."""
+    if instance.pk:
         try:
-            # Use all_objects to get the instance even if it's soft-deleted
             old_instance = Payment.all_objects.get(pk=instance.pk)
-            instance._old_amount = (
-                old_instance.amount
-            )  # pylint: disable=protected-access
-            instance._old_is_deleted = (
-                old_instance.is_deleted
-            )  # pylint: disable=protected-access
-            instance._old_payment_type = (
-                old_instance.payment_type
-            )  # pylint: disable=protected-access
+            instance._old_amount = old_instance.amount  # pylint: disable=protected-access
+            instance._old_is_deleted = old_instance.is_deleted  # pylint: disable=protected-access
+            instance._old_payment_type = old_instance.payment_type  # pylint: disable=protected-access
         except Payment.DoesNotExist:
             instance._old_amount = None  # pylint: disable=protected-access
             instance._old_is_deleted = None  # pylint: disable=protected-access
@@ -47,67 +40,34 @@ def track_payment_changes(
 
 
 @receiver(post_save, sender=Payment)
-def reallocate_on_payment_change(
-    sender, instance, created, **kwargs
-):  # pylint: disable=unused-argument
-    """
-    When a payment is created, updated, or soft-deleted, reallocate all payments for this customer.
-    """
+def reallocate_on_payment_change(sender, instance, created, **kwargs):  # pylint: disable=unused-argument
+    """When a payment changes, reallocate via service layer."""
     if getattr(instance, "_skip_reallocation", False):
         return
-
-    # Ensure customer is set before proceeding
     if not instance.customer_id:
         return
 
-    # Get old values from pre_save
-    old_amount = getattr(instance, "_old_amount", None)
-    old_is_deleted = getattr(instance, "_old_is_deleted", None)
-    old_payment_type = getattr(instance, "_old_payment_type", None)
-
-    # Reallocate if:
-    # 1. New payment created (created=True)
-    # 2. Amount changed (for existing payments)
-    # 3. Payment type changed (Paid <-> Purchased)
-    # 4. Payment was soft-deleted (is_deleted changed from False to True)
-    # 5. Payment was restored (is_deleted changed from True to False)
-    amount_changed = old_amount is not None and old_amount != instance.amount
-    deleted_changed = (
-        old_is_deleted is not None and old_is_deleted != instance.is_deleted
-    )
-    type_changed = (
-        old_payment_type is not None and old_payment_type != instance.payment_type
-    )
-
-    # For new payments, always reallocate (created will be True)
-    # For existing payments, reallocate if amount, type, or is_deleted changed
-    if created or amount_changed or deleted_changed or type_changed:
-        reallocate_customer_payments(instance.customer)
+    if CustomerPaymentService.should_reallocate_payment(
+        instance,
+        getattr(instance, "_old_amount", None),
+        getattr(instance, "_old_is_deleted", None),
+        getattr(instance, "_old_payment_type", None),
+        created,
+    ):
+        CustomerPaymentService.reallocate(instance.customer)
 
 
 @receiver(pre_save, sender=Invoice)
-def track_invoice_changes(
-    sender, instance, **kwargs
-):  # pylint: disable=unused-argument
-    """Track old values before saving to detect changes."""
+def track_invoice_changes(sender, instance, **kwargs):  # pylint: disable=unused-argument
+    """Track old invoice values before saving for change detection."""
     if instance.pk:
         try:
             old_instance = Invoice.objects.get(pk=instance.pk)
-            instance._old_payment_type = (
-                old_instance.payment_type
-            )  # pylint: disable=protected-access
-            instance._old_amount = (
-                old_instance.amount
-            )  # pylint: disable=protected-access
-            instance._old_discount_amount = (
-                old_instance.discount_amount
-            )  # pylint: disable=protected-access
-            instance._old_advance_amount = (
-                old_instance.advance_amount
-            )  # pylint: disable=protected-access
-            instance._old_customer = (
-                old_instance.customer
-            )  # pylint: disable=protected-access
+            instance._old_payment_type = old_instance.payment_type  # pylint: disable=protected-access
+            instance._old_amount = old_instance.amount  # pylint: disable=protected-access
+            instance._old_discount_amount = old_instance.discount_amount  # pylint: disable=protected-access
+            instance._old_advance_amount = old_instance.advance_amount  # pylint: disable=protected-access
+            instance._old_customer = old_instance.customer  # pylint: disable=protected-access
         except Invoice.DoesNotExist:
             instance._old_payment_type = None  # pylint: disable=protected-access
             instance._old_amount = None  # pylint: disable=protected-access
@@ -123,362 +83,83 @@ def track_invoice_changes(
 
 
 @receiver(post_save, sender=Invoice)
-def reallocate_on_invoice_change(
-    sender, instance, created, **kwargs
-):  # pylint: disable=unused-argument
-    """
-    When a CREDIT invoice is created/updated, or payment_type changes, reallocate.
-    """
-    # Skip if reallocation is being handled elsewhere
+def reallocate_on_invoice_change(sender, instance, created, **kwargs):  # pylint: disable=unused-argument
+    """When a credit invoice changes, reallocate via service layer."""
     if getattr(instance, "_skip_reallocation", False):
         return
 
-    old_payment_type = getattr(instance, "_old_payment_type", None)
-    old_amount = getattr(instance, "_old_amount", None)
-    old_discount = getattr(instance, "_old_discount_amount", None)
-    old_advance = getattr(instance, "_old_advance_amount", None)
-    old_customer = getattr(instance, "_old_customer", None)
+    old_values = {
+        "payment_type": getattr(instance, "_old_payment_type", None),
+        "amount": getattr(instance, "_old_amount", None),
+        "discount_amount": getattr(instance, "_old_discount_amount", None),
+        "advance_amount": getattr(instance, "_old_advance_amount", None),
+        "customer": getattr(instance, "_old_customer", None),
+    }
 
-    # Detect if payment_type changed
-    payment_type_changed = (
-        old_payment_type is not None and old_payment_type != instance.payment_type
+    needs_reallocation, old_customer = CustomerPaymentService.should_reallocate_invoice(
+        instance, old_values, created
     )
 
-    # Determine if we need to reallocate
-    is_credit_now = instance.payment_type == Invoice.PaymentType.CREDIT
-    _ = (
-        old_payment_type == Invoice.PaymentType.CREDIT
-    )  # was_credit_before (reserved for future use)
+    if needs_reallocation:
+        CustomerPaymentService.reallocate(instance.customer)
+        if old_customer:
+            CustomerPaymentService.reallocate(old_customer)
 
-    # Case 1: Invoice is CREDIT now (either new or existing)
-    if is_credit_now:
-        # Check if financial fields changed
-        amount_changed = old_amount is not None and old_amount != instance.amount
-        discount_changed = (
-            old_discount is not None and old_discount != instance.discount_amount
-        )
-        advance_changed = (
-            old_advance is not None and old_advance != instance.advance_amount
-        )
-        customer_changed = (
-            old_customer is not None and old_customer != instance.customer
-        )
-
-        if (
-            created
-            or amount_changed
-            or discount_changed
-            or advance_changed
-            or customer_changed
-            or payment_type_changed  # CASH → CREDIT conversion
-        ):
-            reallocate_customer_payments(instance.customer)
-
-            if customer_changed:
-                reallocate_customer_payments(old_customer)
-
-    if payment_type_changed and old_payment_type != Invoice.PaymentType.CASH:
+    # If payment type changed away from CASH (but not to CASH), recalculate summary
+    old_pt = old_values["payment_type"]
+    if old_pt is not None and old_pt != instance.payment_type and old_pt != Invoice.PaymentType.CASH:
         CustomerCreditSummary.recalculate_for_customer(instance.customer, save=True)
 
 
 @receiver(post_delete, sender=Invoice)
-def reallocate_on_invoice_delete(
-    sender, instance, **kwargs
-):  # pylint: disable=unused-argument
-    """
-    When a CREDIT invoice is deleted, reallocate remaining invoices.
-    """
+def reallocate_on_invoice_delete(sender, instance, **kwargs):  # pylint: disable=unused-argument
+    """When a credit invoice is deleted, reallocate via service layer."""
     if instance.payment_type == Invoice.PaymentType.CREDIT:
-        reallocate_customer_payments(instance.customer)
+        CustomerPaymentService.reallocate(instance.customer)
 
 
 @receiver(post_delete, sender=PaymentAllocation)
-def reallocate_on_allocation_delete(
-    sender, instance, **kwargs
-):  # pylint: disable=unused-argument
-    """
-    When an allocation is deleted, reallocate payments for the customer.
-    """
-    reallocate_customer_payments(instance.payment.customer)
+def reallocate_on_allocation_delete(sender, instance, **kwargs):  # pylint: disable=unused-argument
+    """When an allocation is deleted, reallocate via service layer."""
+    CustomerPaymentService.reallocate(instance.payment.customer)
 
 
-@transaction.atomic
-def reallocate_customer_payments(customer, skip_signals=False):
-    """
-    Core reallocation logic using FIFO method.
-    For Paid payments: First covers Purchased payments, then allocates to invoices.
-    This is called by signals automatically.
+# ── Batch update queue (for return invoice changes) ──
 
-    Args:
-        customer: Customer instance to reallocate payments for
-        skip_signals: If True, mark payments/invoices to skip signal triggers during updates
-    """
-    # Get all CREDIT invoices
-    # Note: Invoice model doesn't have is_deleted field (not a SoftDeleteModel)
-
-    CustomerCreditSummary.recalculate_for_customer(customer, save=True)
-
-    invoices = list(
-        Invoice.objects.filter(
-            customer=customer,
-            payment_type=Invoice.PaymentType.CREDIT,
-            is_cancelled=False,
-        )
-        .select_for_update()
-        .order_by("invoice_date", "id")
-    )
-
-    # Get all Paid payments (these allocate to invoices and cover Purchased payments)
-    paid_payments = list(
-        Payment.objects.filter(
-            customer=customer,
-            payment_type=Payment.PaymentType.Paid,
-            is_deleted=False,
-        )
-        .select_for_update()
-        .order_by("payment_date", "id")
-    )
-
-    # Get all Purchased payments (these need to be covered by Paid payments)
-    purchased_payments = list(
-        Payment.objects.filter(
-            customer=customer,
-            payment_type=Payment.PaymentType.Purchased,
-            is_deleted=False,
-        )
-        .select_for_update()
-        .order_by("payment_date", "id")
-    )
-
-    if not paid_payments and not purchased_payments:
-
-        # No payments to allocate, but reset invoice states
-        for invoice in invoices:
-            invoice.paid_amount = Decimal("0")
-            invoice.payment_status = Invoice.PaymentStatus.UNPAID
-        if invoices:
-            Invoice.objects.bulk_update(
-                invoices,
-                ["paid_amount", "payment_status", "updated_at"],
-                batch_size=100,
-            )
-        # Continue to credit summary recalculation (don't return here!)
-    else:
-
-        # Temporarily disconnect the allocation delete signal to prevent recursion
-        # when we delete all allocations during reallocation
-        post_delete.disconnect(
-            reallocate_on_allocation_delete, sender=PaymentAllocation
-        )
-
-        try:
-            # Delete all allocations for this customer
-            PaymentAllocation.objects.filter(
-                payment__customer=customer, payment__is_deleted=False
-            ).delete()
-        finally:
-            # Always reconnect the signal, even if an error occurs
-            post_delete.connect(
-                reallocate_on_allocation_delete, sender=PaymentAllocation
-            )
-
-        # Reset invoice states
-        for invoice in invoices:
-            invoice.paid_amount = Decimal("0")
-            invoice.payment_status = Invoice.PaymentStatus.UNPAID
-            if skip_signals:
-                invoice._skip_reallocation = True  # pylint: disable=protected-access
-
-        # Reset payment states
-        for payment in paid_payments:
-            payment.unallocated_amount = payment.amount
-            if skip_signals:
-                payment._skip_reallocation = True  # pylint: disable=protected-access
-
-        for purchased_payment in purchased_payments:
-            purchased_payment.unallocated_amount = purchased_payment.amount
-            if skip_signals:
-                purchased_payment._skip_reallocation = (
-                    True  # pylint: disable=protected-access
-                )
-
-        # Prepare batch allocations
-        allocations_to_create = []
-
-        # Create unified FIFO list: combine invoices and purchased payments, sorted by date
-        # This ensures oldest items (whether invoice or purchased payment) are handled first
-        unified_items = []
-
-        # Add invoices with their date and type
-        for invoice in invoices:
-            unified_items.append(
-                {
-                    "type": "invoice",
-                    "date": invoice.invoice_date,
-                    "id": invoice.id,
-                    "object": invoice,
-                    "amount_owed": invoice.remaining_amount,
-                }
-            )
-
-        # Add purchased payments with their date and type
-        for purchased_payment in purchased_payments:
-            unified_items.append(
-                {
-                    "type": "purchased_payment",
-                    "date": purchased_payment.payment_date,
-                    "id": purchased_payment.id,
-                    "object": purchased_payment,
-                    "amount_owed": purchased_payment.unallocated_amount,
-                }
-            )
-
-        # Sort by date (oldest first), then by id for stability
-        unified_items.sort(key=lambda x: (x["date"], x["id"]))
-
-        # FIFO allocation logic for Paid payments
-        # Allocate to unified list in chronological order (oldest first)
-        for paid_payment in paid_payments:
-            remaining = paid_payment.unallocated_amount
-            item_idx = 0
-
-            while item_idx < len(unified_items) and remaining > 0:
-                item = unified_items[item_idx]
-                amount_owed = item["amount_owed"]
-
-                # Skip items that are already fully paid/covered
-                if amount_owed <= 0:
-                    item_idx += 1
-                    continue
-
-                allocation_amount = min(remaining, amount_owed)
-
-                if item["type"] == "invoice":
-                    # Allocate to invoice
-                    invoice = item["object"]
-
-                    allocations_to_create.append(
-                        PaymentAllocation(
-                            payment=paid_payment,
-                            invoice=invoice,
-                            amount_allocated=allocation_amount,
-                            created_by=paid_payment.created_by,
-                        )
-                    )
-
-                    # Update invoice
-                    invoice.paid_amount += allocation_amount
-                    # Check if fully paid using net_amount_due (amount - discount - advance)
-                    if invoice.paid_amount >= invoice.net_amount_due:
-                        invoice.payment_status = Invoice.PaymentStatus.PAID
-                        item["amount_owed"] = Decimal("0")  # Mark as fully paid
-                        item_idx += 1
-                    elif invoice.paid_amount > 0:
-                        invoice.payment_status = Invoice.PaymentStatus.PARTIALLY_PAID
-                        # Update remaining amount using the property (recalculates automatically)
-                        item["amount_owed"] = invoice.remaining_amount
-
-                    logger.debug(
-                        "Allocated %s from payment %s to invoice %s (date: %s)",
-                        allocation_amount,
-                        paid_payment.id,
-                        invoice.id,
-                        invoice.invoice_date,
-                    )
-
-                elif item["type"] == "purchased_payment":
-                    # Cover purchased payment
-                    purchased_payment = item["object"]
-
-                    # Update purchased payment's unallocated amount
-                    purchased_payment.unallocated_amount -= allocation_amount
-                    item["amount_owed"] = (
-                        purchased_payment.unallocated_amount
-                    )  # Update remaining
-
-                    # If fully covered, move to next item
-                    if item["amount_owed"] <= 0:
-                        item_idx += 1
-
-                    logger.debug(
-                        "Covered purchased payment %s (date: %s) with %s from paid payment %s",
-                        purchased_payment.id,
-                        purchased_payment.payment_date,
-                        allocation_amount,
-                        paid_payment.id,
-                    )
-
-                # Update payment
-                remaining -= allocation_amount
-                paid_payment.unallocated_amount = remaining
-
-        # Bulk operations
-        if allocations_to_create:
-            PaymentAllocation.objects.bulk_create(allocations_to_create)
-
-        if invoices:
-            Invoice.objects.bulk_update(
-                invoices,
-                ["paid_amount", "payment_status", "updated_at"],
-                batch_size=100,
-            )
-
-        if paid_payments:
-            Payment.objects.bulk_update(
-                paid_payments, ["unallocated_amount", "updated_at"], batch_size=100
-            )
-
-        if purchased_payments:
-            Payment.objects.bulk_update(
-                purchased_payments, ["unallocated_amount", "updated_at"], batch_size=100
-            )
+_pending_updates: dict[str, set[int]] = defaultdict(set)
 
 
-# ============================================
-# 2. OPTIMIZED SIGNALS with Bulk Updates
-# ============================================
-# Create: customer/signals.py
-
-# Thread-local storage for batch updates
-_pending_updates = defaultdict(set)
-
-
-def queue_customer_update(customer_id):
-    """Queue customer for batch update"""
+def queue_customer_update(customer_id: int) -> None:
+    """Queue customer for batch credit summary update."""
     _pending_updates[transaction.get_connection().alias].add(customer_id)
 
 
-def process_queued_updates():
-    """Process all queued updates in a single batch"""
-
+def process_queued_updates() -> None:
+    """Process all queued credit summary updates in a single batch."""
     connection_alias = transaction.get_connection().alias
     customer_ids = _pending_updates.pop(connection_alias, set())
 
     if not customer_ids:
         return
 
-    # Bulk recalculate
-    customers = Customer.objects.filter(id__in=customer_ids)
-    for customer in customers:
+    for customer_id in customer_ids:
         try:
+            customer = Customer.objects.get(id=customer_id)
             CustomerCreditSummary.recalculate_for_customer(customer)
-        except (ValueError, TypeError, CustomerCreditSummary.DoesNotExist) as e:
-            logger.error("Failed to update summary for customer %s: %s", customer.id, e)
+        except (Customer.DoesNotExist, ValueError, TypeError) as e:
+            logger.error("Failed to update summary for customer %s: %s", customer_id, e)
 
 
 @receiver([post_save, post_delete], sender="invoice.ReturnInvoice")
 def handle_return_change(sender, instance, **kwargs):  # pylint: disable=unused-argument
-    """Queue credit summary update when return changes"""
-    if instance.status in ["APPROVED", "COMPLETED"]:
+    """Queue credit summary update when return invoice changes."""
+    if instance.status in ("APPROVED", "COMPLETED"):
         queue_customer_update(instance.customer_id)
         transaction.on_commit(process_queued_updates)
 
 
 @receiver(post_save, sender="customer.Customer")
-def create_summary_for_new_customer(
-    sender, instance, created, **kwargs
-):  # pylint: disable=unused-argument
-    """Create empty summary when customer is created"""
+def create_summary_for_new_customer(sender, instance, created, **kwargs):  # pylint: disable=unused-argument
+    """Create empty credit summary when a new customer is created."""
     if created:
-
         CustomerCreditSummary.objects.get_or_create(customer=instance)
