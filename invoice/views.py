@@ -731,7 +731,9 @@ class CreateInvoice(RequiredPermissionMixin, View):
                 invoice.created_by = request.user
                 invoice.save()
 
-                for item in cart.cart_items.all():
+                for item in cart.cart_items.select_related(
+                    "product_variant__product"
+                ).all():
                     invoice_item = InvoiceItem.objects.create(
                         invoice=invoice,
                         product_variant=item.product_variant,
@@ -774,30 +776,7 @@ class InvoiceDetail(RequiredPermissionMixin, View):
         """Render invoice detail page with return history."""
         invoice = get_object_or_404(Invoice, id=pk)
 
-        # Get return invoices for this invoice
-        return_invoices = (
-            invoice.return_invoices.select_related(
-                "created_by", "approved_by", "processed_by"
-            )
-            .prefetch_related("return_invoice_items")
-            .order_by("-created_at")
-        )
-
-        # Calculate return summary
-        total_return_amount = sum(ret.refund_amount for ret in return_invoices)
-        total_return_items = sum(
-            len(
-                [
-                    item
-                    for item in ret.return_invoice_items.all()
-                    if item.quantity_returned > 0
-                ]
-            )
-            for ret in return_invoices
-        )
-
-        # Add return item counts to each return invoice for template use
-        return_invoices = (
+        return_invoices = list(
             invoice.return_invoices.select_related(
                 "created_by", "approved_by", "processed_by"
             )
@@ -810,6 +789,9 @@ class InvoiceDetail(RequiredPermissionMixin, View):
             )
             .order_by("-created_at")
         )
+
+        total_return_amount = sum(ret.refund_amount for ret in return_invoices)
+        total_return_items = sum(ret.returned_items_count for ret in return_invoices)
 
         # Get return items with details
         return_items_with_details = []

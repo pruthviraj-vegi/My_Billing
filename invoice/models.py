@@ -498,23 +498,22 @@ class InvoiceItem(InvoiceItemFinancialMixin, InvoiceItemValidationMixin, models.
 
     @property
     def get_return_available_quantity(self):
-        """Check if return is available for the invoice item"""
-        # Calculate total quantity already returned (regardless of status)
-        # This prevents over-returning even with multiple pending returns
+        """Check if return is available for the invoice item — cached per instance."""
+        if hasattr(self, "_cached_return_available"):
+            return self._cached_return_available
+
         total_returned = self.return_items.filter(
             return_invoice__invoice=self.invoice,
-            quantity_returned__gt=0,  # Only count items that are actually being returned
+            quantity_returned__gt=0,
         ).aggregate(total_quantity=Sum("quantity_returned"))[
             "total_quantity"
         ] or Decimal(
             "0"
         )
 
-        # Available quantity = Original quantity - Total returned quantity
         available = self.quantity - total_returned
-
-        # Ensure we don't return negative values
-        return max(available, Decimal("0"))
+        self._cached_return_available = max(available, Decimal("0"))
+        return self._cached_return_available
 
     def clean(self):
         """Custom validation for invoice items using mixin validation"""
@@ -1111,6 +1110,7 @@ class ReturnInvoiceItem(models.Model):
             models.Index(fields=["product_variant"]),
             models.Index(fields=["condition"]),
             models.Index(fields=["return_reason"]),
+            models.Index(fields=["original_invoice_item"]),
         ]
         constraints = [
             models.CheckConstraint(

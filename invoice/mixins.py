@@ -104,6 +104,13 @@ class InvoiceFinancialMixin:
 
     ## calculation for the invoice
     @property
+    def _cached_invoice_items(self):
+        """Cache invoice_items queryset to avoid repeated DB hits."""
+        if not hasattr(self, "_items_cache"):
+            self._items_cache = list(self.invoice_items.all())
+        return self._items_cache
+
+    @property
     def get_total_quantity(self):
         """Total quantity for the invoice"""
         return self.invoice_items.aggregate(total_quantity=Sum("quantity"))[
@@ -113,18 +120,16 @@ class InvoiceFinancialMixin:
     @property
     def total_tax_value(self):
         """Total tax value (sum of tax_value from all invoice items)"""
-        total = Decimal("0.00")
-        for item in self.invoice_items.all():
-            total += Decimal(str(item.tax_value))
-        return round(total, 2)
+        return round(
+            sum(item.tax_value for item in self._cached_invoice_items), 2
+        )
 
     @property
     def total_gst_amount(self):
         """Total GST amount (sum of gst_amount from all invoice items)"""
-        total = Decimal("0.00")
-        for item in self.invoice_items.all():
-            total += Decimal(str(item.gst_amount))
-        return round(total, 2)
+        return round(
+            sum(item.gst_amount for item in self._cached_invoice_items), 2
+        )
 
     @property
     def cgst_amount(self):
@@ -136,14 +141,14 @@ class InvoiceFinancialMixin:
         """
         Calculate tax values grouped by GST rate
         """
-        gst_groups = defaultdict(
+        gst_groups: dict[int | str, dict[str, Decimal]] = defaultdict(
             lambda: {"tax_value": Decimal("0.00"), "total_tax_value": Decimal("0.00")}
         )
 
-        for item in self.invoice_items.all():
+        for item in self._cached_invoice_items:
             gst_rate = item.gst_percentage
-            gst_groups[gst_rate]["tax_value"] += Decimal(str(item.tax_value))
-            gst_groups[gst_rate]["total_tax_value"] += Decimal(str(item.gst_amount))
+            gst_groups[gst_rate]["tax_value"] += item.tax_value
+            gst_groups[gst_rate]["total_tax_value"] += item.gst_amount
 
         data = {
             "details": {
