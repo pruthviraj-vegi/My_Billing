@@ -8,7 +8,7 @@ from datetime import datetime
 import qrcode
 from django.contrib.auth.views import login_not_required
 
-from api.cloudflare import check_file_exists
+from api.cloudflare import check_file_exists, BucketType
 from customer.views_credit import _build_ledger_rows, get_opening_balance
 from invoice.models import InvoiceItem
 from report.models import InvoicePDF, CustomerStatementPDF
@@ -160,7 +160,9 @@ def generate_statement_pdf(customer, start_date, end_date, request):
         customer, start_date, end_date, customer.credit_summary.balance_amount
     )
 
-    if existing_pdf and check_file_exists(existing_pdf.pdf_url):
+    if existing_pdf and check_file_exists(
+        existing_pdf.pdf_url, bucket_type=BucketType.STATEMENT
+    ):
         logger.debug(
             "Using cached statement PDF for customer %s (%s - %s)",
             customer.phone_number,

@@ -207,6 +207,15 @@
             </div>
          </li>
       {% endif %}
+      {% if perms.api.view_apitoken %}
+         <li class="nav-item">
+            <a href="{% url 'api_tokens:home' %}"
+               class="nav-link {% if 'api_tokens' in request.resolver_match.namespace %}active{% endif %}">
+               <i class="fas fa-key"></i>
+               <span>API Tokens</span>
+            </a>
+         </li>
+      {% endif %}
       {% if perms.setting.view_shopdetails or perms.setting.view_reportconfiguration or perms.setting.view_paymentdetails or perms.setting.view_barcodeconfiguration %}
          <li class="nav-item">
             <a href="#"

@@ -263,6 +263,7 @@
           markRead: "{% url 'notification:mark_read' notification_id=0 %}".replace('/0/', '/{id}/')
         };
         const csrfToken = '{{ csrf_token }}';
+        window.csrfToken = csrfToken;
 
         const notifBtn      = document.getElementById('notificationBtn');
         const notifPanel     = document.getElementById('notificationPanel');

@@ -1,5 +1,4 @@
-"""API views for customer balance, invoices, statements, and WhatsApp messaging."""
-
+import json
 import logging
 from datetime import datetime
 
@@ -7,6 +6,7 @@ import requests
 from decouple import config
 from django.contrib.auth.decorators import login_not_required
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 from api.services import generate_invoice_pdf, generate_statement_pdf
 from base.getDates import getDates
@@ -118,6 +118,63 @@ def get_last_invoice(request, phone_number):
 @login_not_required
 def get_statement(request, phone_number):
     """Return a credit statement PDF for a customer by phone number and date range."""
+    try:
+        phone_number = number_format(phone_number)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    customer = Customer.objects.filter(phone_number=phone_number).first()
+    if not customer:
+        return JsonResponse({"error": "Customer not found"}, status=404)
+
+    start_date, end_date = getDates(request)
+
+    try:
+        # Use the service function to generate statement PDF
+        pdf_data = generate_statement_pdf(customer, start_date, end_date, request)
+
+        return JsonResponse(
+            {
+                "name": customer.name,
+                "from_date": start_date.strftime("%d-%m-%Y"),
+                "to_date": end_date.strftime("%d-%m-%Y"),
+                **pdf_data,
+            },
+            status=200,
+        )
+    except RuntimeError:
+        logger.error("Error generating statement PDF for customer %s", customer.pk)
+        return JsonResponse(
+            {"error": "Failed to generate or retrieve statement PDF"}, status=500
+        )
+
+
+@csrf_exempt
+@login_not_required
+def get_statement_post(request):
+    """Return a credit statement PDF for a customer via POST request."""
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST method is allowed"}, status=405)
+
+    data = {}
+    if request.body:
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    phone_number = (
+        data.get("phone_number")
+        or data.get("phone")
+        or request.POST.get("phone_number")
+        or request.POST.get("phone")
+    )
+
+    if not phone_number:
+        return JsonResponse({"error": "Phone number is required"}, status=400)
+
+    phone_number = str(phone_number)
+
     try:
         phone_number = number_format(phone_number)
     except ValueError as exc:

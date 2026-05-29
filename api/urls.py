@@ -15,6 +15,7 @@ urlpatterns = [
     path("balance/<str:phone_number>/", views.get_balance, name="balance"),
     path("balance_by_id/<int:customer_id>/", views.get_balance_by_id, name="balance_by_id"),
     path("statement/<str:phone_number>/", views.get_statement, name="statement"),
+    path("statement/", views.get_statement_post, name="statement_post"),
     path(
         "last_5_invoices/<str:phone_number>/",
         views.get_last_5_invoices,

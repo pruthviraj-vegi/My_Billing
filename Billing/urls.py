@@ -36,6 +36,7 @@ urlpatterns = [
     path("setting/", include("setting.urls")),
     path("suggestions/", include("base.urls_suggestions")),
     path("api/", include("api.urls")),
+    path("api-tokens/", include("api.urls_tokens")),
     path("notifications/", include("notification.urls")),
 ]
 
