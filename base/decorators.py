@@ -2,6 +2,7 @@
 Decorators and mixins for the application.
 """
 
+import logging
 import time
 from functools import wraps
 
@@ -10,6 +11,8 @@ from django.db import connection
 from django.shortcuts import render
 
 from security.models import UnauthorizedAccess
+
+logger = logging.getLogger(__name__)
 
 
 def timed(fn):
@@ -24,7 +27,7 @@ def timed(fn):
         result = fn(*args, **kwargs)
         elapsed = time.perf_counter() - start
 
-        print(f"Time taken: {elapsed} seconds")
+        logger.debug("Time taken: %.4f seconds", elapsed)
 
         # Store timing on the function itself
         wrapper.last_elapsed_time = elapsed
