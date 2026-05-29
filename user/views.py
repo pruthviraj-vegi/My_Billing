@@ -120,9 +120,10 @@ class CreateUser(RequiredPermissionMixin, CreateView):
     success_url = reverse_lazy("user:home")
 
     def form_valid(self, form):
-        # Set a default password for new users (they can change it later)
+        from django.utils.crypto import get_random_string
+
         user = form.save(commit=False)
-        user.set_password("changeme123")  # Default password
+        user.set_password(get_random_string(length=24))
         user.save()
         messages.success(self.request, "User created successfully!")
         return super().form_valid(form)

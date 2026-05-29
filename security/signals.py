@@ -2,11 +2,14 @@
 Signals for the security app, handling login and logout events.
 """
 
+import logging
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.dispatch import receiver
 from django.utils import timezone
 
 from .models import LoginEvent
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_ip(request):
@@ -29,7 +32,7 @@ def on_user_logged_in(sender, request, user, **kwargs):
             session_key=getattr(request.session, "session_key", None),
         )
     except Exception:  # pylint: disable=broad-exception-caught
-        pass
+        logger.exception("Failed to log login event for user %s", user.pk)
 
 
 @receiver(user_logged_out)
@@ -49,4 +52,7 @@ def on_user_logged_out(sender, request, user, **kwargs):
             ),
         )
     except Exception:  # pylint: disable=broad-exception-caught
-        pass
+        logger.exception(
+            "Failed to log logout event for user %s",
+            user.pk if user else "unknown",
+        )
