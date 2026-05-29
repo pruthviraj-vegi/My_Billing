@@ -35,6 +35,7 @@ from invoice.models import Invoice, ReturnInvoice
 
 from .forms import PaymentForm
 from .models import Customer, Payment
+from .services import CustomerPaymentService
 
 logger = logging.getLogger(__name__)
 
@@ -574,17 +575,14 @@ class PaymentDeleteView(DeleteView):
 def auto_reallocate(request, customer_id):
     """
     Auto reallocate customer payments using FIFO method.
-    This function uses the signal's reallocation logic but skips signals
-    to avoid double reallocation.
-    """
-    from customer.signals import reallocate_customer_payments
 
+    Uses CustomerPaymentService.reallocate() with skip_signals=True
+    to avoid recursive reallocation triggers.
+    """
     customer = get_object_or_404(Customer, id=customer_id)
 
     try:
-        # Use the signal's reallocation function directly
-        # Skip signals to avoid recursive reallocation
-        reallocate_customer_payments(customer, skip_signals=True)
+        CustomerPaymentService.reallocate(customer, skip_signals=True)
 
         messages.success(
             request,
