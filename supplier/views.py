@@ -26,8 +26,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
-
-from base.decorators import required_permission, RequiredPermissionMixin
+from base.decorators import required_permission, RequiredPermissionMixin, timed
 
 from base.getDates import getDates
 from base.utility import (
@@ -36,6 +35,8 @@ from base.utility import (
     render_paginated_response,
     table_sorting,
 )
+
+from supplier.services import SupplierPaymentService
 
 from .forms import SupplierForm, SupplierInvoiceForm, SupplierPaymentForm
 from .models import Supplier, SupplierInvoice, SupplierPayment
@@ -422,7 +423,7 @@ VALID_SORT_FIELDS = {
     "annotated_balance_due",
 }
 
-
+@timed
 def get_suppliers_data(request):
     """
     Get filtered and sorted suppliers data.
@@ -761,7 +762,6 @@ class CreatePayment(RequiredPermissionMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Create Payment"
         context["supplier"] = self.supplier
-        
         # Most repeated payment amounts
         top_payments = (
             self.supplier.payments_made.filter(is_deleted=False)
@@ -771,7 +771,6 @@ class CreatePayment(RequiredPermissionMixin, CreateView):
         )
         context["top_payments"] = [p["amount"] for p in top_payments]
         context["present_balance"] = self.supplier.balance_due
-        
         return context
 
     def get_form_kwargs(self):
@@ -1149,16 +1148,14 @@ def supplier_report_fetch(request, pk):
 def auto_reallocate(request, pk):
     """
     Auto reallocate payments using FIFO method.
-    This function uses the signal's reallocation logic but skips signals
-    to avoid double reallocation.
+
+    Delegates to SupplierPaymentService.reallocate() which is the single
+    source of truth for payment allocation logic.
     """
-    from supplier.signals import reallocate_supplier_payments
 
     supplier = get_object_or_404(Supplier, id=pk)
 
-    # Use the signal's reallocation function directly
-    # This ensures consistency with automatic reallocation
-    reallocate_supplier_payments(supplier)
+    SupplierPaymentService.reallocate(supplier)
 
     messages.success(
         request,
