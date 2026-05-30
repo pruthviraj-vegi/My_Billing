@@ -396,6 +396,7 @@
             </div>
         </div>
     </div>
+    <div id="galleryPagination" class="pagination-wrapper" style="display:none;"></div>
 
 <div class="gm-overlay" id="mediaModal">
     <div class="gm-content">
@@ -434,6 +435,8 @@
     let searchTimeout = null;
     let currentSearch = '';
 
+    var paginationWrapper = document.getElementById('galleryPagination');
+
     function fetchGallery(search, page) {
         galleryContent.innerHTML = '<div class="gallery-loading"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
         var params = new URLSearchParams();
@@ -445,29 +448,42 @@
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
-                    galleryContent.innerHTML = data.html + (data.pagination || '');
-                    bindPaginationLinks();
+                    galleryContent.innerHTML = data.html;
+                    updateGalleryPagination(data.pagination || '');
                     bindCardEvents();
                 } else {
                     galleryContent.innerHTML = '<div class="gallery-empty"><p>Failed to load gallery</p></div>';
+                    updateGalleryPagination('');
                 }
             })
             .catch(function() {
                 galleryContent.innerHTML = '<div class="gallery-empty"><p>Failed to load gallery</p></div>';
+                updateGalleryPagination('');
             });
     }
 
-    function bindPaginationLinks() {
-        galleryContent.querySelectorAll('.pagination a[href]').forEach(function(link) {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                var href = link.getAttribute('href');
-                var urlParams = new URLSearchParams(href.split('?')[1] || '');
-                var page = urlParams.get('page');
-                fetchGallery(currentSearch, page);
-                galleryContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-        });
+    function updateGalleryPagination(html) {
+        if (!paginationWrapper) return;
+        if (!html || !html.trim()) {
+            paginationWrapper.innerHTML = '';
+            paginationWrapper.style.display = 'none';
+            return;
+        }
+        paginationWrapper.style.display = 'flex';
+        paginationWrapper.innerHTML = html;
+
+        // Bind click events (delegated on wrapper, prevents memory leaks on re-render)
+        if (paginationWrapper._pageClickHandler) {
+            paginationWrapper.removeEventListener('click', paginationWrapper._pageClickHandler);
+        }
+        paginationWrapper._pageClickHandler = function(e) {
+            var link = e.target.closest('a[data-page]');
+            if (!link) return;
+            e.preventDefault();
+            fetchGallery(currentSearch, link.getAttribute('data-page'));
+            galleryContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        paginationWrapper.addEventListener('click', paginationWrapper._pageClickHandler);
     }
 
     function bindCardEvents() {
