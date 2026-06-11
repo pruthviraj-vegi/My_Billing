@@ -29,7 +29,10 @@ def send_invoice(request, pk):
             request,
             invoice.customer.phone_number,
             "invoice_template",
-            [invoice.customer.name, str(float(invoice.amount))],
+            {
+                "customer_name": invoice.customer.name,
+                "invoice_number": invoice.invoice_number,
+            },
             pdf_data["url"],
             pdf_data["filename"],
         )
@@ -76,11 +79,11 @@ def send_statement(request, pk):
             request,
             customer.phone_number,
             "statement",
-            [
-                customer.name,
-                start_date.strftime("%d-%m-%Y"),
-                end_date.strftime("%d-%m-%Y"),
-            ],
+            {
+                "customer_name": customer.name,
+                "from_date": start_date.strftime("%d-%m-%Y"),
+                "to_date": end_date.strftime("%d-%m-%Y"),
+            },
             pdf_data["url"],
             pdf_data["filename"],
         )
@@ -123,12 +126,12 @@ def send_text(request, pk):
             request,
             payment.customer.phone_number,
             "payment_recived",
-            [
-                payment.customer.name,
-                str(float(payment.amount)),
-                payment.created_at.strftime("%d-%m-%Y"),
-                f"#{payment.id}",
-            ],
+            {
+                "customer_name": payment.customer.name,
+                "amount": str(float(payment.amount)),
+                "date": payment.created_at.strftime("%d-%m-%Y"),
+                "payment_id": str(payment.id),
+            },
             "",
             "",
         )
