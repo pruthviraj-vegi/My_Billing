@@ -654,7 +654,7 @@ def get_data(request):
     if financial_year:
         filters &= Q(financial_year=financial_year)
 
-    invoices = Invoice.objects.select_related("customer").filter(filters)
+    invoices = Invoice.objects.select_related("customer", "sold_by").filter(filters)
 
     # ---------------- SORTING MAP ----------------
     sort_map = {
@@ -896,7 +896,7 @@ def fetch_search_invoices(request):
     search_query = request.GET.get("search", "")
     invoice_items = (
         InvoiceItem.objects.filter(product_variant__barcode__iexact=search_query)
-        .select_related("product_variant__product", "invoice")
+        .select_related("product_variant__product", "invoice__customer", "invoice__sold_by")
         .order_by("-id")
     )
     return render_paginated_response(

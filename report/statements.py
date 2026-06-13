@@ -20,7 +20,7 @@ def send_invoice(request, pk):
     """
     Generate and send an invoice PDF to the customer via WhatsApp.
     """
-    invoice = Invoice.objects.get(pk=pk)
+    invoice = Invoice.objects.select_related("customer").get(pk=pk)
     try:
         # Use the helper function to generate or retrieve PDF
         pdf_data = generate_invoice_pdf(invoice, request)

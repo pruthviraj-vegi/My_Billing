@@ -12,8 +12,7 @@ class InvoiceManager(models.Manager):
     """Custom manager for Invoice model"""
 
     def get_queryset(self):
-        """Return a queryset with related customer and sold_by objects pre-fetched."""
-        return super().get_queryset().select_related("customer", "sold_by")
+        return super().get_queryset()
 
     def paid(self):
         """Return paid invoices"""
@@ -105,8 +104,7 @@ class AuditTableManager(models.Manager):
     """Custom manager for AuditTable model"""
 
     def get_queryset(self):
-        """Return a queryset with the related created_by object pre-fetched."""
-        return super().get_queryset().select_related("created_by")
+        return super().get_queryset()
 
     def pending(self):
         """Return pending audits"""
@@ -255,14 +253,7 @@ class ReturnInvoiceItemManager(models.Manager):
     """Custom manager for ReturnInvoiceItem model"""
 
     def get_queryset(self):
-        """Return a queryset with related return_invoice, product, and original_invoice_item objects pre-fetched."""
-        return (
-            super()
-            .get_queryset()
-            .select_related(
-                "return_invoice", "product_variant__product", "original_invoice_item"
-            )
-        )
+        return super().get_queryset()
 
     def by_return_invoice(self, return_invoice):
         """Return items for specific return invoice"""

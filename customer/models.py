@@ -105,6 +105,7 @@ class Customer(SoftDeleteModel):
             models.Index(fields=["phone_number"], name="customer_phone_number_idx"),
             models.Index(fields=["created_at"], name="customer_created_at_idx"),
             models.Index(fields=["store_credit_balance"], name="customer_credit_idx"),
+            models.Index(fields=["is_deleted"]),
         ]
         ordering = ["-created_at"]
         verbose_name = "Customer"

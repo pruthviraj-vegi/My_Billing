@@ -261,7 +261,12 @@ class CustomerPaymentService:
         old_customer = old_values.get("customer")
 
         is_credit_now = instance.payment_type == Invoice.PaymentType.CREDIT
-        if not is_credit_now:
+        was_credit_before = old_payment_type == Invoice.PaymentType.CREDIT
+
+        # If the invoice changed FROM CREDIT to non-CREDIT (e.g. CASH),
+        # we must still reallocate to clean up orphaned allocations and
+        # recalculate the customer's credit summary.
+        if not is_credit_now and not was_credit_before:
             return False, None
 
         payment_type_changed = (

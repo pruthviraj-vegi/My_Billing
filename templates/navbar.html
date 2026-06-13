@@ -173,6 +173,10 @@
                <span>Users</span>
             </a>
             <div class="dropdown-menu">
+               {% if perms.user.view_dashboard %}
+                  <a href="{% url 'user:dashboard' %}"
+                     class="dropdown-item {% if request.resolver_match.namespace == 'user' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+               {% endif %}
                {% if perms.user.view_customuser %}
                   <a href="{% url 'user:home' %}"
                      class="dropdown-item {% if request.resolver_match.namespace == 'user' and request.resolver_match.url_name == 'home' %}active{% endif %}">All Users</a>

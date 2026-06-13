@@ -341,6 +341,7 @@ class ProductVariant(
             models.Index(fields=["created_at"]),
             models.Index(fields=["product", "status"]),
             models.Index(fields=["quantity", "minimum_quantity"]),
+            models.Index(fields=["is_deleted", "status"]),
         ]
 
     product = models.ForeignKey(

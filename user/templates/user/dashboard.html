@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    User Dashboard
+{% endblock title %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
+{% endblock extra_css %}
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header page-header-sticky">
+        <h2 class="page-title">User Dashboard</h2>
+        <div class="page-actions">
+            <select name="date_filter" class="form-select" id="dateFilter">
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="this_month">This Month</option>
+                <option value="last_month">Last Month</option>
+                <option value="this_finance">This Finance</option>
+                <option value="last_finance">Last Finance</option>
+                <option value="this_quarter">This Quarter</option>
+                <option value="last_quarter">Last Quarter</option>
+                <option value="full_date">Full Date</option>
+            </select>
+        </div>
+    </div>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb breadcrumb-right">
+        <span class="breadcrumb-active">User Dashboard</span>
+    </nav>
+    <!-- Loading State -->
+    <div id="dashboardLoading" class="loading-container hidden">
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            Loading dashboard data...
+        </div>
+    </div>
+    <!-- Dashboard Content -->
+    <div id="dashboardContent" class="dashboardContent">
+        <!-- Quick Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon bg-green">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number" id="totalSales" data-count="0">0</h3>
+                    <p class="stat-label">Total Sales</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-purple">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number" id="totalCommission" data-count="0">0</h3>
+                    <p class="stat-label">Total Commission</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-blue">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number counting-number" id="usersWithSales" data-count="0">0</h3>
+                    <p class="stat-label">Users with Sales</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-red">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-number"><span class="counting-number" id="avgCommissionRate" data-count="0">0</span><span>%</span></h3>
+                    <p class="stat-label">Avg Commission Rate</p>
+                </div>
+            </div>
+        </div>
+        <!-- User Sales Breakdown -->
+        <div class="activity-section">
+            <h2 class="section-title">User Breakdown</h2>
+            <div class="breakdown-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">User Sales Share</h3>
+                    </div>
+                    <div class="chart-row">
+                        <div class="donut-wrap">
+                            <canvas id="userSalesChart" width="260" height="260"></canvas>
+                            <div class="center-info">
+                                <div class="center-label">total sales</div>
+                                <div class="center-pct"></div>
+                                <div class="center-val">₹0</div>
+                            </div>
+                        </div>
+                        <div class="legend" id="userLegend"></div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Commission by User</h3>
+                    </div>
+                    <div class="chart-row">
+                        <div class="donut-wrap">
+                            <canvas id="userCommissionChart" width="260" height="260"></canvas>
+                            <div class="center-info">
+                                <div class="center-label">total commission</div>
+                                <div class="center-pct"></div>
+                                <div class="center-val">₹0</div>
+                            </div>
+                        </div>
+                        <div class="legend" id="commissionLegend"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Error State -->
+    <div id="dashboardError" class="error-container hidden">
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Failed to load dashboard data</h3>
+            <p>Please try again or contact support if the problem persists.</p>
+            <button type="button" class="btn btn-primary" id="retryDashboardBtn">
+                <i class="fas fa-refresh"></i>
+                Retry
+            </button>
+        </div>
+    </div>
+{% endblock content %}
+{% block extra_js %}
+    {% load static %}
+    <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
+    <script src="{% static 'js/modern-charts.js' %}"></script>
+    <script src="{% static 'js/dropdown_style.js' %}"></script>
+    <script src="{% static 'js/counting.js' %}"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userCtx = document.getElementById('userSalesChart').getContext('2d');
+    const commissionCtx = document.getElementById('userCommissionChart').getContext('2d');
+    let userChart = ModernCharts.initDoughnut(userCtx);
+    let commissionChart = ModernCharts.initDoughnut(commissionCtx);
+
+    let dashboardData = null;
+
+    async function fetchDashboardData(filter) {
+        try {
+            document.getElementById('dashboardError').style.display = 'none';
+            document.getElementById('dashboardContent').style.opacity = '0.6';
+
+            const response = await fetch(`{% url "user:dashboard_fetch" %}?date_filter=${filter}`);
+            const data = await response.json();
+
+            if (data.success) {
+                dashboardData = data;
+                updateDashboard(data);
+                document.getElementById('dashboardContent').style.opacity = '1';
+            } else {
+                throw new Error(data.message || 'Failed to fetch data');
+            }
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            document.getElementById('dashboardContent').style.opacity = '1';
+            document.getElementById('dashboardError').style.display = 'flex';
+        }
+    }
+
+    function updateDashboard(data) {
+        updateCount('totalSales', data.stats.total_sales);
+        updateCount('totalCommission', data.stats.total_commission);
+        updateCount('usersWithSales', data.stats.users_with_sales);
+        updateCount('avgCommissionRate', data.stats.avg_commission_rate);
+
+        ModernCharts.updateDoughnut(
+            userChart,
+            'userLegend',
+            data.users_breakdown,
+            { label: 'user_name', count: 'invoice_count', amount: 'total_sales', percentage: 'percentage' }
+        );
+
+        ModernCharts.updateDoughnut(
+            commissionChart,
+            'commissionLegend',
+            data.users_breakdown,
+            { label: 'user_name', count: 'invoice_count', amount: 'total_commission', percentage: 'commission_percentage' }
+        );
+    }
+
+    // Initialize styled date filter dropdown
+    let dateFilterStyled = null;
+    function getDateFilterValue() {
+        if (dateFilterStyled) return dateFilterStyled.getValue();
+        var el = document.getElementById('dateFilter');
+        return el ? el.value : 'today';
+    }
+
+    if (typeof convertSelectToStyledDropdown !== 'undefined') {
+        dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
+            onChange: function(data) {
+                fetchDashboardData(data.value);
+            }
+        });
+    } else {
+        var dateFilter = document.getElementById('dateFilter');
+        if (dateFilter) {
+            dateFilter.addEventListener('change', function(e) {
+                fetchDashboardData(e.target.value);
+            });
+        }
+    }
+
+    var retryBtn = document.getElementById('retryDashboardBtn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', function() {
+            document.getElementById('dashboardError').style.display = 'none';
+            fetchDashboardData(getDateFilterValue());
+        });
+    }
+
+    // Re-render chart on theme change
+    document.addEventListener('themeChanged', function() {
+        requestAnimationFrame(function() {
+            userChart.destroy();
+            commissionChart.destroy();
+            userChart = ModernCharts.initDoughnut(userCtx);
+            commissionChart = ModernCharts.initDoughnut(commissionCtx);
+            fetchDashboardData(getDateFilterValue());
+        });
+    });
+
+    // Initial Load
+    fetchDashboardData('today');
+});
+    </script>
+{% endblock extra_js %}

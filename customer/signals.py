@@ -105,11 +105,6 @@ def reallocate_on_invoice_change(sender, instance, created, **kwargs):  # pylint
         if old_customer:
             CustomerPaymentService.reallocate(old_customer)
 
-    # If payment type changed away from CASH (but not to CASH), recalculate summary
-    old_pt = old_values["payment_type"]
-    if old_pt is not None and old_pt != instance.payment_type and old_pt != Invoice.PaymentType.CASH:
-        CustomerCreditSummary.recalculate_for_customer(instance.customer, save=True)
-
 
 @receiver(post_delete, sender=Invoice)
 def reallocate_on_invoice_delete(sender, instance, **kwargs):  # pylint: disable=unused-argument

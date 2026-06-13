@@ -13,6 +13,8 @@ urlpatterns = [
     path("fetch/", views.fetch_users, name="fetch"),
     path("create/", views.CreateUser.as_view(), name="create"),
     path("sessions/", views.sessions_overview, name="sessions"),
+    path("dashboard/", views.user_dashboard, name="dashboard"),
+    path("dashboard/fetch/", views.user_dashboard_fetch, name="dashboard_fetch"),
     path(
         "sessions/invalidate/all/",
         views.invalidate_all_sessions,

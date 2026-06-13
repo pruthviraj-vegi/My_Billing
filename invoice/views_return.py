@@ -159,7 +159,7 @@ class ReturnInvoiceCreateView(RequiredPermissionMixin, CreateView):
             original_invoice = return_invoice.invoice
 
             # Copy all InvoiceItems to ReturnInvoiceItems with quantity_returned=0
-            original_items = InvoiceItem.objects.filter(invoice=original_invoice)
+            original_items = InvoiceItem.objects.select_related("product_variant").filter(invoice=original_invoice)
 
             if not original_items.exists():
                 messages.error(

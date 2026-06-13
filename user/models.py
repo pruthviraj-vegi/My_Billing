@@ -113,6 +113,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
         current = self.current_salary
         return current.commission if current else False
 
+    class Meta:
+        permissions = [
+            ("view_dashboard", "Can view user dashboard"),
+        ]
+
     @property
     def is_commission_eligible(self):
         """Check if the user is eligible for commission."""

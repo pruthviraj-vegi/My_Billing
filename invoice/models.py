@@ -325,7 +325,7 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
             # Soft delete all payment allocations for this invoice
             from invoice.models import PaymentAllocation
 
-            allocations = PaymentAllocation.objects.filter(
+            allocations = PaymentAllocation.objects.select_related("payment").filter(
                 invoice=self, is_deleted=False
             )
             for allocation in allocations:

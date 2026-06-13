@@ -247,6 +247,13 @@ class SupplierPayment(SoftDeleteModel):
         BANK_TRANSFER = "BANK_TRANSFER", "Bank Transfer"
         UPI = "UPI", "UPI"
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["is_deleted"]),
+            models.Index(fields=["supplier", "is_deleted"]),
+            models.Index(fields=["payment_date"]),
+        ]
+
     supplier = models.ForeignKey(
         Supplier, on_delete=models.PROTECT, related_name="payments_made"
     )

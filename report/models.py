@@ -213,8 +213,7 @@ class CustomerStatementPDF(models.Model):
                     pdf.closing_balance,
                     current_balance,
                 )
-                # Delete ALL cached PDFs for this customer since balance changed
-                cls.invalidate_all_customer_pdfs(customer)
+                pdf.delete()
                 return None
 
             logger.info(

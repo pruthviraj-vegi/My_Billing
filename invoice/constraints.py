@@ -73,6 +73,7 @@ class InvoiceIndexes:
             models.Index(fields=["financial_year"]),
             models.Index(fields=["payment_type", "financial_year"]),
             models.Index(fields=["due_date"]),
+            models.Index(fields=["is_cancelled", "payment_type", "invoice_date"]),
         ]
 
 

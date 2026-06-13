@@ -753,3 +753,108 @@ def fetch_commission_summary(request, user_id):
             ],
         }
     )
+
+
+# ==================== DASHBOARD VIEWS ====================
+
+
+@required_permission("user.view_dashboard")
+def user_dashboard(request):
+    """Render the user dashboard page (all data loaded via AJAX)."""
+    return render(request, "user/dashboard.html")
+
+
+@required_permission("user.view_dashboard")
+def user_dashboard_fetch(request):
+    """AJAX endpoint: return all-user sales and commission dashboard data."""
+    start_date, end_date = getDates(request)
+
+    invoices = Invoice.objects.filter(
+        invoice_date__gte=start_date,
+        invoice_date__lte=end_date,
+        is_cancelled=False,
+    )
+
+    items = InvoiceItem.objects.filter(
+        invoice__in=invoices,
+        commission_percentage__gt=0,
+    ).select_related("invoice__sold_by")
+
+    user_data = defaultdict(
+        lambda: {
+            "total_sales": Decimal("0"),
+            "total_commission": Decimal("0"),
+            "invoices": set(),
+            "item_count": 0,
+            "user_name": "",
+            "user_id": None,
+        }
+    )
+
+    for item in items:
+        user = item.invoice.sold_by
+        key = user.id
+        user_data[key]["total_sales"] += item.discounted_amount
+        user_data[key]["total_commission"] += item.commission_amount
+        user_data[key]["invoices"].add(item.invoice_id)
+        user_data[key]["item_count"] += 1
+        user_data[key]["user_name"] = str(user)
+        user_data[key]["user_id"] = user.id
+
+    users_breakdown = []
+    for uid, data in user_data.items():
+        rate = (
+            (data["total_commission"] / data["total_sales"] * 100)
+            if data["total_sales"] > 0
+            else 0
+        )
+        users_breakdown.append(
+            {
+                "user_id": data["user_id"],
+                "user_name": data["user_name"],
+                "total_sales": round(float(data["total_sales"]), 2),
+                "total_commission": round(float(data["total_commission"]), 2),
+                "commission_rate": round(float(rate), 1),
+                "invoice_count": len(data["invoices"]),
+                "item_count": data["item_count"],
+            }
+        )
+
+    users_breakdown.sort(key=lambda x: x["total_sales"], reverse=True)
+
+    total_sales_all = sum(u["total_sales"] for u in users_breakdown)
+    total_commission_all = sum(u["total_commission"] for u in users_breakdown)
+    avg_rate = (
+        round(float(total_commission_all / total_sales_all * 100), 1)
+        if total_sales_all > 0
+        else 0
+    )
+
+    for u in users_breakdown:
+        u["percentage"] = (
+            round(u["total_sales"] / total_sales_all * 100, 1)
+            if total_sales_all > 0
+            else 0
+        )
+        u["commission_percentage"] = (
+            round(u["total_commission"] / total_commission_all * 100, 1)
+            if total_commission_all > 0
+            else 0
+        )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "stats": {
+                "total_sales": round(total_sales_all, 2),
+                "total_commission": round(total_commission_all, 2),
+                "users_with_sales": len(users_breakdown),
+                "avg_commission_rate": avg_rate,
+            },
+            "users_breakdown": users_breakdown,
+            "date_range": {
+                "start_date": start_date.strftime("%Y-%m-%d"),
+                "end_date": end_date.strftime("%Y-%m-%d"),
+            },
+        }
+    )
