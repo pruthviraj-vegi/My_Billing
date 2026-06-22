@@ -592,6 +592,11 @@ class CartManager {
                 const productName = data.cart_item?.product_variant?.simple_name || 'Product';
                 this.showStockWarning(data.remaining_stock, productName);
             }
+
+            // Update categories
+            if (data.category_counts) {
+                this.updateCategories(data.category_counts);
+            }
         } catch (err) {
             if (err.message !== 'Request cancelled') {
                 console.error('[CartManager] Error in barcode submission:', err);
@@ -750,6 +755,12 @@ class CartManager {
 
             // Update totals (removed duplicate recalculateTotals call)
             this.updateTotals(data.cart_total);
+
+            // Update categories
+            if (data.category_counts) {
+                this.updateCategories(data.category_counts);
+            }
+
             this.notify('Item updated successfully', 'success');
         } catch (err) {
             console.error('[CartManager] Error updating item:', err);
@@ -802,6 +813,12 @@ class CartManager {
 
                 // Update totals
                 this.updateTotals(data.cart_total);
+
+                // Update categories
+                if (data.category_counts) {
+                    this.updateCategories(data.category_counts);
+                }
+
                 this.notify('Item removed successfully', 'success');
             } else {
                 this.notify(data.message || 'Failed to delete item', 'error');
@@ -1023,7 +1040,34 @@ class CartManager {
     }
 
     /**
-     * Legacy method for backward compatibility - returns totals data
+     * Update category summaries from API response data
+     * @param {Array} categories - Array of {category_name, total_qty} objects
+     */
+    updateCategories(categories) {
+        const body = document.getElementById('categoriesBody');
+        if (!body) return;
+
+        body.innerHTML = '';
+
+        if (!categories || categories.length === 0) {
+            const row = document.createElement('div');
+            row.className = 'summary-row';
+            row.innerHTML = '<span class="summary-label text-muted">No items</span>';
+            body.appendChild(row);
+            return;
+        }
+
+        categories.forEach(cat => {
+            const row = document.createElement('div');
+            row.className = 'summary-row';
+            row.innerHTML = `
+                <span class="summary-label">${cat.category_name}</span>
+                <span class="summary-value">${cat.total_qty}</span>
+            `;
+            body.appendChild(row);
+        });
+    }
+    /**
      * @deprecated This method is kept for backward compatibility only.
      * Use recalculateTotals() for UI updates. This will be removed in future versions.
      * @returns {Object} Object containing totalItems, totalQuantity, and quantity arrays
@@ -1138,6 +1182,10 @@ class CartManager {
                     this.dom.body.innerHTML = '';
                 }
                 this.updateTotals(0);
+                // Update categories
+                if (data.category_counts !== undefined) {
+                    this.updateCategories(data.category_counts);
+                }
             } else {
                 this.notify(data.message || 'Failed to clear cart', 'error');
             }

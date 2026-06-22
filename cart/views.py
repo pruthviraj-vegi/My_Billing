@@ -11,7 +11,8 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -27,6 +28,16 @@ from .forms import CartForm
 from .models import Cart, CartItem
 
 logger = logging.getLogger(__name__)
+
+
+def get_cart_category_counts(cart):
+    """Return category-wise total quantity for items in a cart."""
+    qs = CartItem.objects.filter(cart=cart).values(
+        category_name=Coalesce(
+            "product_variant__product__category__name", Value("Other")
+        )
+    ).annotate(total_qty=Sum("quantity")).order_by("-total_qty")
+    return list(qs)
 
 
 class CartMainPageView(RequiredPermissionMixin, TemplateView):
@@ -84,6 +95,13 @@ def get_cart_data(request, pk):
             "-created_at"
         )
 
+        # Calculate category-wise total quantity for items in cart
+        category_counts = cart_list.values(
+            category_name=Coalesce(
+                "product_variant__product__category__name", Value("Other")
+            )
+        ).annotate(total_qty=Sum("quantity")).order_by("-total_qty")
+
         # Calculate total selling price (sum of all items' MRP * quantity)
         total_selling_price = cart_list.aggregate(
             total=Sum(
@@ -99,6 +117,7 @@ def get_cart_data(request, pk):
             "cart": cart,
             "carts": carts,
             "total_selling_price": total_selling_price,
+            "category_counts": category_counts,
         }
     except Cart.DoesNotExist as e:
         # Redirect to main cart page if cart not found
@@ -346,6 +365,7 @@ def scan_barcode(request):
                     "cart_total": float(cart.total_amount),
                     "remaining_stock": float(product_variant.billing_stock),
                     "type": action_type,
+                    "category_counts": get_cart_category_counts(cart),
                 }
             )
 
@@ -442,6 +462,7 @@ def manage_cart_item(request, item_id):
                     "cart_item": cart_item_data,
                     "cart_total": float(cart_item.cart.total_amount),
                     "remaining_stock": float(cart_item.product_variant.billing_stock),
+                    "category_counts": get_cart_category_counts(cart_item.cart),
                 }
             )
 
@@ -453,6 +474,7 @@ def manage_cart_item(request, item_id):
                     "status": "success",
                     "message": "Cart item removed successfully",
                     "cart_total": float(cart.total_amount),
+                    "category_counts": get_cart_category_counts(cart),
                 }
             )
 
@@ -509,7 +531,11 @@ def clear_cart(request, cart_id):
         cart = Cart.objects.get(id=cart_id, status="OPEN")
         cart.cart_items.all().delete()
         return JsonResponse(
-            {"status": "success", "message": "Cart cleared successfully"}
+            {
+                "status": "success",
+                "message": "Cart cleared successfully",
+                "category_counts": [],
+            }
         )
 
     except Cart.DoesNotExist:

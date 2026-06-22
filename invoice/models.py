@@ -18,7 +18,6 @@ from base.manager import SoftDeleteModel
 from base.utility import StringProcessor, get_financial_year
 from customer.models import Customer, Payment
 from inventory.models import GSTHsnCode, ProductVariant
-from inventory.services import InventoryService
 
 # Import organized components
 from .choices import (  # pylint: disable=relative-beyond-top-level
@@ -290,6 +289,7 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
     def cancel(self, user, reason):
         """
         Cancel this invoice and reverse all financial impacts.
+        Delegates to InvoiceCancellationService.
 
         Args:
             user: User performing the cancellation
@@ -298,72 +298,9 @@ class Invoice(InvoiceFinancialMixin, InvoiceValidationMixin, models.Model):
         Returns:
             tuple: (success: bool, message: str)
         """
-        can_cancel, error_msg = self.can_be_cancelled()
-        if not can_cancel:
-            return False, error_msg
+        from invoice.services import InvoiceCancellationService
 
-        with transaction.atomic():
-            # Mark invoice as cancelled
-            self.is_cancelled = True
-            self.cancelled_at = timezone.now()
-            self.cancelled_by = user
-            self.cancellation_reason = reason
-            self.payment_status = PaymentStatusChoices.CANCELLED
-
-            # Save invoice
-            self.save(
-                update_fields=[
-                    "is_cancelled",
-                    "cancelled_at",
-                    "cancelled_by",
-                    "cancellation_reason",
-                    "payment_status",
-                    "updated_at",
-                ]
-            )
-
-            # Soft delete all payment allocations for this invoice
-            from invoice.models import PaymentAllocation
-
-            allocations = PaymentAllocation.objects.select_related("payment").filter(
-                invoice=self, is_deleted=False
-            )
-            for allocation in allocations:
-                allocation.is_deleted = True
-                allocation.save(update_fields=["is_deleted", "updated_at"])
-
-            # Create cancellation audit record
-            InvoiceCancellation.objects.create(
-                invoice=self,
-                cancelled_by=user,
-                reason=reason,
-                original_amount=self.amount,
-                discount_amount=self.discount_amount,
-                advance_amount=self.advance_amount,
-                paid_amount=self.paid_amount,
-                payment_type=self.payment_type,
-            )
-
-            # Cancel inventory allocations
-            invoice_items = InvoiceItem.objects.filter(invoice=self)
-            if invoice_items.exists():
-                for item in invoice_items:
-                    if item.get_return_available_quantity > 0:
-                        InventoryService.cancelled_sale(
-                            variant=item.product_variant,
-                            quantity_cancelled=item.get_return_available_quantity,
-                            user=user,
-                            invoice_item=item,
-                            notes=f"Cancelled Invoice: {self.invoice_number}",
-                        )
-
-            # Trigger reallocation for credit invoices
-            if self.payment_type == PaymentTypeChoices.CREDIT:
-                from customer.signals import reallocate_customer_payments
-
-                reallocate_customer_payments(self.customer)
-
-        return True, "Invoice cancelled successfully"
+        return InvoiceCancellationService.cancel(self, user, reason)
 
 
 class InvoiceItem(InvoiceItemFinancialMixin, InvoiceItemValidationMixin, models.Model):
@@ -973,24 +910,16 @@ class ReturnInvoice(models.Model):
         return self.status == RefundStatusChoices.APPROVED
 
     def approve(self, user):
-        """Approve the return"""
-        if self.status != RefundStatusChoices.PENDING:
-            raise ValidationError("Only pending returns can be approved")
+        """Approve the return. Delegates to ReturnInvoiceService."""
+        from invoice.services import ReturnInvoiceService
 
-        self.status = RefundStatusChoices.APPROVED
-        self.approved_by = user
-        self.approved_date = timezone.now()
-        self.save()
+        ReturnInvoiceService.approve(self, user)
 
     def process(self, user):
-        """Process the return"""
-        if not self.can_be_processed:
-            raise ValidationError("Return must be approved before processing")
+        """Process the return. Delegates to ReturnInvoiceService."""
+        from invoice.services import ReturnInvoiceService
 
-        self.status = RefundStatusChoices.COMPLETED
-        self.processed_by = user
-        self.processed_date = timezone.now()
-        self.save()
+        ReturnInvoiceService.process(self, user)
 
     def get_absolute_url(self):
         """Return the absolute URL for the return invoice based on its status."""

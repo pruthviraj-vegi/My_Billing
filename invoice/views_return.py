@@ -13,7 +13,6 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.utils import timezone
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView
 
@@ -482,10 +481,7 @@ def submit_return_invoice(request, pk):
             return_invoice.invoice.amount
         )  # Original invoice amount
         return_invoice.refund_amount = total_return_amount  # Amount to refund
-        return_invoice.status = RefundStatusChoices.APPROVED
-        return_invoice.processed_by = request.user
-        return_invoice.processed_at = timezone.now()
-        return_invoice.save()
+        return_invoice.approve(request.user)  # Sets status, approved_by, approved_date and saves
 
         return JsonResponse(
             {

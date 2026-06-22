@@ -55,6 +55,19 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
+            <div class="cart-list-search">
+                <div class="search-group search-expanded">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text"
+                           class="search-input"
+                           placeholder="Filter carts by name..."
+                           id="cartListSearch"
+                           autocomplete="off"
+                           spellcheck="false"
+                           autocorrect="off"
+                           autocapitalize="none">
+                </div>
+            </div>
             <div class="cart-list-body">
                 <ul class="cart-list-items">
                     {% for data in carts %}
@@ -167,12 +180,82 @@
         const modal = document.getElementById('cartListModal');
         if (modal) {
             modal.classList.toggle('show');
-            // Prevent body scroll when modal is open
             if (modal.classList.contains('show')) {
                 document.body.style.overflow = 'hidden';
+                const searchInput = document.getElementById('cartListSearch');
+                if (searchInput) {
+                    searchInput.value = '';
+                    filterCartList();
+                    searchInput.focus();
+                }
+                cartListSelectedIndex = -1;
             } else {
                 document.body.style.overflow = '';
             }
+        }
+    }
+
+    var cartListSelectedIndex = -1;
+
+    function getVisibleCartItems() {
+        return Array.from(document.querySelectorAll('.cart-list-item')).filter(
+            item => item.style.display !== 'none'
+        );
+    }
+
+    function highlightCartItem(index) {
+        getVisibleCartItems().forEach((item, i) => {
+            item.classList.toggle('keyboard-selected', i === index);
+        });
+    }
+
+    function navigateCartItem() {
+        const items = getVisibleCartItems();
+        if (cartListSelectedIndex >= 0 && cartListSelectedIndex < items.length) {
+            window.location.href = items[cartListSelectedIndex].querySelector('a').href;
+        }
+    }
+
+    function handleCartListKeydown(e) {
+        const items = getVisibleCartItems();
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            cartListSelectedIndex = Math.min(cartListSelectedIndex + 1, items.length - 1);
+            if (cartListSelectedIndex >= 0) {
+                items[cartListSelectedIndex].scrollIntoView({ block: 'nearest' });
+            }
+            highlightCartItem(cartListSelectedIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            cartListSelectedIndex = Math.max(cartListSelectedIndex - 1, -1);
+            highlightCartItem(cartListSelectedIndex);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            navigateCartItem();
+        }
+    }
+
+    // Cart list search filter
+    function filterCartList() {
+        const query = document.getElementById('cartListSearch').value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        document.querySelectorAll('.cart-list-item').forEach(item => {
+            const name = item.querySelector('.cart-list-name').textContent.toLowerCase();
+            const match = !query || name.includes(query);
+            item.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+
+        cartListSelectedIndex = -1;
+        highlightCartItem(-1);
+
+        const countEl = document.querySelector('.cart-list-header h3');
+        if (countEl) {
+            const total = document.querySelectorAll('.cart-list-item').length;
+            countEl.textContent = query
+                ? `Carts (${visibleCount} of ${total})`
+                : `All Carts - ${total}`;
         }
     }
     
@@ -202,6 +285,13 @@
                 container.addEventListener('scroll', updateArrowVisibility);
             }, 300);
         }, 200);
+
+        // Wire up cart list search
+        const searchInput = document.getElementById('cartListSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', filterCartList);
+            searchInput.addEventListener('keydown', handleCartListKeydown);
+        }
     });
     </script>
     <!-- Load dependencies -->
@@ -440,6 +530,13 @@
         border-left: 3px solid var(--primary, #2563eb);
     }
     
+    .cart-list-item.keyboard-selected .cart-list-link {
+        background-color: rgba(37, 99, 235, 0.15);
+        outline: 2px solid var(--primary, #2563eb);
+        outline-offset: -2px;
+        border-radius: 0.25rem;
+    }
+    
     .cart-list-info {
         display: flex;
         flex-direction: row;
@@ -473,6 +570,28 @@
         flex-shrink: 0;
     }
     
+    .cart-list-search {
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+        background: var(--bg-surface, #ffffff);
+    }
+    .cart-list-search .search-group { width: 100%; }
+    .cart-list-search .search-input {
+        background: var(--bg-body, #f1f5f9);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 0.5rem;
+        padding: 0.45rem 0.75rem 0.45rem 2rem;
+        font-size: 0.8rem;
+    }
+    .cart-list-search .search-input:focus {
+        border-color: var(--primary, #2563eb);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    .cart-list-search .search-icon {
+        left: 0.6rem;
+        font-size: 0.75rem;
+    }
+
     /* Responsive adjustments for modal */
     @media (max-width: 768px) {
         .cart-list-content {

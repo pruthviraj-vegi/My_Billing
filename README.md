@@ -1,4 +1,4 @@
-# My_Billing (GarageOS)
+# My_Billing (Billing Software)
 
 A comprehensive Django 5.1-based billing, inventory, and point-of-sale (POS) system tailored for retail and wholesale operations. It handles everything from stock tracking to compliant GST/Non-GST invoicing, customer/supplier management, barcode-driven cart checkouts, and cloud-integrated PDF generation.
 

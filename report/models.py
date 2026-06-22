@@ -329,57 +329,17 @@ class PdfJob(models.Model):
     @classmethod
     def cleanup_stale_jobs(cls, minutes=10):
         """Mark jobs stuck in pending/processing for too long as failed.
-
-        Handles orphaned jobs caused by server/worker restarts during
-        development or unexpected crashes in production.
-
-        Args:
-            minutes: How many minutes before a job is considered stale.
-
-        Returns:
-            int: Number of jobs marked as failed.
+        Delegates to PdfCleanupService.
         """
-        from django.utils import timezone
-        from datetime import timedelta
+        from report.services import PdfCleanupService
 
-        stale_cutoff = timezone.now() - timedelta(minutes=minutes)
-        count = cls.objects.filter(
-            status__in=[StatusChoices.PENDING, StatusChoices.PROCESSING],
-            created_at__lt=stale_cutoff,
-        ).update(
-            status=StatusChoices.FAILED,
-            error_message="Job timed out — likely caused by a server or worker restart.",
-        )
-        if count:
-            logger.warning("Cleaned up %d stale PDF job(s).", count)
-        return count
+        return PdfCleanupService.cleanup_stale_jobs(minutes=minutes)
 
     @classmethod
     def cleanup_old(cls, days=30):
         """Delete completed/failed PDF jobs older than `days` days.
-
-        Also removes the associated PDF files from storage.
-
-        Returns:
-            int: Number of jobs deleted.
+        Delegates to PdfCleanupService.
         """
-        from django.utils import timezone
-        from datetime import timedelta
+        from report.services import PdfCleanupService
 
-        cutoff = timezone.now() - timedelta(days=days)
-        old_jobs = cls.objects.filter(
-            created_at__lt=cutoff,
-            status__in=[StatusChoices.DONE, StatusChoices.FAILED],
-        )
-        count = 0
-        for job in old_jobs.iterator():
-            if job.file:
-                try:
-                    job.file.delete(save=False)
-                except Exception:
-                    logger.warning("Could not delete file for PdfJob %s.", job.id)
-            job.delete()
-            count += 1
-        if count:
-            logger.info("Deleted %d old PDF job(s) older than %d days.", count, days)
-        return count
+        return PdfCleanupService.cleanup_old(days=days)

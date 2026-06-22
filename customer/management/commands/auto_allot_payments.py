@@ -1,7 +1,9 @@
-from django.core.management.base import BaseCommand
-from customer.models import Customer
-from customer.signals import reallocate_customer_payments
 import logging
+
+from django.core.management.base import BaseCommand
+
+from customer.models import Customer
+from customer.services import CustomerPaymentService
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +20,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         dry_run = options.get('dry_run', False)
-        
+
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN MODE - No changes will be made"))
-        
+
         self.stdout.write(self.style.WARNING("Starting auto allotment for all customers..."))
 
         customers = Customer.objects.filter(is_deleted=False)
@@ -34,10 +36,10 @@ class Command(BaseCommand):
         for customer in customers:
             try:
                 self.stdout.write(f"Processing customer: {customer.name} (ID: {customer.id})")
-                
+
                 if not dry_run:
-                    logger.info(f"Auto allotting payments for {customer.name}")
-                    reallocate_customer_payments(customer, skip_signals=True)
+                    logger.info("Auto allotting payments for %s", customer.name)
+                    CustomerPaymentService.reallocate(customer, skip_signals=True)
                     success_count += 1
                     self.stdout.write(
                         self.style.SUCCESS(f"✓ Successfully processed {customer.name}")
@@ -47,8 +49,8 @@ class Command(BaseCommand):
                     self.stdout.write(
                         self.style.SUCCESS(f"✓ Would process {customer.name}")
                     )
-            except Exception as e:
-                logger.error(f"Error auto allotting payments for {customer.name}: {e}")
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error("Error auto allotting payments for %s: %s", customer.name, e)
                 error_count += 1
                 self.stdout.write(
                     self.style.ERROR(f"✗ Error processing {customer.name}: {str(e)}")
@@ -73,4 +75,3 @@ class Command(BaseCommand):
                 )
             )
         self.stdout.write("=" * 50)
-
