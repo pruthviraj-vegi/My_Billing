@@ -2247,6 +2247,7 @@ form.submitting * {
 }
 
 .btn-action {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2268,6 +2269,22 @@ form.submitting * {
 .btn-view:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
+}
+
+.media-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  background: var(--danger);
+  color: #fff;
+  border-radius: 9999px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
 }
 
 .btn-edit {

@@ -106,8 +106,43 @@ class SupplierForm(forms.ModelForm):
         return gstin
 
 
+class MultipleFileInput(forms.FileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def to_python(self, data):
+        if not data:
+            return []
+        
+        # If it's a list, validate each item
+        if isinstance(data, list):
+            cleaned_data = []
+            for item in data:
+                cleaned_item = super().to_python(item)
+                if cleaned_item:
+                    cleaned_data.append(cleaned_item)
+            return cleaned_data
+        
+        cleaned_item = super().to_python(data)
+        return [cleaned_item] if cleaned_item else []
+
+
 class SupplierInvoiceForm(forms.ModelForm):
     """Form to create or update a supplier invoice."""
+
+    attachments = MultipleFileField(
+        widget=MultipleFileInput(attrs={
+            "multiple": True,
+            "class": "d-none",
+        }),
+        required=False,
+        label="Attachments"
+    )
 
     class Meta:
         model = SupplierInvoice
@@ -157,6 +192,8 @@ class SupplierInvoiceForm(forms.ModelForm):
 
         # Add appropriate classes based on widget type
         for field_name, field in self.fields.items():
+            if field_name == "attachments":
+                continue
             widget = field.widget
             if isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
@@ -277,9 +314,29 @@ class SupplierInvoiceForm(forms.ModelForm):
         cleaned_data["total_amount"] = total_amount
         return cleaned_data
 
+    def clean_attachments(self):
+        """Validate and sanitize uploaded attachment files."""
+        files = self.cleaned_data.get("attachments") or []
+        from .models import validate_media_file
+        for f in files:
+            try:
+                validate_media_file(f)
+            except ValidationError as e:
+                raise ValidationError(e.message)
+        return files
+
 
 class SupplierPaymentForm(forms.ModelForm):
     """Form to record a payment made to a supplier."""
+
+    attachments = MultipleFileField(
+        widget=MultipleFileInput(attrs={
+            "multiple": True,
+            "class": "d-none",
+        }),
+        required=False,
+        label="Attachments"
+    )
 
     class Meta:
         model = SupplierPayment
@@ -315,7 +372,9 @@ class SupplierPaymentForm(forms.ModelForm):
                 field.label = f"{field.label} *"
 
         # Add appropriate classes based on widget type
-        for _, field in self.fields.items():
+        for field_name, field in self.fields.items():
+            if field_name == "attachments":
+                continue
             widget = field.widget
             if isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
@@ -360,3 +419,14 @@ class SupplierPaymentForm(forms.ModelForm):
         cleaned_data = super().clean()
 
         return cleaned_data
+
+    def clean_attachments(self):
+        """Validate and sanitize uploaded attachment files."""
+        files = self.cleaned_data.get("attachments") or []
+        from .models import validate_media_file
+        for f in files:
+            try:
+                validate_media_file(f)
+            except ValidationError as e:
+                raise ValidationError(e.message)
+        return files

@@ -46,6 +46,36 @@
       </td>
       <td>
         <div class="action-buttons">
+          {% if invoice.media_count == 1 %}
+            {% with invoice.media_files.all|first as single_media %}
+              <a href="{{ single_media.media_file.url }}"
+                 target="_blank"
+                 class="btn-action btn-view"
+                 title="View Attachment"><i class="fas fa-eye"></i></a>
+            {% endwith %}
+          {% elif invoice.media_count > 1 %}
+            <div class="dropdown d-inline-block">
+              <a href="#"
+                 class="btn-action btn-view"
+                 role="button"
+                 data-bs-toggle="dropdown"
+                 aria-expanded="false"
+                 title="View Attachments ({{ invoice.media_count }})">
+                <i class="fas fa-eye"></i>
+                <span class="media-badge">{{ invoice.media_count }}</span>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                {% for media in invoice.media_files.all %}
+                  <li>
+                    <a class="dropdown-item" href="{{ media.media_file.url }}" target="_blank">
+                      <i class="{% if media.is_image %}fas fa-file-image{% else %}fas fa-file-pdf{% endif %} me-2"></i>
+                      {{ media.original_filename|truncatechars:25 }}
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
           {% if perms.supplier.change_supplierinvoice %}
             <a href="{% url 'supplier:edit_invoice' supplier.pk invoice.pk %}"
                class="btn-action btn-edit"

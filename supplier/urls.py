@@ -59,4 +59,16 @@ urlpatterns = [
         views.delete_payment,
         name="delete_payment",
     ),
+    # Invoice Media URLs
+    path(
+        "<int:supplier_pk>/invoices/<int:invoice_pk>/media/<int:media_pk>/delete/",
+        views.delete_invoice_media,
+        name="delete_invoice_media",
+    ),
+    # Payment Media URLs
+    path(
+        "<int:supplier_pk>/payments/<int:payment_pk>/media/<int:media_pk>/delete/",
+        views.delete_payment_media,
+        name="delete_payment_media",
+    ),
 ]

@@ -2,10 +2,12 @@
 Models for managing suppliers, their invoices, and payments.
 """
 
+import os
 from datetime import datetime
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import DecimalField, Sum, Value
 from django.db.models.functions import Coalesce
@@ -325,25 +327,105 @@ class SupplierPaymentAllocation(SoftDeleteModel):
         )
 
 
+# Allowed upload MIME types (PDF and common image formats)
+ALLOWED_MEDIA_TYPES = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+]
+
+ALLOWED_MEDIA_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp"]
+
+# Max upload size: 10 MB
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+
+
+def validate_media_file(file):
+    """Validate that the uploaded file is a PDF or image and within size limits."""
+    ext = os.path.splitext(file.name)[1].lower()
+    if ext not in ALLOWED_MEDIA_EXTENSIONS:
+        raise ValidationError(
+            f"Unsupported file type '{ext}'. Allowed types: PDF, JPEG, PNG, GIF, WebP."
+        )
+    if file.size > MAX_UPLOAD_SIZE_BYTES:
+        raise ValidationError(
+            f"File too large ({file.size // (1024 * 1024)} MB). Maximum allowed size is 10 MB."
+        )
+
+
+def _media_upload_path(instance, filename):
+    """Generate a clean upload path with a timestamped slug filename."""
+    ext = os.path.splitext(filename)[1].lower()
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    if instance.supplier_invoice_id:
+        slug = slugify(instance.supplier_invoice.invoice_number)
+        folder = "supplier_invoices"
+    else:
+        slug = f"payment-{instance.supplier_payment_id}"
+        folder = "supplier_payments"
+    return f"{folder}/{slug}-{timestamp}{ext}"
+
+
 class MediaFile(models.Model):
     """
-    Represents a media file. This model is used to store the media files for the supplier invoices.
+    Stores an uploaded attachment (PDF or image) linked to either a
+    SupplierInvoice or a SupplierPayment.  Exactly one FK must be set.
     """
 
     supplier_invoice = models.ForeignKey(
-        SupplierInvoice, on_delete=models.CASCADE, related_name="media_files"
+        SupplierInvoice,
+        on_delete=models.CASCADE,
+        related_name="media_files",
+        null=True,
+        blank=True,
     )
-    media_file = models.FileField(upload_to="supplier_invoices/")
+    supplier_payment = models.ForeignKey(
+        SupplierPayment,
+        on_delete=models.CASCADE,
+        related_name="media_files",
+        null=True,
+        blank=True,
+    )
+    media_file = models.FileField(
+        upload_to=_media_upload_path,
+        validators=[validate_media_file],
+    )
+    original_filename = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ["-created_at"]
+
     def __str__(self):
-        return self.media_file.name
+        return self.original_filename or self.media_file.name
+
+    def clean(self):
+        """Ensure exactly one parent FK is set."""
+        if self.supplier_invoice_id and self.supplier_payment_id:
+            raise ValidationError(
+                "A MediaFile cannot be linked to both an invoice and a payment."
+            )
+        if not self.supplier_invoice_id and not self.supplier_payment_id:
+            raise ValidationError(
+                "A MediaFile must be linked to either an invoice or a payment."
+            )
 
     def save(self, *args, **kwargs):
-        if self.media_file:
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            slug = slugify(self.supplier_invoice.invoice_number)
-            new_filename = f"{slug}-{timestamp}.pdf"
-            self.media_file.name = new_filename
+        """Persist the original filename before Django renames it."""
+        if self.media_file and not self.original_filename:
+            self.original_filename = os.path.basename(self.media_file.name)
         super().save(*args, **kwargs)
+
+    @property
+    def is_image(self):
+        """Return True if the file is an image (not a PDF)."""
+        ext = os.path.splitext(self.media_file.name)[1].lower()
+        return ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+
+    @property
+    def file_extension(self):
+        """Return the lowercase file extension (e.g. '.pdf')."""
+        return os.path.splitext(self.media_file.name)[1].lower()

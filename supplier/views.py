@@ -39,7 +39,7 @@ from base.utility import (
 from supplier.services import SupplierPaymentService
 
 from .forms import SupplierForm, SupplierInvoiceForm, SupplierPaymentForm
-from .models import Supplier, SupplierInvoice, SupplierPayment
+from .models import MediaFile, Supplier, SupplierInvoice, SupplierPayment
 
 logger = logging.getLogger(__name__)
 
@@ -557,7 +557,12 @@ def fetch_supplier_invoices(request, pk):
 
     valid_sorts = table_sorting(request, valid_sort_fields, "-invoice_date")
 
-    queryset = supplier.invoices.filter(is_deleted=False).order_by(*valid_sorts)
+    queryset = (
+        supplier.invoices.filter(is_deleted=False)
+        .prefetch_related("media_files")
+        .annotate(media_count=Count("media_files"))
+        .order_by(*valid_sorts)
+    )
 
     return render_paginated_response(
         request,
@@ -583,7 +588,12 @@ def fetch_supplier_payments(request, pk):
 
     valid_sorts = table_sorting(request, valid_sort_fields, "-payment_date")
 
-    queryset = supplier.payments_made.filter(is_deleted=False).order_by(*valid_sorts)
+    queryset = (
+        supplier.payments_made.filter(is_deleted=False)
+        .prefetch_related("media_files")
+        .annotate(media_count=Count("media_files"))
+        .order_by(*valid_sorts)
+    )
 
     return render_paginated_response(
         request,
@@ -762,6 +772,8 @@ class CreatePayment(RequiredPermissionMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Create Payment"
         context["supplier"] = self.supplier
+        context["payment"] = None
+        context["media_files"] = []
         # Most repeated payment amounts
         top_payments = (
             self.supplier.payments_made.filter(is_deleted=False)
@@ -783,6 +795,14 @@ class CreatePayment(RequiredPermissionMixin, CreateView):
         form.instance.created_by = self.request.user
         # Let super().form_valid() handle the save - it will trigger the signal correctly
         response = super().form_valid(form)
+
+        # Save any uploaded attachments
+        files = form.cleaned_data.get("attachments") or []
+        for f in files:
+            media = MediaFile(supplier_payment=self.object, media_file=f)
+            media.full_clean()
+            media.save()
+
         messages.success(
             self.request,
             f"Payment of {form.instance.amount} recorded successfully!",
@@ -815,10 +835,11 @@ class EditPayment(RequiredPermissionMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Edit Payment"
         context["supplier"] = self.supplier
-        context["payment"] = self.get_object()
+        payment = self.get_object()
+        context["payment"] = payment
+        context["media_files"] = list(payment.media_files.all())
 
         # Get allocation information for warnings
-        payment = self.get_object()
         total_allocated = (
             payment.allocations.aggregate(total=Sum("amount_allocated"))["total"] or 0
         )
@@ -844,13 +865,20 @@ class EditPayment(RequiredPermissionMixin, UpdateView):
 
     def form_valid(self, form):
         # Save the payment - signals will handle reallocation automatically
-        form.save()
+        response = super().form_valid(form)
+
+        # Save any uploaded attachments
+        files = form.cleaned_data.get("attachments") or []
+        for f in files:
+            media = MediaFile(supplier_payment=self.object, media_file=f)
+            media.full_clean()
+            media.save()
 
         messages.success(
             self.request,
             "Payment updated successfully!",
         )
-        return super().form_valid(form)
+        return response
 
     def form_invalid(self, form):
         logger.error("Form invalid: %s", form.errors)
@@ -879,6 +907,8 @@ class CreateInvoice(RequiredPermissionMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Create Invoice"
         context["supplier"] = self.supplier
+        context["invoice"] = None
+        context["media_files"] = []
         return context
 
     def get_form_kwargs(self):
@@ -890,12 +920,20 @@ class CreateInvoice(RequiredPermissionMixin, CreateView):
         form.instance.supplier = self.supplier
         form.instance.created_by = self.request.user
         form.instance.total_amount = form.cleaned_data["total_amount"]
-        form.instance.save()
+        response = super().form_valid(form)
+
+        # Save any uploaded attachments
+        files = form.cleaned_data.get("attachments") or []
+        for f in files:
+            media = MediaFile(supplier_invoice=self.object, media_file=f)
+            media.full_clean()
+            media.save()
+
         messages.success(
             self.request,
             f"Invoice {form.instance.invoice_number} created successfully!",
         )
-        return super().form_valid(form)
+        return response
 
     def form_invalid(self, form):
         logger.error("Form invalid: %s", form.errors)
@@ -923,7 +961,9 @@ class EditInvoice(RequiredPermissionMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Edit Invoice"
         context["supplier"] = self.supplier
-        context["invoice"] = self.get_object()
+        invoice = self.get_object()
+        context["invoice"] = invoice
+        context["media_files"] = list(invoice.media_files.all())
         return context
 
     def get_form_kwargs(self):
@@ -933,12 +973,20 @@ class EditInvoice(RequiredPermissionMixin, UpdateView):
 
     def form_valid(self, form):
         form.instance.total_amount = form.cleaned_data["total_amount"]
-        form.instance.save()
+        response = super().form_valid(form)
+
+        # Save any uploaded attachments
+        files = form.cleaned_data.get("attachments") or []
+        for f in files:
+            media = MediaFile(supplier_invoice=self.object, media_file=f)
+            media.full_clean()
+            media.save()
+
         messages.success(
             self.request,
             f"Invoice {form.instance.invoice_number} updated successfully!",
         )
-        return super().form_valid(form)
+        return response
 
     def form_invalid(self, form):
         logger.error("Form invalid: %s", form.errors)
@@ -1162,3 +1210,37 @@ def auto_reallocate(request, pk):
         f"Successfully reallocated payments for {supplier.name} using FIFO method.",
     )
     return redirect("supplier:detail", pk=pk)
+
+
+# ─── Media File Views ─────────────────────────────────────────────────────────
+
+
+@required_permission("supplier.delete_supplierinvoice")
+def delete_invoice_media(request, supplier_pk, invoice_pk, media_pk):
+    """AJAX: Delete a MediaFile attached to a SupplierInvoice."""
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Method not allowed."}, status=405)
+
+    media = get_object_or_404(
+        MediaFile, pk=media_pk, supplier_invoice_id=invoice_pk
+    )
+    # Remove the physical file from disk before deleting the record
+    if media.media_file and media.media_file.storage.exists(media.media_file.name):
+        media.media_file.delete(save=False)
+    media.delete()
+    return JsonResponse({"success": True})
+
+
+@required_permission("supplier.delete_supplierpayment")
+def delete_payment_media(request, supplier_pk, payment_pk, media_pk):
+    """AJAX: Delete a MediaFile attached to a SupplierPayment."""
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Method not allowed."}, status=405)
+
+    media = get_object_or_404(
+        MediaFile, pk=media_pk, supplier_payment_id=payment_pk
+    )
+    if media.media_file and media.media_file.storage.exists(media.media_file.name):
+        media.media_file.delete(save=False)
+    media.delete()
+    return JsonResponse({"success": True})

@@ -37,6 +37,36 @@
       </td>
       <td>
         <div class="action-buttons">
+          {% if payment.media_count == 1 %}
+            {% with payment.media_files.all|first as single_media %}
+              <a href="{{ single_media.media_file.url }}"
+                 target="_blank"
+                 class="btn-action btn-view"
+                 title="View Attachment"><i class="fas fa-eye"></i></a>
+            {% endwith %}
+          {% elif payment.media_count > 1 %}
+            <div class="dropdown d-inline-block">
+              <a href="#"
+                 class="btn-action btn-view"
+                 role="button"
+                 data-bs-toggle="dropdown"
+                 aria-expanded="false"
+                 title="View Attachments ({{ payment.media_count }})">
+                <i class="fas fa-eye"></i>
+                <span class="media-badge">{{ payment.media_count }}</span>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                {% for media in payment.media_files.all %}
+                  <li>
+                    <a class="dropdown-item" href="{{ media.media_file.url }}" target="_blank">
+                      <i class="{% if media.is_image %}fas fa-file-image{% else %}fas fa-file-pdf{% endif %} me-2"></i>
+                      {{ media.original_filename|truncatechars:25 }}
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
           {% if perms.supplier.change_supplierpayment %}
             <a href="{% url 'supplier:edit_payment' supplier.pk payment.pk %}"
                class="btn-action btn-edit"
@@ -46,8 +76,8 @@
             <a href="{% url 'supplier:delete_payment' supplier.pk payment.pk %}"
                class="btn-action btn-delete"
                title="Delete Payment"><i class="fas fa-trash"></i></a>
-          </div>
-        {% endif %}
+          {% endif %}
+        </div>
       </td>
     </tr>
   {% endfor %}
