@@ -4,6 +4,8 @@ Views for handling statement and invoice related endpoints.
 
 import logging
 
+from django.conf import settings
+
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 
@@ -28,7 +30,7 @@ def send_invoice(request, pk):
         response = send_template(
             request,
             invoice.customer.phone_number,
-            "invoice_template",
+            settings.WA_INVOICE_TEMPLATE,
             {
                 "customer_name": invoice.customer.name,
                 "invoice_number": invoice.invoice_number,
@@ -78,7 +80,7 @@ def send_statement(request, pk):
         response = send_template(
             request,
             customer.phone_number,
-            "statement",
+            settings.WA_STATEMENT_TEMPLATE,
             {
                 "customer_name": customer.name,
                 "from_date": start_date.strftime("%d-%m-%Y"),
@@ -125,7 +127,7 @@ def send_text(request, pk):
         response = send_template(
             request,
             payment.customer.phone_number,
-            "payment_recived",
+            settings.WA_PAYMENT_TEMPLATE,
             {
                 "customer_name": payment.customer.name,
                 "amount": str(float(payment.amount)),

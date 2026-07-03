@@ -256,6 +256,11 @@ AUTH_USER_MODEL = "user.CustomUser"
 # Admin Security
 ADMIN_URL = config("ADMIN_URL", default="admin/")  # Allow customizing admin URL
 
+# WhatsApp Template Names (configurable per environment)
+WA_INVOICE_TEMPLATE = config("WA_INVOICE_TEMPLATE", default="invoice_template")
+WA_STATEMENT_TEMPLATE = config("WA_STATEMENT_TEMPLATE", default="statement")
+WA_PAYMENT_TEMPLATE = config("WA_PAYMENT_TEMPLATE", default="payment_recived")
+
 
 class MaxLevelFilter(logging.Filter):
     """Filter to limit log level."""
