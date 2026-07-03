@@ -59,10 +59,24 @@ class Notification(models.Model):
     def bulk_mark_read(cls, user):
         """Mark all unread notifications for a user as read.
 
+        Uses queryset ``.update()`` which bypasses ``post_save`` signals,
+        so the Redis cache is manually reset to 0 afterwards.
+
         Returns:
             int: Number of notifications updated.
         """
-        return cls.objects.filter(user=user, is_read=False).update(is_read=True)
+        from django.core.cache import cache
+
+        updated_count = cls.objects.filter(
+            user=user, is_read=False
+        ).update(is_read=True)
+
+        if updated_count > 0:
+            # .update() bypasses signals — manually reset cache to 0
+            cache_key = f"user_{user.id}_unread_notifs"
+            cache.set(cache_key, 0, timeout=300)
+
+        return updated_count
 
     @classmethod
     def unread_count(cls, user):

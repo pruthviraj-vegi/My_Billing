@@ -89,7 +89,11 @@
         <div class="notification-wrapper" id="notificationWrapper">
           <button class="top-bar-btn notification-btn" id="notificationBtn" aria-label="Notifications">
             <i class="fas fa-bell"></i>
-            <span class="notification-badge d-none" id="notificationBadge"></span>
+            {% if request.notification_count > 0 %}
+              <span class="notification-badge" id="notificationBadge">{{ request.notification_count|default:"" }}</span>
+            {% else %}
+              <span class="notification-badge d-none" id="notificationBadge"></span>
+            {% endif %}
           </button>
           <!-- Notification Dropdown Panel -->
           <div class="notification-panel" id="notificationPanel">
@@ -272,16 +276,18 @@
         const markAllBtn     = document.getElementById('markAllReadBtn');
         const notifWrapper   = document.getElementById('notificationWrapper');
 
-        // Update badge count
+        // Update badge count (called after user actions like mark-read)
         function updateNotifBadge() {
           fetch(NOTIF_URLS.count)
-            .then(res => res.json())
-            .then(data => {
-              const count = data.unread_count || 0;
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+              var count = data.unread_count || 0;
               if (count > 0) {
                 notifBadge.textContent = count > 99 ? '99+' : count;
+                notifBadge.classList.remove('d-none');
                 notifBadge.style.display = 'flex';
               } else {
+                notifBadge.classList.add('d-none');
                 notifBadge.style.display = 'none';
               }
             }).catch(console.error);
@@ -394,9 +400,8 @@
           }
         });
 
-        // Poll unread count every 60 seconds hidden
-        updateNotifBadge();
-        // setInterval(updateNotifBadge, 60000);
+        // Badge count is rendered server-side by middleware.
+        // updateNotifBadge() is only called after user actions (mark-read).
 
         // Performance toggle functionality
         const perfToggle = document.getElementById('performanceToggle');

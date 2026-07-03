@@ -90,6 +90,7 @@ MIDDLEWARE = [
     "base.middleware.InactivityLogoutMiddleware",
     "base.middleware.SessionMetaMiddleware",
     "base.middleware.CustomLoginRequiredMiddleware",
+    "notification.middleware.NotificationCountMiddleware",
 ]
 
 ROOT_URLCONF = "Billing.urls"
