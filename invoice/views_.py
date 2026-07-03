@@ -8,7 +8,7 @@ from datetime import datetime, time
 
 from django.contrib import messages
 from django.db import connection, transaction
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -321,7 +321,7 @@ class AuditTableCreateView(RequiredPermissionMixin, CreateView):
     model = AuditTable
     form_class = AuditTableForm
     template_name = "invoice_audit/form.html"
-    permission_required = "invoice.add_audittable"
+    required_permission = "invoice.add_audittable"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -345,7 +345,7 @@ class AuditTableDeleteView(RequiredPermissionMixin, DeleteView):
     template_name = "invoice_audit/delete.html"
     context_object_name = "audit_table"
     success_url = reverse_lazy("invoice:audit_home")
-    permission_required = "invoice.delete_audittable"
+    required_permission = "invoice.delete_audittable"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -367,7 +367,7 @@ class InvoiceManager(RequiredPermissionMixin, View):
     """View to manage invoices for audit."""
 
     template = "invoice_audit/invoice_manager.html"
-    permission_required = "invoice.view_audittable"
+    required_permission = "invoice.view_audittable"
 
     def get(self, request, pk):
         """Handle GET requests to display invoice manager."""
@@ -382,6 +382,8 @@ class InvoiceManager(RequiredPermissionMixin, View):
         invoices = (
             Invoice.objects.select_related("customer")
             .filter(invoice_date__range=(start_date, end_date))
+            .exclude(is_cancelled=True)
+            .exclude(return_invoices__isnull=False)
             .order_by("-invoice_date", "-id")
         )
 
@@ -395,9 +397,19 @@ class InvoiceManager(RequiredPermissionMixin, View):
             invoice_type=Invoice.Invoice_type.CASH
         ).order_by("-id")
 
-        # Calculate totals
-        gst_total = gst_invoices.aggregate(total=Sum("amount"))["total"] or 0
-        cash_total = cash_invoices.aggregate(total=Sum("amount"))["total"] or 0
+        # Calculate totals (amount minus discount)
+        gst_total = (
+            gst_invoices.aggregate(total=Sum(F("amount") - F("discount_amount")))[
+                "total"
+            ]
+            or 0
+        )
+        cash_total = (
+            cash_invoices.aggregate(total=Sum(F("amount") - F("discount_amount")))[
+                "total"
+            ]
+            or 0
+        )
 
         context = {
             "gst_invoices": gst_invoices,
