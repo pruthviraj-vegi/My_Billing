@@ -5,9 +5,9 @@ Views for handling statement and invoice related endpoints.
 import logging
 
 from django.conf import settings
-
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from api.services import generate_invoice_pdf, generate_statement_pdf
 from api.views import send_template
@@ -162,6 +162,71 @@ def send_text(request, pk):
             {
                 "success": False,
                 "message": "Failed to send payment",
+            },
+            status=500,
+        )
+
+
+def balance(request, pk):
+    """
+    Send the current balance details to a customer via WhatsApp.
+
+    Fetches the customer by pk, retrieves their current outstanding balance,
+    and sends it using the WhatsApp balance template.
+
+    Args:
+        request: The HTTP request object.
+        pk (int): The primary key of the customer.
+
+    Returns:
+        JsonResponse: Indicating whether the message was sent successfully.
+    """
+    customer = get_object_or_404(Customer, id=pk)
+    try:
+        try:
+            balance_amount = customer.credit_summary.balance_amount
+        except Exception:
+            balance_amount = 0.0
+
+        today_str = timezone.now().strftime("%d-%m-%Y")
+
+        response = send_template(
+            request,
+            customer.phone_number,
+            settings.WA_BALANCE_TEMPLATE,
+            {
+                "customer_name": customer.name,
+                "balance": str(float(balance_amount)),
+                "date": today_str,
+            },
+            "",
+            "",
+        )
+
+        if response.get("success") is True:
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": "Balance sent successfully",
+                },
+                status=200,
+            )
+        return JsonResponse(
+            {
+                "success": False,
+                "message": response.get("detail")
+                or response.get("message")
+                or "Failed to send balance",
+            },
+            status=200,
+        )
+
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error sending balance: %s", e)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Failed to send balance",
             },
             status=500,
         )

@@ -35,6 +35,12 @@
           Download Report
         </button>
       {% endif %}
+      {% if perms.customer.view_customercreditsummary %}
+        <button type="button" class="btn btn-success" id="sendBalanceBtn">
+          <i class="fab fa-whatsapp"></i>
+          Send Balance
+        </button>
+      {% endif %}
     </div>
   </div>
   <!-- Breadcrumb Navigation -->
@@ -252,6 +258,7 @@
         ledger: '{% url "customer:fetch_credit_ledger" customer.id %}',
         create_pdf: '{% url "report:credit_ind_pdf" customer.id %}',
         send_pdf: '{% url "report:send_pdf_statement" customer.id %}',
+        send_balance: '{% url "report:send_balance" customer.id %}',
       }
 
       // Initialize table without form (form is now optional)
@@ -427,6 +434,32 @@
           setButtonLoading(sendPdfBtn, false);
         }
       })
+
+      // Send Balance button handler
+      const sendBalanceBtn = document.getElementById('sendBalanceBtn')
+      if (sendBalanceBtn) {
+        sendBalanceBtn.addEventListener('click', async function() {
+          setButtonLoading(sendBalanceBtn, true, 'Sending...');
+          try {
+            const response = await fetch(urls.send_balance, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            const data = await handleFetchResponse(response);
+            if (data.success || data.status === 'success') {
+              showNotification('✅ Balance sent successfully via WhatsApp!', 'success');
+            } else {
+              throw new Error(data.error || data.message || 'Unexpected response from server');
+            }
+          } catch (error) {
+            showNotification(error.message || 'Balance Sending Failed', "error");
+          } finally {
+            setButtonLoading(sendBalanceBtn, false);
+          }
+        });
+      }
     })
 
     // Global function - must be outside DOMContentLoaded to be accessible from dynamically loaded HTML

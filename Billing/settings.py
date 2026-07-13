@@ -133,10 +133,10 @@ CACHES = {
         "LOCATION": config("REDIS_CACHE_URL", default="redis://127.0.0.1:6379/1"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        },
     }
 }
-if 'test' in sys.argv:
+if "test" in sys.argv:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -260,6 +260,7 @@ ADMIN_URL = config("ADMIN_URL", default="admin/")  # Allow customizing admin URL
 WA_INVOICE_TEMPLATE = config("WA_INVOICE_TEMPLATE", default="invoice_template")
 WA_STATEMENT_TEMPLATE = config("WA_STATEMENT_TEMPLATE", default="statement")
 WA_PAYMENT_TEMPLATE = config("WA_PAYMENT_TEMPLATE", default="payment_recived")
+WA_BALANCE_TEMPLATE = config("WA_BALANCE_TEMPLATE", default="balance")
 
 
 class MaxLevelFilter(logging.Filter):

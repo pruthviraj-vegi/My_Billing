@@ -213,7 +213,7 @@ class APITokenMiddlewareTests(TestCase):
 
     def test_missing_or_invalid_header_format(self):
         # 1. No Authorization header
-        response = self.client.get(reverse("api:balance", kwargs={"phone_number": "9999999999"}))
+        response = self.client.get(reverse("api:balance"))
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"], "Authorization header missing or invalid")
         
@@ -222,14 +222,14 @@ class APITokenMiddlewareTests(TestCase):
 
         # 2. Invalid header format
         response = self.client.get(
-            reverse("api:balance", kwargs={"phone_number": "9999999999"}),
+            reverse("api:balance"),
             HTTP_AUTHORIZATION="Bearer"
         )
         self.assertEqual(response.status_code, 403)
 
     def test_invalid_token(self):
         response = self.client.get(
-            reverse("api:balance", kwargs={"phone_number": "9999999999"}),
+            reverse("api:balance"),
             HTTP_AUTHORIZATION="Bearer invalidtokenhash12345"
         )
         self.assertEqual(response.status_code, 403)
@@ -240,7 +240,7 @@ class APITokenMiddlewareTests(TestCase):
 
     def test_revoked_token(self):
         response = self.client.get(
-            reverse("api:balance", kwargs={"phone_number": "9999999999"}),
+            reverse("api:balance"),
             HTTP_AUTHORIZATION=f"Bearer {self.revoked_raw_token}"
         )
         self.assertEqual(response.status_code, 403)
@@ -251,7 +251,7 @@ class APITokenMiddlewareTests(TestCase):
 
     def test_expired_token(self):
         response = self.client.get(
-            reverse("api:balance", kwargs={"phone_number": "9999999999"}),
+            reverse("api:balance"),
             HTTP_AUTHORIZATION=f"Bearer {self.expired_raw_token}"
         )
         self.assertEqual(response.status_code, 403)
@@ -263,7 +263,7 @@ class APITokenMiddlewareTests(TestCase):
     def test_ip_address_mismatch(self):
         # Mismatched IP
         response = self.client.get(
-            reverse("api:balance", kwargs={"phone_number": "9999999999"}),
+            reverse("api:balance"),
             HTTP_AUTHORIZATION=f"Bearer {self.ip_raw_token}",
             REMOTE_ADDR="192.168.1.100"
         )
@@ -274,22 +274,26 @@ class APITokenMiddlewareTests(TestCase):
         self.assertTrue(APIRequestLog.objects.filter(token=self.ip_token_instance, response_status=403).exists())
 
         # Matched IP
-        response = self.client.get(
-            reverse("api:balance", kwargs={"phone_number": "9999999999"}),
+        response = self.client.post(
+            reverse("api:balance"),
+            {"phone_number": "9999999999"},
+            content_type="application/json",
             HTTP_AUTHORIZATION=f"Bearer {self.ip_raw_token}",
             REMOTE_ADDR="192.168.1.50"
         )
         self.assertEqual(response.status_code, 200)
 
     def test_successful_request(self):
-        response = self.client.get(
-            reverse("api:balance", kwargs={"phone_number": "9999999999"}),
+        response = self.client.post(
+            reverse("api:balance"),
+            {"phone_number": "9999999999"},
+            content_type="application/json",
             HTTP_AUTHORIZATION=f"Bearer {self.active_raw_token}"
         )
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(float(data["balance"]), 150.00)
-        self.assertEqual(data["name"], "Api Customer")
+        self.assertEqual(float(data["payload"]["attributes"]["balance"]), 150.00)
+        self.assertEqual(data["recipient"]["name"], "Api Customer")
 
         # Verify usage details updated
         self.active_token_instance.refresh_from_db()
@@ -300,5 +304,5 @@ class APITokenMiddlewareTests(TestCase):
         log = APIRequestLog.objects.filter(token=self.active_token_instance).first()
         self.assertIsNotNone(log)
         self.assertEqual(log.response_status, 200)
-        self.assertEqual(log.endpoint, reverse("api:balance", kwargs={"phone_number": "9999999999"}))
-        self.assertEqual(log.method, "GET")
+        self.assertEqual(log.endpoint, reverse("api:balance"))
+        self.assertEqual(log.method, "POST")

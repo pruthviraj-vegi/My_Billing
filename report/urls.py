@@ -62,4 +62,5 @@ urlpatterns = [
         "send-statement/<int:pk>/", statements.send_statement, name="send_pdf_statement"
     ),
     path("send-text/<int:pk>/", statements.send_text, name="send_text"),
+    path("send-balance/<int:pk>/", statements.balance, name="send_balance"),
 ]

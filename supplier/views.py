@@ -26,8 +26,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
-from base.decorators import required_permission, RequiredPermissionMixin, timed
-
+from base.decorators import required_permission, RequiredPermissionMixin
 from base.getDates import getDates
 from base.utility import (
     get_period_label,
@@ -423,7 +422,7 @@ VALID_SORT_FIELDS = {
     "annotated_balance_due",
 }
 
-@timed
+
 def get_suppliers_data(request):
     """
     Get filtered and sorted suppliers data.
@@ -1219,11 +1218,11 @@ def auto_reallocate(request, pk):
 def delete_invoice_media(request, supplier_pk, invoice_pk, media_pk):
     """AJAX: Delete a MediaFile attached to a SupplierInvoice."""
     if request.method != "POST":
-        return JsonResponse({"success": False, "error": "Method not allowed."}, status=405)
+        return JsonResponse(
+            {"success": False, "error": "Method not allowed."}, status=405
+        )
 
-    media = get_object_or_404(
-        MediaFile, pk=media_pk, supplier_invoice_id=invoice_pk
-    )
+    media = get_object_or_404(MediaFile, pk=media_pk, supplier_invoice_id=invoice_pk)
     # Remove the physical file from disk before deleting the record
     if media.media_file and media.media_file.storage.exists(media.media_file.name):
         media.media_file.delete(save=False)
@@ -1235,11 +1234,11 @@ def delete_invoice_media(request, supplier_pk, invoice_pk, media_pk):
 def delete_payment_media(request, supplier_pk, payment_pk, media_pk):
     """AJAX: Delete a MediaFile attached to a SupplierPayment."""
     if request.method != "POST":
-        return JsonResponse({"success": False, "error": "Method not allowed."}, status=405)
+        return JsonResponse(
+            {"success": False, "error": "Method not allowed."}, status=405
+        )
 
-    media = get_object_or_404(
-        MediaFile, pk=media_pk, supplier_payment_id=payment_pk
-    )
+    media = get_object_or_404(MediaFile, pk=media_pk, supplier_payment_id=payment_pk)
     if media.media_file and media.media_file.storage.exists(media.media_file.name):
         media.media_file.delete(save=False)
     media.delete()
