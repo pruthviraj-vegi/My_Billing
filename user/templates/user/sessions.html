@@ -43,13 +43,13 @@
             <thead>
                 <tr>
                     <th>User</th>
-                    <th>Username</th>
-                    <th>Last login</th>
-                    <th>Session</th>
-                    <th>IP</th>
-                    <th>Device</th>
+                    <th class="mobile-hide">Username</th>
+                    <th class="mobile-hide">Last login</th>
+                    <th class="mobile-hide">Session</th>
+                    <th class="mobile-hide">IP</th>
+                    <th class="mobile-hide">Device</th>
                     <th>Last activity</th>
-                    <th>Expires</th>
+                    <th class="mobile-hide">Expires</th>
                     <th>Current</th>
                     {% if request.user.is_staff %}<th class="text-right">Actions</th>{% endif %}
                 </tr>
@@ -58,13 +58,13 @@
                 {% for s in sessions %}
                     <tr>
                         <td>{{ s.user.full_name|default:s.user.get_username }}</td>
-                        <td>{{ s.user.get_username }}</td>
-                        <td>{{ s.last_login|date:"Y-m-d H:i:s" }}</td>
-                        <td>
+                        <td class="mobile-hide">{{ s.user.get_username }}</td>
+                        <td class="mobile-hide">{{ s.last_login|date:"Y-m-d H:i:s" }}</td>
+                        <td class="mobile-hide">
                             <code>{{ s.session_key|slice:":8" }}…</code>
                         </td>
-                        <td>{{ s.ip_address|default:"-" }}</td>
-                        <td>
+                        <td class="mobile-hide">{{ s.ip_address|default:"-" }}</td>
+                        <td class="mobile-hide">
                             {% if s.user_agent %}
                                 <span title="{{ s.user_agent }}">{{ s.user_agent|truncatechars:32 }}</span>
                             {% else %}
@@ -78,7 +78,7 @@
                                 -
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="mobile-hide">
                             {% if s.last_activity %}
                                 {{ s.last_activity|expiry|date:"Y-m-d H:i:s" }}
                             {% else %}

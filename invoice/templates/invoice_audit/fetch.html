@@ -41,23 +41,23 @@
                     <span class="badge badge-secondary">{{ audit_table.status }}</span>
                 {% endif %}
             </td>
-            <td>
+            <td class="mobile-hide">
                 {% if audit_table.financial_year %}
                     <span class="text-muted">{{ audit_table.financial_year }}</span>
                 {% else %}
                     <span class="text-muted">-</span>
                 {% endif %}
             </td>
-            <td>{{ audit_table.start_date|date:"M d, Y" }}</td>
-            <td>{{ audit_table.end_date|date:"M d, Y" }}</td>
-            <td>
+            <td class="mobile-hide">{{ audit_table.start_date|date:"M d, Y" }}</td>
+            <td class="mobile-hide">{{ audit_table.end_date|date:"M d, Y" }}</td>
+            <td class="mobile-hide">
                 {% if audit_table.created_by %}
                     <span class="text-muted">{{ audit_table.created_by.full_name }}</span>
                 {% else %}
                     <span class="text-muted">System</span>
                 {% endif %}
             </td>
-            <td>{{ audit_table.created_at|date:"M d, Y H:i" }}</td>
+            <td class="mobile-hide">{{ audit_table.created_at|date:"M d, Y H:i" }}</td>
             <td>
                 <div class="action-buttons">
                     <a href="{{ audit_table.get_absolute_url }}"

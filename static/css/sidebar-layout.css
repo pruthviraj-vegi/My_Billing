@@ -31,8 +31,8 @@
   display: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -159,8 +159,8 @@
   /* Create button: icon-only circle */
   .page-actions .btn-primary {
     font-size: 0;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     gap: 0;
     display: inline-flex;
@@ -181,8 +181,8 @@
     display: none;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     background: rgba(255,255,255,0.2);
     border: none;
     border-radius: 50%;
@@ -537,21 +537,34 @@
   }
 
   .details-info-compact {
-    padding: 0.5rem;
+    padding: 0.75rem;
   }
 
   .detail-name-compact {
     padding-bottom: 0.5rem;
-    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .detail-name-compact h4 {
     font-size: 1rem;
-    margin-bottom: 0.25rem;
+    margin: 0;
+  }
+
+  .detail-contact-compact,
+  .supplier-contact-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.25rem 1rem;
+    padding-top: 0.5rem;
   }
 
   .contact-item {
-    padding: 0.3rem 0;
+    padding: 0.25rem 0;
     font-size: 0.8rem;
   }
 
@@ -605,8 +618,8 @@
 
   .table-header .btn {
     font-size: 0;
-    width: 28px;
-    height: 28px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     gap: 0;
     display: inline-flex;
@@ -804,8 +817,8 @@
   }
 
   .hamburger-btn {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     font-size: 1.1rem;
   }
 
@@ -849,5 +862,16 @@
   .main-content,
   .sidebar .dropdown-menu {
     transition: none !important;
+  }
+
+  .notification-badge { animation: none; }
+  .theme-toggle i { transition: none; }
+  .toast { transition: none; }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
   }
 }

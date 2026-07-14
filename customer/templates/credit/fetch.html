@@ -2,7 +2,7 @@
 {% if page_obj %}
     {% for customer in page_obj %}
         <tr>
-            <td>{{ customer.id }}</td>
+            <td class="mobile-hide">{{ customer.id }}</td>
             <td>
                 <div class="customer-info">
                     <strong>{{ customer.name }}</strong>
@@ -12,16 +12,16 @@
                     {% endif %}
                 </div>
             </td>
-            <td>{{ customer.phone_number|phone_number }}</td>
-            <td>{{ customer.credit_amount|currency }}</td>
-            <td>{{ customer.debit_amount|currency }}</td>
+            <td class="mobile-hide">{{ customer.phone_number|phone_number }}</td>
+            <td class="mobile-hide">{{ customer.credit_amount|currency }}</td>
+            <td class="mobile-hide">{{ customer.debit_amount|currency }}</td>
             <td>
                 <span class="amount-display {% if customer.credit_summary.balance_amount > 0 %}text-danger{% else %}text-success{% endif %}">
                     {{ customer.credit_summary.balance_amount|currency }}
                 </span>
             </td>
-            <td>{{ customer.credit_summary.last_payment_date|date:"M d, Y" |default:"N/A" }}</td>
-            <td>
+            <td class="mobile-hide">{{ customer.credit_summary.last_payment_date|date:"M d, Y" |default:"N/A" }}</td>
+            <td class="mobile-hide">
                 {% if customer.credit_summary.last_invoice_date %}
                     <span class="{% if customer.credit_summary.is_overdue %} text-danger {% endif %}">{{ customer.credit_summary.last_invoice_date|timesince }}</span>
                     <br>
@@ -66,7 +66,7 @@
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="9" class="text-center p-2">
+        <td colspan="100" class="text-center p-2">
             <div class="empty-state">
                 <i class="fas fa-users"></i>
                 <h4>No Credit Customers Found</h4>

@@ -55,19 +55,19 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th class="mobile-hide">ID</th>
                         <th>Color</th>
                         <th>Name</th>
-                        <th>Hex Code</th>
+                        <th class="mobile-hide">Hex Code</th>
                         <th>Variants</th>
-                        <th>Created</th>
+                        <th class="mobile-hide">Created</th>
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for color in colors %}
                         <tr>
-                            <td>{{ color.id }}</td>
+                            <td class="mobile-hide">{{ color.id }}</td>
                             <td>
                                 <div class="color-swatch-small"
                                      style="background-color: {{ color.hex_code|default:'#ccc' }}">
@@ -79,11 +79,11 @@
                                     <div class="fw-bold text-primary">{{ color.name|default:'N/A' }}</div>
                                 </div>
                             </td>
-                            <td>{{ color.hex_code|default:'No hex code' }}</td>
+                            <td class="mobile-hide">{{ color.hex_code|default:'No hex code' }}</td>
                             <td>
                                 <span class="badge badge-primary">{{ color.product_variants.count }}</span>
                             </td>
-                            <td>{{ color.created_at|date:'M d, Y' }}</td>
+                            <td class="mobile-hide">{{ color.created_at|date:'M d, Y' }}</td>
                             <td>
                                 <div class="action-buttons">
                                     {% if perms.inventory.change_color %}

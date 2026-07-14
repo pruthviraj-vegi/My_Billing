@@ -171,13 +171,13 @@
                             <thead>
                                 <tr>
                                     <th>Product</th>
-                                    <th>Variant</th>
-                                    <th>Original Qty</th>
+                                    <th class="mobile-hide">Variant</th>
+                                    <th class="mobile-hide">Original Qty</th>
                                     <th>Returned Qty</th>
-                                    <th>Unit Price</th>
+                                    <th class="mobile-hide">Unit Price</th>
                                     <th>Total Amount</th>
-                                    <th>Condition</th>
-                                    <th>Reason</th>
+                                    <th class="mobile-hide">Condition</th>
+                                    <th class="mobile-hide">Reason</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -193,7 +193,7 @@
                                                 <small class="text-muted">{{ item.product_variant.product.category.name }}</small>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             <div class="variant-info">
                                                 <strong><a class="text-decoration-none"
           color: inherit"
@@ -208,18 +208,18 @@
                                                 {% endif %}
                                             </div>
                                         </td>
-                                        <td>{{ item.quantity_original|floatformat:2 }}</td>
+                                        <td class="mobile-hide">{{ item.quantity_original|floatformat:2 }}</td>
                                         <td>
                                             <strong class="text-primary">{{ item.quantity_returned|floatformat:2 }}</strong>
                                         </td>
-                                        <td>{{ item.unit_price|currency }}</td>
+                                        <td class="mobile-hide">{{ item.unit_price|currency }}</td>
                                         <td>
                                             <strong>{{ item.total_amount|currency }}</strong>
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             <span class="badge badge-{{ item.condition|lower|default:'secondary' }}">{{ item.get_condition_display }}</span>
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             <span class="badge badge-info">{{ item.get_return_reason_display }}</span>
                                         </td>
                                     </tr>

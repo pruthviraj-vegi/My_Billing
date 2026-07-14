@@ -4,20 +4,20 @@
 {% if page_obj %}
     {% for category in page_obj %}
         <tr>
-            <td>{{ category.id }}</td>
+            <td class="mobile-hide">{{ category.id }}</td>
             <td>
                 <div>
                     <span class="font-weight-bold text-primary">{{ category.name }}</span>
                 </div>
             </td>
-            <td>
+            <td class="mobile-hide">
                 {% if category.parent %}
                     <span class="text-muted">{{ category.parent.name }}</span>
                 {% else %}
                     <span class="text-muted">-</span>
                 {% endif %}
             </td>
-            <td>
+            <td class="mobile-hide">
                 {% if category.description %}
                     <span class="text-muted">{{ category.description|truncatechars:50 }}</span>
                 {% else %}
@@ -27,7 +27,7 @@
             <td>
                 <span class="badge badge-primary">{{ category.products.count }}</span>
             </td>
-            <td>{{ category.created_at|date:"M d, Y" }}</td>
+            <td class="mobile-hide">{{ category.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
                     {% if perms.inventory.change_category %}

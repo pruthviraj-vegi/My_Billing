@@ -50,10 +50,10 @@
                 <thead>
                     <tr>
                         <th>Payment Name</th>
-                        <th>Type</th>
+                        <th class="mobile-hide">Type</th>
                         <th>Details</th>
                         <th>Status</th>
-                        <th>Priority</th>
+                        <th class="mobile-hide">Priority</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -66,7 +66,7 @@
                                     {% if payment.is_default %}<span class="badge badge-success">Default</span>{% endif %}
                                 </div>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <span class="badge badge-info">{{ payment.get_payment_type_display }}</span>
                             </td>
                             <td>
@@ -98,7 +98,7 @@
                                     </span>
                                 {% endif %}
                             </td>
-                            <td>{{ payment.display_order }}</td>
+                            <td class="mobile-hide">{{ payment.display_order }}</td>
                             <td>
                                 <div class="action-buttons">
                                     {% if perms.setting.view_paymentdetails %}

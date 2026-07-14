@@ -21,6 +21,23 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+class GSTHsnCodeSelect(forms.Select):
+    """Custom Select widget to inject GST percentage data attributes on options"""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value:
+            val_id = value.value if hasattr(value, "value") else value
+            if val_id:
+                try:
+                    from inventory.models import GSTHsnCode
+                    hsn = GSTHsnCode.objects.get(pk=val_id)
+                    option["attrs"]["data-gst-percentage"] = str(hsn.gst_percentage)
+                except Exception:
+                    pass
+        return option
+
+
 class ProductForm(forms.ModelForm):
     """Form for creating a product"""
 
@@ -57,7 +74,7 @@ class ProductForm(forms.ModelForm):
             "category": forms.Select(attrs={"placeholder": "Select category"}),
             "cloth_type": forms.Select(attrs={"placeholder": "Select cloth type"}),
             "uom": forms.Select(attrs={"placeholder": "Select UOM"}),
-            "hsn_code": forms.Select(attrs={"placeholder": "Select HSN Code"}),
+            "hsn_code": GSTHsnCodeSelect(attrs={"placeholder": "Select HSN Code"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -108,6 +125,22 @@ class ProductForm(forms.ModelForm):
             )
         return name
 
+class SupplierInvoiceSelect(forms.Select):
+    """Custom Select widget to inject invoice type data attributes on options"""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value:
+            val_id = value.value if hasattr(value, "value") else value
+            if val_id:
+                try:
+                    from supplier.models import SupplierInvoice
+                    invoice = SupplierInvoice.objects.get(pk=val_id)
+                    option["attrs"]["data-invoice-type"] = invoice.invoice_type
+                except Exception:
+                    pass
+        return option
+
 
 class VariantForm(forms.ModelForm):
     """Form for creating a variant"""
@@ -117,7 +150,7 @@ class VariantForm(forms.ModelForm):
             "-created_at"
         ),
         required=False,
-        widget=forms.Select(attrs={"class": "form-input"}),
+        widget=SupplierInvoiceSelect(attrs={"class": "form-input"}),
         help_text="Select the supplier invoice for this variant (optional)",
     )
 
@@ -650,7 +683,7 @@ class StockInForm(forms.ModelForm):
             ),
             "purchase_price": forms.NumberInput(attrs={}),
             "mrp": forms.NumberInput(attrs={}),
-            "supplier_invoice": forms.Select(),
+            "supplier_invoice": SupplierInvoiceSelect(),
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
 
@@ -734,7 +767,7 @@ class InventoryAdjustmentForm(forms.ModelForm):
             "quantity_change": forms.NumberInput(
                 attrs={"class": "form-input", "step": "0.01", "autofocus": True}
             ),
-            "supplier_invoice": forms.Select(attrs={"class": "form-input"}),
+            "supplier_invoice": SupplierInvoiceSelect(attrs={"class": "form-input"}),
             "notes": forms.Textarea(attrs={"class": "form-input", "rows": 3}),
         }
 

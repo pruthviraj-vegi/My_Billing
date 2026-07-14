@@ -148,8 +148,8 @@
                         <thead>
                             <tr>
                                 <th>Report Type</th>
-                                <th>Paper Size</th>
-                                <th>Currency</th>
+                                <th class="mobile-hide">Paper Size</th>
+                                <th class="mobile-hide">Currency</th>
                                 <th>Default</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -161,10 +161,10 @@
                                     <td>
                                         <strong>{{ config.get_report_type_display }}</strong>
                                     </td>
-                                    <td>
+                                    <td class="mobile-hide">
                                         <span class="badge badge-info">{{ config.get_paper_size_display }}</span>
                                     </td>
-                                    <td>
+                                    <td class="mobile-hide">
                                         <span class="badge badge-secondary">{{ config.get_currency_display }}</span>
                                     </td>
                                     <td>

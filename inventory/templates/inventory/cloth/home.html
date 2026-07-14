@@ -55,32 +55,32 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th class="mobile-hide">ID</th>
             <th>Name</th>
-            <th>Description</th>
-            <th>Products</th>
+            <th class="mobile-hide">Description</th>
+            <th class="mobile-hide">Products</th>
             <th>Variants</th>
-            <th>Created</th>
+            <th class="mobile-hide">Created</th>
             <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for cloth_type in cloth_types %}
             <tr>
-              <td>{{ cloth_type.id }}</td>
+              <td class="mobile-hide">{{ cloth_type.id }}</td>
               <td>
                 <div>
                   <div class="fw-bold text-primary">{{ cloth_type.name|default:'N/A' }}</div>
                 </div>
               </td>
-              <td>{{ cloth_type.description|default:'No description' }}</td>
-              <td>
+              <td class="mobile-hide">{{ cloth_type.description|default:'No description' }}</td>
+              <td class="mobile-hide">
                 <span class="badge badge-primary">{{ cloth_type.products.count }}</span>
               </td>
               <td>
                 <span class="badge badge-primary">{{ cloth_type.products.count }}</span>
               </td>
-              <td>{{ cloth_type.created_at|date:'M d, Y' }}</td>
+              <td class="mobile-hide">{{ cloth_type.created_at|date:'M d, Y' }}</td>
               <td>
                 <div class="action-buttons">
                   {% if perms.inventory.change_cloth %}

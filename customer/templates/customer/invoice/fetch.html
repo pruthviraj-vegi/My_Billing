@@ -7,8 +7,8 @@
           <strong>{{ invoice.invoice_number }}</strong>
         </div>
       </td>
-      <td>{{ invoice.invoice_date|date:'M j, Y' }}</td>
-      <td>
+      <td class="mobile-hide">{{ invoice.invoice_date|date:'M j, Y' }}</td>
+      <td class="mobile-hide">
         <span class="badge {% if invoice.payment_type == 'CASH' %}badge-success{% else %}badge-info{% endif %}">
           {{ invoice.get_payment_type_display }}
         </span>
@@ -23,7 +23,7 @@
           </small>
         {% endif %}
       </td>
-      <td class="text-right">
+      <td class="mobile-hide text-right">
         <strong>{{ invoice.total_payable|currency }}</strong>
       </td>
       <td class="text-center">

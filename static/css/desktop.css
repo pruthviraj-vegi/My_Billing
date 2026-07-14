@@ -1,0 +1,34 @@
+/* ============================================================
+   DESKTOP.CSS — min-width (desktop-specific) overrides only
+   Loaded AFTER base.css, BEFORE mobile.css
+   One @media block per breakpoint. See css-guide.md before adding rules.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay .modal-btn {
+    transition: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .cart-detail-layout.col.d-flex.flex-row,
+  .cart-detail-layout.d-flex.flex-row {
+    flex-direction: row !important;
+  }
+
+  .cart-detail-layout .col-md-9 {
+    flex: 1 1 0;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .cart-detail-layout .col-md-3 {
+    flex: 0 0 280px;
+    width: 280px !important;
+    max-width: 280px !important;
+  }
+
+  .invoice-form-container {
+    max-width: 95% !important;
+  }
+}

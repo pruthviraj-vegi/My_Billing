@@ -4,19 +4,19 @@
 {% if page_obj %}
     {% for user in page_obj %}
         <tr>
-            <td>{{ user.id }}</td>
-            <td>{{ user.profile_id }}</td>
+            <td class="mobile-hide">{{ user.id }}</td>
+            <td class="mobile-hide">{{ user.profile_id }}</td>
             <td>
                 <div>
                     <span class="font-weight-bold">{{ user.full_name }}</span>
                 </div>
             </td>
             <td>{{ user.phone_number|phone_number }}</td>
-            <td>{{ user.email|default:"-" }}</td>
-            <td>
+            <td class="mobile-hide">{{ user.email|default:"-" }}</td>
+            <td class="mobile-hide">
                 <span class="badge badge-primary">{{ user.groups.all|first|default:"User" }}</span>
             </td>
-            <td>
+            <td class="mobile-hide">
                 {% if user.address %}
                     <span class="text-truncate"
                           style="max-width: 150px;
@@ -26,7 +26,7 @@
                     <span class="text-muted">-</span>
                 {% endif %}
             </td>
-            <td>
+            <td class="mobile-hide">
                 {% if user.is_commission_eligible %}
                     <span class="badge text-success">
                         <i class="fas fa-check-circle"></i>
@@ -52,7 +52,7 @@
                     </span>
                 {% endif %}
             </td>
-            <td>{{ user.date_joined|date:"M d, Y" }}</td>
+            <td class="mobile-hide">{{ user.date_joined|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
                     {% if perms.user.view_customuser %}
@@ -92,7 +92,7 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="10" class="text-center p-2">
+        <td colspan="100" class="text-center p-2">
             <div class="empty-state">
                 <i class="fas fa-users"></i>
                 <h4>No Users Found</h4>

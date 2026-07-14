@@ -217,10 +217,10 @@
               <thead>
                 <tr>
                   <th>Amount</th>
-                  <th>Commission</th>
-                  <th>Effective From</th>
-                  <th>Effective To</th>
-                  <th>Created At</th>
+                  <th class="mobile-hide">Commission</th>
+                  <th class="mobile-hide">Effective From</th>
+                  <th class="mobile-hide">Effective To</th>
+                  <th class="mobile-hide">Created At</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -228,22 +228,22 @@
                 {% for salary in salaries %}
                   <tr>
                     <td>{{ salary.amount|currency }}</td>
-                    <td>
+                    <td class="mobile-hide">
                       {% if salary.commission %}
                         <span class="badge badge-success">Yes</span>
                       {% else %}
                         <span class="badge badge-secondary">No</span>
                       {% endif %}
                     </td>
-                    <td>{{ salary.effective_from|date:"M d, Y" }}</td>
-                    <td>
+                    <td class="mobile-hide">{{ salary.effective_from|date:"M d, Y" }}</td>
+                    <td class="mobile-hide">
                       {% if salary.effective_to %}
                         {{ salary.effective_to|date:"M d, Y" }}
                       {% else %}
                         <span class="badge badge-success">Current</span>
                       {% endif %}
                     </td>
-                    <td>{{ salary.created_at|date:"M d, Y" }}</td>
+                    <td class="mobile-hide">{{ salary.created_at|date:"M d, Y" }}</td>
                     <td>
                       <div class="action-buttons">
                         {% if perms.user.change_salary %}
@@ -298,11 +298,11 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Transaction ID</th>
+                  <th class="mobile-hide">Transaction ID</th>
                   <th>Type</th>
                   <th>Amount</th>
-                  <th>Payment Method</th>
-                  <th>Description</th>
+                  <th class="mobile-hide">Payment Method</th>
+                  <th class="mobile-hide">Description</th>
                   <th>Date</th>
                   <th>Actions</th>
                 </tr>
@@ -310,7 +310,7 @@
               <tbody>
                 {% for transaction in transactions %}
                   <tr>
-                    <td>{{ transaction.transaction_id }}</td>
+                    <td class="mobile-hide">{{ transaction.transaction_id }}</td>
                     <td>{{ transaction.get_transaction_type_display }}</td>
                     <td>
                       {% if transaction.is_debit %}
@@ -319,8 +319,8 @@
                         <span class="text-success">+{{ transaction.amount|currency }}</span>
                       {% endif %}
                     </td>
-                    <td>{{ transaction.get_payment_method_display }}</td>
-                    <td>{{ transaction.description|truncatewords:10|default:"-" }}</td>
+                    <td class="mobile-hide">{{ transaction.get_payment_method_display }}</td>
+                    <td class="mobile-hide">{{ transaction.description|truncatewords:10|default:"-" }}</td>
                     <td>{{ transaction.date|date:"M d, Y" }}</td>
                     <td>
                       <div class="action-buttons">

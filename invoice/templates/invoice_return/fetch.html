@@ -24,7 +24,7 @@
                     {% endif %}
                 </div>
             </td>
-            <td>
+            <td class="mobile-hide">
                 <div>
                     <span class="font-weight-bold text-primary">
                         <a class="text-decoration-none"
@@ -68,7 +68,7 @@
                     </span>
                 {% endif %}
             </td>
-            <td>
+            <td class="mobile-hide">
                 {% if return_invoice.refund_type == 'CASH_REFUND' %}
                     <span class="badge badge-warning">
                         <i class="fas fa-money-bill-wave"></i>
@@ -99,7 +99,7 @@
                     {% endif %}
                 </div>
             </td>
-            <td>
+            <td class="mobile-hide">
                 <div>{{ return_invoice.return_date|date:"M d, Y" }}</div>
                 <small class="text-muted">{{ return_invoice.return_date|time:"H:i" }}</small>
             </td>
@@ -122,7 +122,7 @@
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="8" class="text-center p-3">
+        <td colspan="100" class="text-center p-3">
             <div class="empty-state">
                 <i class="fas fa-receipt"></i>
                 <h4>No Return Invoices Found</h4>

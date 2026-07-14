@@ -49,12 +49,12 @@
                 <thead>
                     <tr>
                         <th>Configuration</th>
-                        <th>Report Type</th>
-                        <th>Paper Size</th>
-                        <th>Currency</th>
+                        <th class="mobile-hide">Report Type</th>
+                        <th class="mobile-hide">Paper Size</th>
+                        <th class="mobile-hide">Currency</th>
                         <th>Status</th>
                         <th>Default</th>
-                        <th>Created</th>
+                        <th class="mobile-hide">Created</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -70,13 +70,13 @@
                                     {% endif %}
                                 </div>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <span class="badge badge-primary">{{ cfg.get_report_type_display }}</span>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <span class="badge badge-info">{{ cfg.get_paper_size_display }}</span>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <span class="badge badge-secondary">{{ cfg.get_currency_display }}</span>
                             </td>
                             <td>
@@ -99,7 +99,7 @@
                                     <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <small>{{ cfg.created_at|date:"M d, Y" }}</small>
                             </td>
                             <td>

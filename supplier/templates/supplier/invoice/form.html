@@ -148,6 +148,10 @@
   border-radius: 4px;
   font-weight: 600;
 }
+.details-form textarea[name="notes"] {
+  height: 148px;
+  resize: vertical;
+}
 </style>
 {% endblock extra_css %}
 {% block content %}
@@ -174,296 +178,320 @@
     <span class="breadcrumb-active">{{ title }}</span>
   </nav>
   <!-- Supplier Invoice Form -->
-  <div class="form-container">
-    <div class="form-card">
-      <div class="info-summary">
-        <h4>Supplier: {{ supplier.name }}</h4>
-        <p class="text-muted">
-          {{ supplier.phone }}
-          {% if supplier.email %}• {{ supplier.email }}{% endif %}
-        </p>
-      </div>
-      <form method="post"
-            class="details-form"
-            enctype="multipart/form-data"
-            novalidate
-            autocomplete="off"
-            id="invoiceForm">
-        {% csrf_token %}
-        <!-- Invoice Details Section -->
-        <div class="form-section">
-          <h5 class="section-title">Invoice Details</h5>
-          <div class="row">
-            <div class="col-md-6">
-              <div class="form-group {% if form.invoice_number.errors %}has-error{% endif %}">
-                <label for="{{ form.invoice_number.id_for_label }}" class="form-label">{{ form.invoice_number.label }}</label>
-                {{ form.invoice_number }}
-                <small class="form-help">
-                  {% if form.invoice_number.errors %}
-                    {% for error in form.invoice_number.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>
-                    {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Enter Invoice No (e.g., 4578, 1425)</span>
-                </small>
-              </div>
+  <!-- Supplier Invoice Form -->
+  <div class="form-container invoice-form-container">
+    <form method="post"
+          class="details-form"
+          enctype="multipart/form-data"
+          novalidate
+          autocomplete="off"
+          id="invoiceForm">
+      {% csrf_token %}
+      
+      <div class="row">
+        <!-- LEFT COLUMN: Invoice Details, Notes & Attachments -->
+        <div class="col-lg-9 col-md-8 col-12 mb-3">
+          <div class="form-card">
+            <div class="info-summary mb-4">
+              <h4>Supplier: {{ supplier.name }}</h4>
+              <p class="text-muted mb-0">
+                {{ supplier.phone }}
+                {% if supplier.email %}• {{ supplier.email }}{% endif %}
+              </p>
             </div>
-            <div class="col-md-6">
-              <div class="form-group {% if form.invoice_date.errors %}has-error{% endif %}">
-                <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
-                {{ form.invoice_date }}
-                <small class="form-help">
-                  {% if form.invoice_date.errors %}
-                    {% for error in form.invoice_date.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>
-                    {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Select Invoice Date</span>
-                </small>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-6">
-              <div class="form-group {% if form.invoice_type.errors %}has-error{% endif %}">
-                <label for="{{ form.invoice_type.id_for_label }}" class="form-label">{{ form.invoice_type.label }}</label>
-                {{ form.invoice_type|add_class:"form-select" }}
-                <small class="form-help">
-                  {% if form.invoice_type.errors %}
-                    {% for error in form.invoice_type.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>
-                    {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Invoice Type as GST or Local</span>
-                </small>
-              </div>
-            </div>
-            <div class="col-md-6" id="gstTypeGroup">
-              <div class="form-group {% if form.gst_type.errors %}has-error{% endif %}">
-                <label for="{{ form.gst_type.id_for_label }}" class="form-label">{{ form.gst_type.label }}</label>
-                {{ form.gst_type|add_class:"form-select" }}
-                <small class="form-help">
-                  {% if form.gst_type.errors %}
-                    {% for error in form.gst_type.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>
-                    {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Select GST Type</span>
-                </small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Amount Details Section -->
-        <div class="form-section">
-          <h5 class="section-title">Amount Details</h5>
-          <div class="row">
-            <div class="col-md-4">
-              <div class="form-group {% if form.sub_total.errors %}has-error{% endif %}">
-                <label for="{{ form.sub_total.id_for_label }}" class="form-label">{{ form.sub_total.label }}</label>
-                {{ form.sub_total }}
-                <small class="form-help">
-                  {% if form.sub_total.errors %}
-                    {% for error in form.sub_total.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>
-                    {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Amount Without Gst Amount</span>
-                </small>
-              </div>
-            </div>
-            <div class="col-md-4" id="cgstGroup">
-              <div class="form-group {% if form.cgst_amount.errors %}has-error{% endif %}">
-                <label for="{{ form.cgst_amount.id_for_label }}" class="form-label">{{ form.cgst_amount.label }}</label>
-                {{ form.cgst_amount }}
-                <small class="form-help">
-                  {% if form.cgst_amount.errors %}
-                    {% for error in form.cgst_amount.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>
-                    {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Enter CGST Amount Tax Amount (SGST is Calculated)</span>
-                </small>
-              </div>
-            </div>
-            <div class="col-md-4" id="igstGroup">
-              <div class="form-group {% if form.igst_amount.errors %}has-error{% endif %}">
-                <label for="{{ form.igst_amount.id_for_label }}" class="form-label">{{ form.igst_amount.label }}</label>
-                {{ form.igst_amount }}
-                <small class="form-help">
-                  {% if form.igst_amount.errors %}
-                    {% for error in form.igst_amount.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>
-                    {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Enter IGST Amount Tax Amount</span>
-                </small>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group {% if form.adjustment_amount.errors %}has-error{% endif %}">
-                <label for="{{ form.adjustment_amount.id_for_label }}" class="form-label">{{ form.adjustment_amount.label }}</label>
-                {{ form.adjustment_amount }}
-                <small class="form-help">
-                  {% if form.adjustment_amount.errors %}
-                    {% for error in form.adjustment_amount.errors %}
-                      <span class="form-error-inline">
-                        <i class="fas fa-exclamation-circle"></i>
-                        {{ error }}
-                      </span>
-                    {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Any Fractional Adjsut Amounts(0.25, 0.45, -0.25)</span>
-                </small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="form-section">
-          <h5 class="section-title">Amount Summary</h5>
-          <div class="total-amount-display">
-            <div class="total-row">
-              <span class="total-label">Sub Total:</span>
-              <span class="total-value" id="subTotalDisplay">0.00</span>
-            </div>
-            <div class="total-row hidden" id="cgstDisplayRow">
-              <span class="total-label">CGST:</span>
-              <span class="total-value" id="cgstDisplay">0.00</span>
-            </div>
-            <div class="total-row hidden" id="sgstDisplayRow">
-              <span class="total-label">SGST:</span>
-              <span class="total-value" id="sgstDisplay">0.00</span>
-            </div>
-            <div class="total-row hidden" id="igstDisplayRow">
-              <span class="total-label">IGST:</span>
-              <span class="total-value" id="igstDisplay">0.00</span>
-            </div>
-            <div class="total-row">
-              <span class="total-label">Adjustment:</span>
-              <span class="total-value" id="adjustmentDisplay">0.00</span>
-            </div>
-            <div class="total-row total-final">
-              <span class="total-label">Total Amount:</span>
-              <span class="total-value" id="totalAmountDisplay">0.00</span>
-            </div>
-          </div>
-        </div>
-        <!-- Notes Section -->
-        <div class="form-section">
-          <h5 class="section-title">Additional Information</h5>
-          <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
-            <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
-            {{ form.notes|add_class:"form-textarea" }}
-            <small class="form-help">
-              {% if form.notes.errors %}
-                {% for error in form.notes.errors %}
-                  <span class="form-error-inline">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ error }}
-                  </span>
-                {% endfor %}
-              {% endif %}
-              {% if form.notes.help_text %}<span class="form-help-text">{{ form.notes.help_text }}</span>{% endif %}
-            </small>
-          </div>
-        </div>
-        <!-- Attachments Section -->
-        <div class="form-section">
-          <h5 class="section-title">
-            <i class="fas fa-paperclip"></i> Attachments
-            <span class="badge badge-secondary ms-2" id="attachmentCount">{% if invoice %}{{ media_files|length }}{% else %}0{% endif %}</span>
-          </h5>
-          <p class="text-muted small mb-3">Upload invoice PDFs or images (JPG, PNG, GIF, WebP). Max 10 MB per file.</p>
 
-          <!-- Drop Zone -->
-          <div id="invoiceDropZone"
-               class="media-drop-zone">
-            <div class="drop-zone-inner">
-              <i class="fas fa-cloud-upload-alt drop-zone-icon"></i>
-              <p class="drop-zone-text">Drag & drop files here, or <label for="{{ form.attachments.id_for_label }}" class="drop-zone-browse">browse</label></p>
-              <p class="drop-zone-hint">PDF, JPG, PNG, GIF, WebP — up to 10 MB each</p>
-              {{ form.attachments }}
-            </div>
-            {% if form.attachments.errors %}
-              <div class="form-error-inline mt-2">
-                {% for error in form.attachments.errors %}
-                  <span><i class="fas fa-exclamation-circle"></i> {{ error }}</span>
-                {% endfor %}
-              </div>
-            {% endif %}
-          </div>
-
-          <!-- Existing / Uploaded Files -->
-          <div id="invoiceMediaList" class="media-file-list mt-3">
-            {% if invoice %}
-              {% for mf in media_files %}
-                <div class="media-file-item" id="media-item-{{ mf.pk }}">
-                  <div class="media-file-icon">
-                    {% if mf.is_image %}
-                      <img src="{{ mf.media_file.url }}" alt="{{ mf.original_filename }}" class="media-thumb">
-                    {% else %}
-                      <i class="fas fa-file-pdf media-pdf-icon"></i>
-                    {% endif %}
+            <!-- Invoice Details Section -->
+            <div class="form-section">
+              <h5 class="section-title">Invoice Details</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group {% if form.invoice_number.errors %}has-error{% endif %}">
+                    <label for="{{ form.invoice_number.id_for_label }}" class="form-label">{{ form.invoice_number.label }}</label>
+                    {{ form.invoice_number }}
+                    <small class="form-help">
+                      {% if form.invoice_number.errors %}
+                        {% for error in form.invoice_number.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Enter Invoice No (e.g., 4578, 1425)</span>
+                    </small>
                   </div>
-                  <div class="media-file-info">
-                    <a href="{{ mf.media_file.url }}" target="_blank" class="media-file-name">{{ mf.original_filename }}</a>
-                    <span class="media-file-date text-muted small">{{ mf.created_at|date:"d M Y, H:i" }}</span>
-                  </div>
-                  <button type="button"
-                          class="btn btn-sm btn-danger media-delete-btn"
-                          data-delete-url="{% url 'supplier:delete_invoice_media' supplier.pk invoice.pk mf.pk %}"
-                          data-item-id="media-item-{{ mf.pk }}"
-                          title="Delete attachment">
-                    <i class="fas fa-trash"></i>
-                  </button>
                 </div>
-              {% endfor %}
-            {% endif %}
-            
-            {% if not invoice or not media_files %}
-              <p class="text-muted small" id="noAttachmentsMsg">No attachments selected.</p>
-            {% endif %}
+                <div class="col-md-6">
+                  <div class="form-group {% if form.invoice_date.errors %}has-error{% endif %}">
+                    <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
+                    {{ form.invoice_date }}
+                    <small class="form-help">
+                      {% if form.invoice_date.errors %}
+                        {% for error in form.invoice_date.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Select Invoice Date</span>
+                    </small>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group {% if form.invoice_type.errors %}has-error{% endif %}">
+                    <label for="{{ form.invoice_type.id_for_label }}" class="form-label">{{ form.invoice_type.label }}</label>
+                    {{ form.invoice_type|add_class:"form-select" }}
+                    <small class="form-help">
+                      {% if form.invoice_type.errors %}
+                        {% for error in form.invoice_type.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Invoice Type as GST or Local</span>
+                    </small>
+                  </div>
+                </div>
+                <div class="col-md-6" id="gstTypeGroup">
+                  <div class="form-group {% if form.gst_type.errors %}has-error{% endif %}">
+                    <label for="{{ form.gst_type.id_for_label }}" class="form-label">{{ form.gst_type.label }}</label>
+                    {{ form.gst_type|add_class:"form-select" }}
+                    <small class="form-help">
+                      {% if form.gst_type.errors %}
+                        {% for error in form.gst_type.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Select GST Type</span>
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Amount Details Section -->
+            <div class="form-section">
+              <h5 class="section-title">Amount Details</h5>
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group {% if form.sub_total.errors %}has-error{% endif %}">
+                    <label for="{{ form.sub_total.id_for_label }}" class="form-label">{{ form.sub_total.label }}</label>
+                    {{ form.sub_total }}
+                    <small class="form-help">
+                      {% if form.sub_total.errors %}
+                        {% for error in form.sub_total.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Amount Without Gst Amount</span>
+                    </small>
+                  </div>
+                </div>
+                <div class="col-md-4" id="cgstGroup">
+                  <div class="form-group {% if form.cgst_amount.errors %}has-error{% endif %}">
+                    <label for="{{ form.cgst_amount.id_for_label }}" class="form-label">{{ form.cgst_amount.label }}</label>
+                    {{ form.cgst_amount }}
+                    <small class="form-help">
+                      {% if form.cgst_amount.errors %}
+                        {% for error in form.cgst_amount.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Enter CGST Amount Tax Amount (SGST is Calculated)</span>
+                    </small>
+                  </div>
+                </div>
+                <div class="col-md-4" id="igstGroup">
+                  <div class="form-group {% if form.igst_amount.errors %}has-error{% endif %}">
+                    <label for="{{ form.igst_amount.id_for_label }}" class="form-label">{{ form.igst_amount.label }}</label>
+                    {{ form.igst_amount }}
+                    <small class="form-help">
+                      {% if form.igst_amount.errors %}
+                        {% for error in form.igst_amount.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Enter IGST Amount Tax Amount</span>
+                    </small>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group {% if form.adjustment_amount.errors %}has-error{% endif %}">
+                    <label for="{{ form.adjustment_amount.id_for_label }}" class="form-label">{{ form.adjustment_amount.label }}</label>
+                    {{ form.adjustment_amount }}
+                    <small class="form-help">
+                      {% if form.adjustment_amount.errors %}
+                        {% for error in form.adjustment_amount.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Any Fractional Adjsut Amounts(0.25, 0.45, -0.25)</span>
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>            <!-- Notes & Attachments Section -->
+            <div class="form-section mb-0">
+              <h5 class="section-title">Notes & Attachments</h5>
+              <div class="row mt-2">
+                <!-- Notes Section -->
+                <div class="col-md-6 col-12 mb-3">
+                  <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
+                    <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+                    {{ form.notes|add_class:"form-textarea" }}
+                    <small class="form-help">
+                      {% if form.notes.errors %}
+                        {% for error in form.notes.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      {% if form.notes.help_text %}<span class="form-help-text">{{ form.notes.help_text }}</span>{% endif %}
+                    </small>
+                  </div>
+                </div>
+
+                <!-- Attachments Section -->
+                <div class="col-md-6 col-12 mb-3">
+                  <div class="form-group">
+                    <label class="form-label">
+                      <i class="fas fa-paperclip"></i> Attachments
+                      <span class="badge badge-secondary ms-2" id="attachmentCount">{% if invoice %}{{ media_files|length }}{% else %}0{% endif %}</span>
+                    </label>
+                    <p class="text-muted small mb-2">Upload invoice PDFs or images (JPG, PNG, GIF, WebP). Max 10 MB per file.</p>
+
+                    <!-- Drop Zone -->
+                    <div id="invoiceDropZone"
+                         class="media-drop-zone mb-2">
+                      <div class="drop-zone-inner">
+                        <i class="fas fa-cloud-upload-alt drop-zone-icon"></i>
+                        <p class="drop-zone-text">Drag & drop files here, or <label for="{{ form.attachments.id_for_label }}" class="drop-zone-browse">browse</label></p>
+                        <p class="drop-zone-hint">PDF, JPG, PNG, GIF, WebP — up to 10 MB each</p>
+                        {{ form.attachments }}
+                      </div>
+                      {% if form.attachments.errors %}
+                        <div class="form-error-inline mt-2">
+                          {% for error in form.attachments.errors %}
+                            <span><i class="fas fa-exclamation-circle"></i> {{ error }}</span>
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    </div>
+
+                    <!-- Existing / Uploaded Files -->
+                    <div id="invoiceMediaList" class="media-file-list mt-3">
+                      {% if invoice %}
+                        {% for mf in media_files %}
+                          <div class="media-file-item" id="media-item-{{ mf.pk }}">
+                            <div class="media-file-icon">
+                              {% if mf.is_image %}
+                                <img src="{{ mf.media_file.url }}" alt="{{ mf.original_filename }}" class="media-thumb">
+                              {% else %}
+                                <i class="fas fa-file-pdf media-pdf-icon"></i>
+                              {% endif %}
+                            </div>
+                            <div class="media-file-info">
+                              <a href="{{ mf.media_file.url }}" target="_blank" class="media-file-name">{{ mf.original_filename }}</a>
+                              <span class="media-file-date text-muted small">{{ mf.created_at|date:"d M Y, H:i" }}</span>
+                            </div>
+                            <button type="button"
+                                    class="btn btn-sm btn-danger media-delete-btn"
+                                    data-delete-url="{% url 'supplier:delete_invoice_media' supplier.pk invoice.pk mf.pk %}"
+                                    data-item-id="media-item-{{ mf.pk }}"
+                                    title="Delete attachment">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        {% endfor %}
+                      {% endif %}
+                      
+                      {% if not invoice or not media_files %}
+                        <p class="text-muted small" id="noAttachmentsMsg">No attachments selected.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <!-- Form Actions -->
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i>
-            {% if invoice %}
-              Update Invoice
-            {% else %}
-              Create Invoice
-            {% endif %}
-          </button>
-          <a href="{% url 'supplier:detail' supplier.pk %}"
-             class="btn btn-secondary">
-            <i class="fas fa-times"></i>
-            Cancel
-          </a>
+
+        <!-- RIGHT COLUMN: Amount Summary & Actions -->
+        <div class="col-lg-3 col-md-4 col-12">
+          <div class="form-card sticky-summary-card">
+            <!-- Amount Summary Section -->
+            <div class="form-section mb-0">
+              <h5 class="section-title">Amount Summary</h5>
+              <div class="total-amount-display">
+                <div class="total-row">
+                  <span class="total-label">Sub Total:</span>
+                  <span class="total-value" id="subTotalDisplay">0.00</span>
+                </div>
+                <div class="total-row hidden" id="cgstDisplayRow">
+                  <span class="total-label">CGST:</span>
+                  <span class="total-value" id="cgstDisplay">0.00</span>
+                </div>
+                <div class="total-row hidden" id="sgstDisplayRow">
+                  <span class="total-label">SGST:</span>
+                  <span class="total-value" id="sgstDisplay">0.00</span>
+                </div>
+                <div class="total-row hidden" id="igstDisplayRow">
+                  <span class="total-label">IGST:</span>
+                  <span class="total-value" id="igstDisplay">0.00</span>
+                </div>
+                <div class="total-row">
+                  <span class="total-label">Adjustment:</span>
+                  <span class="total-value" id="adjustmentDisplay">0.00</span>
+                </div>
+                <div class="total-row total-final">
+                  <span class="total-label">Total Amount:</span>
+                  <span class="total-value" id="totalAmountDisplay">0.00</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions d-flex flex-column gap-2 mt-3 pt-3 border-top">
+              <button type="submit" class="btn btn-primary w-100 justify-content-center">
+                <i class="fas fa-save"></i>
+                {% if invoice %}
+                  Update Invoice
+                {% else %}
+                  Create Invoice
+                {% endif %}
+              </button>
+              <a href="{% url 'supplier:detail' supplier.pk %}"
+                 class="btn btn-secondary w-100 justify-content-center">
+                <i class="fas fa-times"></i>
+                Cancel
+              </a>
+            </div>
+          </div>
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
   </div>
 {% endblock content %}
 {% block extra_js %}

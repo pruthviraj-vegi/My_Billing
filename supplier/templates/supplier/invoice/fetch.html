@@ -8,16 +8,16 @@
           {% if invoice.notes %}<small class="text-muted">{{ invoice.notes|truncatechars:30 }}</small>{% endif %}
         </div>
       </td>
-      <td>{{ invoice.invoice_date|date:'M j, Y' }}</td>
-      <td>
+      <td class="mobile-hide">{{ invoice.invoice_date|date:'M j, Y' }}</td>
+      <td class="mobile-hide">
         {{ invoice.get_invoice_type_display }}
         {% if invoice.gst_type %}
           <br />
           <small class="secondary-text">{{ invoice.get_gst_type_display }}</small>
         {% endif %}
       </td>
-      <td>{{ invoice.sub_total|currency }}</td>
-      <td>
+      <td class="mobile-hide">{{ invoice.sub_total|currency }}</td>
+      <td class="mobile-hide">
         {% if invoice.invoice_type == 'GST_APPLICABLE' %}
           {% if invoice.gst_type == 'CGST_SGST' %}
             {{ invoice.cgst_amount|add:invoice.cgst_amount|currency }}
@@ -92,7 +92,7 @@
   {% endfor %}
 {% else %}
   <tr>
-    <td colspan="8" class="text-center p-2">
+    <td colspan="100" class="text-center p-2">
       <div class="empty-state">
         <i class="fas fa-file-invoice"></i>
         <h4>No Invoices Found</h4>

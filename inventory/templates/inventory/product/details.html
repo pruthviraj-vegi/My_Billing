@@ -148,14 +148,14 @@
                             <thead>
                                 <tr>
                                     <th>Barcode</th>
-                                    <th>Size</th>
-                                    <th>Color</th>
+                                    <th class="mobile-hide">Size</th>
+                                    <th class="mobile-hide">Color</th>
                                     <th>Quantity</th>
-                                    <th>Damaged</th>
-                                    <th>Purchase Price</th>
-                                    <th>Selling Price</th>
+                                    <th class="mobile-hide">Damaged</th>
+                                    <th class="mobile-hide">Purchase Price</th>
+                                    <th class="mobile-hide">Selling Price</th>
                                     <th>Final Price</th>
-                                    <th>Stock Status</th>
+                                    <th class="mobile-hide">Stock Status</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -166,14 +166,14 @@
                                         <td>
                                             <strong data-copy="{{ variant.barcode }}">{{ variant.barcode }}</strong>
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             {% if variant.size %}
                                                 <span class="badge badge-secondary">{{ variant.size.name }}</span>
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             {% if variant.color %}
                                                 <div class="d-flex align-items-center gap-2">
                                                     <div class="color-swatch-small"
@@ -192,15 +192,15 @@
                                                 <small class="secondary-text">Min: {{ variant.minimum_quantity|floatformat:0 }}</small>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             {% if variant.damaged_quantity > 0 %}
                                                 <span class="text-danger">{{ variant.damaged_quantity|floatformat:0 }}</span>
                                             {% else %}
                                                 <span class="text-muted">0</span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ variant.purchase_price|currency }}</td>
-                                        <td>{{ variant.mrp|currency }}</td>
+                                        <td class="mobile-hide">{{ variant.purchase_price|currency }}</td>
+                                        <td class="mobile-hide">{{ variant.mrp|currency }}</td>
                                         <td>
                                             <strong>{{ variant.final_price|currency }}</strong>
                                             {% if variant.discount_percentage > 0 %}
@@ -208,7 +208,7 @@
                                                 <small class="secondary-text text-success">-{{ variant.discount_percentage }}%</small>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             {% if variant.stock_status == 'Out of Stock' %}
                                                 <span class="badge text-danger">{{ variant.stock_status }}</span>
                                             {% elif variant.stock_status == 'Low Stock' %}

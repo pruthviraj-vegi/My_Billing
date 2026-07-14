@@ -10,7 +10,7 @@
                     <br><small class="text-muted">{{ token.purpose|truncatechars:40 }}</small>
                 {% endif %}
             </td>
-            <td><code>{{ token.prefix }}</code></td>
+            <td class="mobile-hide"><code>{{ token.prefix }}</code></td>
             <td>
                 {% if token.is_active %}
                     <span class="status-badge status-active">Active</span>
@@ -18,8 +18,8 @@
                     <span class="status-badge status-inactive">Revoked</span>
                 {% endif %}
             </td>
-            <td>{{ token.expires_at|date:"M d, Y" }}</td>
-            <td>
+            <td class="mobile-hide">{{ token.expires_at|date:"M d, Y" }}</td>
+            <td class="mobile-hide">
                 {% if token.last_used_at %}
                     {{ token.last_used_at|date:"M d, Y H:i" }}
                     <br><small class="text-muted">{{ token.last_used_ip|default:"" }}</small>
@@ -27,7 +27,7 @@
                     <span class="text-muted">Never</span>
                 {% endif %}
             </td>
-            <td>{{ token.created_at|date:"M d, Y" }}</td>
+            <td class="mobile-hide">{{ token.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
                     <a href="{% url 'api_tokens:detail' token.id %}" class="btn-action btn-view" title="View Details">
@@ -45,7 +45,7 @@
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="7" class="text-center p-2">
+        <td colspan="100" class="text-center p-2">
             <div class="empty-state">
                 <i class="fas fa-key f-3 mb-1 text-secondary"></i>
                 <h4 class="mb-1 text-primary">No API Tokens Found</h4>

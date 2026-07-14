@@ -106,7 +106,7 @@
 }
 
 .action-btn.delete:hover {
-    background: #c82333;
+    background: var(--danger-hover);
 }
 
 .action-btn.view {
@@ -148,7 +148,6 @@
 .form-row input:focus,
 .form-row select:focus,
 .form-row textarea:focus {
-    outline: none;
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
@@ -226,7 +225,6 @@
 }
 
 #searchbar:focus {
-    outline: none;
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }

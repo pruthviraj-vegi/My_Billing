@@ -7,11 +7,11 @@
         <a href="{% url 'invoice:detail' data.invoice.id %}"
            class="text-primary">{{ data.invoice.invoice_number }}</a>
       </td>
-      <td>{{ data.product_variant.product.name }}</td>
-      <td>{{ data.quantity|floatformat:2 }}</td>
-      <td>{{ data.unit_price|currency }}</td>
+      <td class="mobile-hide">{{ data.product_variant.product.name }}</td>
+      <td class="mobile-hide">{{ data.quantity|floatformat:2 }}</td>
+      <td class="mobile-hide">{{ data.unit_price|currency }}</td>
       <td>{{ data.discounted_amount|currency }}</td>
-      <td>{{ data.commission_percentage|floatformat:2 }}%</td>
+      <td class="mobile-hide">{{ data.commission_percentage|floatformat:2 }}%</td>
       <td>
         <strong class="text-success">{{ data.commission_amount|currency }}</strong>
       </td>

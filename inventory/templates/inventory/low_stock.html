@@ -87,21 +87,21 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th class="mobile-hide">ID</th>
                         <th>Status</th>
                         <th>Product Name</th>
                         <th>Current Stock</th>
-                        <th>Min Stock</th>
-                        <th>Critical Threshold</th>
-                        <th>Price</th>
-                        <th>Created</th>
+                        <th class="mobile-hide">Min Stock</th>
+                        <th class="mobile-hide">Critical Threshold</th>
+                        <th class="mobile-hide">Price</th>
+                        <th class="mobile-hide">Created</th>
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for variant in page_obj %}
                         <tr>
-                            <td>{{ variant.id }}</td>
+                            <td class="mobile-hide">{{ variant.id }}</td>
                             <td>
                                 {% if variant.quantity == 0 %}
                                     <span class="badge badge-danger">
@@ -130,10 +130,10 @@
                                     {{ variant.quantity }}
                                 </span>
                             </td>
-                            <td>{{ variant.minimum_quantity }}</td>
-                            <td>{{ variant.critical_threshold }}</td>
-                            <td>{{ variant.mrp }}</td>
-                            <td>{{ variant.created_at|date:'M d, Y' }}</td>
+                            <td class="mobile-hide">{{ variant.minimum_quantity }}</td>
+                            <td class="mobile-hide">{{ variant.critical_threshold }}</td>
+                            <td class="mobile-hide">{{ variant.mrp }}</td>
+                            <td class="mobile-hide">{{ variant.created_at|date:'M d, Y' }}</td>
                             <td>
                                 <div class="action-buttons">
                                     <a href="{% url 'inventory_variant:stock_in' variant.id %}"

@@ -18,7 +18,7 @@
                     {% endif %}
                 </div>
             </td>
-            <td>
+            <td class="mobile-hide">
                 {% if item.invoice.payment_type == 'CASH' %}
                     <span class="badge badge-success">
                         <i class="fas fa-money-bill-wave"></i>
@@ -36,11 +36,11 @@
                     <div class="font-weight-bold text-primary">{{ item.invoice.amount|currency }}</div>
                 </div>
             </td>
-            <td>{{ item.quantity }}</td>
-            <td>{{ item.mrp|currency }}</td>
-            <td>{{ item.unit_price|currency }}</td>
-            <td>{{ item.invoice.sold_by.username }}</td>
-            <td>{{ item.invoice.invoice_date|date:"M d, Y" }}</td>
+            <td class="mobile-hide">{{ item.quantity }}</td>
+            <td class="mobile-hide">{{ item.mrp|currency }}</td>
+            <td class="mobile-hide">{{ item.unit_price|currency }}</td>
+            <td class="mobile-hide">{{ item.invoice.sold_by.username }}</td>
+            <td class="mobile-hide">{{ item.invoice.invoice_date|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
                     <a href="{% url 'invoice:detail' item.invoice.id %}"
@@ -55,7 +55,7 @@
 {% else %}
     <!-- Empty state -->
     <tr>
-        <td colspan="9" class="text-center empty-state-container p-3">
+        <td colspan="100" class="text-center empty-state-container p-3">
             <div class="empty-state">
                 <i class="fas fa-file-invoice f-3 mb-1 text-secondary"></i>
                 <h4 class="mb-1 text-primary">No Invoices Found</h4>

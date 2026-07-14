@@ -224,10 +224,10 @@
                             <thead>
                                 <tr>
                                     <th>Product</th>
-                                    <th>Variant</th>
+                                    <th class="mobile-hide">Variant</th>
                                     <th>Quantity</th>
-                                    <th>MRP</th>
-                                    <th>Unit Price</th>
+                                    <th class="mobile-hide">MRP</th>
+                                    <th class="mobile-hide">Unit Price</th>
                                     <th>Total</th>
                                 </tr>
                             </thead>
@@ -242,7 +242,7 @@
                                                 <small class="text-muted">{{ item.product_variant.product.category.name }}</small>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             <div class="variant-info">
                                                 <strong><a href="{% url 'inventory_variant:details' item.product_variant.id %}"
    target="_blank">{{ item.product_variant.simple_name }}</a></strong>
@@ -267,8 +267,8 @@
                                                 {% endif %}
                                             </div>
                                         </td>
-                                        <td>{{ item.mrp|currency }}</td>
-                                        <td>{{ item.unit_price|currency }}</td>
+                                        <td class="mobile-hide">{{ item.mrp|currency }}</td>
+                                        <td class="mobile-hide">{{ item.unit_price|currency }}</td>
                                         <td>
                                             <strong>{{ item.amount|currency }}</strong>
                                             {% if item.discount_amount_per_unit > 0 %}
@@ -351,13 +351,13 @@
                                 <tr>
                                     <th>Return Invoice</th>
                                     <th>Product</th>
-                                    <th>Variant</th>
-                                    <th>Original Qty</th>
+                                    <th class="mobile-hide">Variant</th>
+                                    <th class="mobile-hide">Original Qty</th>
                                     <th>Returned Qty</th>
-                                    <th>Unit Price</th>
+                                    <th class="mobile-hide">Unit Price</th>
                                     <th>Total Amount</th>
-                                    <th>Condition</th>
-                                    <th>Reason</th>
+                                    <th class="mobile-hide">Condition</th>
+                                    <th class="mobile-hide">Reason</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -375,7 +375,7 @@
                                                 <small class="text-muted">{{ item.product_variant.product.category.name }}</small>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             <div class="variant-info">
                                                 <strong>{{ item.product_variant.simple_name }}</strong>
                                                 {% if item.product_variant.size %}
@@ -388,18 +388,18 @@
                                                 {% endif %}
                                             </div>
                                         </td>
-                                        <td>{{ item.quantity_original|floatformat:2 }}</td>
+                                        <td class="mobile-hide">{{ item.quantity_original|floatformat:2 }}</td>
                                         <td>
                                             <strong class="text-danger">{{ item.quantity_returned|floatformat:2 }}</strong>
                                         </td>
-                                        <td>{{ item.unit_price|currency }}</td>
+                                        <td class="mobile-hide">{{ item.unit_price|currency }}</td>
                                         <td>
                                             <strong>{{ item.total_amount|currency }}</strong>
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             <span class="badge badge-secondary">{{ item.get_condition_display }}</span>
                                         </td>
-                                        <td>
+                                        <td class="mobile-hide">
                                             <span class="badge badge-info">{{ item.get_return_reason_display }}</span>
                                         </td>
                                     </tr>

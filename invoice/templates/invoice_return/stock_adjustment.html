@@ -100,12 +100,12 @@
                 <thead>
                     <tr>
                         <th>Product</th>
-                        <th>Original Qty</th>
+                        <th class="mobile-hide">Original Qty</th>
                         <th>Return Qty</th>
-                        <th>Unit Price</th>
+                        <th class="mobile-hide">Unit Price</th>
                         <th>Total Amount</th>
-                        <th>Condition</th>
-                        <th>Return Reason</th>
+                        <th class="mobile-hide">Condition</th>
+                        <th class="mobile-hide">Return Reason</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -119,7 +119,7 @@
                                     {% if item.product_variant.barcode %}<div class="product-barcode">{{ item.product_variant.barcode }}</div>{% endif %}
                                 </div>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <div class="quantity-display">{{ item.quantity_original }}</div>
                             </td>
                             <td>
@@ -134,13 +134,13 @@
                                            data-original-qty="{{ item.quantity_original }}">
                                 </div>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <div class="price-display">{{ item.unit_price|currency }}</div>
                             </td>
                             <td>
                                 <div class="amount-display" id="amount-{{ item.id }}">{{ item.total_amount|currency }}</div>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <select class="form-select condition-select" data-item-id="{{ item.id }}">
                                     {% for value, label in item_condition_choices %}
                                         <option value="{{ value }}"
@@ -150,7 +150,7 @@
                                     {% endfor %}
                                 </select>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <select class="form-select reason-select" data-item-id="{{ item.id }}">
                                     {% for value, label in item_return_reason_choices %}
                                         <option value="{{ value }}"

@@ -55,28 +55,28 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th class="mobile-hide">ID</th>
                         <th>Size</th>
-                        <th>Description</th>
+                        <th class="mobile-hide">Description</th>
                         <th>Variants</th>
-                        <th>Created</th>
+                        <th class="mobile-hide">Created</th>
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for size in sizes %}
                         <tr>
-                            <td>{{ size.id }}</td>
+                            <td class="mobile-hide">{{ size.id }}</td>
                             <td>
                                 <div>
                                     <div class="font-weight-bold text-primary">{{ size.name|default:'N/A' }}</div>
                                 </div>
                             </td>
-                            <td>{{ size.description|default:'No description' }}</td>
+                            <td class="mobile-hide">{{ size.description|default:'No description' }}</td>
                             <td>
                                 <span class="badge badge-primary">{{ size.product_variants.count }}</span>
                             </td>
-                            <td>{{ size.created_at|date:'M d, Y' }}</td>
+                            <td class="mobile-hide">{{ size.created_at|date:'M d, Y' }}</td>
                             <td>
                                 <div class="action-buttons">
                                     {% if perms.inventory.change_size %}

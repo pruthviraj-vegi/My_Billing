@@ -10,9 +10,9 @@
           <span class="badge {% if row.type == "Purchased" %}badge-info{% else %}badge-secondary{% endif %}">{{ row.type }}</span>
         {% endif %}
       </td>
-      <td class="text-center"># {{ row.ref }}</td>
-      <td class="text-center">{{ row.method|default:"-" }}</td>
-      <td class="text-center">{{ row.notes|default:"-"|truncatechars:15 }}</td>
+      <td class="text-center mobile-hide"># {{ row.ref }}</td>
+      <td class="text-center mobile-hide">{{ row.method|default:"-" }}</td>
+      <td class="text-center mobile-hide">{{ row.notes|default:"-"|truncatechars:15 }}</td>
       <td class="text-center">
         {% if row.type == "Invoice" %}
           <span title="Final Amount: {{ row.gross_amount|floatformat:2 }} - {{ row.discount_amount|floatformat:2 }} (discount) - {{ row.advance_amount|floatformat:2 }} (advance) = {{ row.credit|floatformat:2 }}">
@@ -23,7 +23,7 @@
         {% endif %}
       </td>
       <td class="text-center">{{ row.debit|currency }}</td>
-      <td class="text-center">
+      <td class="text-center mobile-hide">
         {% if row.type == "Invoice" %}
           {% if row.paid_amount > 0 %}
             <span class="text-success">{{ row.paid_amount|currency }}</span>

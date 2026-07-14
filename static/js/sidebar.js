@@ -214,3 +214,82 @@
   }
 
 })();
+
+// ========================================
+// Mobile Row Action Buttons — collapse >2 into three-dots
+// ========================================
+(function () {
+  'use strict';
+
+  function collapseRowActionButtons() {
+    var isMobile = window.innerWidth <= 768;
+    document.querySelectorAll('td .action-buttons').forEach(function (container) {
+      var buttons = container.querySelectorAll(':scope > a.btn-action, :scope > button.btn-action');
+      if (buttons.length <= 2) return;
+
+      if (isMobile && !container.dataset.rowCollapsed) {
+        container.dataset.rowCollapsed = 'true';
+        container.classList.add('has-overflow');
+
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'row-actions-toggle';
+        toggle.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
+        toggle.title = 'More actions';
+
+        var dropdown = document.createElement('div');
+        dropdown.className = 'row-actions-dropdown';
+
+        for (var i = 2; i < buttons.length; i++) {
+          dropdown.appendChild(buttons[i]);
+        }
+
+        container.appendChild(dropdown);
+        container.appendChild(toggle);
+
+        toggle.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var wasOpen = dropdown.classList.toggle('open');
+          if (wasOpen) {
+            document.querySelectorAll('.row-actions-dropdown.open').forEach(function (d) {
+              if (d !== dropdown) d.classList.remove('open');
+            });
+          }
+        });
+      } else if (!isMobile && container.dataset.rowCollapsed) {
+        var dropdown = container.querySelector('.row-actions-dropdown');
+        var toggle = container.querySelector('.row-actions-toggle');
+        if (dropdown) {
+          var movedBtns = dropdown.querySelectorAll('.btn-action');
+          movedBtns.forEach(function (btn) {
+            container.insertBefore(btn, dropdown);
+          });
+          dropdown.remove();
+        }
+        if (toggle) toggle.remove();
+        delete container.dataset.rowCollapsed;
+        container.classList.remove('has-overflow');
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', collapseRowActionButtons);
+  document.addEventListener('tableDataLoaded', collapseRowActionButtons);
+
+  // Also run on resize for desktop↔mobile transitions
+  var resizeTimer;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(collapseRowActionButtons, 150);
+  });
+
+  // Close dropdowns on outside click
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.row-actions-toggle') && !e.target.closest('.row-actions-dropdown')) {
+      document.querySelectorAll('.row-actions-dropdown.open').forEach(function (d) {
+        d.classList.remove('open');
+      });
+    }
+  });
+})();

@@ -50,12 +50,12 @@
                 <thead>
                     <tr>
                         <th>Config Name</th>
-                        <th>Type</th>
-                        <th>Label Size</th>
-                        <th>Paper Size</th>
-                        <th>Shop</th>
+                        <th class="mobile-hide">Type</th>
+                        <th class="mobile-hide">Label Size</th>
+                        <th class="mobile-hide">Paper Size</th>
+                        <th class="mobile-hide">Shop</th>
                         <th>Status</th>
-                        <th>Created</th>
+                        <th class="mobile-hide">Created</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -68,10 +68,10 @@
                                     {% if config.is_default %}<span class="badge badge-success">Default</span>{% endif %}
                                 </div>
                             </td>
-                            <td>{{ config.get_barcode_type_display }}</td>
-                            <td>{{ config.get_label_size_display }}</td>
-                            <td>{{ config.get_paper_size_display }}</td>
-                            <td>{{ config.shop.shop_name }}</td>
+                            <td class="mobile-hide">{{ config.get_barcode_type_display }}</td>
+                            <td class="mobile-hide">{{ config.get_label_size_display }}</td>
+                            <td class="mobile-hide">{{ config.get_paper_size_display }}</td>
+                            <td class="mobile-hide">{{ config.shop.shop_name }}</td>
                             <td>
                                 {% if config.is_active %}
                                     <span class="status-badge status-active">
@@ -84,7 +84,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <small>{{ config.created_at|date:"M d, Y" }}</small>
+                                <small class="mobile-hide">{{ config.created_at|date:"M d, Y" }}</small>
                             </td>
                             <td>
                                 <div class="action-buttons">

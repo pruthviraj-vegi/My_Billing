@@ -6,18 +6,18 @@
                 <strong>{{ invoice.invoice_number }}</strong>
             </td>
             <td>{{ invoice.supplier.name }}</td>
-            <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
+            <td class="mobile-hide">{{ invoice.invoice_date|date:"M d, Y" }}</td>
             <td>{{ invoice.total_amount|currency }}</td>
-            <td>{{ invoice.stock_amount|currency }}</td>
-            <td>{{ invoice.stock_in_quantity|floatformat:0 }}</td>
-            <td>{{ invoice.sales_quantity|floatformat:0 }}</td>
-            <td>{{ invoice.remaining_quantity|floatformat:0 }}</td>
-            <td>
+            <td class="mobile-hide">{{ invoice.stock_amount|currency }}</td>
+            <td class="mobile-hide">{{ invoice.stock_in_quantity|floatformat:0 }}</td>
+            <td class="mobile-hide">{{ invoice.sales_quantity|floatformat:0 }}</td>
+            <td class="mobile-hide">{{ invoice.remaining_quantity|floatformat:0 }}</td>
+            <td class="mobile-hide">
                 <span class="badge {% if invoice.sold_percentage < 25 %}text-danger{% elif invoice.sold_percentage < 50 %}text-warning{% else %}text-success{% endif %}">
                     {{ invoice.sold_percentage|floatformat:2 }}%
                 </span>
             </td>
-            <td>{{ invoice.products_count }}</td>
+            <td class="mobile-hide">{{ invoice.products_count }}</td>
             <td>
                 <div class="action-buttons">
                     <a href="{% url 'inventory:supplier_invoice_details' invoice.id %}"

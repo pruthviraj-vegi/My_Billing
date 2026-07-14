@@ -7,28 +7,28 @@
           <strong>#{{ payment.id }}</strong>
         </div>
       </td>
-      <td>{{ payment.payment_date|date:'M j, Y' }}</td>
+      <td class="mobile-hide">{{ payment.payment_date|date:'M j, Y' }}</td>
       <td>
         <strong>{{ payment.amount|currency }}</strong>
       </td>
-      <td>
+      <td class="mobile-hide">
         <span class="badge badge-info">{{ payment.get_method_display }}</span>
       </td>
-      <td>
+      <td class="mobile-hide">
         {% if payment.transaction_id %}
           {{ payment.transaction_id }}
         {% else %}
           <span class="text-muted">-</span>
         {% endif %}
       </td>
-      <td>
+      <td class="mobile-hide">
         {% if payment.amount != payment.unallocated_amount %}
           <span class="text-success">{{ payment.amount|sub:payment.unallocated_amount|currency }}</span>
         {% else %}
           <span class="text-muted">0.00</span>
         {% endif %}
       </td>
-      <td>
+      <td class="mobile-hide">
         {% if payment.unallocated_amount > 0 %}
           <span class="text-warning">{{ payment.unallocated_amount|currency }}</span>
         {% else %}
