@@ -123,12 +123,6 @@
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
       
-      .brand-tagline {
-        font-size: 16px;
-        opacity: 0.9;
-        font-weight: 400;
-      }
-      
       .login-form-container {
         flex: 1;
         padding: 60px 40px;
@@ -213,17 +207,6 @@
         cursor: pointer;
       }
       
-      .forgot-password {
-        font-size: 14px;
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 500;
-      }
-      
-      .forgot-password:hover {
-        text-decoration: underline;
-      }
-      
       .login-button {
         width: 100%;
         padding: 14px 24px;
@@ -249,29 +232,6 @@
         transform: translateY(0);
       }
       
-      .divider {
-        text-align: center;
-        margin: 24px 0;
-        position: relative;
-      }
-      
-      .divider::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: #e2e8f0;
-      }
-      
-      .divider span {
-        background: white;
-        padding: 0 16px;
-        color: var(--secondary);
-        font-size: 14px;
-      }
-      
       .error-message {
         background: #fef2f2;
         border: 1px solid #fecaca;
@@ -294,58 +254,171 @@
       
       /* Responsive Design */
       @media (max-width: 768px) {
+        body {
+          padding: 24px 16px;
+          overflow-y: auto;
+          min-height: 100vh;
+          height: auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
         .login-container {
           flex-direction: column;
-          max-width: 400px;
+          max-width: 440px;
+          width: 100%;
+          height: auto;
           min-height: auto;
+          border-radius: 16px;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
         }
-      
+
         .login-sidebar {
-          padding: 30px 20px;
-          min-height: 200px;
+          flex: 0 0 auto;
+          min-height: auto;
+          padding: 16px 20px;
+          flex-direction: row;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
         }
-      
-        .login-form-container {
-          padding: 40px 30px;
+
+        .logo-container {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          text-align: left;
         }
-      
-        .brand-name {
-          font-size: 24px;
-        }
-      
+
         .logo {
-          width: 80px;
-          height: 80px;
+          width: 44px;
+          height: 44px;
+          margin: 0;
         }
-      
+
         .logo img {
-          width: 40px;
-          height: 40px;
+          width: 24px;
+          height: 24px;
+        }
+
+        .brand-name {
+          font-size: 20px;
+          margin-bottom: 2px;
+        }
+
+        .login-form-container {
+          padding: 24px;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          overflow-y: auto;
+        }
+
+        .login-header {
+          margin-bottom: 20px;
+        }
+
+        .login-title {
+          font-size: 24px;
+          margin-bottom: 4px;
+        }
+
+        .login-subtitle {
+          font-size: 14px;
+        }
+
+        .form-group {
+          margin-bottom: 16px;
+        }
+
+        .form-label {
+          font-size: 13px;
+          margin-bottom: 6px;
+        }
+
+        .form-input {
+          padding: 10px 14px;
+          font-size: 15px;
+        }
+
+        .form-row {
+          margin-bottom: 16px;
+        }
+
+        .login-button {
+          padding: 12px 20px;
+          font-size: 15px;
+          margin-bottom: 16px;
         }
       }
       
       @media (max-width: 480px) {
-        body {
-          padding: 10px;
+        .login-sidebar {
+          padding: 12px 16px;
+          gap: 10px;
         }
-      
+
+        .logo {
+          width: 36px;
+          height: 36px;
+        }
+
+        .logo img {
+          width: 20px;
+          height: 20px;
+        }
+
+        .brand-name {
+          font-size: 18px;
+        }
+
         .login-form-container {
-          padding: 30px 20px;
+          padding: 16px 20px;
         }
-      
+
+        .login-header {
+          margin-bottom: 12px;
+        }
+
         .login-title {
-          font-size: 24px;
+          font-size: 20px;
+        }
+
+        .login-subtitle {
+          font-size: 13px;
+        }
+
+        .form-group {
+          margin-bottom: 12px;
+        }
+
+        .form-label {
+          font-size: 12px;
+          margin-bottom: 4px;
+        }
+
+        .form-input {
+          padding: 8px 12px;
+          font-size: 14px;
+        }
+
+        .form-row {
+          margin-bottom: 12px;
+        }
+
+        .checkbox-group label {
+          font-size: 12px;
+        }
+
+        .login-button {
+          padding: 10px 16px;
+          font-size: 14px;
+          margin-bottom: 12px;
         }
       }
 
-      .contact-info {
-        text-align: center;
-      }
-
-      .contact-info p {
-        color: var(--secondary);
-        font-size: 14px;
-      }
     </style>
   </head>
   <body>
@@ -360,13 +433,12 @@
                  height="60" />
           </div>
           <h1 class="brand-name">Billing System</h1>
-          <p class="brand-tagline">Admin Access Only</p>
         </div>
       </div>
       <!-- Login Form -->
       <div class="login-form-container">
         <div class="login-header">
-          <h2 class="login-title">Admin Login</h2>
+          <h2 class="login-title">Login</h2>
           <p class="login-subtitle">Sign in to access the billing system</p>
         </div>
         {% if messages %}
@@ -404,16 +476,9 @@
               <input type="checkbox" id="remember" name="remember" checked />
               <label for="remember">Remember me</label>
             </div>
-            <a href="#" class="forgot-password">Forgot password?</a>
           </div>
           <button type="submit" class="login-button">Sign In</button>
         </form>
-        <div class="divider">
-          <span>Need Access?</span>
-        </div>
-        <div class="contact-info">
-          <p>Contact your system administrator for login credentials</p>
-        </div>
       </div>
     </div>
     <script>

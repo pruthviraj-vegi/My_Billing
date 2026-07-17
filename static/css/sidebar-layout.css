@@ -686,26 +686,117 @@
   /* Cart: stack sidebar below table on mobile */
   .cart-detail-layout.col.d-flex.flex-row {
     flex-direction: column !important;
+    gap: 0.5rem !important;
   }
 
   .cart-detail-layout .col-md-9 {
     width: 100% !important;
     max-width: 100% !important;
+    order: 1 !important;
   }
 
   .cart-detail-layout .col-md-3 {
     width: 100% !important;
     max-width: 100% !important;
+    order: 2 !important;
+    padding-left: 0 !important;
   }
 
   .cart-summary-sidebar {
     position: static !important;
     max-height: none !important;
-    order: 2;
   }
 
-  .cart-detail-layout > .col-md-9 {
-    order: 1;
+  .cart-summary-sidebar .column-header {
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  .cart-summary-sidebar .column-header h3 {
+    font-size: 0.85rem !important;
+  }
+
+  .cart-summary-sidebar .column-header h3 svg.header-icon {
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+
+  .cart-summary-sidebar .details-info-compact {
+    padding: 0.5rem 0.75rem !important;
+    gap: 0.4rem !important;
+  }
+
+  .cart-summary-sidebar .summary-row {
+    font-size: 0.8rem !important;
+  }
+
+  .cart-summary-sidebar .summary-label {
+    font-size: 0.8rem !important;
+  }
+
+  .cart-summary-sidebar .summary-value {
+    font-size: 0.85rem !important;
+  }
+
+  .cart-summary-sidebar .total-row {
+    padding-top: 0.4rem !important;
+    margin-top: 0.15rem !important;
+  }
+
+  .cart-summary-sidebar .total-row .summary-label {
+    font-size: 0.85rem !important;
+  }
+
+  .cart-summary-sidebar .total-row .summary-value {
+    font-size: 1rem !important;
+  }
+
+  .cart-summary-sidebar .cart-sidebar-actions {
+    padding: 0 0.75rem 0.75rem 0.75rem !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+  }
+
+  .cart-summary-sidebar .submit-cart-btn {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    margin-bottom: 0 !important;
+  }
+
+
+  .cart-summary-sidebar .btn {
+    padding: 0.45rem 0.75rem !important;
+    font-size: 0.85rem !important;
+  }
+
+  .cart-summary-sidebar .btn svg.btn-icon {
+    width: 0.85rem !important;
+    height: 0.85rem !important;
+  }
+
+  .cart-summary-sidebar .cart-options-row {
+    padding: 0.25rem 0.5rem !important;
+    gap: 0.35rem !important;
+  }
+
+
+  .cart-summary-sidebar .cart-option-btn {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.85rem !important;
+  }
+
+
+
+
+  .cart-detail-layout .table-container {
+    margin-bottom: 0 !important;
+  }
+
+  .main-content:has(.cart-detail-layout) {
+    padding-bottom: 1.5rem !important;
   }
 
   /* Form layout & text spacing consistency on mobile */

@@ -186,7 +186,9 @@
                 if (searchInput) {
                     searchInput.value = '';
                     filterCartList();
-                    searchInput.focus();
+                    if (window.innerWidth > 768) {
+                        searchInput.focus();
+                    }
                 }
                 cartListSelectedIndex = -1;
             } else {

@@ -390,6 +390,11 @@ class CartManager {
      * Focus barcode input only if user is not actively typing elsewhere
      */
     focusBarcode() {
+        // Do not focus on mobile to prevent soft keyboard from popping up
+        if (window.innerWidth <= 768) {
+            return;
+        }
+
         // Check if user is currently focused on an input element
         const activeElement = document.activeElement;
         const isTypingElsewhere = activeElement &&
@@ -902,9 +907,14 @@ class CartManager {
         const row = document.createElement('tr');
         row.id = `cart-item-${id}`;
         row.innerHTML = `
-            <td>${barcode}</td>
-            <td>${brand}</td>
-            <td>${variantName}</td>
+            <td class="mobile-hide">${barcode}</td>
+            <td>
+                <div>
+                    <span class="font-weight-bold">${brand}</span>
+                    <span class="mobile-inline text-muted small"> · ${variantName}</span>
+                </div>
+            </td>
+            <td class="mobile-hide">${variantName}</td>
             <td class="price-toggle-cell"
                 data-selling-price="${sellingPrice}"
                 data-purchase-price="${purchasePrice}">
@@ -920,7 +930,7 @@ class CartManager {
                        data-item-id="${id}" min="0" step="1" 
                        title="Press Enter to update" aria-label="Price">
             </td>
-            <td class="discount-cell">${calculatedDiscount.toFixed(2)}%</td>
+            <td class="discount-cell mobile-hide">${calculatedDiscount.toFixed(2)}%</td>
             <td class="amount-cell">${this.format(amount)}</td>
             <td class="text-center">
                 <button type="button" class="btn btn-primary update-item-btn" data-item-id="${id}" 
