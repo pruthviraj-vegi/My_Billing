@@ -2,33 +2,174 @@
 {% load static %}
 {% load custom_filters %}
 {% block title %}
-    {{ title }}
+    Invoice Created
 {% endblock title %}
+
 {% block content %}
-    <!-- Page Header -->
-    <div class="page-header">
-        <h2 class="heading page-title">Invoice Created Successfully</h2>
+<!-- Page Header -->
+<div class="page-header">
+    <h2 class="heading page-title">Invoice Created</h2>
+    <div class="page-actions">
+        <a href="{% url 'invoice:detail' invoice_no %}" class="btn btn-secondary">
+            <i class="fas fa-eye"></i> View Invoice
+        </a>
+        <a href="{% url 'cart:auto_cart_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Cart
+        </a>
     </div>
+</div>
+
+<!-- Breadcrumb Navigation -->
+<nav class="breadcrumb breadcrumb-right">
+    <a href="{% url 'invoice:home' %}" class="breadcrumb-item">Invoices</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">Created</span>
+</nav>
+
+<!-- Main Container -->
+<div class="form-container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-12">
+            <div class="form-card text-center p-4">
+                <!-- Success Icon -->
+                <div class="mb-3">
+                    <span class="display-4 text-success">
+                        <i class="fas fa-check-circle"></i>
+                    </span>
+                </div>
+                <h3 class="fw-bold mb-2" style="color: var(--text-primary);">Invoice Created Successfully</h3>
+
+                <!-- Status Area (spinner / success / error) -->
+                <div id="statusArea" class="my-3">
+                    <div id="statusLoader" class="d-none">
+                        <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem; border-width: 3px;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p id="statusMessage" class="text-secondary mb-0"></p>
+                    </div>
+                    <div id="statusSuccess" class="d-none">
+                        <span class="display-5 text-success d-block mb-2">
+                            <i class="fas fa-print"></i>
+                        </span>
+                        <p class="text-success fw-bold mb-0">Printed successfully! Redirecting...</p>
+                    </div>
+                    <div id="statusError" class="d-none">
+                        <div class="alert alert-warning border-0 py-2 px-3 d-inline-block text-start mb-2" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                <div>
+                                    <strong style="color: var(--text-primary);">Printing Failed</strong><br>
+                                    <small id="errorMessageText" class="text-secondary">Could not connect to printer.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons — Always visible -->
+                <div class="d-flex flex-column gap-2 mt-3" id="actionButtons">
+                    {% if shop_details.is_direct_print_enabled %}
+                    <button type="button" id="directPrintBtn" class="btn btn-primary w-100 justify-content-center">
+                        <i class="fas fa-print me-2"></i> Direct Print
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'report:invoice_pdf' invoice_no %}" target="_blank" class="btn {% if shop_details.is_direct_print_enabled %}btn-secondary{% else %}btn-primary{% endif %} w-100 justify-content-center" id="pdfPreviewBtn">
+                        <i class="fas fa-file-pdf me-2"></i> View PDF / Print Preview
+                    </a>
+                    <a href="{% url 'cart:auto_cart_create' %}" class="btn btn-outline-secondary w-100 justify-content-center">
+                        <i class="fas fa-arrow-right me-2"></i> New Invoice / Go to Cart
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 
 {% block extra_js %}
-    <script>
-        $(function () {
-          var invoiceNo = "{{ invoice_no }}";
-      
-          if (invoiceNo !== null && Number.isInteger(parseInt(invoiceNo))) {
-            var generateInvoiceUrl = "{% url 'report:invoice_pdf' 0 %}".replace(
-              "0",
-              invoiceNo
-            );
-            window.open(generateInvoiceUrl, "_blank");
-          }
-      
-          setTimeout(function () {
-            var invoiceDetailsUrl = "{% url 'cart:auto_cart_create' %}"
-            window.location.href = invoiceDetailsUrl;
-          }, 1000);
-        });
-      </script>
+<script>
+    $(function () {
+        const invoiceNo = "{{ invoice_no }}";
+        const isDirectPrint = {% if shop_details.is_direct_print_enabled %}true{% else %}false{% endif %};
+        const autoRedirectUrl = "{% url 'cart:auto_cart_create' %}";
+        const directPrintUrl = "{% url 'report:direct_print_invoice' 0 %}".replace("0", invoiceNo);
+        const pdfUrl = "{% url 'report:invoice_pdf' 0 %}".replace("0", invoiceNo);
 
+        if (!invoiceNo || isNaN(parseInt(invoiceNo))) {
+            window.location.href = autoRedirectUrl;
+            return;
+        }
+
+        // --- UI Helpers ---
+        function showLoader(msg) {
+            $('#statusLoader').removeClass('d-none');
+            $('#statusSuccess, #statusError').addClass('d-none');
+            $('#statusMessage').text(msg);
+        }
+
+        function showSuccess() {
+            $('#statusSuccess').removeClass('d-none');
+            $('#statusLoader, #statusError').addClass('d-none');
+        }
+
+        function showError(msg) {
+            $('#statusError').removeClass('d-none');
+            $('#statusLoader, #statusSuccess').addClass('d-none');
+            $('#errorMessageText').text(msg);
+        }
+
+        function hideStatus() {
+            $('#statusLoader, #statusSuccess, #statusError').addClass('d-none');
+        }
+
+        // --- Direct Print ---
+        function triggerDirectPrint() {
+            showLoader('Sending to printer ({{ shop_details.printer_ip }})...');
+
+            $.ajax({
+                url: directPrintUrl,
+                type: 'GET',
+                success: function (response) {
+                    if (response.success) {
+                        showSuccess();
+                        if (typeof showNotification === 'function') {
+                            showNotification('Invoice printed successfully!', 'success');
+                        }
+                        setTimeout(function () {
+                            window.location.href = autoRedirectUrl;
+                        }, 1500);
+                    } else {
+                        showError(response.error || 'Failed to print.');
+                    }
+                },
+                error: function (xhr) {
+                    let msg = 'Failed to connect to printer.';
+                    try {
+                        const resp = JSON.parse(xhr.responseText);
+                        if (resp.error) msg = resp.error;
+                    } catch (e) {}
+                    showError(msg);
+                }
+            });
+        }
+
+        // --- Bind Direct Print Button ---
+        $('#directPrintBtn').on('click', function () {
+            triggerDirectPrint();
+        });
+
+        // --- Auto-trigger based on default mode ---
+        if (isDirectPrint) {
+            // Auto-trigger direct print on page load
+            triggerDirectPrint();
+        } else {
+            // Auto-open PDF in new tab
+            window.open(pdfUrl, "_blank");
+            // Auto-redirect after a short delay
+            setTimeout(function () {
+                window.location.href = autoRedirectUrl;
+            }, 1000);
+        }
+    });
+</script>
 {% endblock extra_js %}

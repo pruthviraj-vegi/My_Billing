@@ -36,12 +36,28 @@
                     </a>
                 {% endif %}
             {% endif %}
-            <a href="{% url 'report:invoice_pdf' invoice.id %}"
-               class="btn btn-primary"
-               target="_blank">
-                <i class="fas fa-print"></i>
-                Print Invoice
-            </a>
+            {% if shop_details.is_direct_print_enabled %}
+                <button type="button"
+                        class="btn btn-primary"
+                        id="directPrintBtn"
+                        data-url="{% url 'report:direct_print_invoice' invoice.id %}">
+                    <i class="fas fa-print"></i>
+                    Print Invoice
+                </button>
+                <a href="{% url 'report:invoice_pdf' invoice.id %}"
+                   class="btn btn-outline-secondary"
+                   target="_blank">
+                    <i class="fas fa-file-pdf"></i>
+                    View PDF
+                </a>
+            {% else %}
+                <a href="{% url 'report:invoice_pdf' invoice.id %}"
+                   class="btn btn-primary"
+                   target="_blank">
+                    <i class="fas fa-print"></i>
+                    Print Invoice
+                </a>
+            {% endif %}
             {% if not invoice.is_cancelled %}
                 {% if perms.invoice.add_invoicecancellation %}
                     <a href="{% url 'invoice:cancel_invoice' invoice.id %}"
@@ -506,5 +522,33 @@
                 }
             });
         }
+
+        $(document).on('click', '#directPrintBtn', function () {
+            const btn = $(this);
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Printing...');
+            
+            $.ajax({
+                url: btn.data('url'),
+                type: 'GET',
+                success: function (response) {
+                    btn.prop('disabled', false).html(originalHtml);
+                    if (response.success) {
+                        showNotification(response.message || 'Invoice sent to printer successfully', 'success');
+                    } else {
+                        showNotification(response.error || 'Failed to print', 'error');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    btn.prop('disabled', false).html(originalHtml);
+                    let errorMessage = 'Error communicating with printer';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage = response.error || errorMessage;
+                    } catch (e) {}
+                    showNotification(errorMessage, 'error');
+                }
+            });
+        });
     </script>
 {% endblock extra_js %}

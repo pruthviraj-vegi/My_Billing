@@ -55,6 +55,15 @@ class ShopDetails(models.Model):
     is_active = models.BooleanField(
         default=True, help_text="Whether this shop details is currently active"
     )
+    is_direct_print_enabled = models.BooleanField(
+        default=False, help_text="Enable direct printing to network printer"
+    )
+    printer_ip = models.CharField(
+        max_length=50, blank=True, null=True, help_text="IP Address of the network printer"
+    )
+    printer_port = models.PositiveIntegerField(
+        default=9100, help_text="Port of the network printer (default 9100)"
+    )
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

@@ -550,3 +550,95 @@ def generate_invoice_report_pdf(request):
         f"invoice_report_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
     )
     return generate_pdf(template, filename, context)
+
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from .printing import (
+    send_to_network_printer,
+    format_invoice_for_direct_print,
+    format_estimate_for_direct_print,
+)
+
+@login_required
+def direct_print_invoice(request, pk):
+    """Directly print invoice to configured network printer."""
+    invoice = get_object_or_404(Invoice, id=pk)
+    
+    # Get active shop details and configuration
+    shop_details = ShopDetails.objects.filter(is_active=True).first()
+    if not shop_details or not shop_details.is_direct_print_enabled or not shop_details.printer_ip:
+        return JsonResponse({
+            "success": False,
+            "error": "Direct printing is not enabled or printer IP is not configured in Settings."
+        }, status=400)
+        
+    report_config = ReportConfiguration.get_default_config(
+        ReportConfiguration.ReportType.INVOICE
+    )
+    
+    # Check paper size/width
+    width = 32 if report_config.paper_size == "58mm" else 48
+    
+    try:
+        print_data = format_invoice_for_direct_print(invoice, shop_details, report_config, width=width)
+    except Exception as e:
+        logger.exception("Error formatting invoice for direct print")
+        return JsonResponse({
+            "success": False,
+            "error": f"Error formatting invoice: {str(e)}"
+        }, status=500)
+        
+    # Send to printer
+    success, err_msg = send_to_network_printer(
+        shop_details.printer_ip,
+        shop_details.printer_port or 9100,
+        print_data
+    )
+    
+    if success:
+        return JsonResponse({"success": True, "message": "Invoice sent to printer successfully."})
+    else:
+        return JsonResponse({"success": False, "error": err_msg}, status=500)
+
+
+@login_required
+def direct_print_estimate(request, pk):
+    """Directly print estimate (cart) to configured network printer."""
+    cart = get_object_or_404(Cart, id=pk)
+    
+    # Get active shop details and configuration
+    shop_details = ShopDetails.objects.filter(is_active=True).first()
+    if not shop_details or not shop_details.is_direct_print_enabled or not shop_details.printer_ip:
+        return JsonResponse({
+            "success": False,
+            "error": "Direct printing is not enabled or printer IP is not configured in Settings."
+        }, status=400)
+        
+    report_config = ReportConfiguration.get_default_config(
+        ReportConfiguration.ReportType.ESTIMATE
+    )
+    
+    # Check paper size/width
+    width = 32 if report_config.paper_size == "58mm" else 48
+    
+    try:
+        print_data = format_estimate_for_direct_print(cart, shop_details, report_config, width=width)
+    except Exception as e:
+        logger.exception("Error formatting estimate for direct print")
+        return JsonResponse({
+            "success": False,
+            "error": f"Error formatting estimate: {str(e)}"
+        }, status=500)
+        
+    # Send to printer
+    success, err_msg = send_to_network_printer(
+        shop_details.printer_ip,
+        shop_details.printer_port or 9100,
+        print_data
+    )
+    
+    if success:
+        return JsonResponse({"success": True, "message": "Estimate sent to printer successfully."})
+    else:
+        return JsonResponse({"success": False, "error": err_msg}, status=500)

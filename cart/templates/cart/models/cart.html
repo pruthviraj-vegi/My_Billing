@@ -119,11 +119,26 @@
                        data-cart-id="{{ cart.id }}" title="Clear Cart">
                         <i class="fas fa-trash"></i>
                     </a>
+                    {% if shop_details.is_direct_print_enabled %}
                     <a class="cart-option-btn"
-                       href="{% url 'report:estimate_pdf' cart.id %}"
-                       target="_blank" title="Print">
+                       href="#"
+                       id="directPrintEstimateBtn"
+                       data-url="{% url 'report:direct_print_estimate' cart.id %}"
+                       title="Print (Direct)">
                         <i class="fas fa-print"></i>
                     </a>
+                    <a class="cart-option-btn"
+                       href="{% url 'report:estimate_pdf' cart.id %}"
+                       target="_blank" title="View PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </a>
+                    {% else %}
+                    <a class="cart-option-btn"
+                       href="{% url 'report:estimate_pdf' cart.id %}"
+                       target="_blank" title="Print (PDF)">
+                        <i class="fas fa-print"></i>
+                    </a>
+                    {% endif %}
                 </div>
 
                 <!-- Checkout is the solid primary button -->

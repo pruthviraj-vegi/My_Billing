@@ -92,6 +92,26 @@
                     </td>
                 </tr>
                 <tr>
+                    <th>Direct Printing</th>
+                    <td>
+                        {% if shop.is_direct_print_enabled %}
+                            <span class="badge text-success">Enabled</span>
+                        {% else %}
+                            <span class="badge text-danger">Disabled</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if shop.is_direct_print_enabled %}
+                <tr>
+                    <th>Printer IP</th>
+                    <td>{{ shop.printer_ip|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <th>Printer Port</th>
+                    <td>{{ shop.printer_port|default:"9100" }}</td>
+                </tr>
+                {% endif %}
+                <tr>
                     <th>Created</th>
                     <td>{{ shop.created_at|date:"Y-m-d H:i:s" }}</td>
                 </tr>

@@ -320,6 +320,69 @@
                         </div>
                     </div>
                 </div>
+                <!-- Direct Printer Settings Section -->
+                <div class="form-section">
+                    <h3 class="section-title">Direct Network Printer Settings</h3>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group {% if form.is_direct_print_enabled.errors %}has-error{% endif %}">
+                                <label for="{{ form.is_direct_print_enabled.id_for_label }}" class="form-label">{{ form.is_direct_print_enabled.label }}</label>
+                                <div class="mt-half-rem">{{ form.is_direct_print_enabled }}</div>
+                                <small class="form-help">
+                                    {% if form.is_direct_print_enabled.errors %}
+                                        {% for error in form.is_direct_print_enabled.errors %}
+                                            <span class="form-error-inline">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                {{ error }}
+                                            </span>
+                                        {% endfor %}
+                                    {% endif %}
+                                    {% if form.is_direct_print_enabled.help_text %}<span class="form-help-text">{{ form.is_direct_print_enabled.help_text }}</span>{% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group {% if form.printer_ip.errors %}has-error{% endif %}">
+                                <label for="{{ form.printer_ip.id_for_label }}" class="form-label">
+                                    {{ form.printer_ip.label }}
+                                    {% if form.printer_ip.field.required %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {{ form.printer_ip }}
+                                <small class="form-help">
+                                    {% if form.printer_ip.errors %}
+                                        {% for error in form.printer_ip.errors %}
+                                            <span class="form-error-inline">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                {{ error }}
+                                            </span>
+                                        {% endfor %}
+                                    {% endif %}
+                                    {% if form.printer_ip.help_text %}<span class="form-help-text">{{ form.printer_ip.help_text }}</span>{% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group {% if form.printer_port.errors %}has-error{% endif %}">
+                                <label for="{{ form.printer_port.id_for_label }}" class="form-label">
+                                    {{ form.printer_port.label }}
+                                    {% if form.printer_port.field.required %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {{ form.printer_port }}
+                                <small class="form-help">
+                                    {% if form.printer_port.errors %}
+                                        {% for error in form.printer_port.errors %}
+                                            <span class="form-error-inline">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                {{ error }}
+                                            </span>
+                                        {% endfor %}
+                                    {% endif %}
+                                    {% if form.printer_port.help_text %}<span class="form-help-text">{{ form.printer_port.help_text }}</span>{% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Form Actions -->
                 <div class="form-actions">
                     <a href="{% url 'setting:shop_details_list' %}"

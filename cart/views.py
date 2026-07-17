@@ -26,6 +26,7 @@ from inventory.views_variant import get_variants_data
 
 from .forms import CartForm
 from .models import Cart, CartItem
+from setting.models import ShopDetails
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ class CartMainPageView(RequiredPermissionMixin, TemplateView):
             .prefetch_related("cart_items__product_variant__product")
             .order_by("-created_at")
         )
+        context["shop_details"] = ShopDetails.objects.filter(is_active=True).first()
         return context
 
 
@@ -112,12 +114,15 @@ def get_cart_data(request, pk):
             )
         )["total"] or Decimal("0.00")
 
+        shop_details = ShopDetails.objects.filter(is_active=True).first()
+
         context = {
             "cart_list": cart_list,
             "cart": cart,
             "carts": carts,
             "total_selling_price": total_selling_price,
             "category_counts": category_counts,
+            "shop_details": shop_details,
         }
     except Cart.DoesNotExist as e:
         # Redirect to main cart page if cart not found

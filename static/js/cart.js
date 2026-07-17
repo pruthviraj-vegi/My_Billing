@@ -75,6 +75,7 @@ class CartManager {
             clearBtn: document.getElementById('clearCartBtn'),
             priceHeader: document.getElementById('priceColumnHeader'),
             remainingStock: document.getElementById('remainingStock'),
+            directPrintBtn: document.getElementById('directPrintEstimateBtn'),
         };
 
         // Initialize price toggle state (removed global pollution)
@@ -82,7 +83,7 @@ class CartManager {
     }
 
     initListeners() {
-        const { form, body, archiveBtn, clearBtn } = this.dom;
+        const { form, body, archiveBtn, clearBtn, directPrintBtn } = this.dom;
 
         if (form) {
             form.addEventListener('submit', e => this.onBarcodeSubmit(e));
@@ -103,6 +104,13 @@ class CartManager {
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
                 this.confirm('Clear Cart', 'Are you sure you want to clear all items from this cart? This action cannot be undone.', () => this.clearCart());
+            });
+        }
+
+        if (directPrintBtn) {
+            directPrintBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.directPrintEstimate();
             });
         }
 
@@ -1208,6 +1216,40 @@ class CartManager {
                 this.dom.clearBtn.disabled = false;
                 this.dom.clearBtn.innerHTML = '<i class="fas fa-trash"></i> Clear Cart';
             }
+        }
+    }
+
+    /**
+     * Direct print estimate (cart) via network printer
+     */
+    async directPrintEstimate() {
+        if (!this.dom.directPrintBtn) return;
+        const btn = this.dom.directPrintBtn;
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        try {
+            const url = btn.getAttribute('data-url');
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                this.notify(data.message || 'Estimate sent to printer successfully', 'success');
+            } else {
+                this.notify(data.error || 'Failed to print estimate', 'error');
+            }
+        } catch (err) {
+            console.error('[CartManager] Error printing estimate:', err);
+            this.notify('Error communicating with printer', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            this.focusBarcode();
         }
     }
 

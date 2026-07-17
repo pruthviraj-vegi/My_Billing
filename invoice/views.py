@@ -30,6 +30,7 @@ from inventory.services import InventoryService
 
 from invoice.form import InvoiceForm
 from invoice.models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceItem
+from setting.models import ShopDetails
 
 
 logger = logging.getLogger(__name__)
@@ -756,8 +757,14 @@ class CreateInvoice(RequiredPermissionMixin, View):
 
                 cart.delete()
                 messages.success(request, "Invoice created successfully")
+                shop_details = ShopDetails.objects.filter(is_active=True).first()
                 return render(
-                    request, "intermediate_page.html", {"invoice_no": invoice.id}
+                    request,
+                    "intermediate_page.html",
+                    {
+                        "invoice_no": invoice.id,
+                        "shop_details": shop_details,
+                    },
                 )
 
         else:
@@ -804,6 +811,9 @@ class InvoiceDetail(RequiredPermissionMixin, View):
         # Calculate adjusted invoice total (original amount minus returns)
         adjusted_invoice_total = invoice.total_payable - total_return_amount
 
+        # Get active shop details for direct printing status
+        shop_details = ShopDetails.objects.filter(is_active=True).first()
+
         context = {
             "invoice": invoice,
             "title": f"Invoice {invoice.invoice_number}",
@@ -812,6 +822,7 @@ class InvoiceDetail(RequiredPermissionMixin, View):
             "total_return_items": total_return_items,
             "return_items_with_details": return_items_with_details,
             "adjusted_invoice_total": adjusted_invoice_total,
+            "shop_details": shop_details,
         }
         return render(request, self.template_name, context)
 

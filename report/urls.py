@@ -10,7 +10,9 @@ app_name = "report"
 urlpatterns = [
     # ── PDF rendering (synchronous) ────────────────────────────
     path("invoice/<int:pk>/", views.create_invoice, name="invoice_pdf"),
+    path("invoice/<int:pk>/direct-print/", views.direct_print_invoice, name="direct_print_invoice"),
     path("estimate/<int:pk>/", views.estimate_invoice, name="estimate_pdf"),
+    path("estimate/<int:pk>/direct-print/", views.direct_print_estimate, name="direct_print_estimate"),
     path("barcode/<int:pk>/", views.generate_barcode, name="barcode"),
     path("customers/pdf/", views.generate_customers_pdf, name="customers_pdf"),
     path(
