@@ -118,4 +118,20 @@ urlpatterns = [
         views.media_gallery_fetch,
         name="media_gallery_fetch",
     ),
+    # Inventory Price Update
+    path(
+        "price-update/",
+        views.inventory_price_update,
+        name="price_update",
+    ),
+    path(
+        "price-update/barcode-lookup/",
+        views.barcode_lookup,
+        name="barcode_lookup",
+    ),
+    path(
+        "price-update/save/",
+        views.inventory_price_update_save,
+        name="price_update_save",
+    ),
 ]

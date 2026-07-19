@@ -1,0 +1,644 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  {{ title }} - Inventory
+{% endblock title %}
+{% block content %}
+  <!-- Page Header -->
+  <div class="page-header">
+    <h2 class="page-title">{{ title }}</h2>
+    <div class="page-actions">
+      <a href="{% url 'inventory:dashboard' %}" class="btn">
+        <i class="fas fa-arrow-left"></i>
+        Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Barcode Search Section -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="ipu-search-section">
+        <h4 class="ipu-search-title">
+          <i class="fas fa-barcode"></i> Barcode Search
+        </h4>
+        <div class="ipu-search-row">
+          <div class="ipu-search-input-wrap">
+            <input type="text"
+                   id="barcode-input"
+                   class="form-input"
+                   placeholder="Scan or type barcode…"
+                   autocomplete="off"
+                   autofocus>
+            <div class="ipu-search-icon">
+              <i class="fas fa-search"></i>
+            </div>
+          </div>
+          <button type="button" id="barcode-search-btn" class="btn btn-primary">
+            <i class="fas fa-search"></i> Search
+          </button>
+        </div>
+        <div id="barcode-error" class="ipu-search-error" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Variant Details (initially hidden) -->
+  <div id="variant-details-section" style="display:none;">
+    <!-- Variant Info Card -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="ipu-variant-header">
+          <div class="ipu-variant-title-row">
+            <h4 id="variant-product-name" class="ipu-variant-title"></h4>
+            <span id="variant-status-badge" class="status-badge"></span>
+          </div>
+          <p id="variant-full-name" class="ipu-variant-subtitle"></p>
+        </div>
+
+        <div class="ipu-detail-grid">
+          <div class="ipu-detail-item">
+            <span class="ipu-detail-label">Barcode</span>
+            <span id="variant-barcode" class="ipu-detail-value ipu-mono"></span>
+          </div>
+          <div class="ipu-detail-item">
+            <span class="ipu-detail-label">Category</span>
+            <span id="variant-category" class="ipu-detail-value"></span>
+          </div>
+          <div class="ipu-detail-item">
+            <span class="ipu-detail-label">Size</span>
+            <span id="variant-size" class="ipu-detail-value"></span>
+          </div>
+          <div class="ipu-detail-item">
+            <span class="ipu-detail-label">Color</span>
+            <span id="variant-color" class="ipu-detail-value">
+              <span id="variant-color-swatch" class="ipu-color-swatch"></span>
+              <span id="variant-color-name"></span>
+            </span>
+          </div>
+          <div class="ipu-detail-item">
+            <span class="ipu-detail-label">HSN Code</span>
+            <span id="variant-hsn" class="ipu-detail-value"></span>
+          </div>
+          <div class="ipu-detail-item">
+            <span class="ipu-detail-label">GST %</span>
+            <span id="variant-gst" class="ipu-detail-value"></span>
+          </div>
+          <div class="ipu-detail-item">
+            <span class="ipu-detail-label">Purchase Price</span>
+            <span id="variant-purchase-price" class="ipu-detail-value"></span>
+          </div>
+          <div class="ipu-detail-item">
+            <span class="ipu-detail-label">Stock</span>
+            <span id="variant-stock" class="ipu-detail-value"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Price Update Card -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h4 class="ipu-form-title">
+          <i class="fas fa-tags"></i> Update Pricing
+        </h4>
+        <input type="hidden" id="variant-id" value="">
+        <div class="ipu-form-grid">
+          <div class="form-group">
+            <label for="id_mrp" class="form-label">MRP (Selling Price) *</label>
+            {{ form.mrp }}
+            <div id="mrp-error" class="invalid-feedback d-block" style="display:none;"></div>
+          </div>
+          <div class="form-group">
+            <label for="id_discount_percentage" class="form-label">Discount %</label>
+            {{ form.discount_percentage }}
+            <div id="discount-error" class="invalid-feedback d-block" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Price Summary -->
+        <div class="ipu-price-summary">
+          <div class="ipu-price-item">
+            <span class="ipu-price-label">Current MRP</span>
+            <span id="current-mrp" class="ipu-price-value">—</span>
+          </div>
+          <div class="ipu-price-item">
+            <span class="ipu-price-label">Discount</span>
+            <span id="current-discount" class="ipu-price-value">—</span>
+          </div>
+          <div class="ipu-price-item ipu-price-highlight">
+            <span class="ipu-price-label">Final Price</span>
+            <span id="final-price" class="ipu-price-value">—</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="ipu-actions">
+          <button type="button" id="save-price-btn" class="btn btn-primary">
+            <i class="fas fa-save"></i> Save Changes
+          </button>
+          <button type="button" id="reset-price-btn" class="btn btn-secondary">
+            <i class="fas fa-undo"></i> Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Update History (recent price changes for this variant) -->
+    <div id="update-history" class="card mb-3" style="display:none;">
+      <div class="card-body">
+        <h4 class="ipu-form-title">
+          <i class="fas fa-check-circle"></i> Update Successful
+        </h4>
+        <div id="update-history-list"></div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const LOOKUP_URL = "{% url 'inventory:barcode_lookup' %}";
+  const SAVE_URL = "{% url 'inventory:price_update_save' %}";
+  const BARCODE_BASE_URL = "{% url 'report:barcode' pk=0 %}".replace('/0/', '/{id}/');
+  const CSRF = "{{ csrf_token }}";
+
+  // DOM references
+  const barcodeInput = document.getElementById("barcode-input");
+  const searchBtn = document.getElementById("barcode-search-btn");
+  const errorDiv = document.getElementById("barcode-error");
+  const detailsSection = document.getElementById("variant-details-section");
+  const variantIdField = document.getElementById("variant-id");
+  const mrpField = document.getElementById("id_mrp");
+  const discountField = document.getElementById("id_discount_percentage");
+  const savePriceBtn = document.getElementById("save-price-btn");
+  const resetPriceBtn = document.getElementById("reset-price-btn");
+  const updateHistory = document.getElementById("update-history");
+  const updateHistoryList = document.getElementById("update-history-list");
+
+  // State
+  let currentVariant = null;
+
+  // ───── Barcode Search ─────
+  function showError(msg) {
+    errorDiv.textContent = msg;
+    errorDiv.style.display = "block";
+    setTimeout(() => { errorDiv.style.display = "none"; }, 4000);
+  }
+
+  function doSearch() {
+    const barcode = barcodeInput.value.trim();
+    if (!barcode) { showError("Please enter a barcode"); return; }
+
+    errorDiv.style.display = "none";
+    searchBtn.disabled = true;
+    searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching…';
+
+    $.ajax({
+      url: LOOKUP_URL,
+      data: { barcode: barcode },
+      success: function(resp) {
+        if (resp.status === "success") {
+          populateVariant(resp.variant);
+        } else {
+          showError(resp.message || "Not found");
+        }
+      },
+      error: function(xhr) {
+        const msg = xhr.responseJSON ? xhr.responseJSON.message : "Search failed";
+        showError(msg);
+      },
+      complete: function() {
+        searchBtn.disabled = false;
+        searchBtn.innerHTML = '<i class="fas fa-search"></i> Search';
+        barcodeInput.select();
+      },
+    });
+  }
+
+  barcodeInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") { e.preventDefault(); doSearch(); }
+  });
+  searchBtn.addEventListener("click", doSearch);
+
+  // ───── Populate Variant Details ─────
+  function populateVariant(v) {
+    currentVariant = v;
+
+    document.getElementById("variant-product-name").textContent = v.product_name;
+    document.getElementById("variant-full-name").textContent = v.full_name;
+    document.getElementById("variant-barcode").textContent = v.barcode;
+    document.getElementById("variant-category").textContent = v.category || "—";
+    document.getElementById("variant-size").textContent = v.size || "—";
+
+    // Color with swatch
+    const colorSwatch = document.getElementById("variant-color-swatch");
+    const colorName = document.getElementById("variant-color-name");
+    if (v.color) {
+      colorName.textContent = v.color;
+      if (v.color_hex) {
+        colorSwatch.style.backgroundColor = v.color_hex;
+        colorSwatch.style.display = "inline-block";
+      } else {
+        colorSwatch.style.display = "none";
+      }
+    } else {
+      colorName.textContent = "—";
+      colorSwatch.style.display = "none";
+    }
+
+    document.getElementById("variant-hsn").textContent = v.hsn_code || "—";
+    document.getElementById("variant-gst").textContent = v.gst_percentage ? v.gst_percentage + "%" : "—";
+    document.getElementById("variant-purchase-price").textContent = "₹" + parseFloat(v.purchase_price).toLocaleString("en-IN");
+
+    // Stock with colour coding
+    const stockEl = document.getElementById("variant-stock");
+    const qty = parseFloat(v.quantity);
+    stockEl.textContent = qty;
+    stockEl.className = "ipu-detail-value";
+    if (v.stock_status === "Out of Stock") {
+      stockEl.classList.add("text-danger");
+    } else if (v.stock_status === "Low Stock") {
+      stockEl.classList.add("text-warning");
+    } else {
+      stockEl.classList.add("text-success");
+    }
+
+    // Status badge
+    const badge = document.getElementById("variant-status-badge");
+    badge.textContent = v.status;
+    badge.className = "status-badge status-" + v.status.toLowerCase();
+
+    // Populate form fields
+    variantIdField.value = v.id;
+    mrpField.value = v.mrp;
+    discountField.value = v.discount_percentage;
+
+    // Update price summary
+    updatePriceSummary();
+
+    // Show section
+    detailsSection.style.display = "block";
+    updateHistory.style.display = "none";
+
+    // Focus MRP field
+    mrpField.focus();
+    mrpField.select();
+  }
+
+  // ───── Real-time Price Calculations ─────
+  function updatePriceSummary() {
+    const mrp = parseFloat(mrpField.value) || 0;
+    const discount = parseFloat(discountField.value) || 0;
+    let finalPrice = mrp;
+    if (discount > 0) {
+      finalPrice = mrp * (1 - discount / 100);
+    }
+
+    document.getElementById("current-mrp").textContent = "₹" + mrp.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+    document.getElementById("current-discount").textContent = discount + "%";
+    document.getElementById("final-price").textContent = "₹" + finalPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  }
+
+  mrpField.addEventListener("input", updatePriceSummary);
+  discountField.addEventListener("input", updatePriceSummary);
+
+  // ───── Reset ─────
+  resetPriceBtn.addEventListener("click", function() {
+    if (currentVariant) {
+      mrpField.value = currentVariant.mrp;
+      discountField.value = currentVariant.discount_percentage;
+      updatePriceSummary();
+    }
+  });
+
+  // ───── Save ─────
+  savePriceBtn.addEventListener("click", function() {
+    const vId = variantIdField.value;
+    if (!vId) { showError("No variant selected"); return; }
+
+    const mrpVal = mrpField.value;
+    const discountVal = discountField.value;
+
+    if (!mrpVal || parseFloat(mrpVal) <= 0) {
+      document.getElementById("mrp-error").textContent = "MRP must be greater than 0";
+      document.getElementById("mrp-error").style.display = "block";
+      return;
+    }
+    document.getElementById("mrp-error").style.display = "none";
+    document.getElementById("discount-error").style.display = "none";
+
+    savePriceBtn.disabled = true;
+    savePriceBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+
+    $.ajax({
+      url: SAVE_URL,
+      method: "POST",
+      contentType: "application/json",
+      headers: { "X-CSRFToken": CSRF },
+      data: JSON.stringify({
+        variant_id: parseInt(vId),
+        mrp: mrpVal,
+        discount_percentage: discountVal,
+      }),
+      success: function(resp) {
+        if (resp.status === "success") {
+          showNotification(resp.message, "success");
+
+          // Update current variant state
+          currentVariant.mrp = resp.variant.mrp;
+          currentVariant.discount_percentage = resp.variant.discount_percentage;
+          currentVariant.final_price = resp.variant.final_price;
+
+          // Show update history
+          updateHistory.style.display = "block";
+          const now = new Date().toLocaleTimeString("en-IN");
+          updateHistoryList.innerHTML =
+            '<div class="ipu-history-item">' +
+            '<i class="fas fa-check-circle text-success"></i> ' +
+            '<strong>' + currentVariant.product_name + '</strong> — ' +
+            'MRP: ₹' + parseFloat(resp.variant.mrp).toLocaleString("en-IN") + ', ' +
+            'Discount: ' + resp.variant.discount_percentage + '% ' +
+            '<span class="text-secondary">(' + now + ')</span>' +
+            '</div>' + updateHistoryList.innerHTML;
+
+          // Open barcode page in new tab
+          const barcodeUrl = BARCODE_BASE_URL.replace('{id}', vId);
+          window.open(barcodeUrl, '_blank');
+
+          // Clear and refocus barcode field for next scan
+          barcodeInput.value = "";
+          barcodeInput.focus();
+        } else {
+          showNotification(resp.message || "Save failed", "error");
+          if (resp.errors) {
+            if (resp.errors.mrp) {
+              document.getElementById("mrp-error").textContent = resp.errors.mrp;
+              document.getElementById("mrp-error").style.display = "block";
+            }
+            if (resp.errors.discount_percentage) {
+              document.getElementById("discount-error").textContent = resp.errors.discount_percentage;
+              document.getElementById("discount-error").style.display = "block";
+            }
+          }
+        }
+      },
+      error: function(xhr) {
+        const msg = xhr.responseJSON ? xhr.responseJSON.message : "Save failed";
+        showNotification(msg, "error");
+      },
+      complete: function() {
+        savePriceBtn.disabled = false;
+        savePriceBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+      },
+    });
+  });
+
+  // Save on Ctrl+S / Cmd+S
+  document.addEventListener("keydown", function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault();
+      if (variantIdField.value) savePriceBtn.click();
+    }
+  });
+})();
+</script>
+
+<style>
+/* ── Barcode Search ── */
+.ipu-search-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ipu-search-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ipu-search-title i {
+  color: var(--primary);
+}
+
+.ipu-search-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.ipu-search-input-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.ipu-search-input-wrap .form-input {
+  padding-left: 2.5rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+}
+
+.ipu-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.ipu-search-error {
+  color: var(--danger);
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--danger-bg);
+  border-radius: 6px;
+}
+
+/* ── Variant Details ── */
+.ipu-variant-header {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ipu-variant-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ipu-variant-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ipu-variant-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.ipu-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.ipu-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--bg-surface-hover);
+  border-radius: 8px;
+}
+
+.ipu-detail-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.ipu-detail-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ipu-mono {
+  font-family: "SF Mono", "Fira Mono", monospace;
+  letter-spacing: 0.08em;
+}
+
+.ipu-color-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+/* ── Price Update Form ── */
+.ipu-form-title {
+  margin: 0 0 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ipu-form-title i {
+  color: var(--primary);
+}
+
+.ipu-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ipu-price-summary {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  background: var(--bg-surface-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+}
+
+.ipu-price-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ipu-price-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.ipu-price-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ipu-price-highlight .ipu-price-value {
+  color: var(--primary);
+  font-size: 1.25rem;
+}
+
+.ipu-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* ── Update History ── */
+.ipu-history-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ipu-history-item:last-child {
+  border-bottom: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 576px) {
+  .ipu-search-row {
+    flex-direction: column;
+  }
+
+  .ipu-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ipu-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ipu-price-summary {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .ipu-actions {
+    flex-direction: column;
+  }
+
+  .ipu-actions .btn {
+    width: 100%;
+  }
+}
+</style>
+{% endblock extra_js %}

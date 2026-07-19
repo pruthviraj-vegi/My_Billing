@@ -38,12 +38,13 @@ from .forms import (
     ClothTypeForm,
     ColorForm,
     GSTHsnCodeForm,
+    InventoryPriceUpdateForm,
     ProductForm,
     SizeForm,
     UOMForm,
     VariantForm,
 )
-from .models import InventoryLog, Product, ProductVariant, VariantMedia
+from .models import BarcodeMapping, InventoryLog, Product, ProductVariant, VariantMedia
 from .services import InventoryService
 
 logger = logging.getLogger(__name__)
@@ -952,3 +953,130 @@ def media_gallery_fetch(request):
         "inventory/media/fetch.html",
         per_page=24,
     )
+
+
+@required_permission("inventory.change_productvariant")
+def inventory_price_update(request):
+    """Render the inventory price-update page (barcode search + MRP/discount edit)."""
+    return render(request, "inventory/inventory_price_update.html", {
+        "title": "Inventory Price Update",
+        "form": InventoryPriceUpdateForm(),
+    })
+
+
+@required_permission("inventory.view_productvariant")
+def barcode_lookup(request):
+    """AJAX endpoint: look up a product variant by barcode.
+
+    Also checks BarcodeMapping for alternative external barcodes.
+    Returns variant details as JSON for the price-update page.
+    """
+    barcode = request.GET.get("barcode", "").strip()
+    if not barcode:
+        return JsonResponse({"status": "error", "message": "Barcode is required"}, status=400)
+
+    # Check BarcodeMapping first
+    mapping = BarcodeMapping.objects.filter(barcode=barcode).select_related("variant").first()
+    if mapping:
+        barcode = mapping.variant.barcode
+
+    try:
+        variant = ProductVariant.objects.select_related(
+            "product", "product__category", "product__hsn_code",
+            "size", "color",
+        ).get(barcode=barcode, is_deleted=False)
+    except ProductVariant.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Product not found for this barcode"}, status=404)
+
+    data = {
+        "status": "success",
+        "variant": {
+            "id": variant.id,
+            "barcode": variant.barcode,
+            "product_name": variant.product.display_name,
+            "brand": variant.product.brand,
+            "name": variant.product.name or "",
+            "category": variant.product.category.name if variant.product.category else "",
+            "size": variant.size.name if variant.size else "",
+            "color": variant.color.name if variant.color else "",
+            "color_hex": variant.color.hex_code if variant.color and variant.color.hex_code else "",
+            "hsn_code": variant.product.hsn_code.code if variant.product.hsn_code else "",
+            "gst_percentage": str(variant.get_gst_percentage),
+            "purchase_price": str(variant.purchase_price),
+            "mrp": str(variant.mrp),
+            "discount_percentage": str(variant.discount_percentage),
+            "final_price": str(variant.final_price),
+            "quantity": str(variant.quantity),
+            "status": variant.get_status_display(),
+            "stock_status": variant.stock_status,
+            "full_name": variant.full_name,
+        },
+    }
+    return JsonResponse(data)
+
+
+@required_permission("inventory.change_productvariant")
+def inventory_price_update_save(request):
+    """AJAX endpoint: update MRP and discount_percentage for a variant.
+
+    Creates an inventory log entry tracking the price change.
+    """
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST required"}, status=405)
+
+    import json as _json
+
+    try:
+        data = _json.loads(request.body)
+    except _json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+
+    variant_id = data.get("variant_id")
+    if not variant_id:
+        return JsonResponse({"status": "error", "message": "variant_id is required"}, status=400)
+
+    try:
+        variant = ProductVariant.objects.get(pk=variant_id, is_deleted=False)
+    except ProductVariant.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Variant not found"}, status=404)
+
+    form = InventoryPriceUpdateForm(data, instance=variant)
+    if not form.is_valid():
+        errors = {field: errs[0] for field, errs in form.errors.items()}
+        return JsonResponse({"status": "error", "message": "Validation failed", "errors": errors}, status=400)
+
+    try:
+        with transaction.atomic():
+            old_mrp = variant.mrp
+            old_discount = variant.discount_percentage
+
+            variant = form.save()
+
+            # Log the price change
+            if variant.mrp != old_mrp or variant.discount_percentage != old_discount:
+                InventoryLog.objects.create(
+                    variant=variant,
+                    transaction_type="ADJUSTMENT_IN",
+                    quantity_change=0,
+                    new_quantity=variant.quantity,
+                    purchase_price=variant.purchase_price,
+                    mrp=variant.mrp,
+                    notes=(
+                        f"Price update: MRP {old_mrp}→{variant.mrp}, "
+                        f"Discount {old_discount}%→{variant.discount_percentage}%"
+                    ),
+                    created_by=request.user,
+                )
+
+        return JsonResponse({
+            "status": "success",
+            "message": f"Updated {variant.full_name}",
+            "variant": {
+                "mrp": str(variant.mrp),
+                "discount_percentage": str(variant.discount_percentage),
+                "final_price": str(variant.final_price),
+            },
+        })
+    except Exception as e:  # pylint: disable=broad-except
+        logger.exception("Error updating variant price: %s", e)
+        return JsonResponse({"status": "error", "message": "Server error occurred"}, status=500)

@@ -83,6 +83,10 @@
                   <a href="{% url 'inventory:low_stock' %}"
                      class="dropdown-item {% if request.resolver_match.url_name == 'low_stock' %}active{% endif %}">Low Stock</a>
                {% endif %}
+               {% if perms.inventory.change_productvariant %}
+                  <a href="{% url 'inventory:price_update' %}"
+                     class="dropdown-item {% if request.resolver_match.url_name == 'price_update' %}active{% endif %}">Price Update</a>
+               {% endif %}
                <div class="dropdown-divider"></div>
                {% if perms.inventory.view_category %}
                   <a href="{% url 'inventory:category_home' %}"

@@ -985,3 +985,40 @@ class VariantMediaForm(forms.ModelForm):
                 )
 
         return uploaded_file
+
+
+class InventoryPriceUpdateForm(forms.ModelForm):
+    """Minimal form for updating only MRP and discount percentage on a variant."""
+
+    class Meta:
+        model = ProductVariant
+        fields = ["mrp", "discount_percentage"]
+        widgets = {
+            "mrp": forms.TextInput(
+                attrs={
+                    "placeholder": "Enter selling price",
+                    "step": "1",
+                }
+            ),
+            "discount_percentage": forms.NumberInput(
+                attrs={
+                    "placeholder": "Enter discount %",
+                    "step": "1",
+                    "min": "0",
+                    "max": "100",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-input"
+        self.fields["mrp"].widget.attrs["class"] = "form-input indian-number"
+
+    def clean_mrp(self):
+        """Validate selling price (MRP) is greater than 0."""
+        mrp = self.cleaned_data.get("mrp")
+        if mrp is not None and mrp <= 0:
+            raise forms.ValidationError("Selling price must be greater than 0")
+        return mrp
