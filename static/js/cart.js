@@ -117,6 +117,7 @@ class CartManager {
         this.initDropdown();
         this.initPriceToggle();
         this.initBarcodeSuggestions();
+        this.initBarcodeScanner();
     }
 
     /*** ───────── OFFLINE DETECTION ───────── ***/
@@ -395,13 +396,14 @@ class CartManager {
     }
 
     /**
-     * Focus barcode input only if user is not actively typing elsewhere
+     * Focus barcode input only if user is not actively typing elsewhere.
+     * Skips auto-focus on mobile/touch devices to prevent keyboard/camera popup.
      */
     focusBarcode() {
-        // Do not focus on mobile to prevent soft keyboard from popping up
-        if (window.innerWidth <= 768) {
-            return;
-        }
+        // Skip auto-focus on mobile/touch devices to prevent keyboard popup
+        const isMobile = window.matchMedia('(max-width: 768px)').matches
+            || ('ontouchstart' in window);
+        if (isMobile) return;
 
         // Check if user is currently focused on an input element
         const activeElement = document.activeElement;
@@ -1034,23 +1036,23 @@ class CartManager {
         // Calculate derived values: discountedAmount and netAmount
         const totalAmountStr = this.dom.totalAmount ? this.dom.totalAmount.textContent.replace(/[^\d.-]/g, '') : '0';
         const totalAmount = parseFloat(totalAmountStr) || 0;
-        
+
         const advancePaymentEl = document.getElementById('advancePayment');
         const advance = advancePaymentEl ? parseFloat(advancePaymentEl.dataset.advance || '0') || 0 : 0;
-        
+
         const discount = Math.max(0, roundedSelling - totalAmount);
         const netAmount = Math.max(0, totalAmount - advance);
-        
+
         const discountedAmountEl = document.getElementById('discountedAmount');
         if (discountedAmountEl) {
             discountedAmountEl.textContent = this.format(discount);
         }
-        
+
         const estimatedProfitEl = document.getElementById('estimatedProfit');
         if (estimatedProfitEl) {
             estimatedProfitEl.textContent = this.format(isNaN(roundedProfit) || !isFinite(roundedProfit) ? 0 : roundedProfit);
         }
-        
+
         const netAmountEl = document.getElementById('netAmount');
         if (netAmountEl) {
             netAmountEl.textContent = this.format(netAmount);
@@ -1554,6 +1556,270 @@ class CartManager {
                 menu.classList.remove('show');
             }
         });
+    }
+    /*** ───────── CAMERA BARCODE SCANNER ───────── ***/
+    /**
+     * Initialize camera-based barcode scanner for mobile devices.
+     * Uses html5-qrcode library with Code 128 format support.
+     * Only active on mobile (button visibility controlled by CSS).
+     * @private
+     */
+    initBarcodeScanner() {
+        const cameraScanBtn = document.getElementById('cameraScanBtn');
+        const dialog = document.getElementById('barcodeScannerDialog');
+        const closeBtn = document.getElementById('scannerCloseBtn');
+
+        if (!cameraScanBtn || !dialog) return;
+
+        // Only enable on actual mobile/touch devices (not just narrow desktop windows)
+        const isTouchDevice = ('ontouchstart' in window)
+            || (navigator.maxTouchPoints > 0)
+            || window.matchMedia('(pointer: coarse)').matches;
+
+        if (!isTouchDevice) {
+            // Hide the button entirely on non-touch devices
+            cameraScanBtn.style.display = 'none';
+            return;
+        }
+
+        // Scanner instance reference
+        this.html5QrCode = null;
+        this.scannerIsOpen = false;
+
+        // Open scanner on camera button click
+        cameraScanBtn.addEventListener('click', () => this.openScanner());
+
+        // Close scanner on close button click
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeScanner());
+        }
+
+        // Close scanner on Escape key or dialog cancel
+        dialog.addEventListener('cancel', (e) => {
+            e.preventDefault();
+            this.closeScanner();
+        });
+
+        // Pre-build AudioContext for beep (must be created after user gesture)
+        this.audioCtx = null;
+    }
+
+    /**
+     * Open the camera scanner dialog and start scanning.
+     * Uses rear camera (environment facing) for barcode scanning.
+     */
+    async openScanner() {
+        const dialog = document.getElementById('barcodeScannerDialog');
+        const statusEl = document.getElementById('scannerStatus');
+
+        if (!dialog || this.scannerIsOpen) return;
+
+        // Only allow camera scanner on mobile devices
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (!isMobile) return;
+
+        // Check if html5-qrcode library is loaded
+        if (typeof Html5Qrcode === 'undefined') {
+            this.notify('Barcode scanner library not loaded', 'error');
+            return;
+        }
+
+        // Check for secure context (HTTPS or localhost)
+        if (!window.isSecureContext) {
+            this.notify('Camera requires HTTPS. Please use a secure connection.', 'error');
+            return;
+        }
+
+        // Initialize AudioContext on first user gesture
+        if (!this.audioCtx) {
+            try {
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (_) {
+                // Audio not supported, scanning still works
+            }
+        }
+
+        this.scannerIsOpen = true;
+        dialog.showModal();
+
+        if (statusEl) statusEl.textContent = 'Initializing camera...';
+
+        // Small delay to let the dialog render and get dimensions
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        try {
+            this.html5QrCode = new Html5Qrcode('scannerViewfinder', {
+                verbose: false,
+            });
+
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 150 },
+                formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
+                disableFlip: false,
+            };
+
+            // Race between camera start and a timeout
+            const startPromise = this.html5QrCode.start(
+                { facingMode: 'environment' },
+                config,
+                (decodedText) => this.onBarcodeScanSuccess(decodedText),
+                () => { } // ignore scan failures (frames without barcode)
+            );
+
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Camera timed out. Please check permissions and try again.')), 10000)
+            );
+
+            await Promise.race([startPromise, timeoutPromise]);
+
+            if (statusEl) statusEl.textContent = 'Camera ready — point at barcode';
+        } catch (err) {
+            console.error('[CartManager] Scanner error:', err);
+
+            let errorMsg = err.message || 'Could not start camera.';
+            const errStr = err.toString();
+            if (errStr.includes('NotAllowedError')) {
+                errorMsg = 'Camera permission denied. Please allow camera access in your browser settings.';
+            } else if (errStr.includes('NotFoundError')) {
+                errorMsg = 'No camera found on this device.';
+            } else if (errStr.includes('NotReadableError')) {
+                errorMsg = 'Camera is in use by another app.';
+            } else if (errStr.includes('OverconstrainedError')) {
+                // Retry with any available camera
+                try {
+                    if (statusEl) statusEl.textContent = 'Trying alternate camera...';
+                    await this.html5QrCode.start(
+                        { facingMode: 'user' },
+                        {
+                            fps: 10,
+                            qrbox: { width: 250, height: 150 },
+                            formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
+                        },
+                        (decodedText) => this.onBarcodeScanSuccess(decodedText),
+                        () => { }
+                    );
+                    if (statusEl) statusEl.textContent = 'Camera ready — point at barcode';
+                    return;
+                } catch (retryErr) {
+                    errorMsg = 'Could not access any camera.';
+                }
+            }
+
+            if (statusEl) statusEl.textContent = errorMsg;
+            this.notify(errorMsg, 'error');
+
+            // Auto-close after showing error for 2 seconds
+            setTimeout(() => this.closeScanner(), 2500);
+        }
+    }
+
+    /**
+     * Handle successful barcode scan from camera.
+     * Plays beep, vibrates, closes scanner, and submits the barcode.
+     * @param {string} decodedText - The decoded barcode string
+     * @private
+     */
+    onBarcodeScanSuccess(decodedText) {
+        if (!decodedText || !this.scannerIsOpen) return;
+
+        // Prevent duplicate rapid scans
+        this.scannerIsOpen = false;
+
+        // Visual feedback: green flash
+        const wrapper = document.querySelector('.scanner-viewfinder-wrapper');
+        if (wrapper) {
+            wrapper.classList.add('scan-success');
+            setTimeout(() => wrapper.classList.remove('scan-success'), 500);
+        }
+
+        // Audio feedback: beep
+        this.playBeep();
+
+        // Haptic feedback: vibrate
+        if (navigator.vibrate) {
+            navigator.vibrate(100);
+        }
+
+        // Update status
+        const statusEl = document.getElementById('scannerStatus');
+        if (statusEl) statusEl.textContent = `Scanned: ${decodedText}`;
+
+        // Close scanner after a brief moment to show feedback
+        setTimeout(() => {
+            this.closeScanner();
+
+            // Fill barcode input and auto-submit
+            if (this.dom.input) {
+                this.dom.input.value = decodedText;
+                // Trigger form submit
+                if (this.dom.form) {
+                    this.dom.form.requestSubmit();
+                }
+            }
+        }, 400);
+    }
+
+    /**
+     * Close the camera scanner dialog and stop the camera.
+     * Dialog closes immediately; camera cleanup happens after.
+     */
+    async closeScanner() {
+        const dialog = document.getElementById('barcodeScannerDialog');
+
+        // Close dialog FIRST so UI unblocks immediately
+        this.scannerIsOpen = false;
+        if (dialog && dialog.open) {
+            dialog.close();
+        }
+
+        // Then cleanup camera (non-blocking)
+        try {
+            if (this.html5QrCode) {
+                try {
+                    await this.html5QrCode.stop();
+                } catch (_) {
+                    // stop() can fail if camera never started — that's fine
+                }
+                try {
+                    this.html5QrCode.clear();
+                } catch (_) {
+                    // clear() can fail on partially initialized scanner
+                }
+                this.html5QrCode = null;
+            }
+        } catch (err) {
+            console.warn('[CartManager] Error cleaning up scanner:', err);
+        }
+
+        this.focusBarcode();
+    }
+
+    /**
+     * Play a short beep sound using the Web Audio API.
+     * No external sound file needed.
+     * @private
+     */
+    playBeep() {
+        if (!this.audioCtx) return;
+
+        try {
+            const oscillator = this.audioCtx.createOscillator();
+            const gainNode = this.audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioCtx.destination);
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(1200, this.audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.3, this.audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.15);
+
+            oscillator.start(this.audioCtx.currentTime);
+            oscillator.stop(this.audioCtx.currentTime + 0.15);
+        } catch (_) {
+            // Audio playback not critical, silently ignore
+        }
     }
 }
 

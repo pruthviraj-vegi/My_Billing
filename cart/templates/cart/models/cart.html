@@ -22,6 +22,15 @@
                            id="barcodeInput">
                 </div>
 
+                <!-- Camera Scan Button — visible on mobile only -->
+                <button type="button"
+                        class="btn btn-primary btn-camera-scan d-md-none"
+                        id="cameraScanBtn"
+                        title="Scan barcode with camera"
+                        aria-label="Open camera barcode scanner">
+                    <i class="fas fa-camera"></i>
+                </button>
+
                 <button type="submit" class="btn btn-primary" tabindex="-1">
                     <i class="fas fa-search"></i>
                     Search
@@ -178,6 +187,35 @@
     </div>
 </div>
 
+<!-- Barcode Scanner Dialog -->
+<dialog id="barcodeScannerDialog" class="scanner-dialog">
+    <div class="scanner-dialog-header">
+        <h3 class="scanner-dialog-title">
+            <i class="fas fa-barcode"></i>
+            Scan Barcode
+        </h3>
+        <button type="button" class="scanner-close-btn" id="scannerCloseBtn"
+                aria-label="Close scanner">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="scanner-viewfinder-wrapper">
+        <div id="scannerViewfinder"></div>
+        <div class="scanner-overlay-guide">
+            <div class="scanner-guide-box">
+                <span class="guide-corner guide-tl"></span>
+                <span class="guide-corner guide-tr"></span>
+                <span class="guide-corner guide-bl"></span>
+                <span class="guide-corner guide-br"></span>
+            </div>
+            <p class="scanner-hint">Point camera at a barcode</p>
+        </div>
+    </div>
+    <div class="scanner-dialog-footer">
+        <span class="scanner-status" id="scannerStatus">Initializing camera...</span>
+    </div>
+</dialog>
+
 {% block extra_js %}
     <!-- Global variables for JavaScript -->
     <script src="{% static 'js/fetchData.js' %}"></script>
@@ -197,5 +235,6 @@
     </script>
     <!-- External Cart JavaScript -->
     <script src="{% static 'js/counting.js' %}"></script>
+    <script src="{% static 'js/html5-qrcode.min.js' %}"></script>
     <script src="{% static 'js/cart.js' %}"></script>
 {% endblock extra_js %}

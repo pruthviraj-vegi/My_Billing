@@ -178,20 +178,23 @@
     display: none; /* shown via .has-more */
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.12);
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.18);
     color: #fff;
     border-radius: 0.5rem;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
-    transition: background 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
   }
 
   .page-actions-toggle:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
   }
 
   /* Show toggle when JS has collapsed buttons */
@@ -322,6 +325,16 @@
     width: auto;
   }
 
+  /* Hide inner search icon on mobile to prevent overlapping input text */
+  .search-group .search-icon {
+    display: none !important;
+  }
+
+  .search-input,
+  input[type="search"].search-input {
+    padding-left: 0.75rem !important;
+  }
+
   /* Search button: icon-only on mobile */
   .search-filter-form > .btn {
     padding: 0.5rem 0.65rem;
@@ -338,6 +351,11 @@
   /* Expand barcode suggestion dropdown to 100% width on mobile */
   .barcode-suggestions-dropdown {
     width: 100% !important;
+  }
+
+  /* Camera scan button: show on mobile */
+  .btn-camera-scan {
+    display: flex !important;
   }
 
   .table-container {
@@ -369,9 +387,57 @@
 
   .form-input,
   .form-textarea,
-  .form-select {
-    font-size: 16px;
-    /* Prevents zoom on iOS */
+  .form-select,
+  .form-control,
+  .form-control-sm,
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 0.8rem !important;
+    padding: 0.3rem 0.55rem !important;
+    height: auto;
+  }
+
+  .form-input,
+  .form-select,
+  .form-control,
+  select,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]) {
+    max-height: 36px !important;
+  }
+
+  .form-textarea,
+  textarea {
+    max-height: none !important;
+    min-height: 70px;
+  }
+
+  .form-label,
+  label {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.2rem;
+  }
+
+  .select2-container--default .select2-selection--single {
+    height: 34px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 32px !important;
+    padding-left: 0.5rem !important;
+  }
+
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 32px !important;
   }
 
   .error-message {

@@ -100,9 +100,7 @@
             <!-- Stock Summary Cards -->
             <div class="summary-card-compact" id="stockSummaryCard">
                 <div class="summary-icon-compact">
-                    <h4>
-                        <i class="fas fa-boxes"></i>
-                    </h4>
+                    <i class="fas fa-boxes"></i>
                 </div>
                 <div class="summary-content-compact">
                     <h4>Stock Summary</h4>
@@ -124,9 +122,7 @@
             </div>
             <div class="summary-card-compact" id="valueSummaryCard">
                 <div class="summary-icon-compact">
-                    <h4>
-                        <i class="fas fa-chart-line"></i>
-                    </h4>
+                    <i class="fas fa-chart-line"></i>
                 </div>
                 <div class="summary-content-compact">
                     <h4>Value Summary</h4>
@@ -150,9 +146,7 @@
             </div>
             <div class="summary-card-compact" id="healthSummaryCard">
                 <div class="summary-icon-compact">
-                    <h4>
-                        <i class="fas fa-heartbeat"></i>
-                    </h4>
+                    <i class="fas fa-heartbeat"></i>
                 </div>
                 <div class="summary-content-compact">
                     <h4>Stock Health</h4>
@@ -177,27 +171,27 @@
                 <div class="summary-icon-compact">
                     <i class="fas fa-rocket"></i>
                 </div>
-                <div class="summary-content-compact">
+                <div class="summary-content-compact" style="flex: 1; min-width: 0;">
                     <h4>Quick Actions</h4>
                     <div class="quick-actions-inline">
                         {% if perms.inventory.add_inventorylog %}
                             <a href="{% url 'inventory_variant:stock_in' variant.id %}"
-                               class="quick-action-icon btn-success"
+                               class="quick-action-icon"
                                data-tooltip="Stock In">
-                                <i class="fas fa-plus-circle"></i>
+                                <i class="fas fa-plus"></i>
                             </a>
                             <a href="{% url 'inventory_variant:adjustment_in' variant.id %}"
-                               class="quick-action-icon btn-info"
+                               class="quick-action-icon"
                                data-tooltip="Adjust In">
                                 <i class="fas fa-arrow-up"></i>
                             </a>
                             <a href="{% url 'inventory_variant:adjustment_out' variant.id %}"
-                               class="quick-action-icon btn-warning"
+                               class="quick-action-icon"
                                data-tooltip="Adjust Out">
                                 <i class="fas fa-arrow-down"></i>
                             </a>
                             <a href="{% url 'inventory_variant:damage_create' variant.id %}"
-                               class="quick-action-icon btn-danger"
+                               class="quick-action-icon"
                                data-tooltip="Mark Damaged">
                                 <i class="fas fa-exclamation-triangle"></i>
                             </a>
@@ -705,33 +699,45 @@
         }
 
         .quick-actions-inline {
-            display: flex;
-            align-items: center;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             gap: 0.5rem;
+            width: 100%;
+            margin-top: 0.25rem;
         }
 
         .quick-action-icon {
             position: relative;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
+            width: 100%;
+            max-width: 44px;
+            height: 36px;
+            margin: 0 auto;
+            border-radius: 0.5rem;
             text-decoration: none;
-            color: white;
+            background: var(--bg-body);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
             transition: all 0.2s ease;
+            box-sizing: border-box;
         }
 
         .quick-action-icon:hover {
-            transform: scale(1.15);
+            transform: translateY(-2px);
+            background: var(--bg-surface-hover);
+            border-color: var(--primary);
+            color: var(--primary);
             box-shadow: var(--shadow-md);
-            color: white;
             text-decoration: none;
         }
 
         .quick-action-icon i {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            line-height: 1;
+            margin: 0;
         }
 
         /* Tooltip on hover */
@@ -794,16 +800,24 @@
             }
 
             .quick-actions-inline {
-                gap: 0.4rem;
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 0.35rem;
+                width: 100%;
+                margin-top: 0.2rem;
             }
 
             .quick-action-icon {
-                width: 28px;
-                height: 28px;
+                width: 100%;
+                max-width: 36px;
+                height: 32px;
+                border-radius: 0.375rem;
+                margin: 0 auto;
             }
 
             .quick-action-icon i {
-                font-size: 0.7rem;
+                font-size: 0.8rem;
+                line-height: 1;
             }
         }
     </style>

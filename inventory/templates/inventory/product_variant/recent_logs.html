@@ -2,20 +2,19 @@
 {% if page_obj %}
     {% for log in page_obj %}
         <tr>
-            <td>
-                <span class="text-center {% if log.transaction_type == 'SALE' %}text-danger{% elif log.transaction_type == 'STOCK_IN' %}text-success{% elif log.transaction_type == 'RETURN' %}                text-success                 {% elif log.transaction_type == 'ADJUSTMENT_IN' %}                text-info                 {% elif log.transaction_type == 'ADJUSTMENT_OUT' %}                text-warning                 {% elif log.transaction_type == 'DAMAGE' %}                text-danger                 {% else %}                text-success                {% endif %}">
+            <td class="mobile-hide">
+                <span class="text-center fw-medium text-primary">
                     {{ log.get_transaction_type_display }}
                 </span>
             </td>
             <td>
-                <span class="{% if log.quantity_change > 0 %} text-success{% else %} text-danger{% endif %}">
-                    {% if log.quantity_change > 0 %}+{% endif %}
-                    {{ log.quantity_change|floatformat:0 }}
+                <span class="fw-medium">
+                    {% if log.quantity_change > 0 %}+{% endif %}{{ log.quantity_change|floatformat:0 }}
                 </span>
             </td>
             <td>{{ log.new_quantity|floatformat:0 }}</td>
-            <td>{{ log.total_value|currency | default:"-" }}</td>
-            <td>
+            <td class="mobile-hide">{{ log.total_value|currency | default:"-" }}</td>
+            <td class="mobile-hide">
                 {% if log.supplier_invoice %}
                     <div class="invoice-info-compact">
                         <span class="invoice-number">{{ log.supplier_invoice.invoice_number }}</span>
@@ -25,9 +24,9 @@
                     -
                 {% endif %}
             </td>
-            <td>{{ log.created_by.full_name | default:"-" }}</td>
+            <td class="mobile-hide">{{ log.created_by.full_name | default:"-" }}</td>
             <td>{{ log.timestamp|date:'M d, Y H:i' }}</td>
-            <td>
+            <td class="mobile-hide">
                 {% if log.notes %}
                     {% if log.invoice_item.invoice %}
                         <a href="{% url 'invoice:detail' log.invoice_item.invoice.id %}"

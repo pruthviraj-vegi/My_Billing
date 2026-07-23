@@ -100,23 +100,35 @@
     top: auto !important;
   }
 
-  /* Compact the date filter select on mobile */
+  /* Compact the date filter select on mobile to match 38px button height */
   .page-actions .form-select {
     min-width: 0;
-    max-width: 120px;
-    padding: 0.35rem 1.8rem 0.35rem 0.5rem;
-    font-size: 0.7rem;
+    max-width: 130px;
+    height: 38px !important;
+    padding: 0 1.8rem 0 0.6rem !important;
+    font-size: 0.75rem !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    border-radius: 0.5rem !important;
+    line-height: 1.2 !important;
   }
 
-  /* Also compact the styled dropdown wrapper on mobile */
+  /* Also compact the styled dropdown wrapper on mobile to match 38px button height */
   .page-actions .multipleSelection {
     min-width: 0;
+    height: 38px !important;
   }
 
   .page-actions .selectBox {
-    padding: 0.35rem 1.5rem 0.35rem 0.5rem;
-    font-size: 0.7rem;
+    height: 38px !important;
+    padding: 0 1.5rem 0 0.6rem !important;
+    font-size: 0.75rem !important;
     min-width: 0;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    border-radius: 0.5rem !important;
   }
 
   /* Date dropdown panel: constrain to viewport on mobile */
@@ -156,42 +168,62 @@
     gap: 0.3rem;
     position: relative;
   }
-  /* Create button: icon-only circle */
+  /* Primary Action Button on Mobile: Sleek Light Rounded Square */
   .page-actions .btn-primary {
     font-size: 0;
-    width: 44px;
-    height: 44px;
+    width: 38px;
+    height: 38px;
     padding: 0;
     gap: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+  }
+  .page-actions .btn-primary:hover,
+  .page-actions .btn-primary:focus {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
   }
   .page-actions .btn-primary i {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     margin: 0;
   }
   /* Hide extra buttons by default */
   .page-actions > .btn:not(.btn-primary) {
     display: none;
   }
-  /* 3-dots toggle (injected by JS) */
+  /* 3-dots toggle (injected by JS): Sleek Light Rounded Square */
   .page-actions-toggle {
     display: none;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    background: rgba(255,255,255,0.2);
-    border: none;
-    border-radius: 50%;
-    color: #fff;
-    font-size: 1rem;
+    width: 38px;
+    height: 38px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 0.5rem;
+    color: #ffffff;
+    font-size: 0.95rem;
     cursor: pointer;
     flex-shrink: 0;
     letter-spacing: 1px;
     line-height: 1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+  }
+  .page-actions-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
   }
   .page-actions.has-more .page-actions-toggle {
     display: flex;
@@ -577,7 +609,8 @@
   .summary-icon-compact {
     width: 36px;
     height: 36px;
-    font-size: 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
   }
 
@@ -618,19 +651,29 @@
 
   .table-header .btn {
     font-size: 0;
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
     padding: 0;
     gap: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: inherit;
     flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+  }
+
+  .table-header .btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
   }
 
   .table-header .btn i {
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     margin: 0;
   }
 
