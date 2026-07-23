@@ -355,7 +355,7 @@
 
   /* Camera scan button: show on mobile */
   .btn-camera-scan {
-    display: flex !important;
+    display: inline-flex !important;
   }
 
   .table-container {

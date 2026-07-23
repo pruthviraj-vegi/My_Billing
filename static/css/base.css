@@ -7470,20 +7470,8 @@ a:hover {
 /* Camera scan button — hidden on desktop, shown via mobile.css */
 .btn-camera-scan {
   display: none !important;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
 }
 
-.btn-camera-scan:active {
-  transform: scale(0.92);
-}
 
 /* Scanner Dialog (uses native <dialog>) */
 .scanner-dialog {
