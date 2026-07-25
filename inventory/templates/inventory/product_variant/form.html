@@ -394,25 +394,43 @@
     const gstPercentage = '{{ gst_rate }}' || 5
     const bubble = document.getElementById('gst-apply-bubble')
     
-    let lastCalculatedGSTPrice = 0;
     let gstApplied = false;
+    let isProgrammaticChange = false;
+
+    function getGstPercentage() {
+      return parseFloat(gstPercentage) || 0;
+    }
   
     function updateCalculations() {
       // Helper function to safely parse formatted numbers (e.g. "1,000.00")
       const parseNumber = (val) => parseFloat(val?.toString().replace(/,/g, '')) || 0;
       
-      const purchase = parseNumber(purchasePrice?.value)
-      const selling = parseNumber(sellingPrice?.value)
-      const qty = parseNumber(quantity?.value)
-      const discount = parseNumber(discountPercentage?.value)
-      const gst = parseFloat(gstPercentage) || 0
+      const rawInputPrice = parseNumber(purchasePrice?.value);
+      const selling = parseNumber(sellingPrice?.value);
+      const qty = parseNumber(quantity?.value);
+      const discount = parseNumber(discountPercentage?.value);
+      const gst = getGstPercentage();
+
+      let purchaseBase = 0;
+      let gstAmount = 0;
+      let purchaseWithGST = 0;
+
+      if (gstApplied && rawInputPrice > 0 && gst > 0) {
+        // Field already includes GST
+        purchaseWithGST = rawInputPrice;
+        purchaseBase = rawInputPrice / (1 + (gst / 100));
+        gstAmount = purchaseWithGST - purchaseBase;
+      } else {
+        // Field is base price without GST
+        purchaseBase = rawInputPrice;
+        gstAmount = purchaseBase * (gst / 100);
+        purchaseWithGST = purchaseBase + gstAmount;
+      }
       
       // Calculate GST amount
-      const gstAmount = purchase * (gst / 100)
-      document.getElementById('gst-amount-display').textContent = `${formatCurrency(gstAmount)}`
+      document.getElementById('gst-amount-display').textContent = `${gstAmount.toFixed(2)}`
   
       // Calculate purchase price with GST
-      const purchaseWithGST = purchase + gstAmount
       document.getElementById('purchase-with-gst-display').textContent = `${formatCurrency(purchaseWithGST)}`
   
       // Calculate after discount (final selling price)
@@ -426,63 +444,51 @@
       document.getElementById('profit-margin-percentage').textContent = `${profitMarginPercentage.toFixed(2)}%`
   
       // Calculate total value (purchase price × quantity)
-      const totalValue = purchase * qty
+      const totalValue = rawInputPrice * qty
       document.getElementById('total-value').textContent = `${formatCurrency(totalValue)}`
   
       // Calculate final price (after discount)
-      const finalPrice = afterDiscount
-      document.getElementById('final-price').textContent = `${formatCurrency(finalPrice)}`
+      document.getElementById('final-price').textContent = `${formatCurrency(afterDiscount)}`
       
       // Show/hide/update bubble
-      updateGstBubble(purchase, gst);
+      updateGstBubble(rawInputPrice, gst, purchaseWithGST);
     }
 
-    function updateGstBubble(purchase, gst) {
+    function updateGstBubble(rawInputPrice, gst, calculatedPurchaseWithGST) {
       if (isEditMode) return;
       if (!bubble || !purchasePrice) return;
       
-      // If purchase is 0 or GST rate is 0, hide bubble
-      if (purchase <= 0 || gst <= 0) {
+      // If purchase is 0 or GST rate is 0 or GST is already applied, hide bubble
+      if (rawInputPrice <= 0 || gst <= 0 || gstApplied) {
         bubble.classList.add('d-none');
         return;
       }
 
-      const gstAmount = purchase * (gst / 100);
-      const purchaseWithGST = purchase + gstAmount;
-      lastCalculatedGSTPrice = purchaseWithGST;
-
-      // Check if the current input value matches the GST-inclusive price
-      const currentInputVal = parseFloat(purchasePrice.value.replace(/,/g, '')) || 0;
-      if (Math.abs(currentInputVal - purchaseWithGST) < 0.01) {
-        gstApplied = true;
-      } else if (Math.abs(currentInputVal - purchase) < 0.01) {
-        gstApplied = false;
-      }
-
-      if (gstApplied) {
-        bubble.classList.add('d-none');
-      } else {
-        bubble.textContent = `Click to add ${gst}% GST: ${formatCurrency(purchaseWithGST)}`;
-        bubble.classList.remove('d-none');
-      }
+      bubble.textContent = `+${gst}% GST: ${formatCurrency(calculatedPurchaseWithGST)}`;
+      bubble.classList.remove('d-none');
     }
 
     if (bubble) {
       bubble.addEventListener('click', function() {
-        if (lastCalculatedGSTPrice > 0 && purchasePrice) {
+        const parseNumber = (val) => parseFloat(val?.toString().replace(/,/g, '')) || 0;
+        const rawInputPrice = parseNumber(purchasePrice?.value);
+        const gst = getGstPercentage();
+
+        if (rawInputPrice > 0 && gst > 0 && purchasePrice) {
+          const targetPrice = rawInputPrice + (rawInputPrice * (gst / 100));
+          
           gstApplied = true;
-          purchasePrice.value = lastCalculatedGSTPrice.toFixed(2);
-          purchasePrice.dispatchEvent(new Event('input'));
-          purchasePrice.dispatchEvent(new Event('blur'));
+          isProgrammaticChange = true;
+          
+          purchasePrice.value = targetPrice.toFixed(2);
           
           // Auto update selling price to 2x the new purchase price
-          if (sellingPrice) {
-            sellingPrice.value = (lastCalculatedGSTPrice * 2).toFixed(2);
-            sellingPrice.dispatchEvent(new Event('input'));
-            sellingPrice.dispatchEvent(new Event('blur'));
+          if (sellingPrice && !isEditMode) {
+            sellingPrice.value = (targetPrice * 2).toFixed(2);
           }
           
-          bubble.classList.add('d-none');
+          isProgrammaticChange = false;
+          updateCalculations();
         }
       });
     }
@@ -492,11 +498,14 @@
         updateCalculations();
         return;
       }
-      const parseNumber = (val) => parseFloat(val?.toString().replace(/,/g, '')) || 0;
-      const purchase = parseNumber(purchasePrice?.value);
-      
-      if (purchase > 0 && !gstApplied) {
-        sellingPrice.value = (purchase * 2).toFixed(2);
+      if (!isProgrammaticChange) {
+        gstApplied = false;
+        const parseNumber = (val) => parseFloat(val?.toString().replace(/,/g, '')) || 0;
+        const purchase = parseNumber(purchasePrice?.value);
+        
+        if (purchase > 0 && sellingPrice) {
+          sellingPrice.value = (purchase * 2).toFixed(2);
+        }
       }
       updateCalculations();
     }
@@ -506,8 +515,14 @@
       purchasePrice.addEventListener('input', handlePurchaseOrInvoiceChange);
     }
     if (supplierInvoice) {
-      supplierInvoice.addEventListener('change', handlePurchaseOrInvoiceChange);
-      $(supplierInvoice).on('change', handlePurchaseOrInvoiceChange);
+      supplierInvoice.addEventListener('change', function() {
+        gstApplied = false;
+        updateCalculations();
+      });
+      $(supplierInvoice).on('change', function() {
+        gstApplied = false;
+        updateCalculations();
+      });
     }
     ;[sellingPrice, quantity, discountPercentage].forEach((input) => {
       if (input) {
@@ -530,6 +545,5 @@
     // Initial calculation
     updateCalculations()
   })
-
   </script>
 {% endblock extra_js %}

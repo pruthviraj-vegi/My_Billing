@@ -202,36 +202,40 @@
             <!-- Payment Method and Invoice Date Row -->
             <div class="row">
               <!-- Payment Method Field -->
-              <div class="col-md-6 mb-2 {% if form.payment_method.errors %}has-error{% endif %}">
-                <label for="{{ form.payment_method.id_for_label }}" class="form-label">{{ form.payment_method.label }}</label>
-                {{ form.payment_method }}
-                <small class="form-help {% if form.payment_method.errors %}has-error{% endif %}">
-                  {% if form.payment_method.errors %}
-                  {% for error in form.payment_method.errors %}
-                  <span class="form-error-inline">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ error }}
-                  </span>
-                  {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Select the payment method for the invoice</span>
-                </small>
+              <div class="col-md-6 mb-2">
+                <div class="form-group {% if form.payment_method.errors %}has-error{% endif %}">
+                  <label for="{{ form.payment_method.id_for_label }}" class="form-label">{{ form.payment_method.label }}</label>
+                  {{ form.payment_method }}
+                  <small class="form-help {% if form.payment_method.errors %}has-error{% endif %}">
+                    {% if form.payment_method.errors %}
+                    {% for error in form.payment_method.errors %}
+                    <span class="form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </span>
+                    {% endfor %}
+                    {% endif %}
+                    <span class="form-help-text">Select the payment method for the invoice</span>
+                  </small>
+                </div>
               </div>
               <!-- Invoice Date Field -->
-              <div class="col-md-6 mb-2 {% if form.invoice_date.errors %}has-error{% endif %}">
-                <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
-                {{ form.invoice_date }}
-                <small class="form-help {% if form.invoice_date.errors %}has-error{% endif %}">
-                  {% if form.invoice_date.errors %}
-                  {% for error in form.invoice_date.errors %}
-                  <span class="form-error-inline">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ error }}
-                  </span>
-                  {% endfor %}
-                  {% endif %}
-                  <span class="form-help-text">Select the date of the invoice</span>
-                </small>
+              <div class="col-md-6 mb-2">
+                <div class="form-group {% if form.invoice_date.errors %}has-error{% endif %}">
+                  <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
+                  {{ form.invoice_date }}
+                  <small class="form-help {% if form.invoice_date.errors %}has-error{% endif %}">
+                    {% if form.invoice_date.errors %}
+                    {% for error in form.invoice_date.errors %}
+                    <span class="form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </span>
+                    {% endfor %}
+                    {% endif %}
+                    <span class="form-help-text">Select the date of the invoice</span>
+                  </small>
+                </div>
               </div>
             </div>
             <!-- Notes Field -->
@@ -329,9 +333,9 @@
 <script>
   $(document).ready(function () {
     setupModal('id_customer', 'Customer', 'new_customer', '#add_new_customer', '{% url "customer:create_ajax" %}');
-    $('#id_customer').select2();
-    $('#id_payment_method').select2();
-    $('#id_sold_by').select2();
+    $('#id_customer').select2({ width: '100%' });
+    $('#id_payment_method').select2({ width: '100%' });
+    $('#id_sold_by').select2({ width: '100%' });
 
     // Handle walk-in customer - force CASH payment type
     const defaultCustomerId = "{{ default_customer.id|default:'1' }}";

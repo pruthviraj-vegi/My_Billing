@@ -1259,6 +1259,12 @@ form.submitting * {
   font-family: inherit;
   width: 100%;
   font-size: var(--input-font-size);
+  box-sizing: border-box;
+}
+
+.form-input,
+.form-select {
+  height: 36px;
 }
 
 .form-textarea {
@@ -1269,26 +1275,27 @@ form.submitting * {
 /* Select Input Styling */
 .form-select {
   appearance: none;
-  background-image: url("data:image/svg+xml, %3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.5rem center;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.6rem center;
   background-repeat: no-repeat;
-  background-size: 1.5em 1.5em;
-  padding-right: 2.5rem;
+  background-size: 1.25rem 1.25rem;
+  padding-right: 2.2rem;
   cursor: pointer;
-}
-
-.form-select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-select:hover {
   border-color: var(--primary);
 }
 
+.form-select:focus {
+  border-color: var(--border-color-focus, var(--primary));
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
+}
+
 /* Dark theme select arrow */
 [data-theme="dark"] .form-select {
-  background-image: url("data:image/svg+xml, %3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%9ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
 }
 
 .form-help {
@@ -1508,12 +1515,18 @@ form.submitting * {
   color: var(--success);
 }
 
-/* --- Form Field Focus States --- */
+/* --- Form Field Hover & Focus States --- */
+.form-input:hover,
+.form-textarea:hover,
+.form-select:hover {
+  border-color: var(--primary);
+}
+
 .form-input:focus,
 .form-textarea:focus,
 .form-select:focus {
-  border-color: var(--border-color-focus);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: var(--border-color-focus, var(--primary));
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
   transform: translateY(-1px);
 }
 

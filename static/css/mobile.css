@@ -377,12 +377,24 @@
   }
 
   .form-card {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .form-container {
     max-width: 100%;
-    margin: 0 1rem;
+    margin: 0;
+  }
+
+  /* Remove Bootstrap row horizontal gutter padding on mobile so stacked columns align edge-to-edge */
+  .row {
+    --bs-gutter-x: 0;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .row > * {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   .form-input,
@@ -403,7 +415,6 @@
   textarea {
     font-size: 0.8rem !important;
     padding: 0.3rem 0.55rem !important;
-    height: auto;
   }
 
   .form-input,
@@ -411,11 +422,14 @@
   .form-control,
   select,
   input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]) {
+    height: 36px !important;
     max-height: 36px !important;
+    box-sizing: border-box !important;
   }
 
   .form-textarea,
   textarea {
+    height: auto !important;
     max-height: none !important;
     min-height: 70px;
   }
@@ -426,9 +440,14 @@
     margin-bottom: 0.2rem;
   }
 
+  .select2-container {
+    width: 100% !important;
+  }
+
   .select2-container--default .select2-selection--single {
-    height: 34px !important;
+    height: 36px !important;
     font-size: 0.8rem !important;
+    box-sizing: border-box !important;
   }
 
   .select2-container--default .select2-selection--single .select2-selection__rendered {
@@ -438,6 +457,7 @@
 
   .select2-container--default .select2-selection--single .select2-selection__arrow {
     height: 32px !important;
+    top: 2px !important;
   }
 
   .error-message {
