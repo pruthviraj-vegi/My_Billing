@@ -110,32 +110,30 @@
         <!-- LEFT COLUMN: Variant Details -->
         <div class="col-lg-9 col-md-8 col-12 mb-3">
           <div class="form-card">
-            {% if not variant %}
-              <!-- Supplier Invoice Section -->
-              <div class="form-section">
-                <h5 class="section-title">Supplier Invoice</h5>
-                <div class="row">
-                  <div class="col-md-6">
-                    <div class="form-group {% if form.supplier_invoice.errors %}has-error{% endif %}">
-                      <label for="{{ form.supplier_invoice.id_for_label }}" class="form-label">{{ form.supplier_invoice.label }}</label>
-                      {{ form.supplier_invoice }}
-                      <small class="form-help {% if form.supplier_invoice.errors %}has-error{% endif %}">
-                        {% if form.supplier_invoice.errors %}
-                          {% for error in form.supplier_invoice.errors %}
-                            <span class="form-error-inline">
-                              <i class="fas fa-exclamation-circle"></i>
-                              {{ error }}
-                            </span>
-                          {% endfor %}
-                        {% else %}
-                          <span class="form-help-text">Select the supplier invoice for this product</span>
-                        {% endif %}
-                      </small>
-                    </div>
+            <!-- Supplier Invoice Section -->
+            <div class="form-section">
+              <h5 class="section-title">Supplier Invoice</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group {% if form.supplier_invoice.errors %}has-error{% endif %}">
+                    <label for="{{ form.supplier_invoice.id_for_label }}" class="form-label">{{ form.supplier_invoice.label }}</label>
+                    {{ form.supplier_invoice }}
+                    <small class="form-help {% if form.supplier_invoice.errors %}has-error{% endif %}">
+                      {% if form.supplier_invoice.errors %}
+                        {% for error in form.supplier_invoice.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% else %}
+                        <span class="form-help-text">Select the supplier invoice for this product</span>
+                      {% endif %}
+                    </small>
                   </div>
                 </div>
               </div>
-            {% endif %}
+            </div>
 
             <!-- Variant Details Section -->
             <div class="form-section">

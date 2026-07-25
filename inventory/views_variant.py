@@ -476,8 +476,12 @@ class EditProductVariant(RequiredPermissionMixin, UpdateView):
                 variant.updated_by = self.request.user
                 variant.save()
 
+                supplier_invoice = form.cleaned_data.get("supplier_invoice")
                 InventoryService.update_initial_log(
-                    variant, self.request.user, "Initial stock"
+                    variant,
+                    self.request.user,
+                    "Initial stock",
+                    supplier_invoice=supplier_invoice,
                 )
 
             messages.success(self.request, "Product variant updated successfully")

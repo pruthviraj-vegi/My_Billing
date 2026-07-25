@@ -205,8 +205,32 @@ class VariantForm(forms.ModelForm):
         try:
             if not self.instance.pk:
                 self.fields["commission_percentage"].initial = 1
+            else:
+                from inventory.models import InventoryLog
+                # Check if transactions exist for this variant
+                has_other_transactions = InventoryLog.objects.filter(
+                    variant=self.instance
+                ).exclude(
+                    transaction_type=InventoryLog.TransactionTypes.INITIAL
+                ).exists()
+
+                if has_other_transactions and "quantity" in self.fields:
+                    self.fields["quantity"].disabled = True
+                    self.fields["quantity"].help_text = (
+                        "Current available stock (cannot be edited directly when stock movements exist; "
+                        "use Stock In, Damage, or Adjustment operations)."
+                    )
+
+                # When editing an existing variant, initialize supplier_invoice from the initial InventoryLog
+                if "supplier_invoice" in self.fields and not self.initial.get("supplier_invoice"):
+                    initial_log = InventoryLog.objects.filter(
+                        variant=self.instance,
+                        transaction_type=InventoryLog.TransactionTypes.INITIAL,
+                    ).first()
+                    if initial_log and initial_log.supplier_invoice_id:
+                        self.fields["supplier_invoice"].initial = initial_log.supplier_invoice_id
         except Exception as e:  # pylint: disable=broad-except
-            logger.error("Failed to set initial commission percentage: %s", e)
+            logger.error("Failed to set initial values in VariantForm: %s", e)
 
     def _validate_positive_number(self, value, _field_name, error_message):
         """Helper method to validate positive numbers"""
@@ -215,7 +239,17 @@ class VariantForm(forms.ModelForm):
         return value
 
     def clean_quantity(self):
-        """Validate quantity is greater than 0"""
+        """Validate quantity is greater than 0, preserving existing quantity if transactions exist"""
+        if self.instance and self.instance.pk:
+            from inventory.models import InventoryLog
+            has_other_transactions = InventoryLog.objects.filter(
+                variant=self.instance
+            ).exclude(
+                transaction_type=InventoryLog.TransactionTypes.INITIAL
+            ).exists()
+            if has_other_transactions:
+                return self.instance.quantity
+
         return self._validate_positive_number(
             self.cleaned_data.get("quantity"),
             "quantity",
@@ -789,11 +823,17 @@ class InventoryAdjustmentForm(forms.ModelForm):
 
         # Filter supplier invoices based on variant and operation type
         if self.variant:
-            # For damage operations, only show supplier invoices that contain this variant
+            # For damage operations, only show supplier invoices that supplied stock (INITIAL or STOCK_IN) for this variant
             if self.adjustment_type == "damage":
+                from inventory.models import InventoryLog
                 self.fields["supplier_invoice"].queryset = (
                     SupplierInvoice.objects.filter(
-                        supplier__is_deleted=False, inventory_logs__variant=self.variant
+                        supplier__is_deleted=False,
+                        inventory_logs__variant=self.variant,
+                        inventory_logs__transaction_type__in=[
+                            InventoryLog.TransactionTypes.INITIAL,
+                            InventoryLog.TransactionTypes.STOCK_IN,
+                        ],
                     ).distinct()
                 )
             else:
@@ -846,7 +886,21 @@ class InventoryAdjustmentForm(forms.ModelForm):
 
         # Validate supplier invoice contains this variant (if supplier invoice is selected)
         if supplier_invoice and variant:
-            if not supplier_invoice.inventory_logs.filter(variant=variant).exists():
+            from inventory.models import InventoryLog
+            if self.adjustment_type == "damage":
+                has_supplied_stock = supplier_invoice.inventory_logs.filter(
+                    variant=variant,
+                    transaction_type__in=[
+                        InventoryLog.TransactionTypes.INITIAL,
+                        InventoryLog.TransactionTypes.STOCK_IN,
+                    ],
+                ).exists()
+                if not has_supplied_stock:
+                    raise forms.ValidationError(
+                        f"The selected supplier invoice does not have stock supplied for the variant '{variant.full_name}'. "
+                        "Please select a supplier invoice that supplied stock for this variant."
+                    )
+            elif not supplier_invoice.inventory_logs.filter(variant=variant).exists():
                 raise forms.ValidationError(
                     f"The selected supplier invoice does not contain the variant '{variant.full_name}'. "
                     "Please select a supplier invoice that contains this variant."

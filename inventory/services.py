@@ -118,22 +118,36 @@ class InventoryService:
             logger.error("Failed to create initial log: %s", e)
             return None
 
+    _SENTINEL = object()
+
     @staticmethod
-    def update_initial_log(variant, user=None, notes="", supplier_invoice=None):
+    def update_initial_log(variant, user=None, notes="", supplier_invoice=_SENTINEL):
         """Update the initial inventory log entry for a variant"""
         log_data = InventoryLog.objects.filter(
             variant=variant,
             transaction_type=InventoryLog.TransactionTypes.INITIAL,
         ).first()
         if log_data:
-            log_data.quantity_change = variant.quantity
-            log_data.new_quantity = variant.quantity
-            log_data.remaining_quantity = variant.quantity
+            has_other_transactions = InventoryLog.objects.filter(
+                variant=variant
+            ).exclude(id=log_data.id).exists()
+
+            if not has_other_transactions:
+                log_data.quantity_change = variant.quantity
+                log_data.new_quantity = variant.quantity
+                log_data.remaining_quantity = variant.quantity
+                log_data.total_value = variant.quantity * variant.purchase_price
+                log_data.notes = notes or f"Initial Stock: {variant.quantity} units"
+            else:
+                # Stock movements have occurred — preserve initial quantities and update pricing/metadata only
+                log_data.total_value = log_data.quantity_change * variant.purchase_price
+                if notes:
+                    log_data.notes = notes
+
             log_data.purchase_price = variant.purchase_price
             log_data.mrp = variant.mrp
-            log_data.total_value = variant.quantity * variant.purchase_price
-            log_data.notes = notes or f"Initial Stock: {variant.quantity} units"
-            log_data.supplier_invoice = supplier_invoice
+            if supplier_invoice is not InventoryService._SENTINEL:
+                log_data.supplier_invoice = supplier_invoice
             log_data.created_by = user
             log_data.save()
 
