@@ -248,7 +248,123 @@
       </div>
     </div>
   </div>
+  <!-- Media Lightbox -->
+  <div id="supplierMediaLightbox" class="supplier-media-lightbox">
+    <button class="media-lb-close" aria-label="Close">&times;</button>
+    <a href="#" class="media-lb-download" download>
+      <i class="fas fa-download"></i> Download
+    </a>
+    <div class="media-lb-content">
+      <img src="" alt="" id="mediaLbImage">
+    </div>
+    <div class="media-lb-caption" id="mediaLbCaption"></div>
+  </div>
 {% endblock content %}
+{% block extra_css %}
+  <style>
+    .supplier-media-lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      z-index: 3000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .supplier-media-lightbox.active {
+      display: flex;
+    }
+    .media-lb-close {
+      position: absolute;
+      top: 0.75rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      z-index: 3002;
+      line-height: 1;
+      padding: 0.25rem 0.5rem;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .media-lb-close:hover {
+      opacity: 1;
+    }
+    .media-lb-download {
+      position: absolute;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      color: #fff;
+      background: var(--primary, #3b82f6);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      z-index: 3002;
+      transition: background 0.2s;
+    }
+    .media-lb-download:hover {
+      background: var(--primary-hover, #2563eb);
+      color: #fff;
+    }
+    .media-lb-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 95vw;
+      max-height: 80vh;
+    }
+    .media-lb-content img {
+      max-width: 95vw;
+      max-height: 80vh;
+      object-fit: contain;
+      border-radius: 0.25rem;
+    }
+    .media-lb-caption {
+      position: absolute;
+      bottom: 1.25rem;
+      left: 1.25rem;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 0.8rem;
+      z-index: 3002;
+      max-width: calc(100% - 8rem);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    @media (max-width: 768px) {
+      .media-lb-content {
+        max-width: 100vw;
+        max-height: 85vh;
+      }
+      .media-lb-content img {
+        max-width: 100vw;
+        max-height: 85vh;
+      }
+      .media-lb-close {
+        top: 0.5rem;
+        right: 0.5rem;
+        font-size: 1.75rem;
+      }
+      .media-lb-download {
+        bottom: 0.75rem;
+        right: 0.75rem;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+      }
+      .media-lb-caption {
+        bottom: 0.75rem;
+        left: 0.75rem;
+        font-size: 0.75rem;
+        max-width: calc(100% - 7rem);
+      }
+    }
+  </style>
+{% endblock extra_css %}
 {% block extra_js %}
   <script src="{% static 'js/fetchData.js' %}"></script>
   <script>
@@ -305,5 +421,52 @@
     
       return false
     }
+
+    // --- Media Lightbox ---
+    (function () {
+      const lightbox = document.getElementById('supplierMediaLightbox')
+      const lbImage = document.getElementById('mediaLbImage')
+      const lbCaption = document.getElementById('mediaLbCaption')
+      const lbDownload = lightbox.querySelector('.media-lb-download')
+      const lbClose = lightbox.querySelector('.media-lb-close')
+
+      function openLightbox(url, name) {
+        lbImage.src = url
+        lbImage.alt = name
+        lbCaption.textContent = name
+        lbDownload.href = url
+        lbDownload.download = name
+        lightbox.classList.add('active')
+        document.body.style.overflow = 'hidden'
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove('active')
+        document.body.style.overflow = ''
+        lbImage.src = ''
+      }
+
+      // Event delegation for AJAX-loaded content
+      document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('.media-lightbox-trigger')
+        if (!trigger) return
+        e.preventDefault()
+        const url = trigger.getAttribute('data-media-url')
+        const name = trigger.getAttribute('data-media-name') || 'Image'
+        openLightbox(url, name)
+      })
+
+      lbClose.addEventListener('click', closeLightbox)
+
+      lightbox.addEventListener('click', function (e) {
+        if (e.target === lightbox) closeLightbox()
+      })
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+          closeLightbox()
+        }
+      })
+    })()
   </script>
 {% endblock extra_js %}

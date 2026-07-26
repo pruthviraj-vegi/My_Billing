@@ -878,6 +878,11 @@
     margin-bottom: 4.5rem !important;
   }
 
+  /* Table sections on mobile: Keep pagination inline inside the table section card */
+  .table-section .table-container {
+    margin-bottom: 0 !important;
+  }
+
   /* Responsive pagination layout: Fixed at the bottom of viewport */
   .pagination-row {
     position: fixed !important;
@@ -895,12 +900,55 @@
     align-items: center !important;
   }
 
+  /* Table section inline pagination layout on mobile */
+  .table-section .pagination-row {
+    position: static !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.4rem !important;
+    padding: 0.5rem 0.75rem !important;
+    box-shadow: none !important;
+    border-top: 1px solid var(--border-color) !important;
+    margin-top: 0 !important;
+    z-index: auto !important;
+    width: 100% !important;
+  }
+
+  .table-section .pagination-nav {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    flex: 0 0 auto !important;
+  }
+
+  .table-section .pagination {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 !important;
+    gap: 0.25rem !important;
+  }
+
   .pagination-info {
     display: none !important;
   }
 
-  .pagination {
-    margin: 0 !important;
+  .table-section .pagination-info {
+    display: block !important;
+    text-align: center !important;
+    font-size: 0.75rem !important;
+    color: var(--text-secondary) !important;
+  }
+
+  .table-section .pagination-info:last-child {
+    display: none !important;
   }
 
   .pagination-wrapper {
