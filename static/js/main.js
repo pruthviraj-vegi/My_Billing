@@ -119,74 +119,8 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('scroll', requestTick);
 });
 
-// ========================================
-// UTILITY FUNCTIONS
-// ========================================
-
-// Format date
-function formatDate(date) {
-    return new Intl.DateTimeFormat('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    }).format(new Date(date));
-}
-
-// Debounce function
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Throttle function
-function throttle(func, limit) {
-    let inThrottle;
-    return function () {
-        const args = arguments;
-        const context = this;
-        if (!inThrottle) {
-            func.apply(context, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
-    };
-}
-
-// Copy to clipboard utility
-// Usage: <span data-copy="TEXT_TO_COPY">Visible Text</span>
-// Or JS: copyToClipboard('some text')
-function copyToClipboard(text) {
-    function fallbackCopy(t) {
-        const textarea = document.createElement('textarea');
-        textarea.value = t;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        if (typeof showNotification === 'function') {
-            showNotification('Copied to clipboard!', 'success');
-        }
-    }
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(() => {
-            if (typeof showNotification === 'function') {
-                showNotification('Copied to clipboard!', 'success');
-            }
-        }).catch(() => fallbackCopy(text));
-    } else {
-        fallbackCopy(text);
-    }
-}
+// Note: Shared utility functions (formatDate, debounce, throttle, copyToClipboard, etc.)
+// are consolidated in static/js/utils.js and loaded globally.
 
 // Auto-bind click-to-copy on elements with data-copy attribute
 document.addEventListener('click', function (e) {

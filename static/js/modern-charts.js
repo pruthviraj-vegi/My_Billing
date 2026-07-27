@@ -175,8 +175,14 @@
 
             let bgColors, borderColors;
             if (colorMap) {
-                bgColors = labels.map(l => colorMap[l] || colors.slate);
-                borderColors = labels.map(l => colorMap[l] || colors.slate);
+                bgColors = labels.map(l => {
+                    const c = colorMap[l];
+                    return (c && typeof c === 'object' && c.fill) ? c.fill : (c || colors.slate);
+                });
+                borderColors = labels.map(l => {
+                    const c = colorMap[l];
+                    return (c && typeof c === 'object' && c.stroke) ? c.stroke : (c || colors.slate);
+                });
             } else {
                 bgColors = labels.map((_, i) => fills[i % fills.length]);
                 borderColors = labels.map((_, i) => strokes[i % strokes.length]);

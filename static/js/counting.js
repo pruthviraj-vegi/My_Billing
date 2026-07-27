@@ -1,6 +1,11 @@
 function animateCounter(element, startValue, endValue, duration = 1000) {
+  // Ensure non-negative start/end values and prevent float precision artifacts like -0.00
+  const safeStart = Math.max(0, startValue || 0);
+  const safeEnd = Math.max(0, endValue || 0);
   const startTime = performance.now();
-  const difference = endValue - startValue;
+  const difference = safeEnd - safeStart;
+  const prefix = element.getAttribute("data-prefix") || "";
+  const suffix = element.getAttribute("data-suffix") || "";
 
   // Pre-compute locale options objects to avoid recreation on each frame
   const localeOptsWithDecimals = { maximumFractionDigits: 2, minimumFractionDigits: 2 };
@@ -11,28 +16,30 @@ function animateCounter(element, startValue, endValue, duration = 1000) {
     const progress = Math.min(elapsed / duration, 1);
 
     // Easing function for smooth animation
-    const easeOutQuad = 1 - (1 - progress) * (1 - progress); // Avoid Math.pow for simple squares
+    const easeOutQuad = 1 - (1 - progress) * (1 - progress);
 
-    const currentValue = startValue + difference * easeOutQuad;
+    let currentValue = safeStart + difference * easeOutQuad;
+    if (Math.abs(currentValue) < 0.001 || currentValue < 0) {
+      currentValue = 0;
+    }
 
     // Format as currency (Indian format)
-    // Use modulo check only once per frame
     const hasDecimal = currentValue % 1 !== 0;
     const formattedValue = currentValue.toLocaleString("en-IN",
       hasDecimal ? localeOptsWithDecimals : localeOptsNoDecimals
     );
 
-    element.textContent = formattedValue;
+    element.textContent = prefix + formattedValue + suffix;
     element.setAttribute("data-count", currentValue.toFixed(2));
 
     if (progress < 1) {
       requestAnimationFrame(update);
     } else {
       // Ensure final value is exact
-      element.textContent = endValue.toLocaleString("en-IN",
-        endValue % 1 !== 0 ? localeOptsWithDecimals : localeOptsNoDecimals
-      );
-      element.setAttribute("data-count", endValue.toFixed(2));
+      element.textContent = prefix + safeEnd.toLocaleString("en-IN",
+        safeEnd % 1 !== 0 ? localeOptsWithDecimals : localeOptsNoDecimals
+      ) + suffix;
+      element.setAttribute("data-count", safeEnd.toFixed(2));
     }
   }
 
@@ -44,9 +51,8 @@ document.addEventListener("DOMContentLoaded", initializeCounters);
 
 function initializeCounters() {
   const countingElements = document.getElementsByClassName("counting-number");
-  // Use for...of loop (slightly cleaner and potentially faster)
   for (const element of countingElements) {
-    const initialValue = parseFloat(element.getAttribute("data-count")) || 0;
+    const initialValue = Math.max(0, parseFloat(element.getAttribute("data-count")) || 0);
     animateCounter(element, 0, initialValue);
   }
 }
@@ -59,17 +65,16 @@ function updateCount(elementId, newValue) {
     return;
   }
 
-  // Simplify value parsing
   const numericValue = typeof newValue === "string"
-    ? parseFloat(newValue.replace(/[^0-9.-]+/g, ""))
-    : Number(newValue);
+    ? Math.max(0, parseFloat(newValue.replace(/[^0-9.-]+/g, "")) || 0)
+    : Math.max(0, Number(newValue) || 0);
 
   if (isNaN(numericValue)) {
     console.error(`Invalid value provided for counter: ${newValue}`);
     return;
   }
 
-  const currentValue = parseFloat(element.getAttribute("data-count")) || 0;
+  const currentValue = Math.max(0, parseFloat(element.getAttribute("data-count")) || 0);
   animateCounter(element, currentValue, numericValue);
 }
 

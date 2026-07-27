@@ -42,38 +42,38 @@
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <div class="stat-icon bg-green">
-                    <i class="fas fa-rupee-sign"></i>
+                    <i class="fa-solid fa-indian-rupee-sign"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalSales" data-count="0">0</h3>
-                    <p class="stat-label">Total Sales</p>
+                    <span class="stat-label">Total Sales</span>
+                    <h4 class="stat-number counting-number" id="totalSales" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-purple">
-                    <i class="fas fa-percentage"></i>
+                    <i class="fa-solid fa-percent"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalCommission" data-count="0">0</h3>
-                    <p class="stat-label">Total Commission</p>
+                    <span class="stat-label">Total Commission</span>
+                    <h4 class="stat-number counting-number" id="totalCommission" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-blue">
-                    <i class="fas fa-users"></i>
+                    <i class="fa-solid fa-users"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="usersWithSales" data-count="0">0</h3>
-                    <p class="stat-label">Users with Sales</p>
+                    <span class="stat-label">Users with Sales</span>
+                    <h4 class="stat-number counting-number" id="usersWithSales" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-red">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number"><span class="counting-number" id="avgCommissionRate" data-count="0">0</span><span>%</span></h3>
-                    <p class="stat-label">Avg Commission Rate</p>
+                    <span class="stat-label">Avg Commission Rate</span>
+                    <h4 class="stat-number"><span class="counting-number" id="avgCommissionRate" data-count="0">0</span><span>%</span></h4>
                 </div>
             </div>
         </div>
@@ -167,10 +167,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateDashboard(data) {
-        updateCount('totalSales', data.stats.total_sales);
-        updateCount('totalCommission', data.stats.total_commission);
-        updateCount('usersWithSales', data.stats.users_with_sales);
-        updateCount('avgCommissionRate', data.stats.avg_commission_rate);
+        updateAllCounters({
+            totalSales: data.stats.total_sales,
+            totalCommission: data.stats.total_commission,
+            usersWithSales: data.stats.users_with_sales,
+            avgCommissionRate: data.stats.avg_commission_rate
+        });
 
         ModernCharts.updateDoughnut(
             userChart,

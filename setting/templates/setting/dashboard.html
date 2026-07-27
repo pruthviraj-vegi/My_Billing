@@ -34,29 +34,29 @@
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <div class="stat-icon bg-blue">
-                    <i class="fas fa-store"></i>
+                    <i class="fa-solid fa-store"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number">{{ shops.count }}</h3>
-                    <p class="stat-label">Shop Details</p>
+                    <span class="stat-label">Shop Details</span>
+                    <h4 class="stat-number">{{ shops.count }}</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-purple">
-                    <i class="fas fa-file-invoice"></i>
+                    <i class="fa-solid fa-file-invoice"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number">{{ configs.count }}</h3>
-                    <p class="stat-label">Report Configurations</p>
+                    <span class="stat-label">Report Configurations</span>
+                    <h4 class="stat-number">{{ configs.count }}</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-green">
-                    <i class="fas fa-cog"></i>
+                    <i class="fa-solid fa-gear"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number">{{ default_configs|length }}</h3>
-                    <p class="stat-label">Default Configs</p>
+                    <span class="stat-label">Default Configs</span>
+                    <h4 class="stat-number">{{ default_configs|length }}</h4>
                 </div>
             </div>
         </div>

@@ -11,13 +11,7 @@ const tableEventListeners = {}; // Track listeners for cleanup
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
 // --- Utility ---
-const debounceTable = (fn, delay = 300) => {
-    let timer;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay); // Fixed: removed incorrect this binding
-    };
-};
+const debounceTable = (fn, delay = 300) => (typeof debounce === 'function' ? debounce(fn, delay) : fn);
 
 /**
  * Collect form data or use direct parameters

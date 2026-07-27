@@ -51,62 +51,56 @@
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <div class="stat-icon bg-red">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fa-solid fa-triangle-exclamation"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number"
-                        id="totalOutstanding"
-                        data-count="0">0</h3>
-                    <p class="stat-label">Total Outstanding</p>
+                    <span class="stat-label">Total Outstanding</span>
+                    <h4 class="stat-number counting-number" id="totalOutstanding" data-count="{{ total_outstanding|default:0 }}">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-blue">
-                    <i class="fas fa-users"></i>
+                    <i class="fa-solid fa-users"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number"
-                        id="totalCustomers"
-                        data-count="0">0</h3>
-                    <p class="stat-label">Total Customers</p>
+                    <span class="stat-label">Total Customers</span>
+                    <h4 class="stat-number counting-number" id="totalCustomers" data-count="{{ total_customers|default:0 }}">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-purple">
-                    <i class="fas fa-file-invoice"></i>
+                    <i class="fa-solid fa-file-invoice"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalInvoices" data-count="0">0</h3>
-                    <p class="stat-label">Total Invoices</p>
+                    <span class="stat-label">Total Invoices</span>
+                    <h4 class="stat-number counting-number" id="totalInvoices" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-green">
-                    <i class="fas fa-rupee-sign"></i>
+                    <i class="fa-solid fa-indian-rupee-sign"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalSales" data-count="0">0</h3>
-                    <p class="stat-label">Total Sales</p>
+                    <span class="stat-label">Total Sales</span>
+                    <h4 class="stat-number counting-number" id="totalSales" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-blue">
-                    <i class="fas fa-credit-card"></i>
+                    <i class="fa-solid fa-credit-card"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalReceived" data-count="0">0</h3>
-                    <p class="stat-label">Total Received</p>
+                    <span class="stat-label">Total Received</span>
+                    <h4 class="stat-number counting-number" id="totalReceived" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-red">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fa-solid fa-triangle-exclamation"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number"
-                        id="outstandingBalance"
-                        data-count="0">0</h3>
-                    <p class="stat-label">Outstanding Balance</p>
+                    <span class="stat-label">Outstanding Balance</span>
+                    <h4 class="stat-number counting-number" id="outstandingBalance" data-count="0">0</h4>
                 </div>
             </div>
         </div>
@@ -246,9 +240,6 @@
         let paymentTypeChart = ModernCharts.initDoughnut(paymentTypeCtx);
         let customerChart = ModernCharts.initDoughnut(customerCtx);
 
-        updateCount('totalOutstanding', "{{total_outstanding}}");
-        updateCount('totalCustomers', "{{total_customers}}");
-
         // Fetch Data Function
         async function fetchDashboardData(filter) {
             try {
@@ -280,10 +271,12 @@
 
         function updateDashboard(data) {
             // Update Stats
-            updateCount('totalInvoices', data.stats.total_invoices);
-            updateCount('totalSales', data.stats.total_sales);
-            updateCount('totalReceived', data.stats.total_received);
-            updateCount('outstandingBalance', data.stats.outstanding_balance);
+            updateAllCounters({
+                totalInvoices: data.stats.total_invoices,
+                totalSales: data.stats.total_sales,
+                totalReceived: data.stats.total_received,
+                outstandingBalance: data.stats.outstanding_balance
+            });
 
             // Update Revenue Chart
             if (data.comparison_data) {

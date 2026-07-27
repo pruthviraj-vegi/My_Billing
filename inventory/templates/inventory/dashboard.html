@@ -55,52 +55,52 @@
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <div class="stat-icon bg-blue">
-                    <i class="fas fa-wallet"></i>
+                    <i class="fa-solid fa-wallet"></i>
                 </div>
                 <div class="stat-content">
+                    <span class="stat-label">Total Stock Valuation</span>
                     <div class="stat-value-row">
-                        <h3 class="stat-number counting-number"
+                        <h4 class="stat-number counting-number"
                             id="totalInventoryValue"
-                            data-count="0">0</h3>
+                            data-count="{{ total_inventory_value|default:0 }}">0</h4>
                         <span class="trend positive hidden" id="valuationTrend"></span>
                     </div>
-                    <p class="stat-label">Total Stock Valuation</p>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-purple">
-                    <i class="fas fa-cubes"></i>
+                    <i class="fa-solid fa-cubes"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalVariants" data-count="0">0</h3>
-                    <p class="stat-label">Total Variants</p>
+                    <span class="stat-label">Total Variants</span>
+                    <h4 class="stat-number counting-number" id="totalVariants" data-count="{{ total_variants|default:0 }}">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-purple">
-                    <i class="fas fa-box"></i>
+                    <i class="fa-solid fa-box"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalProducts" data-count="0">0</h3>
-                    <p class="stat-label">Number of Products</p>
+                    <span class="stat-label">Number of Products</span>
+                    <h4 class="stat-number counting-number" id="totalProducts" data-count="{{ total_products|default:0 }}">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-green">
-                    <i class="fas fa-arrow-down"></i>
+                    <i class="fa-solid fa-arrow-down"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="stockIn" data-count="0">0</h3>
-                    <p class="stat-label">Stock In</p>
+                    <span class="stat-label">Stock In</span>
+                    <h4 class="stat-number counting-number" id="stockIn" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-red">
-                    <i class="fas fa-arrow-up"></i>
+                    <i class="fa-solid fa-arrow-up"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="stockOut" data-count="0">0</h3>
-                    <p class="stat-label">Stock Out</p>
+                    <span class="stat-label">Stock Out</span>
+                    <h4 class="stat-number counting-number" id="stockOut" data-count="0">0</h4>
                 </div>
             </div>
         </div>
@@ -218,10 +218,6 @@
     // Total stock data from initial page load (cached, date-independent)
     const initialTotalStockData = JSON.parse('{{ total_stock_data_json|escapejs }}' || '{}');
 
-    updateCount('totalInventoryValue', "{{total_inventory_value}}");
-    updateCount('totalVariants', "{{total_variants}}");
-    updateCount('totalProducts', "{{total_products}}");
-
     // Show valuation trend
     const valuationTrend = parseFloat("{{ valuation_trend }}");
     const trendEl = document.getElementById('valuationTrend');
@@ -263,8 +259,10 @@
 
     function updateDashboard(data) {
         // Update Stats
-        updateCount('stockIn', data.stats.stock_in || 0);
-        updateCount('stockOut', data.stats.stock_out || 0);
+        updateAllCounters({
+            stockIn: data.stats.stock_in || 0,
+            stockOut: data.stats.stock_out || 0
+        });
 
         // Update Supplier In Chart - Using backend-calculated percentages
         ModernCharts.updateDoughnut(

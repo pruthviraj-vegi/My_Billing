@@ -49,60 +49,58 @@
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <div class="stat-icon bg-purple">
-                    <i class="fas fa-file-invoice"></i>
+                    <i class="fa-solid fa-file-invoice"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalInvoices" data-count="0">0</h3>
-                    <p class="stat-label">Total Invoices</p>
+                    <span class="stat-label">Total Invoices</span>
+                    <h4 class="stat-number counting-number" id="totalInvoices" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-green">
-                    <i class="fas fa-rupee-sign"></i>
+                    <i class="fa-solid fa-indian-rupee-sign"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalAmount" data-count="0">0</h3>
-                    <p class="stat-label">Total Amount</p>
+                    <span class="stat-label">Total Amount</span>
+                    <h4 class="stat-number counting-number" id="totalAmount" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-blue">
-                    <i class="fas fa-calculator"></i>
+                    <i class="fa-solid fa-calculator"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="netAmount" data-count="0">0</h3>
-                    <p class="stat-label">Net Amount</p>
+                    <span class="stat-label">Net Amount</span>
+                    <h4 class="stat-number counting-number" id="netAmount" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-red">
-                    <i class="fas fa-calculator"></i>
+                    <i class="fa-solid fa-rotate-left"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number"
-                        id="totalReturnAmount"
-                        data-count="0">0</h3>
-                    <p class="stat-label">Total Ret/Cancel Amount</p>
+                    <span class="stat-label">Total Ret/Cancel Amount</span>
+                    <h4 class="stat-number counting-number" id="totalReturnAmount" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-green">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number">
+                    <span class="stat-label">Profit</span>
+                    <h4 class="stat-number">
                         <span class="counting-number" id="totalProfit" data-count="0">0</span> <span id="marginPercentage" class="margin-badge"></span>
-                    </h3>
-                    <p class="stat-label">Profit</p>
+                    </h4>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon bg-purple">
-                    <i class="fas fa-percentage"></i>
+                    <i class="fa-solid fa-percent"></i>
                 </div>
                 <div class="stat-content">
-                    <h3 class="stat-number counting-number" id="totalDiscount" data-count="0">0</h3>
-                    <p class="stat-label">Total Discount</p>
+                    <span class="stat-label">Total Discount</span>
+                    <h4 class="stat-number counting-number" id="totalDiscount" data-count="0">0</h4>
                 </div>
             </div>
         </div>
@@ -276,12 +274,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateDashboard(data) {
         // Update Stats with counting animation
-        updateCount('totalInvoices', data.stats.total_invoices);
-        updateCount('totalAmount', data.stats.total_amount);
-        updateCount('netAmount', data.stats.net_amount);
-        updateCount('totalProfit', data.stats.total_profit);
-        updateCount('totalDiscount', data.stats.total_discount);
-        updateCount('totalReturnAmount', data.stats.total_return_amount);
+        updateAllCounters({
+            totalInvoices: data.stats.total_invoices,
+            totalAmount: data.stats.total_amount,
+            netAmount: data.stats.net_amount,
+            totalProfit: data.stats.total_profit,
+            totalDiscount: data.stats.total_discount,
+            totalReturnAmount: data.stats.total_return_amount
+        });
 
         // Update margin percentage beside profit
         const marginEl = document.getElementById('marginPercentage');
