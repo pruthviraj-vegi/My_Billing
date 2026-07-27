@@ -7,6 +7,15 @@
             <span>Dashboard</span>
          </a>
       </li>
+      {% if perms.invoice.view_invoice %}
+      <li class="nav-item">
+         <a href="{% url 'base:calendar' %}"
+            class="nav-link {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Calendar</span>
+         </a>
+      </li>
+      {% endif %}
       <li class="nav-item">
          <a href="#" class="nav-link has-dropdown {% if 'cart' in request.resolver_match.namespace %}active{% endif %}">
             <i class="fas fa-shopping-cart"></i>

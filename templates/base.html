@@ -18,7 +18,8 @@
     <link rel="shortcut icon"
           type="image/ico"
           href="{% static 'images/favicon.ico' %}" />
-    <!-- Local fonts only; no external font preloads for offline mode -->
+    <!-- Local Offline Fonts (Inter & Plus Jakarta Sans) -->
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
     <!-- Critical CSS (load synchronously) -->
     <link rel="stylesheet"
           href="{% static 'assets/plugins/bootstrap/css/bootstrap.min.css' %}" />
@@ -581,8 +582,8 @@
         }
     }
     </script>
-    <!-- Performance Analyzer (load async) -->
-    <!-- <script src="{% static 'js/performance-analyzer.js' %}" async></script> -->
+    <!-- Global Utility JS Module -->
+    <script src="{% static 'js/utils.js' %}"></script>
     <!-- Sidebar Navigation JS -->
     <script src="{% static 'js/sidebar.js' %}"></script>
     {% block extra_js %}

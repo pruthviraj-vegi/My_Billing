@@ -52,53 +52,47 @@
     <div class="stats-grid" id="statsGrid">
       <div class="stat-card">
         <div class="stat-icon bg-green">
-          <i class="fas fa-rupee-sign"></i>
+          <i class="fa-solid fa-indian-rupee-sign"></i>
         </div>
         <div class="stat-content">
-          <h3 class="stat-number counting-number" id="totalReceived" data-count="0">0</h3>
-          <p class="stat-label">Total Received</p>
+          <span class="stat-label">Total Received</span>
+          <h4 class="stat-number counting-number" id="totalReceived" data-count="0">0</h4>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon bg-blue">
-          <i class="fas fa-users"></i>
+          <i class="fa-solid fa-users"></i>
         </div>
         <div class="stat-content">
-          <h3 class="stat-number counting-number"
-              id="customerReceivable"
-              data-count="0">0</h3>
-          <p class="stat-label">Customer Receivable</p>
+          <span class="stat-label">Customer Receivable</span>
+          <h4 class="stat-number counting-number" id="customerReceivable" data-count="{{ customer_receivable|default:0 }}">0</h4>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon bg-purple">
-          <i class="fas fa-user-plus"></i>
+          <i class="fa-solid fa-user-plus"></i>
         </div>
         <div class="stat-content">
-          <h3 class="stat-number counting-number"
-              id="totalCustomers"
-              data-count="0">0</h3>
-          <p class="stat-label">Total Customers</p>
+          <span class="stat-label">Total Customers</span>
+          <h4 class="stat-number counting-number" id="totalCustomers" data-count="{{ total_customers|default:0 }}">0</h4>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon bg-red">
-          <i class="fas fa-truck"></i>
+          <i class="fa-solid fa-truck"></i>
         </div>
         <div class="stat-content">
-          <h3 class="stat-number counting-number"
-              id="supplierBalance"
-              data-count="0">0</h3>
-          <p class="stat-label">Supplier Balance</p>
+          <span class="stat-label">Supplier Balance</span>
+          <h4 class="stat-number counting-number" id="supplierBalance" data-count="{{ supplier_balance|default:0 }}">0</h4>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon bg-blue">
-          <i class="fas fa-boxes"></i>
+          <i class="fa-solid fa-boxes-stacked"></i>
         </div>
         <div class="stat-content">
-          <h3 class="stat-number counting-number" id="totalProducts" data-count="0">0</h3>
-          <p class="stat-label">Total Products</p>
+          <span class="stat-label">Total Products</span>
+          <h4 class="stat-number counting-number" id="totalProducts" data-count="{{ total_products|default:0 }}">0</h4>
         </div>
       </div>
     </div>
@@ -180,12 +174,6 @@
     let comparisonChart = ModernCharts.initRevenueChart(comparisonCtx);
     let paymentMethodChart = ModernCharts.initDoughnut(paymentMethodCtx);
 
-    // Set static values (don't change with date filter)
-    updateCount('customerReceivable', "{{customer_receivable}}");
-    updateCount('totalCustomers', "{{total_customers}}");
-    updateCount('supplierBalance', "{{supplier_balance}}");
-    updateCount('totalProducts', "{{total_products}}");
-
     // Fetch Data Function
     async function fetchDashboardData(filter) {
       try {
@@ -212,7 +200,9 @@
 
     function updateDashboard(data) {
       // Update Stats
-      updateCount('totalReceived', data.stats.total_received);
+      updateAllCounters({
+        totalReceived: data.stats.total_received
+      });
 
       // Update Payment Method Chart (combined invoices + payments)
       ModernCharts.updateDoughnut(
