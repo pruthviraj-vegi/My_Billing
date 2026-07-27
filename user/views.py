@@ -20,7 +20,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 from base.getDates import getDates
-from base.utility import render_paginated_response, table_sorting
+from base.utility import build_search_filter, render_paginated_response, table_sorting
 
 from base.decorators import RequiredPermissionMixin, required_permission
 
@@ -28,6 +28,7 @@ from invoice.models import Invoice, InvoiceItem
 
 from .forms import CustomUserForm, PasswordResetForm, SalaryForm, TransactionForm
 from .models import Salary, Transaction
+from .services import CommissionService
 
 logger = logging.getLogger(__name__)
 
@@ -59,16 +60,7 @@ def get_data(request):
     commission_filter = request.GET.get("commission", "")
 
     # Apply search filter
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(full_name__icontains=word)
-                | Q(phone_number__icontains=word)
-                | Q(email__icontains=word)
-                | Q(address__icontains=word)
-            )
+    filters = build_search_filter(search_query, ["full_name", "phone_number", "email", "address"])
 
     # Status filter (active/inactive)
     if status_filter == "active":
@@ -685,74 +677,10 @@ def fetch_user_commission(request, user_id):
 def fetch_commission_summary(request, user_id):
     """AJAX: fetch commission summary data (totals and monthly summary)."""
     user = get_object_or_404(User, id=user_id)
-
-    # Get date range using getDates utility
     start_datetime, end_datetime = getDates(request)
-
-    # Get invoices created by this user and filter by date range
-    invoices = Invoice.objects.filter(sold_by=user).filter(
-        invoice_date__gte=start_datetime, invoice_date__lte=end_datetime
-    )
-
-    # Get invoice items with commission
-    invoice_items_all = InvoiceItem.objects.filter(
-        invoice__in=invoices, commission_percentage__gt=0
-    ).select_related("invoice")
-
-    # Calculate commission by month
-    monthly_totals = defaultdict(
-        lambda: {
-            "total_sales": Decimal("0"),
-            "total_commission": Decimal("0"),
-            "invoice_ids": set(),
-            "item_count": 0,
-        }
-    )
-
-    # Calculate totals from all items
-    for item in invoice_items_all:
-        # Use model properties for calculations
-        item_amount = item.discounted_amount
-        commission_amount = item.commission_amount
-
-        invoice_date = item.invoice.invoice_date
-        month_key = invoice_date.strftime("%Y-%m")
-
-        monthly_totals[month_key]["total_sales"] += item_amount
-        monthly_totals[month_key]["total_commission"] += commission_amount
-        monthly_totals[month_key]["invoice_ids"].add(item.invoice.id)
-        monthly_totals[month_key]["item_count"] += 1
-
-    # Convert monthly totals to list and sort
-    monthly_summary = []
-    for month_key, totals in sorted(monthly_totals.items(), reverse=True):
-        year, month = map(int, month_key.split("-"))
-        totals["invoice_count"] = len(totals["invoice_ids"])
-        totals["month_key"] = month_key
-        totals["month_label"] = datetime(year, month, 1).strftime("%B %Y")
-        monthly_summary.append(totals)
-
-    # Calculate overall totals
-    total_sales = sum(data["total_sales"] for data in monthly_totals.values())
-    total_commission = sum(data["total_commission"] for data in monthly_totals.values())
-
-    return JsonResponse(
-        {
-            "success": True,
-            "total_sales": float(total_sales),
-            "total_commission": float(total_commission),
-            "monthly_summary": [
-                {
-                    "month_label": s["month_label"],
-                    "invoice_count": s["invoice_count"],
-                    "item_count": s["item_count"],
-                    "total_sales": float(s["total_sales"]),
-                    "total_commission": float(s["total_commission"]),
-                }
-                for s in monthly_summary
-            ],
-        }
-    )
+    summary = CommissionService.get_user_commission_summary(user, start_datetime, end_datetime)
+    summary["success"] = True
+    return JsonResponse(summary)
 
 
 # ==================== DASHBOARD VIEWS ====================

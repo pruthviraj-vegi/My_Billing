@@ -26,6 +26,7 @@ from inventory.views_variant import get_variants_data
 
 from .forms import CartForm
 from .models import Cart, CartItem
+from .services import CartService
 from setting.models import ShopDetails
 
 logger = logging.getLogger(__name__)
@@ -71,61 +72,26 @@ class CartMainPageView(RequiredPermissionMixin, TemplateView):
 def get_cart_data(request, pk):
     """
     Retrieve and display data for a specific cart along with other open carts.
-
-    Fetches the cart items with related product variant data. Calculates the
-    total selling price for the cart items and renders the main cart management
-    page template with the acquired context data.
     """
     template_name = "cart/main_page.html"
 
     try:
         cart = Cart.objects.get(id=pk)
-        # Optimize queries with select_related and prefetch_related
-        cart_list = (
-            CartItem.objects.filter(cart=cart)
-            .select_related(
-                "product_variant",
-                "product_variant__product",
-                "product_variant__product__category",
-                "product_variant__size",
-                "product_variant__color",
-            )
-            .order_by("-created_at")
-        )
-
+        summary = CartService.get_cart_summary(cart)
         carts = Cart.objects.filter(status="OPEN", created_by=request.user).order_by(
             "-created_at"
         )
-
-        # Calculate category-wise total quantity for items in cart
-        category_counts = cart_list.values(
-            category_name=Coalesce(
-                "product_variant__product__category__name", Value("Other")
-            )
-        ).annotate(total_qty=Sum("quantity")).order_by("-total_qty")
-
-        # Calculate total selling price (sum of all items' MRP * quantity)
-        total_selling_price = cart_list.aggregate(
-            total=Sum(
-                ExpressionWrapper(
-                    F("quantity") * F("product_variant__mrp"),
-                    output_field=DecimalField(max_digits=10, decimal_places=2),
-                )
-            )
-        )["total"] or Decimal("0.00")
-
         shop_details = ShopDetails.objects.filter(is_active=True).first()
 
         context = {
-            "cart_list": cart_list,
+            "cart_list": summary["cart_items"],
             "cart": cart,
             "carts": carts,
-            "total_selling_price": total_selling_price,
-            "category_counts": category_counts,
+            "total_selling_price": summary["total_selling_price"],
+            "category_counts": summary["category_counts"],
             "shop_details": shop_details,
         }
     except Cart.DoesNotExist as e:
-        # Redirect to main cart page if cart not found
         logger.error("Cart not found: %s", e)
         return redirect("cart:main_page")
 
