@@ -70,8 +70,11 @@ class DatesManipulation:
     @property
     def this_month(self):
         """Return the start and end datetime for the current month."""
+        import calendar
         start = self.today.replace(day=1)
-        return start_of_day(start), end_of_day(self.today)
+        _, num_days = calendar.monthrange(self.today.year, self.today.month)
+        end = self.today.replace(day=num_days)
+        return start_of_day(start), end_of_day(end)
 
     @property
     def last_month(self):

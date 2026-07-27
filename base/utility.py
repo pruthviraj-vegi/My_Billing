@@ -5,6 +5,7 @@ Utility functions for the base app.
 from datetime import date, datetime, timedelta
 
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 
@@ -333,3 +334,35 @@ def table_sorting(request, valid_sorts=None, default_sort="-id"):
         return [default_sort]
 
     return final_sorts
+
+
+def build_search_filter(search_query: str, fields: list[str]) -> Q:
+    """
+    Splits search_query into individual terms and builds an AND-combined
+    Q object matching any of the specified model fields.
+    """
+    filters = Q()
+    if search_query:
+        terms = search_query.strip().split()
+        for word in terms:
+            term_q = Q()
+            for field in fields:
+                term_q |= Q(**{f"{field}__icontains": word})
+            filters &= term_q
+    return filters
+
+
+def process_breakdown_data(breakdown_qs, total: float, field_key: str = "field"):
+    """
+    Formats breakdown queryset items with rounded percentage calculation.
+    """
+    total_val = float(total) if total else 0.0
+    return [
+        {
+            "field_name": str(item[field_key]).title().replace("_", " "),
+            "count": item.get("count", 0),
+            "amount": float(item.get("amount", 0)),
+            "percentage": round((float(item.get("amount", 0)) / total_val * 100), 1) if total_val > 0 else 0,
+        }
+        for item in breakdown_qs
+    ]

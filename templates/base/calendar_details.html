@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Calendar Details — Billing System{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'assets/plugins/fontawesome/css/fontawesom.min.css' %}" />
+<link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}" />
+<link rel="stylesheet" href="{% static 'css/calendar-details.css' %}" />
+{% endblock extra_css %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header page-header-sticky">
+  <h2 class="page-title">Calendar Analytics</h2>
+  <div class="page-actions d-flex align-items-center gap-2">
+    <span class="cal-details-range-label text-white-50" id="detailsRangeLabel">Select a date range on the calendar</span>
+    <span class="cal-details-day-badge badge bg-light text-primary" id="detailsDayBadge" style="display:none;"></span>
+    <a href="{% url 'base:calendar' %}" class="btn btn-outline-light btn-sm">
+      <i class="fa-solid fa-arrow-left me-1"></i> Back to Calendar
+    </a>
+  </div>
+</div>
+<!-- Breadcrumb Navigation -->
+<nav class="breadcrumb breadcrumb-right">
+  <a href="{% url 'base:home' %}" class="breadcrumb-item">Home</a>
+  <span class="breadcrumb-separator">/</span>
+  <a href="{% url 'base:calendar' %}" class="breadcrumb-item">Calendar</a>
+  <span class="breadcrumb-separator">/</span>
+  <span class="breadcrumb-active">Analytics</span>
+</nav>
+
+<div id="dashboardContent" class="dashboardContent">
+
+  <!-- Date Range Filter Bar -->
+  <div class="cal-details-filter-bar px-3 py-2 card border-0 shadow-sm bg-surface mb-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap cal-details-left-wrap">
+        <span class="fw-bold fs-7 text-secondary me-1 cal-details-filter-heading">
+          <i class="fa-solid fa-calendar-week text-primary me-1"></i> Select Between Dates:
+        </span>
+        <div class="cal-details-inputs-row d-flex align-items-center gap-1">
+          <div class="cal-details-date-box">
+            <input type="date" id="detailsFromDate" class="cal-details-date-input">
+          </div>
+          <span class="text-muted small">—</span>
+          <div class="cal-details-date-box">
+            <input type="date" id="detailsToDate" class="cal-details-date-input">
+          </div>
+          <button type="button" id="detailsApplyRangeBtn" class="btn btn-primary cal-details-apply-btn">
+            <i class="fa-solid fa-filter me-1"></i> Apply
+          </button>
+        </div>
+      </div>
+
+      <div class="btn-group btn-group-sm" role="group" aria-label="Preset Date Ranges">
+        <button type="button" class="btn btn-outline-secondary range-preset-btn" data-preset="today">Today</button>
+        <button type="button" class="btn btn-outline-secondary range-preset-btn" data-preset="this_month">This Month</button>
+        <button type="button" class="btn btn-outline-secondary range-preset-btn" data-preset="last_30">Last 30 Days</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="detailsLoading" class="loading-container hidden" style="display:none;">
+    <div class="loading">
+      <i class="fa-solid fa-spinner fa-spin me-1"></i>
+      <span>Loading analytics data...</span>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="stats-grid" id="kpiCards">
+    <div class="stat-card">
+      <div class="stat-icon bg-blue"><i class="fa-solid fa-receipt"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Total Invoices</span>
+        <h4 class="stat-number counting-number" id="kpiTotalInvoices" data-count="0">0</h4>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-green"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Total Amount</span>
+        <h4 class="stat-number counting-number" id="kpiTotalAmount" data-count="0">0</h4>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-blue"><i class="fa-solid fa-calculator"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Net Revenue</span>
+        <h4 class="stat-number counting-number" id="kpiNetAmount" data-count="0">0</h4>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-green"><i class="fa-solid fa-chart-line"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Gross Profit</span>
+        <h4 class="stat-number counting-number" id="kpiGrossProfit" data-count="0">0</h4>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-purple"><i class="fa-solid fa-piggy-bank"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Net Profit</span>
+        <h4 class="stat-number counting-number" id="kpiNetProfit" data-count="0">0</h4>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-warning"><i class="fa-solid fa-percent"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Margin %</span>
+        <h4 class="stat-number counting-number" id="kpiMargin" data-count="0" data-suffix="%">0%</h4>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-purple"><i class="fa-solid fa-calculator"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Avg Invoice Amount</span>
+        <h4 class="stat-number counting-number" id="kpiAvgInvoiceAmount" data-count="0">0</h4>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-blue"><i class="fa-solid fa-arrow-trend-up"></i></div>
+      <div class="stat-content">
+        <span class="stat-label">Avg Invoices / Day</span>
+        <h4 class="stat-number counting-number" id="kpiAvgInvoicesPerDay" data-count="0">0</h4>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breakdown & Analytics (Single Card for All Pie Graphs) -->
+  <div class="activity-section">
+    <h2 class="section-title">Distribution & Breakdown Analytics</h2>
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3 class="chart-title"><i class="fa-solid fa-chart-pie me-1"></i> Visual Breakdown Analytics</h3>
+      </div>
+      <div class="card-body p-3">
+        <div class="row g-3">
+          <!-- Payment Breakdown -->
+          <div class="col-xl-4 col-lg-6 col-md-12">
+            <div class="chart-subpanel p-3 h-100">
+              <h5 class="chart-subtitle text-secondary mb-3 fs-6 font-weight-semibold">
+                <i class="fa-solid fa-credit-card me-1 text-primary"></i> Payment Breakdown
+              </h5>
+              <div class="chart-row justify-content-center">
+                <div class="donut-wrap">
+                  <canvas id="paymentDoughnutChart" width="260" height="260"></canvas>
+                  <div class="center-info">
+                    <div class="center-label">total value</div>
+                    <div class="center-pct"></div>
+                    <div class="center-val">₹0</div>
+                  </div>
+                </div>
+                <div class="legend" id="paymentDoughnutLegend"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Breakdown -->
+          <div class="col-xl-4 col-lg-6 col-md-12">
+            <div class="chart-subpanel p-3 h-100">
+              <h5 class="chart-subtitle text-secondary mb-3 fs-6 font-weight-semibold">
+                <i class="fa-solid fa-tags me-1 text-primary"></i> Category Breakdown
+              </h5>
+              <div class="chart-row justify-content-center">
+                <div class="donut-wrap">
+                  <canvas id="categoryDoughnutChart" width="260" height="260"></canvas>
+                  <div class="center-info">
+                    <div class="center-label">total value</div>
+                    <div class="center-pct"></div>
+                    <div class="center-val">₹0</div>
+                  </div>
+                </div>
+                <div class="legend" id="categoryDoughnutLegend"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Customers Breakdown -->
+          <div class="col-xl-4 col-lg-12 col-md-12">
+            <div class="chart-subpanel p-3 h-100">
+              <h5 class="chart-subtitle text-secondary mb-3 fs-6 font-weight-semibold">
+                <i class="fa-solid fa-users me-1 text-primary"></i> Top Customers by Sales
+              </h5>
+              <div class="chart-row justify-content-center">
+                <div class="donut-wrap">
+                  <canvas id="customersDoughnutChart" width="260" height="260"></canvas>
+                  <div class="center-info">
+                    <div class="center-label">total value</div>
+                    <div class="center-pct"></div>
+                    <div class="center-val">₹0</div>
+                  </div>
+                </div>
+                <div class="legend" id="customersDoughnutLegend"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Trend Chart -->
+  <div class="activity-section">
+    <h2 class="section-title">Performance Trend</h2>
+    <div class="chart-card revenue-chart-card">
+      <div class="chart-header">
+        <h3 class="chart-title"><i class="fa-solid fa-chart-bar me-1"></i> Daily Revenue & Profit Trend</h3>
+      </div>
+      <div class="chart-container">
+        <canvas id="dailyTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
+<script src="{% static 'js/counting.js' %}"></script>
+<script src="{% static 'js/modern-charts.js' %}"></script>
+<script src="{% static 'js/calendar-details.js' %}"></script>
+{% endblock extra_js %}
