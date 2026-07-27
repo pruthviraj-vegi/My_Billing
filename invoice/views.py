@@ -13,8 +13,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views import View
 
+from base.comparison import get_comparison_data, get_period_data
 from base.getDates import getDates
 from base.utility import (
+    build_search_filter,
     get_periodic_data,
     get_period_label,
     render_paginated_response,
@@ -28,6 +30,7 @@ from customer.models import Customer
 from inventory.services import InventoryService
 
 
+from invoice.choices import PaymentStatusChoices
 from invoice.form import InvoiceForm
 from invoice.models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceItem
 from setting.models import ShopDetails
@@ -59,8 +62,11 @@ def invoice_dashboard_fetch(request):
     date_filter = request.GET.get("date_filter", "this_month")
     start_date, end_date = getDates(request)
 
-    # Base queryset with date filtering
-    invoices = Invoice.objects.filter(invoice_date__date__range=[start_date, end_date])
+    # Base queryset with date filtering (active non-cancelled, non-void invoices)
+    invoices = Invoice.objects.filter(
+        invoice_date__date__range=[start_date, end_date],
+        is_cancelled=False,
+    ).exclude(payment_status__in=[PaymentStatusChoices.VOID, PaymentStatusChoices.CANCELLED])
 
     # Get all metrics in a single query using aggregation
     invoice_metrics = invoices.aggregate(
@@ -69,12 +75,6 @@ def invoice_dashboard_fetch(request):
         total_discount=Coalesce(Sum("discount_amount"), Decimal("0")),
         total_paid=Coalesce(Sum("paid_amount"), Decimal("0")),
     )
-
-    # Get cancellation metrics based on cancellation date
-    cancellation_metrics = Invoice.objects.filter(
-        is_cancelled=True,
-        cancelled_at__date__range=[start_date, end_date],
-    ).aggregate(cancelled_amount=Coalesce(Sum("amount"), Decimal("0")))
 
     # Get return invoice metrics
     return_metrics = ReturnInvoice.objects.filter(
@@ -124,14 +124,11 @@ def invoice_dashboard_fetch(request):
     total_amount = invoice_metrics["total_amount"]
     total_discount = invoice_metrics["total_discount"]
     total_paid = invoice_metrics["total_paid"]
-    total_cancelled_amount = cancellation_metrics["cancelled_amount"]
     total_return_amount = return_metrics["total_return_amount"]
     total_profit = profit_data["total_profit"] - total_discount
 
     # Calculate derived metrics
-    net_amount = (
-        total_amount - total_discount - total_return_amount - total_cancelled_amount
-    )
+    net_amount = total_amount - total_discount - total_return_amount
     outstanding_amount = net_amount - total_paid
 
     # Calculate margin percentage (Profit / Net Revenue * 100)
@@ -144,7 +141,10 @@ def invoice_dashboard_fetch(request):
     )
 
     # Get comparison data for line chart
-    comparison_data = get_comparison_data(date_filter, start_date, end_date)
+    base_qs = Invoice.objects.filter(is_cancelled=False).exclude(
+        payment_status__in=[PaymentStatusChoices.VOID, PaymentStatusChoices.CANCELLED]
+    )
+    comparison_data = get_comparison_data(base_qs, date_filter, start_date, end_date)
 
     # Payment status breakdown with annotations
     payment_status_breakdown = list(
@@ -188,7 +188,7 @@ def invoice_dashboard_fetch(request):
         "outstanding_amount": float(outstanding_amount),
         "total_profit": float(total_profit),
         "margin_percentage": float(margin_percentage),
-        "total_return_amount": float(total_return_amount + total_cancelled_amount),
+        "total_return_amount": float(total_return_amount),
     }
 
     # Process payment status breakdown
@@ -288,140 +288,6 @@ def _process_category_data(category_breakdown, category_total):
         )
 
     return category_data
-
-
-def get_comparison_data(date_filter, current_start, current_end):
-    """Generate comparison data for line chart based on date filter"""
-
-    # Calculate previous period dates
-    previous_start, previous_end, period_type = get_periodic_data(
-        date_filter, current_start, current_end
-    )
-
-    # Get current period data
-    current_invoices = Invoice.objects.filter(
-        invoice_date__date__range=[current_start, current_end]
-    )
-    current_data = get_period_data(
-        current_invoices, current_start, current_end, period_type
-    )
-
-    # Get previous period data
-    previous_invoices = Invoice.objects.filter(
-        invoice_date__date__range=[previous_start, previous_end]
-    )
-    previous_data = get_period_data(
-        previous_invoices, previous_start, previous_end, period_type
-    )
-
-    return {
-        "current_period": {
-            "label": get_period_label(current_start, current_end, period_type),
-            "data": current_data,
-            "start_date": current_start.isoformat(),
-            "end_date": current_end.isoformat(),
-        },
-        "previous_period": {
-            "label": get_period_label(previous_start, previous_end, period_type),
-            "data": previous_data,
-            "start_date": previous_start.isoformat(),
-            "end_date": previous_end.isoformat(),
-        },
-        "period_type": period_type,
-    }
-
-
-def get_period_data(invoices, start_date, _end_date, period_type):
-    """
-    Get aggregated data for a specific period using database-level grouping
-
-    OPTIMIZED: Uses Django's date truncation functions instead of Python loops
-    to perform grouping at the database level, dramatically reducing queries.
-
-    Args:
-        invoices: QuerySet of Invoice objects
-        start_date: Period start date
-        end_date: Period end date
-        period_type: One of 'daily', 'monthly', 'quarterly', 'yearly'
-
-    Returns:
-        List of dictionaries containing date, amount, and invoice count
-    """
-
-    if period_type == "daily":
-        # For daily, return single aggregated data point
-        aggregated = invoices.aggregate(
-            total_amount=Coalesce(Sum("amount"), Decimal("0")),
-            total_invoices=Count("id"),
-        )
-
-        return [
-            {
-                "date": start_date.strftime("%Y-%m-%d"),
-                "amount": float(aggregated["total_amount"]),
-                "invoices": aggregated["total_invoices"],
-            }
-        ]
-
-    elif period_type == "monthly":
-        # Group by day using database truncation
-        daily_data = (
-            invoices.annotate(day=TruncDate("invoice_date"))
-            .values("day")
-            .annotate(
-                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
-            )
-            .order_by("day")
-        )
-
-        return [
-            {
-                "date": item["day"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in daily_data
-        ]
-
-    elif period_type == "quarterly":
-        # Group by week using database truncation
-        weekly_data = (
-            invoices.annotate(week=TruncWeek("invoice_date"))
-            .values("week")
-            .annotate(
-                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
-            )
-            .order_by("week")
-        )
-
-        return [
-            {
-                "date": item["week"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in weekly_data
-        ]
-
-    else:  # yearly
-        # Group by month using database truncation
-        monthly_data = (
-            invoices.annotate(month=TruncMonth("invoice_date"))
-            .values("month")
-            .annotate(
-                amount=Coalesce(Sum("amount"), Decimal("0")), invoices=Count("id")
-            )
-            .order_by("month")
-        )
-
-        return [
-            {
-                "date": item["month"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in monthly_data
-        ]
 
 
 # ALTERNATIVE: If you need to fill in missing dates with zeros

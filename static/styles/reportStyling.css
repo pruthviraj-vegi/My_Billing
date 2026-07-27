@@ -120,3 +120,19 @@ table th {
 .text-start{
   text-align: left;
 }
+.bills_details{
+  min-height: 200mm;
+}
+.bills_amount{
+  display: flex;
+  justify-content: space-between;
+}
+.bill_top{
+  text-align: left;
+  line-height: 5px;
+  padding-top: 15px;
+}
+.bill_top a{
+  font-size: 1.5rem;
+  color: #318df7;
+}

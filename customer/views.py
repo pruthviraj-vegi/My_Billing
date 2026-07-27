@@ -17,10 +17,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
+from base.comparison import get_comparison_data
 from base.decorators import required_permission, RequiredPermissionMixin
 
 from base.getDates import getDates
 from base.utility import (
+    build_search_filter,
     get_period_label,
     get_periodic_data,
     render_paginated_response,
@@ -61,150 +63,6 @@ def dashboard(request):
     }
     return render(request, "customer/dashboard.html", context)
 
-
-def get_comparison_data(date_filter, current_start, current_end):
-    """Generate comparison data for line chart based on date filter"""
-    previous_start, previous_end, period_type = get_periodic_data(
-        date_filter, current_start, current_end
-    )
-
-    current_invoices = Invoice.objects.filter(
-        invoice_date__date__range=[current_start, current_end]
-    )
-    current_data = get_period_data(
-        current_invoices, current_start, current_end, period_type
-    )
-
-    previous_invoices = Invoice.objects.filter(
-        invoice_date__date__range=[previous_start, previous_end]
-    )
-    previous_data = get_period_data(
-        previous_invoices, previous_start, previous_end, period_type
-    )
-
-    return {
-        "current_period": {
-            "label": get_period_label(current_start, current_end, period_type),
-            "data": current_data,
-        },
-        "previous_period": {
-            "label": get_period_label(previous_start, previous_end, period_type),
-            "data": previous_data,
-        },
-        "period_type": period_type,
-    }
-
-
-def get_period_data(invoices, start_date, _end_date, period_type):
-    """
-    Get aggregated data for a specific period using database-level grouping
-
-    OPTIMIZED: Uses Django's date truncation functions instead of Python loops
-    to perform grouping at the database level, dramatically reducing queries.
-
-    Args:
-        invoices: QuerySet of Invoice objects
-        start_date: Period start date
-        end_date: Period end date
-        period_type: One of 'daily', 'monthly', 'quarterly', 'yearly'
-
-    Returns:
-        List of dictionaries containing date, amount, and invoice count
-    """
-
-    if period_type == "daily":
-        # For daily, return single aggregated data point
-        aggregated = invoices.aggregate(
-            total_amount=Coalesce(
-                Sum(F("amount") - F("discount_amount")),
-                Decimal("0"),
-                output_field=DecimalField(max_digits=16, decimal_places=2),
-            ),
-            total_invoices=Count("id"),
-        )
-
-        return [
-            {
-                "date": start_date.strftime("%Y-%m-%d"),
-                "amount": float(aggregated["total_amount"]),
-                "invoices": aggregated["total_invoices"],
-            }
-        ]
-
-    elif period_type == "monthly":
-        # Group by day using database truncation
-        daily_data = (
-            invoices.annotate(day=TruncDate("invoice_date"))
-            .values("day")
-            .annotate(
-                amount=Coalesce(
-                    Sum(F("amount") - F("discount_amount")),
-                    Decimal("0"),
-                    output_field=DecimalField(max_digits=16, decimal_places=2),
-                ),
-                invoices=Count("id"),
-            )
-            .order_by("day")
-        )
-
-        return [
-            {
-                "date": item["day"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in daily_data
-        ]
-
-    elif period_type == "quarterly":
-        # Group by week using database truncation
-        weekly_data = (
-            invoices.annotate(week=TruncWeek("invoice_date"))
-            .values("week")
-            .annotate(
-                amount=Coalesce(
-                    Sum(F("amount") - F("discount_amount")),
-                    Decimal("0"),
-                    output_field=DecimalField(max_digits=16, decimal_places=2),
-                ),
-                invoices=Count("id"),
-            )
-            .order_by("week")
-        )
-
-        return [
-            {
-                "date": item["week"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in weekly_data
-        ]
-
-    else:  # yearly
-        # Group by month using database truncation
-        monthly_data = (
-            invoices.annotate(month=TruncMonth("invoice_date"))
-            .values("month")
-            .annotate(
-                amount=Coalesce(
-                    Sum(F("amount") - F("discount_amount")),
-                    Decimal("0"),
-                    output_field=DecimalField(max_digits=16, decimal_places=2),
-                ),
-                invoices=Count("id"),
-            )
-            .order_by("month")
-        )
-
-        return [
-            {
-                "date": item["month"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in monthly_data
-        ]
 
 
 @required_permission("customer.view_dashboard")
@@ -259,7 +117,7 @@ def dashboard_fetch(request):
     outstanding_balance = total_sales - total_received
 
     # Calculate comparison data for line chart
-    comparison_data = get_comparison_data(date_filter, start_date, end_date)
+    comparison_data = get_comparison_data(Invoice.objects.all(), date_filter, start_date, end_date)
 
     # Payment status breakdown
     payment_status_breakdown = (
@@ -404,16 +262,7 @@ def get_data(request):
     search_query = request.GET.get("search", "")
 
     # Apply search filter
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(name__icontains=word)
-                | Q(phone_number__icontains=word)
-                | Q(email__icontains=word)
-                | Q(address__icontains=word)
-            )
+    filters = build_search_filter(search_query, ["name", "phone_number", "email", "address"])
     # Apply sorting (Multi-column support)
     valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
 
