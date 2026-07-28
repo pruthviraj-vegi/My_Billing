@@ -229,38 +229,34 @@
   // ── Build Calendar Grid ──
   function buildGrid() {
     grid.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     const totalDays = daysInMonth(yearNum, month1);
     const startDay = firstDayOfWeek(yearNum, month1);
     const prevMonth1 = month1 === 1 ? 12 : month1 - 1;
     const prevYear = month1 === 1 ? yearNum - 1 : yearNum;
     const prevTotal = daysInMonth(prevYear, prevMonth1);
 
-    // Previous month filler
     for (let i = startDay - 1; i >= 0; i--) {
       const dayNum = prevTotal - i;
       const key = dateKey(prevYear, prevMonth1, dayNum);
-      const cell = makeCell(dayNum, true, key);
-      grid.appendChild(cell);
+      fragment.appendChild(makeCell(dayNum, true, key));
     }
 
-    // Current month
     for (let d = 1; d <= totalDays; d++) {
       const key = dateKey(yearNum, month1, d);
-      const cell = makeCell(d, false, key);
-      grid.appendChild(cell);
+      fragment.appendChild(makeCell(d, false, key));
     }
 
-    // Next month filler
     const filled = startDay + totalDays;
     const rem = filled <= 35 ? 35 - filled : 42 - filled;
     const nextMonth1 = month1 === 12 ? 1 : month1 + 1;
     const nextYear = month1 === 12 ? yearNum + 1 : yearNum;
     for (let d = 1; d <= rem; d++) {
       const key = dateKey(nextYear, nextMonth1, d);
-      const cell = makeCell(d, true, key);
-      grid.appendChild(cell);
+      fragment.appendChild(makeCell(d, true, key));
     }
 
+    grid.appendChild(fragment);
     calculateKpis();
   }
 

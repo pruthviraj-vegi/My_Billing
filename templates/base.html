@@ -588,6 +588,7 @@
     <script src="{% static 'js/sidebar.js' %}"></script>
     {% block extra_js %}
     {% endblock extra_js %}
+    {% comment %} <script src="{% static 'js/performance-analyzer.js' %}"></script> {% endcomment %}
     {% if messages %}
       {% for message in messages %}<script>showNotification('{{message}}', '{{message.tags}}')</script>{% endfor %}
     {% endif %}

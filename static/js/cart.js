@@ -19,7 +19,7 @@ class CartManager {
         this.focusBarcode();
 
         // Request management
-        this.abortController = null;
+        this.abortControllers = new Map();  // Per-endpoint abort controllers
         this.pendingRequests = new Set();
         this.isProcessingBarcode = false;
 
@@ -118,6 +118,12 @@ class CartManager {
         this.initPriceToggle();
         this.initBarcodeSuggestions();
         this.initBarcodeScanner();
+
+        // Cleanup in-flight requests on page unload
+        window.addEventListener('beforeunload', () => {
+            this.abortControllers.forEach(controller => controller.abort());
+            this.abortControllers.clear();
+        });
     }
 
     /*** ───────── OFFLINE DETECTION ───────── ***/
@@ -351,12 +357,15 @@ class CartManager {
         }
 
         return this.retryWithBackoff(async () => {
-            // Cancel previous request if exists
-            if (this.abortController) {
-                this.abortController.abort();
+            // Cancel previous request for the SAME endpoint only
+            const endpointKey = `${method}:${url}`;
+            const existing = this.abortControllers.get(endpointKey);
+            if (existing) {
+                existing.abort();
             }
 
-            this.abortController = new AbortController();
+            const controller = new AbortController();
+            this.abortControllers.set(endpointKey, controller);
             const requestId = Date.now();
             this.pendingRequests.add(requestId);
 
@@ -367,14 +376,13 @@ class CartManager {
                         'X-CSRFToken': this.csrf,
                         'Content-Type': 'application/json',
                     },
-                    signal: this.abortController.signal,
+                    signal: controller.signal,
                 };
                 if (body) opts.body = JSON.stringify(body);
 
                 const res = await fetch(url, opts);
                 const data = await res.json();
 
-                // Check for API-level errors
                 if (!res.ok || data.status === 'error') {
                     throw new Error(data.message || res.statusText || `HTTP ${res.status}`);
                 }
@@ -388,9 +396,7 @@ class CartManager {
                 throw err;
             } finally {
                 this.pendingRequests.delete(requestId);
-                if (this.pendingRequests.size === 0) {
-                    this.abortController = null;
-                }
+                this.abortControllers.delete(endpointKey);
             }
         });
     }
@@ -482,28 +488,8 @@ class CartManager {
         });
     }
 
-    animatePriceChange(element, startValue, endValue, duration = CartManager.ANIMATION_DURATION) {
-        const startTime = performance.now();
-        const difference = endValue - startValue;
-
-        const update = (currentTime) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-
-            // Easing function for smooth animation
-            const easeOutQuad = 1 - Math.pow(1 - progress, 2);
-            const currentValue = startValue + difference * easeOutQuad;
-
-            element.textContent = this.formatPriceAnimation(currentValue);
-
-            if (progress < 1) {
-                requestAnimationFrame(update);
-            } else {
-                element.textContent = this.formatPriceAnimation(endValue);
-            }
-        };
-
-        requestAnimationFrame(update);
+    animatePriceChange(element, _startValue, endValue, _duration = CartManager.ANIMATION_DURATION) {
+        element.textContent = this.formatPriceAnimation(endValue);
     }
 
     /**
@@ -900,16 +886,16 @@ class CartManager {
             } = {},
         } = data;
 
-        // Extract brand from nested product object
         const brand = product_name || 'N/A';
+        const safeBarcode = typeof escapeHtml === 'function' ? escapeHtml(String(barcode)) : String(barcode).replace(/[<>&"']/g, '');
+        const safeBrand = typeof escapeHtml === 'function' ? escapeHtml(String(brand)) : String(brand).replace(/[<>&"']/g, '');
+        const safeVariantName = typeof escapeHtml === 'function' ? escapeHtml(String(variantName)) : String(variantName).replace(/[<>&"']/g, '');
 
-        // Calculate discount if not provided
         let calculatedDiscount = discount;
         if (sellingPrice > 0 && data.price) {
             calculatedDiscount = this.calcDiscount(sellingPrice, data.price);
         }
 
-        // Get current price toggle state (default to selling price)
         const isShowingPurchasePrice = this.priceToggleState;
         const displayPrice = isShowingPurchasePrice ? parseFloat(purchasePrice) : parseFloat(sellingPrice);
         const priceDisplay = this.formatPriceAnimation(displayPrice);
@@ -917,14 +903,14 @@ class CartManager {
         const row = document.createElement('tr');
         row.id = `cart-item-${id}`;
         row.innerHTML = `
-            <td class="mobile-hide">${barcode}</td>
+            <td class="mobile-hide">${safeBarcode}</td>
             <td>
                 <div>
-                    <span class="font-weight-bold">${brand}</span>
-                    <span class="mobile-inline text-muted small"> · ${variantName}</span>
+                    <span class="font-weight-bold">${safeBrand}</span>
+                    <span class="mobile-inline text-muted small"> · ${safeVariantName}</span>
                 </div>
             </td>
-            <td class="mobile-hide">${variantName}</td>
+            <td class="mobile-hide">${safeVariantName}</td>
             <td class="price-toggle-cell"
                 data-selling-price="${sellingPrice}"
                 data-purchase-price="${purchasePrice}">
@@ -994,31 +980,30 @@ class CartManager {
             return;
         }
 
+        // Batch reads first (no writes interleaved)
+        const rowData = Array.from(rows).map(row => {
+            const qtyInput = row.querySelector('.quantity-input');
+            const priceToggleCell = row.querySelector('.price-toggle-cell');
+            const priceInput = row.querySelector('.price-input');
+            if (!qtyInput || !priceToggleCell) return null;
+            return {
+                qty: parseFloat(qtyInput.value) || 0,
+                sell: parseFloat(priceToggleCell.dataset.sellingPrice) || 0,
+                purchase: parseFloat(priceToggleCell.dataset.purchasePrice) || 0,
+                actualPrice: priceInput ? parseFloat(priceInput.value) || 0 : parseFloat(priceToggleCell.dataset.sellingPrice) || 0,
+            };
+        });
+
+        // Then compute
         let totalQty = 0;
         let totalSelling = 0;
         let totalProfit = 0;
 
-        rows.forEach(row => {
-            const qtyInput = row.querySelector('.quantity-input');
-            const priceToggleCell = row.querySelector('.price-toggle-cell');
-            const priceInput = row.querySelector('.price-input');
-
-            if (qtyInput && priceToggleCell) {
-                const qty = parseFloat(qtyInput.value) || 0;
-                const sell = parseFloat(priceToggleCell.dataset.sellingPrice) || 0;
-                const purchase = parseFloat(priceToggleCell.dataset.purchasePrice) || 0;
-                const actualPrice = priceInput ? parseFloat(priceInput.value) || 0 : sell;
-
-                if (!isNaN(qty)) {
-                    totalQty += qty;
-                }
-                if (!isNaN(qty) && !isNaN(sell) && qty > 0 && sell > 0) {
-                    totalSelling += qty * sell;
-                }
-                if (!isNaN(qty) && !isNaN(purchase) && qty > 0) {
-                    totalProfit += qty * (actualPrice - purchase);
-                }
-            }
+        rowData.forEach(d => {
+            if (!d) return;
+            if (!isNaN(d.qty)) totalQty += d.qty;
+            if (!isNaN(d.qty) && !isNaN(d.sell) && d.qty > 0 && d.sell > 0) totalSelling += d.qty * d.sell;
+            if (!isNaN(d.qty) && !isNaN(d.purchase) && d.qty > 0) totalProfit += d.qty * (d.actualPrice - d.purchase);
         });
 
         // Round and format
@@ -1231,13 +1216,18 @@ class CartManager {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
         try {
             const url = btn.getAttribute('data-url');
             const res = await fetch(url, {
                 method: 'GET',
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': this.csrf,
+                },
+                signal: controller.signal,
             });
             const data = await res.json();
             if (res.ok && data.success) {
@@ -1246,9 +1236,14 @@ class CartManager {
                 this.notify(data.error || 'Failed to print estimate', 'error');
             }
         } catch (err) {
-            console.error('[CartManager] Error printing estimate:', err);
-            this.notify('Error communicating with printer', 'error');
+            if (err.name === 'AbortError') {
+                this.notify('Print request timed out', 'error');
+            } else {
+                console.error('[CartManager] Error printing estimate:', err);
+                this.notify('Error communicating with printer', 'error');
+            }
         } finally {
+            clearTimeout(timeoutId);
             btn.disabled = false;
             btn.innerHTML = originalHtml;
             this.focusBarcode();

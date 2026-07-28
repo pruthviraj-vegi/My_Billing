@@ -36,7 +36,10 @@ class InvoiceCancellationService:
             InvoiceCancellation,
             InvoiceItem,
             PaymentAllocation,
+            ReturnInvoiceItem,
         )
+        from django.db.models import Prefetch, Sum, OuterRef, Subquery, DecimalField as DjangoDecimalField
+        from django.db.models.functions import Coalesce
         from inventory.services import InventoryService
 
         can_cancel, error_msg = invoice.can_be_cancelled()
@@ -63,9 +66,12 @@ class InvoiceCancellationService:
         allocations = PaymentAllocation.objects.select_related("payment").filter(
             invoice=invoice, is_deleted=False
         )
-        for allocation in allocations:
-            allocation.is_deleted = True
-            allocation.save(update_fields=["is_deleted", "updated_at"])
+        # Single bulk update instead of individual saves
+        allocation_ids = list(allocations.values_list("id", flat=True))
+        if allocation_ids:
+            PaymentAllocation.objects.filter(id__in=allocation_ids).update(
+                is_deleted=True
+            )
 
         InvoiceCancellation.objects.create(
             invoice=invoice,
@@ -78,8 +84,26 @@ class InvoiceCancellationService:
             payment_type=invoice.payment_type,
         )
 
-        invoice_items = InvoiceItem.objects.filter(invoice=invoice)
+        invoice_items = InvoiceItem.objects.filter(invoice=invoice).select_related(
+            "product_variant"
+        ).prefetch_related(
+            Prefetch(
+                "return_items",
+                queryset=ReturnInvoiceItem.objects.filter(
+                    return_invoice__invoice=invoice, quantity_returned__gt=0
+                ),
+            )
+        )
+
         for item in invoice_items:
+            # Pre-populate cached property from prefetched data
+            total_returned = sum(
+                ri.quantity_returned for ri in item.return_items.all()
+            )
+            item._cached_return_available = max(  # pylint: disable=protected-access
+                item.quantity - total_returned, Decimal("0")
+            )
+
             if item.get_return_available_quantity > 0:
                 InventoryService.cancelled_sale(
                     variant=item.product_variant,

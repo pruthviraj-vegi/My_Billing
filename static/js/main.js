@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    window.addEventListener('scroll', requestTick);
+    window.addEventListener('scroll', requestTick, { passive: true });
 });
 
 // Note: Shared utility functions (formatDate, debounce, throttle, copyToClipboard, etc.)

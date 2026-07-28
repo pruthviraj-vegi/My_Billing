@@ -38,6 +38,13 @@ ALLOWED_HOSTS = config(
 
 LOGIN_URL = "/login/"
 
+# Admin email recipients (comma-separated in .env: "name:email,name:email")
+ADMINS = config(
+    "ADMINS",
+    default="",
+    cast=lambda v: [tuple(a.split(":")) for a in v.split(",") if a.strip()],
+)
+
 # Session/inactivity settings (3 hours)
 INACTIVITY_TIMEOUT_SECONDS = 3 * 60 * 60  # 3 hours
 SESSION_COOKIE_AGE = 3 * 60 * 60  # 3 hours sliding expiry with save-every-request
@@ -248,6 +255,18 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TASK_TIME_LIMIT = config(
+    "CELERY_TASK_TIME_LIMIT", default=300, cast=int
+)  # 5 min hard timeout
+CELERY_TASK_SOFT_TIME_LIMIT = config(
+    "CELERY_TASK_SOFT_TIME_LIMIT", default=240, cast=int
+)  # 4 min soft timeout
+CELERY_WORKER_PREFETCH_MULTIPLIER = config(
+    "CELERY_WORKER_PREFETCH_MULTIPLIER", default=1, cast=int
+)  # Prefer 1 for long-running PDF tasks
+CELERY_RESULT_EXPIRES = config(
+    "CELERY_RESULT_EXPIRES", default=3600, cast=int
+)  # 1 hour
 
 
 # Custom User Model
@@ -364,21 +383,15 @@ LOGGING = {
             "propagate": False,
         },
         # Your app-specific logger
-        "myapp": {
-            "handlers": ["debug_file", "info_file", "error_file"],
-            "level": "DEBUG",
+        "": {
+            "handlers": ["info_file", "error_file"],
+            "level": "WARNING",
             "propagate": False,
         },
         # Suppress noisy fontTools subsetting logs (from WeasyPrint PDF generation)
         "fontTools": {
             "handlers": ["error_file"],
             "level": "WARNING",
-            "propagate": False,
-        },
-        # Root logger for your apps
-        "": {
-            "handlers": ["debug_file", "info_file", "error_file"],
-            "level": "DEBUG",
             "propagate": False,
         },
     },

@@ -31,15 +31,12 @@ class PerformanceAnalyzer {
     }
 
     init() {
-        // Wait for page load to ensure all resources are captured
+        // Analyze on load
         if (document.readyState === 'complete') {
             this.analyze().catch(console.error);
         } else {
             window.addEventListener('load', () => this.analyze().catch(console.error));
         }
-
-        // Create performance dashboard
-        this.createDashboard();
 
         // Add keyboard shortcut (Ctrl+Shift+P)
         document.addEventListener('keydown', (e) => {
@@ -360,6 +357,7 @@ Now analyze this data and suggest:
                 const observer = new PerformanceObserver((list) => {
                     const entries = list.getEntries();
                     const lastEntry = entries[entries.length - 1];
+                    observer.disconnect();
                     resolve(lastEntry ? lastEntry.startTime : 0);
                 });
                 observer.observe({ entryTypes: ['largest-contentful-paint'] });
@@ -445,12 +443,13 @@ Now analyze this data and suggest:
 
                 // Calculate INP after 5 seconds
                 setTimeout(() => {
+                    firstInputObserver.disconnect();
+                    if (eventObserver) { try { eventObserver.disconnect(); } catch (e) { /* ignore */ } }
                     this.interactions = interactions;
                     if (interactions.length === 0) {
                         resolve(0);
                         return;
                     }
-                    // INP is the worst interaction latency
                     const sorted = interactions.map(i => i.latency).sort((a, b) => b - a);
                     const inp = sorted.length > 0 ? sorted[0] : 0;
                     resolve(inp);
@@ -486,8 +485,8 @@ Now analyze this data and suggest:
                     observer.observe({ entryTypes: ['longtask'] });
 
                     setTimeout(() => {
+                        observer.disconnect();
                         this.longTasks = longTasks;
-                        // TTI is when last long task completes + 5s
                         if (longTasks.length > 0) {
                             const lastTask = longTasks[longTasks.length - 1];
                             resolve(lastTask.startTime + lastTask.duration + 5000);
@@ -526,6 +525,7 @@ Now analyze this data and suggest:
                     observer.observe({ entryTypes: ['longtask'] });
 
                     setTimeout(() => {
+                        observer.disconnect();
                         const tbt = blockingTime.reduce((sum, time) => sum + time, 0);
                         resolve(tbt);
                     }, 10000);
@@ -582,20 +582,24 @@ Now analyze this data and suggest:
     }
 
     isRenderBlocking(resource) {
-        // Check if resource blocks rendering
         const name = resource.name.toLowerCase();
         const type = resource.initiatorType;
 
-        // CSS files are render-blocking
         if (type === 'link' || name.includes('.css')) {
             return true;
         }
 
-        // Scripts without async/defer are render-blocking
         if (type === 'script' || name.includes('.js')) {
-            // Check if script has async/defer (simplified check)
-            // In real implementation, would need to check script tags
-            return true; // Conservative: assume blocking unless proven otherwise
+            // Check if the corresponding script tag has async/defer
+            if (type === 'script') {
+                const scripts = document.querySelectorAll('script[src]');
+                for (const script of scripts) {
+                    if (script.src === resource.name && (script.async || script.defer)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
         // Fonts can block rendering
@@ -710,10 +714,9 @@ Now analyze this data and suggest:
     }
 
     updateDashboard() {
-        // Update metrics
-        const metricsEl = document.getElementById('perf-metrics');
-        metricsEl.innerHTML = Object.entries(this.metrics)
-            .filter(([key]) => key !== 'memoryUsage') // Memory shown separately
+        // Build all content strings first, then apply in a single rAF to reduce reflows
+        const metricsHtml = Object.entries(this.metrics)
+            .filter(([key]) => key !== 'memoryUsage')
             .map(([key, value]) => {
                 const displayValue = typeof value === 'number'
                     ? `${value.toFixed(2)} ${key === 'cls' ? '' : 'ms'}`
@@ -726,10 +729,8 @@ Now analyze this data and suggest:
                 `;
             }).join('');
 
-        // Update resources
-        const resourcesEl = document.getElementById('perf-resources');
-        resourcesEl.innerHTML = this.resources
-            .slice(0, 10) // Show first 10 resources
+        const resourcesHtml = this.resources
+            .slice(0, 10)
             .map(r => `
                 <div class="perf-resource ${r.duration > 300 ? 'slow' : ''} ${r.renderBlocking ? 'blocking' : ''}">
                     <span class="perf-resource-type">${r.type}</span>
@@ -740,77 +741,57 @@ Now analyze this data and suggest:
                 </div>
             `).join('');
 
-        // Update slow assets
-        const slowEl = document.getElementById('perf-slow');
-        if (this.slowAssets.length > 0) {
-            slowEl.innerHTML = this.slowAssets
-                .map(r => `
-                    <div class="perf-slow-asset">
-                        <span class="perf-resource-type">${r.type}</span>
-                        <span class="perf-resource-name">${this.truncateUrl(r.name)}</span>
-                        <span class="perf-resource-duration slow">${r.duration.toFixed(2)} ms</span>
-                        <span class="perf-resource-size">${this.formatBytes(r.transferSize)}</span>
-                    </div>
-                `).join('');
-        } else {
-            slowEl.innerHTML = '<div class="perf-no-slow">✅ No slow assets detected</div>';
-        }
-
-        // Update render-blocking resources
-        const blockingEl = document.getElementById('perf-blocking');
-        if (this.renderBlockingResources.length > 0) {
-            blockingEl.innerHTML = this.renderBlockingResources
-                .map(r => `
-                    <div class="perf-blocking-resource">
-                        <span class="perf-resource-type">${r.type}</span>
-                        <span class="perf-resource-name">${this.truncateUrl(r.name)}</span>
-                        <span class="perf-resource-duration">${r.duration.toFixed(2)} ms</span>
-                    </div>
-                `).join('');
-        } else {
-            blockingEl.innerHTML = '<div class="perf-no-slow">✅ No render-blocking resources</div>';
-        }
-
-        // Update memory
-        const memoryEl = document.getElementById('perf-memory');
-        if (this.metrics.memoryUsage) {
-            const used = this.formatBytes(this.metrics.memoryUsage.usedJSHeapSize);
-            const total = this.formatBytes(this.metrics.memoryUsage.totalJSHeapSize);
-            const limit = this.formatBytes(this.metrics.memoryUsage.jsHeapSizeLimit);
-            const percent = ((this.metrics.memoryUsage.usedJSHeapSize / this.metrics.memoryUsage.totalJSHeapSize) * 100).toFixed(1);
-            memoryEl.innerHTML = `
-                <div class="perf-memory-info">
-                    <div>Used: ${used} (${percent}%)</div>
-                    <div>Total: ${total}</div>
-                    <div>Limit: ${limit}</div>
+        const slowHtml = this.slowAssets.length > 0
+            ? this.slowAssets.map(r => `
+                <div class="perf-slow-asset">
+                    <span class="perf-resource-type">${r.type}</span>
+                    <span class="perf-resource-name">${this.truncateUrl(r.name)}</span>
+                    <span class="perf-resource-duration slow">${r.duration.toFixed(2)} ms</span>
+                    <span class="perf-resource-size">${this.formatBytes(r.transferSize)}</span>
                 </div>
-            `;
-        } else {
-            memoryEl.innerHTML = '<div class="perf-no-slow">Memory API not available</div>';
-        }
+            `).join('')
+            : '<div class="perf-no-slow">✅ No slow assets detected</div>';
 
-        // Update network waterfall
-        const waterfallEl = document.getElementById('perf-waterfall');
-        if (this.networkWaterfall.length > 0) {
-            waterfallEl.innerHTML = this.networkWaterfall
-                .slice(0, 5) // Show first 5
-                .map(r => {
-                    const phases = Object.entries(r.phases)
-                        .filter(([_, v]) => v !== null)
-                        .map(([phase, data]) => `${phase}: ${data.duration.toFixed(0)}ms`)
-                        .join(' | ');
-                    return `
-                        <div class="perf-waterfall-item">
-                            <div class="perf-waterfall-name">${this.truncateUrl(r.name)}</div>
-                            <div class="perf-waterfall-phases">${phases}</div>
-                        </div>
-                    `;
-                }).join('');
-        } else {
-            waterfallEl.innerHTML = '<div class="perf-no-slow">No waterfall data</div>';
-        }
+        const blockingHtml = this.renderBlockingResources.length > 0
+            ? this.renderBlockingResources.map(r => `
+                <div class="perf-blocking-resource">
+                    <span class="perf-resource-type">${r.type}</span>
+                    <span class="perf-resource-name">${this.truncateUrl(r.name)}</span>
+                    <span class="perf-resource-duration">${r.duration.toFixed(2)} ms</span>
+                </div>
+            `).join('')
+            : '<div class="perf-no-slow">✅ No render-blocking resources</div>';
 
-        // Update AI prompt
+        const memoryHtml = this.metrics.memoryUsage
+            ? (() => {
+                const used = this.formatBytes(this.metrics.memoryUsage.usedJSHeapSize);
+                const total = this.formatBytes(this.metrics.memoryUsage.totalJSHeapSize);
+                const limit = this.formatBytes(this.metrics.memoryUsage.jsHeapSizeLimit);
+                const percent = ((this.metrics.memoryUsage.usedJSHeapSize / this.metrics.memoryUsage.totalJSHeapSize) * 100).toFixed(1);
+                return `<div class="perf-memory-info"><div>Used: ${used} (${percent}%)</div><div>Total: ${total}</div><div>Limit: ${limit}</div></div>`;
+            })()
+            : '<div class="perf-no-slow">Memory API not available</div>';
+
+        const waterfallHtml = this.networkWaterfall.length > 0
+            ? this.networkWaterfall.slice(0, 5).map(r => {
+                const phases = Object.entries(r.phases)
+                    .filter(([_, v]) => v !== null)
+                    .map(([phase, data]) => `${phase}: ${data.duration.toFixed(0)}ms`)
+                    .join(' | ');
+                return `<div class="perf-waterfall-item"><div class="perf-waterfall-name">${this.truncateUrl(r.name)}</div><div class="perf-waterfall-phases">${phases}</div></div>`;
+            }).join('')
+            : '<div class="perf-no-slow">No waterfall data</div>';
+
+        // Batch all DOM writes in one rAF
+        requestAnimationFrame(() => {
+            document.getElementById('perf-metrics').innerHTML = metricsHtml;
+            document.getElementById('perf-resources').innerHTML = resourcesHtml;
+            document.getElementById('perf-slow').innerHTML = slowHtml;
+            document.getElementById('perf-blocking').innerHTML = blockingHtml;
+            document.getElementById('perf-memory').innerHTML = memoryHtml;
+            document.getElementById('perf-waterfall').innerHTML = waterfallHtml;
+        });
+
         document.getElementById('perf-prompt').value = this.generateAIPrompt();
     }
 
@@ -849,6 +830,11 @@ Now analyze this data and suggest:
     }
 
     toggleDashboard() {
+        // Lazy-create dashboard on first open
+        if (!document.getElementById('performance-dashboard')) {
+            this.createDashboard();
+        }
+
         const dashboard = document.getElementById('performance-dashboard');
         this.isVisible = !this.isVisible;
 

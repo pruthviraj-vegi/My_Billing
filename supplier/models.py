@@ -57,6 +57,10 @@ class Supplier(SoftDeleteModel):
             ("view_dashboard", "view dashboard"),
             ("download_report", "download report"),
         ]
+        indexes = [
+            models.Index(fields=["name"]),
+            models.Index(fields=["is_deleted"]),
+        ]
 
     def __str__(self):
         return self.name

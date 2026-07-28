@@ -102,26 +102,49 @@
   }
 
   presetBtns.forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var preset = this.dataset.preset;
-      var today = new Date();
-      var s, e;
-      if (preset === "today") {
-        s = formatDateStr(today);
-        e = formatDateStr(today);
-      } else if (preset === "this_month") {
-        s = formatDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
-        e = formatDateStr(new Date(today.getFullYear(), today.getMonth() + 1, 0));
-      } else if (preset === "last_30") {
-        var prior30 = new Date();
-        prior30.setDate(today.getDate() - 29);
-        s = formatDateStr(prior30);
-        e = formatDateStr(today);
-      }
-      if (fromInput) fromInput.value = s;
-      if (toInput) toInput.value = e;
-      updateSelectedRange(s, e);
-    });
+    var clickHandler = typeof debounce === 'function'
+      ? debounce(function () {
+          var preset = this.dataset.preset;
+          var today = new Date();
+          var s, e;
+          if (preset === "today") {
+            s = formatDateStr(today);
+            e = formatDateStr(today);
+          } else if (preset === "this_month") {
+            s = formatDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+            e = formatDateStr(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+          } else if (preset === "last_30") {
+            var prior30 = new Date();
+            prior30.setDate(today.getDate() - 29);
+            s = formatDateStr(prior30);
+            e = formatDateStr(today);
+          }
+          if (fromInput) fromInput.value = s;
+          if (toInput) toInput.value = e;
+          updateSelectedRange(s, e);
+        }, 200)
+      : function () {
+          var preset = this.dataset.preset;
+          var today = new Date();
+          var s, e;
+          if (preset === "today") {
+            s = formatDateStr(today);
+            e = formatDateStr(today);
+          } else if (preset === "this_month") {
+            s = formatDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+            e = formatDateStr(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+          } else if (preset === "last_30") {
+            var prior30 = new Date();
+            prior30.setDate(today.getDate() - 29);
+            s = formatDateStr(prior30);
+            e = formatDateStr(today);
+          }
+          if (fromInput) fromInput.value = s;
+          if (toInput) toInput.value = e;
+          updateSelectedRange(s, e);
+        };
+
+    btn.addEventListener("click", clickHandler);
   });
 
   /* ── KPI cards ── */

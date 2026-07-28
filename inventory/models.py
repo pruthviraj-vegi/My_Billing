@@ -26,7 +26,7 @@ class Category(models.Model):
 
     name = models.CharField(max_length=255)
     parent = models.ForeignKey(
-        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="children"
     )
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -345,7 +345,7 @@ class ProductVariant(
         ]
 
     product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="product_variants"
+        Product, on_delete=models.PROTECT, related_name="product_variants"
     )
     barcode = models.CharField(max_length=100, unique=True)
     size = models.ForeignKey(

@@ -9,11 +9,14 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import OuterRef, Subquery, Sum
+from django.db.models.fields import DecimalField
+from django.db.models.functions import Coalesce
 from django.db.models.signals import post_delete
 from django.dispatch import Signal
 
 from customer.models import CustomerCreditSummary
-from invoice.models import Invoice, PaymentAllocation
+from invoice.models import Invoice, PaymentAllocation, ReturnInvoice
 
 from .models import Customer, Payment
 
@@ -45,11 +48,22 @@ class CustomerPaymentService:
         """
         CustomerCreditSummary.recalculate_for_customer(customer, save=True)
 
+        returned_subquery = ReturnInvoice.objects.filter(
+            invoice=OuterRef("pk"),
+            status__in=["APPROVED", "COMPLETED"],
+        ).values("invoice").annotate(total=Sum("refund_amount")).values("total")
+
         invoices = list(
             Invoice.objects.filter(
                 customer=customer,
                 payment_type=Invoice.PaymentType.CREDIT,
                 is_cancelled=False,
+            )
+            .annotate(
+                _prefetched_returned=Coalesce(
+                    Subquery(returned_subquery, output_field=DecimalField()),
+                    Decimal("0"),
+                )
             )
             .select_for_update()
             .order_by("invoice_date", "id")
@@ -148,13 +162,20 @@ class CustomerPaymentService:
         unified_items: list[dict] = []
 
         for inv in invoices:
+            remaining = (
+                inv.amount
+                - inv.discount_amount
+                - inv.advance_amount
+                - getattr(inv, "_prefetched_returned", Decimal("0"))
+                - inv.paid_amount
+            )
             unified_items.append(
                 {
                     "type": "invoice",
                     "date": inv.invoice_date,
                     "id": inv.id,
                     "object": inv,
-                    "amount_owed": inv.remaining_amount,
+                    "amount_owed": remaining,
                 }
             )
 
@@ -197,13 +218,25 @@ class CustomerPaymentService:
                         )
                     )
                     inv.paid_amount += allocation_amount
-                    if inv.paid_amount >= inv.net_amount_due:
+                    net_due = (
+                        inv.amount
+                        - inv.discount_amount
+                        - inv.advance_amount
+                        - getattr(inv, "_prefetched_returned", Decimal("0"))
+                    )
+                    if inv.paid_amount >= net_due:
                         inv.payment_status = Invoice.PaymentStatus.PAID
                         item["amount_owed"] = Decimal("0")
                         item_idx += 1
                     elif inv.paid_amount > 0:
                         inv.payment_status = Invoice.PaymentStatus.PARTIALLY_PAID
-                        item["amount_owed"] = inv.remaining_amount
+                        item["amount_owed"] = (
+                            inv.amount
+                            - inv.discount_amount
+                            - inv.advance_amount
+                            - getattr(inv, "_prefetched_returned", Decimal("0"))
+                            - inv.paid_amount
+                        )
 
                 elif item["type"] == "purchased_payment":
                     pp = item["object"]

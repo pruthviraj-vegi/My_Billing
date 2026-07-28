@@ -75,12 +75,21 @@
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon bg-red">
+                <div class="stat-icon bg-orange">
                     <i class="fa-solid fa-rotate-left"></i>
                 </div>
                 <div class="stat-content">
-                    <span class="stat-label">Total Ret/Cancel Amount</span>
+                    <span class="stat-label">Returned Amount</span>
                     <h4 class="stat-number counting-number" id="totalReturnAmount" data-count="0">0</h4>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-red">
+                    <i class="fa-solid fa-ban"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Cancelled Amount</span>
+                    <h4 class="stat-number counting-number" id="totalCancelledAmount" data-count="0">0</h4>
                 </div>
             </div>
             <div class="stat-card">
@@ -280,7 +289,8 @@ document.addEventListener('DOMContentLoaded', function() {
             netAmount: data.stats.net_amount,
             totalProfit: data.stats.total_profit,
             totalDiscount: data.stats.total_discount,
-            totalReturnAmount: data.stats.total_return_amount
+            totalReturnAmount: data.stats.total_return_amount,
+            totalCancelledAmount: data.stats.total_cancelled_amount
         });
 
         // Update margin percentage beside profit

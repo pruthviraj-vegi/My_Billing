@@ -55,15 +55,19 @@ class PdfCleanupService:
             created_at__lt=cutoff,
             status__in=[StatusChoices.DONE, StatusChoices.FAILED],
         )
-        count = 0
+
+        ids_to_delete = []
         for job in old_jobs.iterator():
             if job.file:
                 try:
                     job.file.delete(save=False)
                 except Exception:
                     logger.warning("Could not delete file for PdfJob %s.", job.id)
-            job.delete()
-            count += 1
+            ids_to_delete.append(job.id)
+
+        count = 0
+        if ids_to_delete:
+            count, _ = PdfJob.objects.filter(id__in=ids_to_delete).delete()
         if count:
             logger.info("Deleted %d old PDF job(s) older than %d days.", count, days)
         return count

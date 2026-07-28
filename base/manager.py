@@ -32,9 +32,10 @@ class SoftDeleteManager(models.Manager):
         return super().get_queryset().filter(is_deleted=True)
 
     def hard_delete(self):
-        """Permanently delete all objects in the current queryset."""
-        # Use this for permanent deletion. Use with caution!
-        return self.get_queryset().delete()
+        """Permanently delete objects matching the current queryset filters."""
+        return self.all_objects().filter(
+            pk__in=self.values_list("pk", flat=True)
+        ).delete()
 
 
 class SoftDeleteModel(models.Model):

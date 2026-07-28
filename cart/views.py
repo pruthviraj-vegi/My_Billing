@@ -280,31 +280,22 @@ def scan_barcode(request):
                 {"status": "error", "message": "Invalid quantity"}, status=400
             )
 
-        # Check for barcode mapping
-        barcode_mapping = BarcodeMapping.objects.filter(barcode=barcode).first()
-        if barcode_mapping:
-            barcode = barcode_mapping.variant.barcode
-
         try:
             cart = Cart.objects.get(id=cart_id, status="OPEN")
-            product_variant = ProductVariant.objects.get(
-                barcode=barcode, status="ACTIVE"
-            )
+            product_variant = CartService.resolve_variant_by_barcode(barcode)
+            if not product_variant or product_variant.status != "ACTIVE":
+                return JsonResponse(
+                    {"status": "error", "message": "Product variant not found or inactive"},
+                    status=404,
+                )
 
-            # Check if item already exists in cart
-            cart_item, created = CartItem.objects.get_or_create(
+            cart_item, created = CartService.add_variant_to_cart(
                 cart=cart,
-                product_variant=product_variant,
+                variant=product_variant,
+                quantity=quantity,
                 price=product_variant.final_price,
-                defaults={"quantity": quantity},
             )
-
-            if not created:
-                action_type = "Update"
-                cart_item.quantity += quantity
-                cart_item.save()
-
-            cart_item.refresh_from_db()
+            action_type = "Add" if created else "Update"
 
             # Build cart item data for response
             cart_item_data = {

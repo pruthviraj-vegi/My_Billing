@@ -62,17 +62,23 @@ def invoice_dashboard_fetch(request):
     date_filter = request.GET.get("date_filter", "this_month")
     start_date, end_date = getDates(request)
 
-    # Base queryset with date filtering (active non-cancelled, non-void invoices)
-    invoices = Invoice.objects.filter(
-        invoice_date__date__range=[start_date, end_date],
-        is_cancelled=False,
-    ).exclude(payment_status__in=[PaymentStatusChoices.VOID, PaymentStatusChoices.CANCELLED])
+    # Base queryset with date filtering (all created invoices excluding VOID)
+    all_invoices = Invoice.objects.filter(
+        invoice_date__date__range=[start_date, end_date]
+    ).exclude(payment_status=PaymentStatusChoices.VOID)
 
-    # Get all metrics in a single query using aggregation
-    invoice_metrics = invoices.aggregate(
+    # Active non-cancelled invoices
+    invoices = all_invoices.filter(is_cancelled=False)
+
+    # Full gross metrics from all created invoices
+    gross_metrics = all_invoices.aggregate(
         total_invoices=Count("id"),
-        total_amount=Coalesce(Sum("amount"), Decimal("0")),
+        gross_total_amount=Coalesce(Sum("amount"), Decimal("0")),
         total_discount=Coalesce(Sum("discount_amount"), Decimal("0")),
+    )
+
+    # Paid metrics from active invoices
+    active_metrics = invoices.aggregate(
         total_paid=Coalesce(Sum("paid_amount"), Decimal("0")),
     )
 
@@ -81,6 +87,12 @@ def invoice_dashboard_fetch(request):
         return_date__date__range=[start_date, end_date],
         invoice__is_cancelled=False,
     ).aggregate(total_return_amount=Coalesce(Sum("refund_amount"), Decimal("0")))
+
+    # Get cancelled invoice metrics
+    cancelled_metrics = all_invoices.filter(is_cancelled=True).aggregate(
+        total_cancelled_amount=Coalesce(Sum("amount"), Decimal("0")),
+        total_cancelled_invoices=Count("id"),
+    )
 
     # Calculate profit from invoice items in a single query
     # Note: We need to account for returned items when calculating profit
@@ -121,14 +133,15 @@ def invoice_dashboard_fetch(request):
     )
 
     # Extract metrics
-    total_amount = invoice_metrics["total_amount"]
-    total_discount = invoice_metrics["total_discount"]
-    total_paid = invoice_metrics["total_paid"]
+    total_amount = gross_metrics["gross_total_amount"]
+    total_discount = gross_metrics["total_discount"]
+    total_paid = active_metrics["total_paid"]
     total_return_amount = return_metrics["total_return_amount"]
+    total_cancelled_amount = cancelled_metrics["total_cancelled_amount"]
     total_profit = profit_data["total_profit"] - total_discount
 
-    # Calculate derived metrics
-    net_amount = total_amount - total_discount - total_return_amount
+    # Calculate derived Net Amount: Full Gross Amount minus Discount, Returned Amount, and Cancelled Amount
+    net_amount = total_amount - total_discount - total_return_amount - total_cancelled_amount
     outstanding_amount = net_amount - total_paid
 
     # Calculate margin percentage (Profit / Net Revenue * 100)
@@ -180,7 +193,7 @@ def invoice_dashboard_fetch(request):
 
     # Build stats dictionary
     stats = {
-        "total_invoices": invoice_metrics["total_invoices"],
+        "total_invoices": gross_metrics["total_invoices"],
         "total_amount": float(total_amount),
         "total_discount": float(total_discount),
         "total_paid": float(total_paid),
@@ -189,6 +202,8 @@ def invoice_dashboard_fetch(request):
         "total_profit": float(total_profit),
         "margin_percentage": float(margin_percentage),
         "total_return_amount": float(total_return_amount),
+        "total_cancelled_amount": float(total_cancelled_amount),
+        "total_cancelled_invoices": cancelled_metrics["total_cancelled_invoices"],
     }
 
     # Process payment status breakdown

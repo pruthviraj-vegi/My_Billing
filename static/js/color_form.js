@@ -1,6 +1,6 @@
 // Color Form JavaScript - Reusable color picker and suggestion functionality
 // Usage: Include this file and call initializeColorForm(formNameId, hexCodeId) with your form field IDs
-
+(function () {
 // Color database with common colors
 const colorDatabase = {
   // Reds
@@ -389,4 +389,5 @@ const colorDatabase = {
   
     updateColorPreview();
   });
-  
+
+})();

@@ -248,17 +248,20 @@ function showTableError(table, error, options, formId, tableId, fetchUrl) {
     </td>`;
     tbody.appendChild(row);
 
-    // Clean up old retry button listener if exists
     const retryBtn = row.querySelector(".retry-btn");
     if (retryBtn) {
-        // Store listener reference for cleanup
-        const listener = () => loadTableData(formId, tableId, fetchUrl, options);
-        retryBtn.addEventListener("click", listener);
-
-        // Store for cleanup
+        // Clean up old retry listeners before adding new ones
         if (!tableEventListeners[tableId]) {
             tableEventListeners[tableId] = [];
         }
+        // Remove only retry-button listeners, keep other listeners intact
+        tableEventListeners[tableId] = tableEventListeners[tableId].filter(
+            item => !item.element.classList.contains('retry-btn')
+        );
+
+        const listener = () => loadTableData(formId, tableId, fetchUrl, options);
+        retryBtn.addEventListener("click", listener);
+
         tableEventListeners[tableId].push({ element: retryBtn, event: 'click', handler: listener });
     }
 }
@@ -575,3 +578,10 @@ window.getTableQueryParams = getTableQueryParams;
 window.generatePDFUrl = generatePDFUrl;
 window.downloadTablePDF = downloadTablePDF;
 window.cleanupTable = cleanupTable; // Expose cleanup function
+
+// Abort all in-flight table requests on page unload
+window.addEventListener('beforeunload', () => {
+    Object.values(tableAbortControllers).forEach(controller => {
+        try { controller.abort(); } catch (e) { /* ignore */ }
+    });
+});

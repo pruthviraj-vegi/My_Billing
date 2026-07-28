@@ -7,7 +7,6 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import F
 
 from .models import InventoryLog
 
@@ -21,17 +20,18 @@ class InventoryService:
     def apply_discount(variant, percentage, user=None):
         """Apply discount and log the change"""
         if 0 <= percentage <= 100:
-            variant.discount_percentage = percentage
-            variant.save()
+            with transaction.atomic():
+                variant.discount_percentage = percentage
+                variant.save()
 
-            InventoryLog.objects.create(
-                variant=variant,
-                created_by=user,
-                quantity_change=0,
-                new_quantity=variant.quantity,
-                transaction_type=InventoryLog.TransactionTypes.ADJUSTMENT_IN,
-                notes=f"Discount applied: {percentage}%",
-            )
+                InventoryLog.objects.create(
+                    variant=variant,
+                    created_by=user,
+                    quantity_change=0,
+                    new_quantity=variant.quantity,
+                    transaction_type=InventoryLog.TransactionTypes.ADJUSTMENT_IN,
+                    notes=f"Discount applied: {percentage}%",
+                )
 
     @staticmethod
     def update_quantity(variant, change, user=None, notes="", supplier_invoice=None):
@@ -288,22 +288,21 @@ class InventoryService:
 
         # Allocate from available stock logs
         current_variant_quantity = variant.quantity
+        updated_logs = []  # Track logs for batch update
+
         for stock_log in available_logs:
             if remaining_to_allocate <= 0:
                 break
 
-            # Calculate allocation from this log
             allocatable = min(stock_log.remaining_quantity, remaining_to_allocate)
 
-            # Calculate new_quantity after this specific allocation
             new_quantity_after_allocation = current_variant_quantity - allocatable
 
-            # Create sale log entry
             sale_log = InventoryLog.objects.create(
                 variant=variant,
                 transaction_type=InventoryLog.TransactionTypes.SALE,
-                quantity_change=-allocatable,  # Negative for stock out
-                new_quantity=new_quantity_after_allocation,  # Correct quantity after this allocation
+                quantity_change=-allocatable,
+                new_quantity=new_quantity_after_allocation,
                 invoice_item=invoice_item,
                 selling_price=unit_price,
                 source_inventory_log=stock_log,
@@ -316,18 +315,21 @@ class InventoryService:
                 or f"FIFO Sale: {allocatable} from {stock_log.timestamp.date()}",
             )
 
-            # Update remaining quantity in source log
-            stock_log.remaining_quantity = F("remaining_quantity") - allocatable
-            stock_log.save(update_fields=["remaining_quantity"])
-            stock_log.refresh_from_db()
+            # Track remaining quantity locally instead of F() + refresh_from_db()
+            new_remaining = stock_log.remaining_quantity - allocatable
+            stock_log.remaining_quantity = new_remaining
+            updated_logs.append(stock_log)
 
-            # Track COGS
             if stock_log.purchase_price:
                 total_cogs += allocatable * stock_log.purchase_price
 
             allocation_logs.append(sale_log)
             remaining_to_allocate -= allocatable
-            current_variant_quantity -= allocatable  # Update for next iteration
+            current_variant_quantity -= allocatable
+
+        # Batch update remaining quantities
+        if updated_logs:
+            InventoryLog.objects.bulk_update(updated_logs, ["remaining_quantity"])
 
         # Handle insufficient stock (negative inventory)
         if remaining_to_allocate > 0:

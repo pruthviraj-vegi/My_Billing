@@ -60,16 +60,26 @@ class CartService:
         Adds a product variant to a cart or increments existing quantity.
         """
         if price is None:
-            price = variant.mrp
+            price = getattr(variant, "final_price", variant.mrp)
 
-        cart_item, created = CartItem.objects.get_or_create(
+        cart_item = CartItem.objects.filter(
             cart=cart,
             product_variant=variant,
-            defaults={"quantity": quantity, "price": price},
-        )
-        if not created:
+            price=price,
+        ).first()
+
+        if cart_item:
             cart_item.quantity += quantity
             cart_item.save(update_fields=["quantity"])
+            created = False
+        else:
+            cart_item = CartItem.objects.create(
+                cart=cart,
+                product_variant=variant,
+                price=price,
+                quantity=quantity,
+            )
+            created = True
 
         return cart_item, created
 
