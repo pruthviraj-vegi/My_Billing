@@ -574,7 +574,7 @@ class CartManager {
                 return;
             }
 
-            if (data.type === 'Create') {
+            if (data.type === 'Add' || data.type === 'Create') {
                 this.addCartRow(data.cart_item);
                 this.notify('Item added successfully', 'success');
             } else if (data.type === 'Update') {
@@ -903,7 +903,9 @@ class CartManager {
         const row = document.createElement('tr');
         row.id = `cart-item-${id}`;
         row.innerHTML = `
-            <td class="mobile-hide">${safeBarcode}</td>
+            <td class="mobile-hide">
+                <span data-copy="${safeBarcode}">${safeBarcode}</span>
+            </td>
             <td>
                 <div>
                     <span class="font-weight-bold">${safeBrand}</span>
