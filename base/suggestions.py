@@ -78,7 +78,7 @@ def invalidate_cache(cache_key):
     """
     try:
         cache.delete(cache_key)
-        logger.info("Cache invalidated for key: %s", cache_key)
+        logger.debug("Cache invalidated for key: %s", cache_key)
     except Exception as e:  # pylint: disable=broad-exception-caught
         # We catch Exception here because cache backends can raise various
         # underlying backend-specific errors (e.g., redis.exceptions.ConnectionError,

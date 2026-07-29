@@ -39,10 +39,10 @@ def check_and_invalidate(instance, fields, cache_key, old_tokens=None):
 
     # If sets are different, invalidate
     if old_tokens != new_tokens:
-        logger.info("Tokens changed for %s (%s). Invalidating.", instance, cache_key)
+        logger.debug("Tokens changed for %s (%s). Invalidating.", instance, cache_key)
         invalidate_cache(cache_key)
     else:
-        logger.info("No token changes for %s. Cache preserved.", instance)
+        logger.debug("No token changes for %s. Cache preserved.", instance)
 
 
 # --- Customer ---

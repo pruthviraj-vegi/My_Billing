@@ -86,7 +86,7 @@ class InvoicePDF(models.Model):
 
             # Check if PDF is outdated
             if pdf.is_pdf_outdated():
-                logger.info("PDF for invoice %s is outdated", invoice.invoice_number)
+                logger.debug("PDF for invoice %s is outdated", invoice.invoice_number)
                 return None
 
             return pdf
@@ -115,7 +115,7 @@ class InvoicePDF(models.Model):
         )
 
         action = "Created" if created else "Updated"
-        logger.info("%s PDF record for invoice %s", action, invoice.invoice_number)
+        logger.debug("%s PDF record for invoice %s", action, invoice.invoice_number)
 
         return pdf_record
 
@@ -206,7 +206,7 @@ class CustomerStatementPDF(models.Model):
 
             # Check if balance has changed
             if pdf.is_balance_outdated(current_balance):
-                logger.info(
+                logger.debug(
                     "Statement PDF for customer %s is outdated "
                     "(balance changed from %s to %s)",
                     customer.id,
@@ -216,7 +216,7 @@ class CustomerStatementPDF(models.Model):
                 pdf.delete()
                 return None
 
-            logger.info(
+            logger.debug(
                 "Using cached statement PDF for customer %s (%s to %s)",
                 customer.id,
                 from_date,
@@ -235,7 +235,7 @@ class CustomerStatementPDF(models.Model):
         """
         deleted_count = cls.objects.filter(customer=customer).delete()[0]
         if deleted_count > 0:
-            logger.info(
+            logger.debug(
                 "Invalidated %s cached statement PDFs for customer %s",
                 deleted_count,
                 customer.id,
@@ -273,7 +273,7 @@ class CustomerStatementPDF(models.Model):
         )
 
         action = "Created" if created else "Updated"
-        logger.info(
+        logger.debug(
             "%s statement PDF record for customer %s (%s to %s, balance: %s)",
             action,
             customer.id,

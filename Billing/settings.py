@@ -385,7 +385,7 @@ LOGGING = {
         # Your app-specific logger
         "": {
             "handlers": ["info_file", "error_file"],
-            "level": "WARNING",
+            "level": "INFO",
             "propagate": False,
         },
         # Suppress noisy fontTools subsetting logs (from WeasyPrint PDF generation)

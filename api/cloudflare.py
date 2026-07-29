@@ -183,7 +183,7 @@ def delete_from_r2(
         filename = extract_filename_from_url(file_url)
 
         client.delete_object(Bucket=bucket_name, Key=filename)
-        logger.info(
+        logger.debug(
             "Successfully deleted file '%s' from '%s' bucket",
             filename,
             bucket_type.value,
@@ -272,7 +272,7 @@ def upload_pdf_to_r2(
         )
 
         file_url = f"{domain_url.rstrip('/')}/{filename}"
-        logger.info(
+        logger.debug(
             "Successfully uploaded '%s' to '%s' bucket",
             filename,
             bucket_type.value,
@@ -322,7 +322,7 @@ def check_file_exists(
         filename = extract_filename_from_url(file_url)
 
         client.head_object(Bucket=bucket_name, Key=filename)
-        logger.info("File '%s' exists in '%s' bucket", filename, bucket_type.value)
+        logger.debug("File '%s' exists in '%s' bucket", filename, bucket_type.value)
         return True
 
     except botocore.exceptions.ClientError as e:
@@ -387,7 +387,7 @@ def get_file_metadata(
             "etag": response.get("ETag", "").strip('"'),
         }
 
-        logger.info("Retrieved metadata for '%s'", filename)
+        logger.debug("Retrieved metadata for '%s'", filename)
         return metadata
 
     except botocore.exceptions.ClientError as e:

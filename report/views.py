@@ -124,7 +124,7 @@ def generate_pdf(
                 bucket_type=bucket_type,
             )
 
-            logger.info("PDF uploaded to R2: %s", r2_url)
+            logger.debug("PDF uploaded to R2: %s", r2_url)
             return r2_url
 
         except R2StorageError as exc:
