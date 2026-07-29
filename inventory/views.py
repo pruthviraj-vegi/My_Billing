@@ -1035,6 +1035,12 @@ def inventory_price_update_save(request):
     if not variant_id:
         return JsonResponse({"status": "error", "message": "variant_id is required"}, status=400)
 
+    # Sanitize Indian currency formatted numbers (e.g. "1,000.00" -> "1000.00")
+    if isinstance(data.get("mrp"), str):
+        data["mrp"] = data["mrp"].replace(",", "").strip()
+    if isinstance(data.get("discount_percentage"), str):
+        data["discount_percentage"] = data["discount_percentage"].replace(",", "").strip()
+
     try:
         variant = ProductVariant.objects.get(pk=variant_id, is_deleted=False)
     except ProductVariant.DoesNotExist:
@@ -1043,6 +1049,7 @@ def inventory_price_update_save(request):
     form = InventoryPriceUpdateForm(data, instance=variant)
     if not form.is_valid():
         errors = {field: errs[0] for field, errs in form.errors.items()}
+        logger.error("Validation failed: %s", errors)
         return JsonResponse({"status": "error", "message": "Validation failed", "errors": errors}, status=400)
 
     try:
@@ -1078,5 +1085,5 @@ def inventory_price_update_save(request):
             },
         })
     except Exception as e:  # pylint: disable=broad-except
-        logger.exception("Error updating variant price: %s", e)
+        logger.error("Error updating variant price: %s", e)
         return JsonResponse({"status": "error", "message": "Server error occurred"}, status=500)

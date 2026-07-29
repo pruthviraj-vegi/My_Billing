@@ -15,101 +15,90 @@
     </div>
   </div>
 
-  <!-- Barcode Search Section -->
-  <div class="card mb-3">
-    <div class="card-body">
-      <div class="ipu-search-section">
-        <h4 class="ipu-search-title">
-          <i class="fas fa-barcode"></i> Barcode Search
-        </h4>
-        <div class="ipu-search-row">
-          <div class="ipu-search-input-wrap">
-            <input type="text"
+  <!-- Barcode Search -->
+  <div class="search-filter-section">
+    <form class="search-filter-form"
+          id="barcodeForm"
+          autocomplete="off"
+          onsubmit="return false;">
+        <div class="search-group search-expanded">
+            <i class="fas fa-search search-icon"></i>
+            <input type="search"
+                   name="barcode"
+                   class="search-input"
+                   placeholder="Scan barcode..."
+                   value=""
                    id="barcode-input"
-                   class="form-input"
-                   placeholder="Scan or type barcode…"
-                   autocomplete="off"
                    autofocus>
-            <div class="ipu-search-icon">
-              <i class="fas fa-search"></i>
-            </div>
-          </div>
-          <button type="button" id="barcode-search-btn" class="btn btn-primary">
-            <i class="fas fa-search"></i> Search
-          </button>
         </div>
-        <div id="barcode-error" class="ipu-search-error" style="display:none;"></div>
-      </div>
-    </div>
+        <button type="button" class="btn btn-primary" id="barcode-search-btn">
+            <i class="fas fa-search"></i>
+            Search
+        </button>
+    </form>
   </div>
+  <div id="barcode-error" class="text-danger small mt-1" style="display:none;"></div>
 
-  <!-- Product Variant Details (initially hidden) -->
+  <!-- Variant Details + Price Form (initially hidden) -->
   <div id="variant-details-section" style="display:none;">
-    <!-- Variant Info Card -->
-    <div class="card mb-3">
-      <div class="card-body">
-        <div class="ipu-variant-header">
-          <div class="ipu-variant-title-row">
-            <h4 id="variant-product-name" class="ipu-variant-title"></h4>
-            <span id="variant-status-badge" class="status-badge"></span>
-          </div>
-          <p id="variant-full-name" class="ipu-variant-subtitle"></p>
-        </div>
 
-        <div class="ipu-detail-grid">
-          <div class="ipu-detail-item">
-            <span class="ipu-detail-label">Barcode</span>
-            <span id="variant-barcode" class="ipu-detail-value ipu-mono"></span>
+    <!-- Variant Info Card -->
+    <div class="card mt-2">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-2" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+          <h4 id="variant-product-name" class="m-0" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);"></h4>
+          <span id="variant-status-badge" class="status-badge"></span>
+        </div>
+        <p id="variant-full-name" class="small m-0 mb-3" style="color: var(--text-secondary);"></p>
+
+        <div class="d-flex flex-wrap gap-3">
+          <div class="d-flex flex-column gap-1" style="flex: 1; min-width: 140px; padding: 0.5rem 0.75rem; background: var(--bg-surface-hover); border-radius: 6px;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; color: var(--text-secondary);">Barcode</span>
+            <span id="variant-barcode" style="font-weight: 500; font-family: monospace; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-detail-item">
-            <span class="ipu-detail-label">Category</span>
-            <span id="variant-category" class="ipu-detail-value"></span>
+          <div class="d-flex flex-column gap-1" style="flex: 1; min-width: 140px; padding: 0.5rem 0.75rem; background: var(--bg-surface-hover); border-radius: 6px;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; color: var(--text-secondary);">Category</span>
+            <span id="variant-category" style="font-weight: 500; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-detail-item">
-            <span class="ipu-detail-label">Size</span>
-            <span id="variant-size" class="ipu-detail-value"></span>
+          <div class="d-flex flex-column gap-1" style="flex: 1; min-width: 140px; padding: 0.5rem 0.75rem; background: var(--bg-surface-hover); border-radius: 6px;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; color: var(--text-secondary);">Size</span>
+            <span id="variant-size" style="font-weight: 500; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-detail-item">
-            <span class="ipu-detail-label">Color</span>
-            <span id="variant-color" class="ipu-detail-value">
-              <span id="variant-color-swatch" class="ipu-color-swatch"></span>
-              <span id="variant-color-name"></span>
-            </span>
+          <div class="d-flex flex-column gap-1" style="flex: 1; min-width: 140px; padding: 0.5rem 0.75rem; background: var(--bg-surface-hover); border-radius: 6px;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; color: var(--text-secondary);">Color</span>
+            <span id="variant-color" style="font-weight: 500; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-detail-item">
-            <span class="ipu-detail-label">HSN Code</span>
-            <span id="variant-hsn" class="ipu-detail-value"></span>
+          <div class="d-flex flex-column gap-1" style="flex: 1; min-width: 140px; padding: 0.5rem 0.75rem; background: var(--bg-surface-hover); border-radius: 6px;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; color: var(--text-secondary);">HSN Code</span>
+            <span id="variant-hsn" style="font-weight: 500; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-detail-item">
-            <span class="ipu-detail-label">GST %</span>
-            <span id="variant-gst" class="ipu-detail-value"></span>
+          <div class="d-flex flex-column gap-1" style="flex: 1; min-width: 140px; padding: 0.5rem 0.75rem; background: var(--bg-surface-hover); border-radius: 6px;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; color: var(--text-secondary);">GST %</span>
+            <span id="variant-gst" style="font-weight: 500; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-detail-item">
-            <span class="ipu-detail-label">Purchase Price</span>
-            <span id="variant-purchase-price" class="ipu-detail-value"></span>
+          <div class="d-flex flex-column gap-1" style="flex: 1; min-width: 140px; padding: 0.5rem 0.75rem; background: var(--bg-surface-hover); border-radius: 6px;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; color: var(--text-secondary);">Purchase Price</span>
+            <span id="variant-purchase-price" style="font-weight: 500; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-detail-item">
-            <span class="ipu-detail-label">Stock</span>
-            <span id="variant-stock" class="ipu-detail-value"></span>
+          <div class="d-flex flex-column gap-1" style="flex: 1; min-width: 140px; padding: 0.5rem 0.75rem; background: var(--bg-surface-hover); border-radius: 6px;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; color: var(--text-secondary);">Stock</span>
+            <span id="variant-stock" style="font-weight: 500; color: var(--text-primary);">—</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Price Update Card -->
-    <div class="card mb-3">
+    <div class="card mt-2">
       <div class="card-body">
-        <h4 class="ipu-form-title">
-          <i class="fas fa-tags"></i> Update Pricing
-        </h4>
         <input type="hidden" id="variant-id" value="">
-        <div class="ipu-form-grid">
-          <div class="form-group">
+        <div class="d-flex gap-3">
+          <div class="form-group" style="flex:1;">
             <label for="id_mrp" class="form-label">MRP (Selling Price) *</label>
             {{ form.mrp }}
             <div id="mrp-error" class="invalid-feedback d-block" style="display:none;"></div>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="flex:1;">
             <label for="id_discount_percentage" class="form-label">Discount %</label>
             {{ form.discount_percentage }}
             <div id="discount-error" class="invalid-feedback d-block" style="display:none;"></div>
@@ -117,23 +106,23 @@
         </div>
 
         <!-- Price Summary -->
-        <div class="ipu-price-summary">
-          <div class="ipu-price-item">
-            <span class="ipu-price-label">Current MRP</span>
-            <span id="current-mrp" class="ipu-price-value">—</span>
+        <div class="d-flex gap-3 mt-3" style="padding: 0.75rem 1rem; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: 8px;">
+          <div class="d-flex flex-column gap-1" style="flex:1;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; color: var(--text-secondary);">Current MRP</span>
+            <span id="current-mrp" style="font-size: 1rem; font-weight: 600; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-price-item">
-            <span class="ipu-price-label">Discount</span>
-            <span id="current-discount" class="ipu-price-value">—</span>
+          <div class="d-flex flex-column gap-1" style="flex:1;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; color: var(--text-secondary);">Discount</span>
+            <span id="current-discount" style="font-size: 1rem; font-weight: 600; color: var(--text-primary);">—</span>
           </div>
-          <div class="ipu-price-item ipu-price-highlight">
-            <span class="ipu-price-label">Final Price</span>
-            <span id="final-price" class="ipu-price-value">—</span>
+          <div class="d-flex flex-column gap-1" style="flex:1;">
+            <span class="small" style="font-weight: 600; text-transform: uppercase; font-size: 0.7rem; color: var(--text-secondary);">Final Price</span>
+            <span id="final-price" style="font-size: 1.15rem; font-weight: 700; color: var(--primary);">—</span>
           </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="ipu-actions">
+        <div class="d-flex gap-2 mt-3">
           <button type="button" id="save-price-btn" class="btn btn-primary">
             <i class="fas fa-save"></i> Save Changes
           </button>
@@ -144,12 +133,12 @@
       </div>
     </div>
 
-    <!-- Update History (recent price changes for this variant) -->
-    <div id="update-history" class="card mb-3" style="display:none;">
+    <!-- Update History -->
+    <div id="update-history" class="card mt-2" style="display:none;">
       <div class="card-body">
-        <h4 class="ipu-form-title">
-          <i class="fas fa-check-circle"></i> Update Successful
-        </h4>
+        <h5 class="mb-2">
+          <i class="fas fa-check-circle text-success"></i> Update Log
+        </h5>
         <div id="update-history-list"></div>
       </div>
     </div>
@@ -169,6 +158,7 @@
   const searchBtn = document.getElementById("barcode-search-btn");
   const errorDiv = document.getElementById("barcode-error");
   const detailsSection = document.getElementById("variant-details-section");
+
   const variantIdField = document.getElementById("variant-id");
   const mrpField = document.getElementById("id_mrp");
   const discountField = document.getElementById("id_discount_percentage");
@@ -232,21 +222,7 @@
     document.getElementById("variant-category").textContent = v.category || "—";
     document.getElementById("variant-size").textContent = v.size || "—";
 
-    // Color with swatch
-    const colorSwatch = document.getElementById("variant-color-swatch");
-    const colorName = document.getElementById("variant-color-name");
-    if (v.color) {
-      colorName.textContent = v.color;
-      if (v.color_hex) {
-        colorSwatch.style.backgroundColor = v.color_hex;
-        colorSwatch.style.display = "inline-block";
-      } else {
-        colorSwatch.style.display = "none";
-      }
-    } else {
-      colorName.textContent = "—";
-      colorSwatch.style.display = "none";
-    }
+    document.getElementById("variant-color").textContent = v.color || "—";
 
     document.getElementById("variant-hsn").textContent = v.hsn_code || "—";
     document.getElementById("variant-gst").textContent = v.gst_percentage ? v.gst_percentage + "%" : "—";
@@ -256,13 +232,12 @@
     const stockEl = document.getElementById("variant-stock");
     const qty = parseFloat(v.quantity);
     stockEl.textContent = qty;
-    stockEl.className = "ipu-detail-value";
     if (v.stock_status === "Out of Stock") {
-      stockEl.classList.add("text-danger");
+      stockEl.style.color = "var(--danger)";
     } else if (v.stock_status === "Low Stock") {
-      stockEl.classList.add("text-warning");
+      stockEl.style.color = "var(--warning)";
     } else {
-      stockEl.classList.add("text-success");
+      stockEl.style.color = "var(--success)";
     }
 
     // Status badge
@@ -278,7 +253,7 @@
     // Update price summary
     updatePriceSummary();
 
-    // Show section
+    // Show sections
     detailsSection.style.display = "block";
     updateHistory.style.display = "none";
 
@@ -289,8 +264,10 @@
 
   // ───── Real-time Price Calculations ─────
   function updatePriceSummary() {
-    const mrp = parseFloat(mrpField.value) || 0;
-    const discount = parseFloat(discountField.value) || 0;
+    const rawMrp = mrpField.value ? mrpField.value.toString().replace(/,/g, "") : "";
+    const rawDiscount = discountField.value ? discountField.value.toString().replace(/,/g, "") : "";
+    const mrp = parseFloat(rawMrp) || 0;
+    const discount = parseFloat(rawDiscount) || 0;
     let finalPrice = mrp;
     if (discount > 0) {
       finalPrice = mrp * (1 - discount / 100);
@@ -318,8 +295,8 @@
     const vId = variantIdField.value;
     if (!vId) { showError("No variant selected"); return; }
 
-    const mrpVal = mrpField.value;
-    const discountVal = discountField.value;
+    const mrpVal = mrpField.value ? mrpField.value.toString().replace(/,/g, "").trim() : "";
+    const discountVal = discountField.value ? discountField.value.toString().replace(/,/g, "").trim() : "";
 
     if (!mrpVal || parseFloat(mrpVal) <= 0) {
       document.getElementById("mrp-error").textContent = "MRP must be greater than 0";
@@ -355,12 +332,13 @@
           updateHistory.style.display = "block";
           const now = new Date().toLocaleTimeString("en-IN");
           updateHistoryList.innerHTML =
-            '<div class="ipu-history-item">' +
+            '<div class="summary-row">' +
+            '<span class="summary-label">' +
             '<i class="fas fa-check-circle text-success"></i> ' +
-            '<strong>' + currentVariant.product_name + '</strong> — ' +
-            'MRP: ₹' + parseFloat(resp.variant.mrp).toLocaleString("en-IN") + ', ' +
-            'Discount: ' + resp.variant.discount_percentage + '% ' +
-            '<span class="text-secondary">(' + now + ')</span>' +
+            currentVariant.product_name + '</span>' +
+            '<span class="summary-value">₹' +
+            parseFloat(resp.variant.mrp).toLocaleString("en-IN") +
+            ' <span class="text-secondary small">(' + now + ')</span></span>' +
             '</div>' + updateHistoryList.innerHTML;
 
           // Open barcode page in new tab
@@ -369,7 +347,9 @@
 
           // Clear and refocus barcode field for next scan
           barcodeInput.value = "";
-          barcodeInput.focus();
+          setTimeout(function() {
+            barcodeInput.focus();
+          }, 100);
         } else {
           showNotification(resp.message || "Save failed", "error");
           if (resp.errors) {
@@ -395,6 +375,20 @@
     });
   });
 
+  // Submit on Enter key in price update fields
+  [mrpField, discountField].forEach(function(input) {
+    if (input) {
+      input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (!savePriceBtn.disabled && variantIdField.value) {
+            savePriceBtn.click();
+          }
+        }
+      });
+    }
+  });
+
   // Save on Ctrl+S / Cmd+S
   document.addEventListener("keydown", function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -404,241 +398,4 @@
   });
 })();
 </script>
-
-<style>
-/* ── Barcode Search ── */
-.ipu-search-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.ipu-search-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.ipu-search-title i {
-  color: var(--primary);
-}
-
-.ipu-search-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: stretch;
-}
-
-.ipu-search-input-wrap {
-  position: relative;
-  flex: 1;
-}
-
-.ipu-search-input-wrap .form-input {
-  padding-left: 2.5rem;
-  font-size: 1.1rem;
-  letter-spacing: 0.05em;
-}
-
-.ipu-search-icon {
-  position: absolute;
-  top: 50%;
-  left: 0.75rem;
-  transform: translateY(-50%);
-  color: var(--text-secondary);
-  pointer-events: none;
-}
-
-.ipu-search-error {
-  color: var(--danger);
-  font-size: 0.875rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--danger-bg);
-  border-radius: 6px;
-}
-
-/* ── Variant Details ── */
-.ipu-variant-header {
-  margin-bottom: 1.25rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.ipu-variant-title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.ipu-variant-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.ipu-variant-subtitle {
-  margin: 0.25rem 0 0;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-}
-
-.ipu-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
-.ipu-detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.75rem;
-  background: var(--bg-surface-hover);
-  border-radius: 8px;
-}
-
-.ipu-detail-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-}
-
-.ipu-detail-value {
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.ipu-mono {
-  font-family: "SF Mono", "Fira Mono", monospace;
-  letter-spacing: 0.08em;
-}
-
-.ipu-color-swatch {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-/* ── Price Update Form ── */
-.ipu-form-title {
-  margin: 0 0 1.25rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.ipu-form-title i {
-  color: var(--primary);
-}
-
-.ipu-form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.ipu-price-summary {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  padding: 1rem 1.25rem;
-  background: var(--bg-surface-hover);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  margin-bottom: 1.25rem;
-}
-
-.ipu-price-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.ipu-price-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-}
-
-.ipu-price-value {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.ipu-price-highlight .ipu-price-value {
-  color: var(--primary);
-  font-size: 1.25rem;
-}
-
-.ipu-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-/* ── Update History ── */
-.ipu-history-item {
-  padding: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.ipu-history-item:last-child {
-  border-bottom: none;
-}
-
-/* ── Responsive ── */
-@media (max-width: 576px) {
-  .ipu-search-row {
-    flex-direction: column;
-  }
-
-  .ipu-detail-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .ipu-form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .ipu-price-summary {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .ipu-actions {
-    flex-direction: column;
-  }
-
-  .ipu-actions .btn {
-    width: 100%;
-  }
-}
-</style>
 {% endblock extra_js %}
