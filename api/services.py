@@ -9,6 +9,7 @@ import qrcode
 from django.contrib.auth.views import login_not_required
 
 from api.cloudflare import check_file_exists, BucketType
+from base.utility import resolve_user
 from customer.views_credit import _build_ledger_rows, get_opening_balance
 from invoice.models import InvoiceItem
 from report.models import InvoicePDF, CustomerStatementPDF
@@ -121,7 +122,7 @@ def generate_invoice_pdf(invoice, request):
         invoice=invoice,
         pdf_url=pdf_url,
         filename=f"{filename}.pdf",
-        generated_by=request.user if request.user.is_authenticated else None,
+        generated_by=resolve_user(request),
     )
 
     data = {
@@ -227,7 +228,7 @@ def generate_statement_pdf(customer, start_date, end_date, request):
         to_date=end_date,
         closing_balance=customer.credit_summary.balance_amount,
         filename=f"{filename}.pdf",
-        generated_by=request.user if request.user.is_authenticated else None,
+        generated_by=resolve_user(request),
     )
 
     data = {

@@ -5,13 +5,15 @@ from django.test import TestCase
 from django.urls import reverse
 
 from customer.models import Customer, CustomerCreditSummary
+from notification.models import MessageLog, MessageStatusChoices, Notification
+from notification.tasks import send_customer_message_task
 
 User = get_user_model()
 
 
 class ReportStatementsTests(TestCase):
     """
-    Test cases for report statements and messaging endpoints.
+    Test cases for asynchronous report statements and messaging endpoints.
     """
 
     def setUp(self):
@@ -19,12 +21,10 @@ class ReportStatementsTests(TestCase):
             first_name="Test",
             phone_number="1234567890",
             password="testpassword",
-            email="test@example.com"
+            email="test@example.com",
         )
         self.customer = Customer.objects.create(
-            name="Test Customer",
-            phone_number="9999999999",
-            created_by=self.user
+            name="Test Customer", phone_number="9999999999", created_by=self.user
         )
 
     def test_balance_requires_login(self):
@@ -36,78 +36,153 @@ class ReportStatementsTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
-    @patch("report.statements.send_template")
-    def test_balance_success_with_credit_summary(self, mock_send_template):
+    @patch("report.statements.send_customer_message_task.delay")
+    def test_balance_queues_task_and_creates_log(self, mock_delay):
         """
-        Verify that send_balance successfully sends balance when credit summary exists.
+        Verify that send_balance creates a MessageLog and queues a Celery task on commit.
         """
-        # Create credit summary
         summary, _ = CustomerCreditSummary.objects.get_or_create(customer=self.customer)
         summary.balance_amount = 250.50
         summary.save()
 
-        # Login
         self.client.login(phone_number="1234567890", password="testpassword")
 
-        # Mock successful template send response
-        mock_send_template.return_value = {"success": True}
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.get(
+                reverse("report:send_balance", kwargs={"pk": self.customer.pk})
+            )
 
-        response = self.client.get(
-            reverse("report:send_balance", kwargs={"pk": self.customer.pk})
-        )
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data["success"])
-        self.assertEqual(data["message"], "Balance sent successfully")
+        self.assertIn("queued in background", data["message"])
 
-        # Verify send_template was called with correct parameters
-        mock_send_template.assert_called_once()
-        args, kwargs = mock_send_template.call_args
-        self.assertEqual(args[1], self.customer.phone_number)
-        self.assertEqual(args[3]["customer_name"], self.customer.name)
-        self.assertEqual(args[3]["balance"], "250.5")
+        mock_delay.assert_called_once()
 
-    @patch("report.statements.send_template")
-    def test_balance_default_no_credit_summary(self, mock_send_template):
+        # Check MessageLog creation
+        log = MessageLog.objects.get(id=data["log_id"])
+        self.assertEqual(log.customer, self.customer)
+        self.assertEqual(log.message_type, "balance")
+
+    @patch("report.statements.send_customer_message_task.delay")
+    def test_balance_prevents_duplicate_sending(self, mock_delay):
         """
-        Verify that send_balance defaults to 0.0 balance if credit summary is missing.
+        Verify duplicate send attempts while a task is pending/processing are blocked.
         """
-        # Ensure credit summary is deleted
-        CustomerCreditSummary.objects.filter(customer=self.customer).delete()
-
-        # Login
         self.client.login(phone_number="1234567890", password="testpassword")
 
-        # Mock successful template send response
+        # First request
+        with self.captureOnCommitCallbacks(execute=True):
+            res1 = self.client.get(
+                reverse("report:send_balance", kwargs={"pk": self.customer.pk})
+            )
+        self.assertTrue(res1.json()["success"])
+        self.assertEqual(mock_delay.call_count, 1)
+
+        # Duplicate request immediately following
+        with self.captureOnCommitCallbacks(execute=True):
+            res2 = self.client.get(
+                reverse("report:send_balance", kwargs={"pk": self.customer.pk})
+            )
+        self.assertFalse(res2.json()["success"])
+        self.assertIn("already in progress or was sent recently", res2.json()["message"])
+        self.assertEqual(mock_delay.call_count, 1)  # Still 1 call
+
+    @patch("notification.tasks.send_template")
+    def test_send_customer_message_task_executes_successfully(self, mock_send_template):
+        """
+        Verify that send_customer_message_task calls send_template, updates status to SENT,
+        and creates a Notification.
+        """
         mock_send_template.return_value = {"success": True}
 
-        response = self.client.get(
-            reverse("report:send_balance", kwargs={"pk": self.customer.pk})
+        log = MessageLog.objects.create(
+            user=self.user,
+            customer=self.customer,
+            message_type="balance",
+            phone_number=self.customer.phone_number,
         )
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertTrue(data["success"])
-        self.assertEqual(data["message"], "Balance sent successfully")
 
-        # Verify send_template was called with 0.0 balance
-        mock_send_template.assert_called_once()
-        args, kwargs = mock_send_template.call_args
-        self.assertEqual(args[3]["balance"], "0.0")
+        send_customer_message_task(log.id)
 
-    @patch("report.statements.send_template")
-    def test_balance_send_template_failure(self, mock_send_template):
+        log.refresh_from_db()
+        self.assertEqual(log.status, MessageStatusChoices.SENT)
+
+        # Verify system notification was generated
+        notif = Notification.objects.filter(user=self.user).first()
+        self.assertIsNotNone(notif)
+        self.assertIn("Balance Sent Successfully", notif.title)
+
+    @patch("report.statements.send_customer_message_task.delay")
+    def test_broker_down_marks_log_as_failed(self, mock_delay):
         """
-        Verify that send_balance returns success=False if template sending fails.
+        Verify that if broker (Redis/Celery) raises an exception on .delay(),
+        the MessageLog status is updated to FAILED with error detail on commit.
         """
+        mock_delay.side_effect = Exception("Connection to Redis refused")
+
         self.client.login(phone_number="1234567890", password="testpassword")
 
-        # Mock failed template send response
-        mock_send_template.return_value = {"success": False, "detail": "API error"}
-
-        response = self.client.get(
-            reverse("report:send_balance", kwargs={"pk": self.customer.pk})
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.get(
+                reverse("report:send_balance", kwargs={"pk": self.customer.pk})
+            )
         self.assertEqual(response.status_code, 200)
+
         data = response.json()
-        self.assertFalse(data["success"])
-        self.assertEqual(data["message"], "API error")
+        log = MessageLog.objects.get(id=data["log_id"])
+        self.assertEqual(log.status, MessageStatusChoices.FAILED)
+        self.assertIn("Broker unavailable", log.error_message)
+
+    @patch("notification.tasks.send_template")
+    def test_task_failure_marks_log_failed_and_notifies(self, mock_send_template):
+        """
+        Verify that when task encounters non-retryable failure (retries exhausted),
+        log status is set to FAILED and a failure Notification is delivered to user.
+        """
+        mock_send_template.return_value = {"success": False, "detail": "Invalid phone number"}
+
+        log = MessageLog.objects.create(
+            user=self.user,
+            customer=self.customer,
+            message_type="balance",
+            phone_number=self.customer.phone_number,
+        )
+
+        # Simulate retries exhausted (retries == max_retries)
+        with patch.object(send_customer_message_task.request, "retries", 2):
+            send_customer_message_task(log.id)
+
+        log.refresh_from_db()
+        self.assertEqual(log.status, MessageStatusChoices.FAILED)
+
+        # Verify failure notification created
+        notif = Notification.objects.filter(user=self.user, notification_type="balance_failed").first()
+        self.assertIsNotNone(notif)
+        self.assertIn("Delivery Failed", notif.title)
+
+    @patch("notification.tasks.send_template")
+    @patch("notification.tasks.generate_statement_pdf")
+    def test_statement_message_type_execution(self, mock_pdf, mock_send_template):
+        """
+        Verify statement message type generates PDF and sends template.
+        """
+        mock_pdf.return_value = {"url": "http://example.com/stmt.pdf", "filename": "stmt.pdf"}
+        mock_send_template.return_value = {"success": True}
+
+        log = MessageLog.objects.create(
+            user=self.user,
+            customer=self.customer,
+            message_type="statement",
+            phone_number=self.customer.phone_number,
+            payload_data={"start_date": "2026-01-01", "end_date": "2026-01-31"},
+        )
+
+        send_customer_message_task(log.id)
+
+        log.refresh_from_db()
+        self.assertEqual(log.status, MessageStatusChoices.SENT)
+        mock_pdf.assert_called_once()
+        mock_send_template.assert_called_once()
+
+

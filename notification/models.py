@@ -96,3 +96,73 @@ class Notification(models.Model):
         cutoff = timezone.now() - timedelta(days=days)
         count, _ = cls.objects.filter(created_at__lt=cutoff).delete()
         return count
+
+
+class MessageStatusChoices(models.TextChoices):
+    """Status choices for outgoing customer messages."""
+
+    PENDING = "pending", "Pending"
+    PROCESSING = "processing", "Processing"
+    SENT = "sent", "Sent"
+    FAILED = "failed", "Failed"
+
+
+class MessageLog(models.Model):
+    """Tracks status, parameters, and errors for outgoing customer messages."""
+
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="message_logs"
+    )
+    customer = models.ForeignKey(
+        "customer.Customer", on_delete=models.CASCADE, related_name="message_logs"
+    )
+    message_type = models.CharField(
+        max_length=50, db_index=True, help_text="e.g. 'statement', 'invoice', 'balance', 'payment'"
+    )
+    phone_number = models.CharField(max_length=20)
+    status = models.CharField(
+        max_length=20,
+        choices=MessageStatusChoices.choices,
+        default=MessageStatusChoices.PENDING,
+        db_index=True,
+    )
+    error_message = models.TextField(blank=True)
+    payload_data = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["customer", "message_type", "status"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.message_type}] {self.customer} - {self.status}"
+
+    @classmethod
+    def is_duplicate_in_flight(cls, customer, message_type, cooldown_seconds=60):
+        """Check if a message for this customer and message_type is currently PENDING/PROCESSING,
+        or was SENT within `cooldown_seconds`.
+        """
+        from datetime import timedelta
+        from django.utils import timezone
+
+        # 1. Active in-flight check
+        if cls.objects.filter(
+            customer=customer,
+            message_type=message_type,
+            status__in=[MessageStatusChoices.PENDING, MessageStatusChoices.PROCESSING],
+        ).exists():
+            return True
+
+        # 2. Recent cooldown check
+        cutoff = timezone.now() - timedelta(seconds=cooldown_seconds)
+        return cls.objects.filter(
+            customer=customer,
+            message_type=message_type,
+            status=MessageStatusChoices.SENT,
+            created_at__gte=cutoff,
+        ).exists()
+

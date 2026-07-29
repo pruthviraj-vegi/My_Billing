@@ -366,3 +366,14 @@ def process_breakdown_data(breakdown_qs, total: float, field_key: str = "field")
         }
         for item in breakdown_qs
     ]
+
+
+def resolve_user(request):
+    """
+    Extract and return authenticated user from request, or None if unauthenticated.
+    """
+    if not request:
+        return None
+    user = getattr(request, "user", None)
+    return user if user and getattr(user, "is_authenticated", False) else None
+
