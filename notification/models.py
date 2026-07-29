@@ -142,18 +142,43 @@ class MessageLog(models.Model):
         return f"[{self.message_type}] {self.customer} - {self.status}"
 
     @classmethod
-    def is_duplicate_in_flight(cls, customer, message_type, cooldown_seconds=60):
-        """Check if a message for this customer and message_type is currently PENDING/PROCESSING,
-        or was SENT within `cooldown_seconds`.
+    def cleanup_stale_messages(cls, minutes=5):
+        """Mark messages stuck in pending/processing for too long as failed.
+
+        Handles orphaned messages caused by missing worker restarts or crashes.
         """
         from datetime import timedelta
         from django.utils import timezone
 
-        # 1. Active in-flight check
+        stale_cutoff = timezone.now() - timedelta(minutes=minutes)
+        return cls.objects.filter(
+            status__in=[MessageStatusChoices.PENDING, MessageStatusChoices.PROCESSING],
+            updated_at__lt=stale_cutoff,
+        ).update(
+            status=MessageStatusChoices.FAILED,
+            error_message="Message processing timed out — Celery worker was likely restarted or unavailable.",
+        )
+
+    @classmethod
+    def is_duplicate_in_flight(cls, customer, message_type, cooldown_seconds=60, timeout_seconds=300):
+        """Check if a message for this customer and message_type is currently PENDING/PROCESSING,
+        or was SENT within `cooldown_seconds`.
+
+        Auto-cleans stale pending/processing messages older than `timeout_seconds`.
+        """
+        from datetime import timedelta
+        from django.utils import timezone
+
+        # 0. Clean up stale messages older than timeout_seconds
+        cls.cleanup_stale_messages(minutes=max(1, timeout_seconds // 60))
+
+        # 1. Active in-flight check (only within timeout window)
+        active_cutoff = timezone.now() - timedelta(seconds=timeout_seconds)
         if cls.objects.filter(
             customer=customer,
             message_type=message_type,
             status__in=[MessageStatusChoices.PENDING, MessageStatusChoices.PROCESSING],
+            updated_at__gte=active_cutoff,
         ).exists():
             return True
 
@@ -165,4 +190,5 @@ class MessageLog(models.Model):
             status=MessageStatusChoices.SENT,
             created_at__gte=cutoff,
         ).exists()
+
 
