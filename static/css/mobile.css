@@ -244,6 +244,16 @@
     transform: none !important;
   }
 
+  .page-actions-dropdown .btn-danger {
+    color: var(--danger, #dc3545) !important;
+    font-weight: 600;
+  }
+
+  .page-actions-dropdown .btn-danger:hover {
+    background: var(--danger, #dc3545) !important;
+    color: var(--text-on-primary, #ffffff) !important;
+  }
+
   /* ── Row action buttons: collapse >2 into three-dots on mobile ── */
   .action-buttons {
     position: relative;
@@ -1302,6 +1312,165 @@
   .mobile-inline {
     display: inline !important;
   }
+
+  .mobile-show {
+    display: block !important;
+  }
+
+  .mobile-table-cell {
+    display: table-cell !important;
+  }
+
+  .mobile-table-row {
+    display: table-row !important;
+  }
+
+  .details-container {
+    padding: 0 0.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .details-card {
+    padding: 0.85rem;
+    border-radius: 0.5rem;
+  }
+
+  .details-header {
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .details-title h2 {
+    font-size: 1.2rem;
+  }
+
+  .details-body {
+    gap: 0.75rem;
+  }
+
+  .details-section {
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.5rem;
+  }
+
+  .details-section .section-title {
+    font-size: 0.925rem;
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .info-item label {
+    font-size: 0.72rem;
+  }
+
+  .info-item p,
+  .info-item div {
+    font-size: 0.875rem;
+  }
+
+  /* Delete Confirmation Page Mobile Rules */
+  .delete-container,
+  .delete-card,
+  .form-container:has(.delete-warning),
+  .form-container:has(.delete-card),
+  .form-card.delete-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto 1rem auto !important;
+    padding: 0 0.25rem;
+  }
+
+  .delete-warning {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    padding: 0.75rem 0.85rem;
+    gap: 0.75rem;
+    border-radius: 0.5rem;
+  }
+
+  .warning-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 0.95rem;
+    flex-shrink: 0 !important;
+    margin-top: 0.1rem;
+  }
+
+  .warning-content {
+    flex: 1;
+    text-align: left !important;
+  }
+
+  .warning-content h3 {
+    font-size: 0.95rem;
+    text-align: left !important;
+    margin: 0 0 0.2rem 0;
+  }
+
+  .warning-content p,
+  .warning-text {
+    font-size: 0.825rem;
+    text-align: left !important;
+  }
+
+  .customer-details,
+  .user-info,
+  .supplier-details,
+  .delete-details {
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .detail-row,
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding: 0.35rem 0;
+  }
+
+  .detail-label,
+  .info-label {
+    min-width: auto;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .detail-value,
+  .info-value {
+    font-size: 0.875rem;
+  }
+
+  .delete-form label.form-label,
+  .delete-form .checkbox-label-container {
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    gap: 0.65rem !important;
+  }
+
+  .delete-actions,
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .delete-actions .btn,
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 @media (max-width: 1024px) {
   .tables-section {
@@ -1335,5 +1504,14 @@
   .modal-body,
   .modal-footer {
     padding: 1rem;
+  }
+}
+
+/* Mobile-only elements default hidden on desktop (>768px) */
+@media (min-width: 769px) {
+  .mobile-show,
+  .mobile-table-cell,
+  .mobile-table-row {
+    display: none !important;
   }
 }

@@ -265,7 +265,7 @@
          <div class="dropdown-menu dropdown-multicolumn col-2">
             {% if perms.setting.view_shopdetails %}
             <a href="{% url 'setting:shop_settings_dashboard' %}"
-               class="dropdown-item {% if request.resolver_match.url_name == 'shop_settings_dashboard' %}active{% endif %}">Settings
+               class="dropdown-item {% if request.resolver_match.url_name == 'shop_settings_dashboard' %}active{% endif %}">
                Dashboard</a>
             <a href="{% url 'setting:shop_details_list' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'shop_details_list' %}active{% endif %}">Shop

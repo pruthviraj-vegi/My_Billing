@@ -48,7 +48,8 @@
         {% if configs %}
             <table class="data-table">
                 <thead>
-                    <tr>
+                    <!-- Desktop Header -->
+                    <tr class="mobile-hide">
                         <th>Config Name</th>
                         <th class="mobile-hide">Type</th>
                         <th class="mobile-hide">Label Size</th>
@@ -58,11 +59,17 @@
                         <th class="mobile-hide">Created</th>
                         <th>Actions</th>
                     </tr>
+                    <!-- Mobile Header (<768px) -->
+                    <tr class="mobile-table-row">
+                        <th>Config & Type</th>
+                        <th>Status & Actions</th>
+                    </tr>
                 </thead>
                 <tbody>
                     {% for config in configs %}
                         <tr>
-                            <td>
+                            <!-- Desktop Cells -->
+                            <td class="mobile-hide">
                                 <div class="supplier-info">
                                     <strong>{{ config.config_name }}</strong>
                                     {% if config.is_default %}<span class="badge badge-success">Default</span>{% endif %}
@@ -72,7 +79,7 @@
                             <td class="mobile-hide">{{ config.get_label_size_display }}</td>
                             <td class="mobile-hide">{{ config.get_paper_size_display }}</td>
                             <td class="mobile-hide">{{ config.shop.shop_name }}</td>
-                            <td>
+                            <td class="mobile-hide">
                                 {% if config.is_active %}
                                     <span class="status-badge status-active">
                                         <i class="fas fa-check-circle"></i> Active
@@ -83,11 +90,56 @@
                                     </span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <small class="mobile-hide">{{ config.created_at|date:"M d, Y" }}</small>
+                            <td class="mobile-hide">
+                                <small>{{ config.created_at|date:"M d, Y" }}</small>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <div class="action-buttons">
+                                    {% if perms.setting.view_barcodeconfiguration %}
+                                        <a href="{% url 'setting:barcode_config_detail' config.pk %}"
+                                           class="btn-action btn-view"
+                                           title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.edit_barcodeconfiguration %}
+                                        <a href="{% url 'setting:barcode_config_edit' config.pk %}"
+                                           class="btn-action btn-edit"
+                                           title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.delete_barcodeconfiguration %}
+                                        <a href="{% url 'setting:barcode_config_delete' config.pk %}"
+                                           class="btn-action btn-delete"
+                                           title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Mobile Cells (<768px) -->
+                            <td class="mobile-table-cell">
+                                <div>
+                                    <strong class="text-primary">{{ config.config_name }}</strong>
+                                    {% if config.is_default %}<span class="badge badge-success ms-1">Default</span>{% endif %}
+                                </div>
+                                <div class="text-secondary small mt-1">
+                                    <i class="fas fa-barcode me-1"></i>{{ config.get_barcode_type_display }} • {{ config.get_paper_size_display }}
+                                    <br>
+                                    <i class="fas fa-store me-1"></i>{{ config.shop.shop_name }}
+                                </div>
+                            </td>
+                            <td class="mobile-table-cell">
+                                <div>
+                                    {% if config.is_active %}
+                                        <span class="status-badge status-active"><i class="fas fa-check-circle"></i> Active</span>
+                                    {% else %}
+                                        <span class="status-badge status-inactive"><i class="fas fa-times-circle"></i> Inactive</span>
+                                    {% endif %}
+                                </div>
+                                <div class="action-buttons mt-1">
                                     {% if perms.setting.view_barcodeconfiguration %}
                                         <a href="{% url 'setting:barcode_config_detail' config.pk %}"
                                            class="btn-action btn-view"

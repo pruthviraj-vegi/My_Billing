@@ -42,13 +42,19 @@
     <div class="table-container">
         <table class="data-table" id="data_table" data-sort="">
             <thead>
-                <tr>
+                <!-- Desktop Header -->
+                <tr class="mobile-hide">
                     <th class="sortable" data-sort="occurred_at">When</th>
                     <th class="sortable" data-sort="user">User</th>
                     <th class="sortable" data-sort="event_type">Event</th>
                     <th class="sortable" data-sort="ip_address">IP</th>
                     <th class="sortable" data-sort="user_agent">User Agent</th>
                     <th>Session</th>
+                </tr>
+                <!-- Mobile Header (<768px) -->
+                <tr class="mobile-table-row">
+                    <th class="sortable" data-sort="event_type">Event & User</th>
+                    <th>Session & User Agent</th>
                 </tr>
             </thead>
             <tbody id="table_body">

@@ -162,9 +162,9 @@
                             <th>Method</th>
                             <th>Endpoint</th>
                             <th>Status</th>
-                            <th>IP Address</th>
-                            <th>Response Time</th>
-                            <th>Time</th>
+                            <th class="mobile-hide">IP Address</th>
+                            <th class="mobile-hide">Response Time</th>
+                            <th class="mobile-hide">Time</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -182,9 +182,9 @@
                                             <span class="status-badge status-inactive">{{ log.response_status }}</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ log.ip_address }}</td>
-                                    <td>{% if log.response_time_ms %}{{ log.response_time_ms }}ms{% else %}—{% endif %}</td>
-                                    <td>{{ log.requested_at|date:"M d, H:i" }}</td>
+                                    <td class="mobile-hide">{{ log.ip_address }}</td>
+                                    <td class="mobile-hide">{% if log.response_time_ms %}{{ log.response_time_ms }}ms{% else %}—{% endif %}</td>
+                                    <td class="mobile-hide">{{ log.requested_at|date:"M d, H:i" }}</td>
                                 </tr>
                             {% endfor %}
                         {% else %}

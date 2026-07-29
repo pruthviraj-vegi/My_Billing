@@ -47,7 +47,8 @@
         {% if configs %}
             <table class="data-table">
                 <thead>
-                    <tr>
+                    <!-- Desktop Header -->
+                    <tr class="mobile-hide">
                         <th>Configuration</th>
                         <th class="mobile-hide">Report Type</th>
                         <th class="mobile-hide">Paper Size</th>
@@ -57,11 +58,17 @@
                         <th class="mobile-hide">Created</th>
                         <th>Actions</th>
                     </tr>
+                    <!-- Mobile Header (<768px) -->
+                    <tr class="mobile-table-row">
+                        <th>Report & Details</th>
+                        <th>Status & Actions</th>
+                    </tr>
                 </thead>
                 <tbody>
                     {% for cfg in configs %}
                         <tr>
-                            <td>
+                            <!-- Desktop Cells -->
+                            <td class="mobile-hide">
                                 <div class="supplier-info">
                                     <strong>{{ cfg.get_report_type_display }} - {{ cfg.get_paper_size_display }}</strong>
                                     {% if cfg.terms_conditions %}
@@ -79,7 +86,7 @@
                             <td class="mobile-hide">
                                 <span class="badge badge-secondary">{{ cfg.get_currency_display }}</span>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 {% if cfg.is_active %}
                                     <span class="status-badge status-active">
                                         <i class="fas fa-check-circle"></i> Active
@@ -90,7 +97,7 @@
                                     </span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 {% if cfg.is_default %}
                                     <span class="status-badge status-active">
                                         <i class="fas fa-star"></i> Default
@@ -102,7 +109,7 @@
                             <td class="mobile-hide">
                                 <small>{{ cfg.created_at|date:"M d, Y" }}</small>
                             </td>
-                            <td>
+                            <td class="mobile-hide">
                                 <div class="action-buttons">
                                     {% if perms.setting.view_reportconfiguration %}
                                         <a href="{% url 'setting:report_config_detail' cfg.pk %}"
@@ -132,6 +139,50 @@
                                                 <i class="fas fa-star"></i>
                                             </button>
                                         </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Mobile Cells (<768px) -->
+                            <td class="mobile-table-cell">
+                                <div>
+                                    <strong class="text-primary">{{ cfg.get_report_type_display }}</strong>
+                                    <span class="badge badge-info ms-1">{{ cfg.get_paper_size_display }}</span>
+                                </div>
+                                <div class="text-secondary small mt-1">
+                                    <i class="fas fa-coins me-1"></i>{{ cfg.get_currency_display }}
+                                </div>
+                            </td>
+                            <td class="mobile-table-cell">
+                                <div>
+                                    {% if cfg.is_active %}
+                                        <span class="status-badge status-active"><i class="fas fa-check-circle"></i> Active</span>
+                                    {% else %}
+                                        <span class="status-badge status-inactive"><i class="fas fa-times-circle"></i> Inactive</span>
+                                    {% endif %}
+                                    {% if cfg.is_default %}<span class="badge badge-success ms-1"><i class="fas fa-star"></i> Default</span>{% endif %}
+                                </div>
+                                <div class="action-buttons mt-1">
+                                    {% if perms.setting.view_reportconfiguration %}
+                                        <a href="{% url 'setting:report_config_detail' cfg.pk %}"
+                                           class="btn-action btn-view"
+                                           title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.change_reportconfiguration %}
+                                        <a href="{% url 'setting:report_config_edit' cfg.pk %}"
+                                           class="btn-action btn-edit"
+                                           title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.setting.delete_reportconfiguration %}
+                                        <a href="{% url 'setting:report_config_delete' cfg.pk %}"
+                                           class="btn-action btn-delete"
+                                           title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
                                     {% endif %}
                                 </div>
                             </td>

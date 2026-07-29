@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}
-    {{ page_title }}
+    {{ page_title|default:"Payment Method Details" }}
 {% endblock title %}
 {% block content %}
     <div class="page-header">
-        <h1 class="page-title">{{ page_title }}</h1>
+        <h1 class="page-title">{{ page_title|default:"Payment Method Details" }}</h1>
         <div class="page-actions">
             {% if perms.setting.change_paymentdetails %}
                 <a href="{% url 'setting:payment_details_edit' payment.pk %}"
                    class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Edit
+                    <i class="fas fa-edit"></i> Edit Payment
                 </a>
             {% endif %}
             <a href="{% url 'setting:payment_details_list' %}"
@@ -25,6 +25,7 @@
                 <div class="details-title">
                     <h2>{{ payment.payment_name }}</h2>
                     <span class="badge badge-info">{{ payment.get_payment_type_display }}</span>
+                    {% if payment.is_default %}<span class="badge badge-success">Default</span>{% endif %}
                 </div>
                 <div class="details-status">
                     {% if payment.is_active %}
@@ -36,7 +37,6 @@
                             <i class="fas fa-times-circle"></i> Inactive
                         </span>
                     {% endif %}
-                    {% if payment.is_default %}<span class="badge badge-success ml-2">Default</span>{% endif %}
                 </div>
             </div>
             <div class="details-body">
@@ -62,6 +62,7 @@
                         </div>
                     </div>
                 </div>
+
                 <!-- Specific Details based on Type -->
                 {% if payment.payment_type == 'UPI' %}
                     <div class="details-section">
@@ -69,11 +70,12 @@
                         <div class="info-grid">
                             <div class="info-item">
                                 <label>UPI ID</label>
-                                <p>{{ payment.upi_id }}</p>
+                                <p><code>{{ payment.upi_id }}</code></p>
                             </div>
                         </div>
                     </div>
                 {% endif %}
+
                 {% if payment.payment_type == 'BANK' %}
                     <div class="details-section">
                         <h3 class="section-title">Bank Account Details</h3>
@@ -88,11 +90,11 @@
                             </div>
                             <div class="info-item">
                                 <label>Account Number</label>
-                                <p>{{ payment.account_number|default:"-" }}</p>
+                                <p><code>{{ payment.account_number|default:"-" }}</code></p>
                             </div>
                             <div class="info-item">
                                 <label>IFSC Code</label>
-                                <p>{{ payment.ifsc_code|default:"-" }}</p>
+                                <p><code>{{ payment.ifsc_code|default:"-" }}</code></p>
                             </div>
                             <div class="info-item">
                                 <label>Branch</label>
@@ -101,51 +103,59 @@
                         </div>
                     </div>
                 {% endif %}
+
                 {% if payment.qr_code_image or payment.qr_code_url %}
                     <div class="details-section">
                         <h3 class="section-title">QR Code</h3>
-                        <div class="row">
+                        <div class="info-grid">
                             {% if payment.qr_code_image %}
-                                <div class="col-md-6">
-                                    <div class="qr-preview">
+                                <div class="info-item">
+                                    <label>QR Code Preview</label>
+                                    <div>
                                         <img src="{{ payment.qr_code_image.url }}"
                                              alt="QR Code"
-                                             class="img-fluid max-width-200"
+                                             style="max-width: 180px; height: auto; border-radius: 8px; border: 1px solid var(--border-color);" />
                                     </div>
                                 </div>
                             {% endif %}
                             {% if payment.qr_code_url %}
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label>QR Code URL</label>
-                                        <p>
-                                            <a href="{{ payment.qr_code_url }}" target="_blank">{{ payment.qr_code_url }}</a>
-                                        </p>
-                                    </div>
+                                <div class="info-item">
+                                    <label>QR Code URL</label>
+                                    <p>
+                                        <a href="{{ payment.qr_code_url }}" target="_blank">{{ payment.qr_code_url }}</a>
+                                    </p>
                                 </div>
                             {% endif %}
                         </div>
                     </div>
                 {% endif %}
+
                 {% if payment.description %}
                     <div class="details-section">
                         <h3 class="section-title">Additional Information</h3>
-                        <p>{{ payment.description|linebreaks }}</p>
+                        <div class="info-grid">
+                            <div class="info-item full-width">
+                                <p class="pre-text">{{ payment.description }}</p>
+                            </div>
+                        </div>
                     </div>
                 {% endif %}
+
                 {% if payment.counter_name %}
                     <div class="details-section">
                         <h3 class="section-title">Location</h3>
-                        <div class="info-item">
-                            <label>Counter Name</label>
-                            <p>{{ payment.counter_name }}</p>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>Counter Name</label>
+                                <p>{{ payment.counter_name }}</p>
+                            </div>
                         </div>
                     </div>
                 {% endif %}
             </div>
             <div class="details-footer">
                 <div class="meta-info">
-                    <small>Created by {{ payment.created_by.username|default:"System" }} on {{ payment.created_at|date:"M d, Y" }}</small>
+                    <small>Created by {{ payment.created_by.username|default:"System" }} on {{ payment.created_at|date:"M d, Y H:i" }}</small>
                 </div>
             </div>
         </div>

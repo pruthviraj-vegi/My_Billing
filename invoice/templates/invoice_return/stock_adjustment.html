@@ -26,183 +26,179 @@
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-active">Stock Adjustment</span>
     </nav>
-    <!-- Return Invoice Summary -->
-    <div class="form-section mb-3">
-        <h5 class="section-title">Return Invoice Summary</h5>
-        <div class="row">
-            <div class="col-md-3">
-                <div class="info-card">
-                    <div class="info-label">Return Number</div>
-                    <div class="info-value">{{ return_invoice.return_number }}</div>
+    <!-- Main Layout: LEFT = Editing Table, RIGHT = Details & Summary Sidebar -->
+    <div class="row">
+        <!-- LEFT COLUMN: Items Table & Editing (col-lg-9 col-md-9 col-12) -->
+        <div class="col-lg-9 col-md-9 col-12 mb-3">
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="fas fa-boxes"></i> Return Items Management
+                </h5>
+                <!-- Items Table -->
+                <div class="table-container mb-3">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="mobile-hide">Original Qty</th>
+                                <th>Return Qty</th>
+                                <th class="mobile-hide">Unit Price</th>
+                                <th>Total Amount</th>
+                                <th class="mobile-hide">Condition</th>
+                                <th class="mobile-hide">Return Reason</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in return_items %}
+                                <tr data-item-id="{{ item.id }}">
+                                    <td>
+                                        <div class="product-info">
+                                            <div class="product-name">{{ item.product_variant.product.name }}</div>
+                                            {% if item.product_variant.name %}<div class="product-variant">{{ item.product_variant.name }}</div>{% endif %}
+                                            {% if item.product_variant.barcode %}<div class="product-barcode">{{ item.product_variant.barcode }}</div>{% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="mobile-hide">
+                                        <div class="quantity-display">{{ item.quantity_original }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="quantity-input-group">
+                                            <input type="number"
+                                                   class="form-input quantity-input"
+                                                   value="{{ item.quantity_returned|floatformat:0 }}"
+                                                   min="0"
+                                                   max="{{ item.quantity_original }}"
+                                                   step="1"
+                                                   data-item-id="{{ item.id }}"
+                                                   data-original-qty="{{ item.quantity_original }}">
+                                        </div>
+                                    </td>
+                                    <td class="mobile-hide">
+                                        <div class="price-display">{{ item.unit_price|currency }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="amount-display" id="amount-{{ item.id }}">{{ item.total_amount|currency }}</div>
+                                    </td>
+                                    <td class="mobile-hide">
+                                        <select class="form-select condition-select" data-item-id="{{ item.id }}">
+                                            {% for value, label in item_condition_choices %}
+                                                <option value="{{ value }}"
+                                                        {% if item.condition == value %}selected{% endif %}>
+                                                    {{ label }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td class="mobile-hide">
+                                        <select class="form-select reason-select" data-item-id="{{ item.id }}">
+                                            {% for value, label in item_return_reason_choices %}
+                                                <option value="{{ value }}"
+                                                        {% if item.return_reason == value %}selected{% endif %}>
+                                                    {{ label }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button type="button"
+                                                    class="btn-action btn-sm btn-primary btn-update"
+                                                    data-item-id="{{ item.id }}"
+                                                    title="Update Item">
+                                                <i class="fas fa-save"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center p-3">
+                                        <div class="empty-state">
+                                            <i class="fas fa-box-open"></i>
+                                            <h4>No Items Found</h4>
+                                            <p>This return invoice has no items to manage.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="info-card">
-                    <div class="info-label">Customer</div>
-                    <div class="info-value">{{ return_invoice.customer.name }}</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="info-card">
-                    <div class="info-label">Original Invoice</div>
-                    <div class="info-value">{{ return_invoice.invoice.invoice_number }}</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="info-card">
-                    <div class="info-label">Status</div>
-                    <div class="info-value">
-                        {% if return_invoice.status == 'PENDING' %}
-                            <span class="status-badge status-pending">{{ return_invoice.get_status_display }}</span>
-                        {% elif return_invoice.status == 'APPROVED' %}
-                            <span class="status-badge status-approved">{{ return_invoice.get_status_display }}</span>
-                        {% else %}
-                            <span class="status-badge status-default">{{ return_invoice.get_status_display }}</span>
-                        {% endif %}
-                    </div>
+
+                <!-- Action Buttons -->
+                <div class="form-actions d-flex flex-wrap gap-2 pt-3" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn btn-primary" id="updateAllBtn">
+                        <i class="fas fa-save"></i> Update All Items
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="resetAllBtn">
+                        <i class="fas fa-undo"></i> Reset All
+                    </button>
+                    <button type="button" class="btn btn-success" id="submitReturnBtn">
+                        <i class="fas fa-check-circle"></i> Submit Return
+                    </button>
+                    <a href="{% url 'invoice:return_home' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
                 </div>
             </div>
         </div>
-    </div>
-    <!-- Items Management Section -->
-    <div class="form-section">
-        <h5 class="section-title">Return Items Management</h5>
-        <!-- Summary Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-label">Total Items</div>
-                    <div class="summary-value" id="totalItems">{{ return_items|length }}</div>
+
+        <!-- RIGHT COLUMN: Return Details & Summary Sidebar (col-lg-3 col-md-3 col-12) -->
+        <div class="col-lg-3 col-md-3 col-12 ps-lg-1">
+            
+            <!-- Return Invoice Details Card -->
+            <div class="form-card mb-3">
+                <h5 class="section-title mb-3">
+                    <i class="fas fa-undo"></i> Return Invoice Details
+                </h5>
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2" style="border-bottom: 1px solid var(--border-color);">
+                    <span class="text-secondary small">Return Number</span>
+                    <span class="fw-bold" style="color: var(--text-primary);">{{ return_invoice.return_number }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2" style="border-bottom: 1px solid var(--border-color);">
+                    <span class="text-secondary small">Customer</span>
+                    <span class="fw-semibold text-end" style="color: var(--text-primary); max-width: 60%;">{{ return_invoice.customer.name }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2" style="border-bottom: 1px solid var(--border-color);">
+                    <span class="text-secondary small">Original Invoice</span>
+                    <span class="fw-semibold" style="color: var(--text-primary);">{{ return_invoice.invoice.invoice_number }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-secondary small">Status</span>
+                    <span class="status-badge status-{{ return_invoice.status|lower }}">
+                        {{ return_invoice.get_status_display }}
+                    </span>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-label">Items to Return</div>
-                    <div class="summary-value" id="itemsToReturn">0</div>
+
+            <!-- Return Summary Sidebar Stats -->
+            <div class="form-card mb-3">
+                <h5 class="section-title mb-3">
+                    <i class="fas fa-chart-pie text-warning"></i> Return Summary
+                </h5>
+                
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2" style="border-bottom: 1px solid var(--border-color);">
+                    <span class="text-secondary small">Total Items</span>
+                    <span class="fw-bold" style="color: var(--text-primary); font-size: 1.05rem;" id="totalItems">{{ return_items|length }}</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2" style="border-bottom: 1px solid var(--border-color);">
+                    <span class="text-secondary small">Items to Return</span>
+                    <span class="fw-bold text-primary" style="font-size: 1.05rem;" id="itemsToReturn">0</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2" style="border-bottom: 1px solid var(--border-color);">
+                    <span class="text-secondary small">Original Amount</span>
+                    <span class="fw-semibold" style="color: var(--text-primary);" id="totalAmount">{{ return_invoice.invoice.amount|currency }}</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-secondary small">Refund Amount</span>
+                    <span class="fw-bold text-success" style="font-size: 1.1rem;" id="refundAmount">{{ return_invoice.refund_amount|currency }}</span>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-label">Original Invoice Amount</div>
-                    <div class="summary-value" id="totalAmount">{{ return_invoice.invoice.amount|currency }}</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-label">Refund Amount</div>
-                    <div class="summary-value" id="refundAmount">{{ return_invoice.refund_amount|currency }}</div>
-                </div>
-            </div>
-        </div>
-        <!-- Items Table -->
-        <div class="table-container">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th class="mobile-hide">Original Qty</th>
-                        <th>Return Qty</th>
-                        <th class="mobile-hide">Unit Price</th>
-                        <th>Total Amount</th>
-                        <th class="mobile-hide">Condition</th>
-                        <th class="mobile-hide">Return Reason</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in return_items %}
-                        <tr data-item-id="{{ item.id }}">
-                            <td>
-                                <div class="product-info">
-                                    <div class="product-name">{{ item.product_variant.product.name }}</div>
-                                    {% if item.product_variant.name %}<div class="product-variant">{{ item.product_variant.name }}</div>{% endif %}
-                                    {% if item.product_variant.barcode %}<div class="product-barcode">{{ item.product_variant.barcode }}</div>{% endif %}
-                                </div>
-                            </td>
-                            <td class="mobile-hide">
-                                <div class="quantity-display">{{ item.quantity_original }}</div>
-                            </td>
-                            <td>
-                                <div class="quantity-input-group">
-                                    <input type="number"
-                                           class="form-input quantity-input"
-                                           value="{{ item.quantity_returned }}"
-                                           min="0"
-                                           max="{{ item.quantity_original }}"
-                                           step="0.01"
-                                           data-item-id="{{ item.id }}"
-                                           data-original-qty="{{ item.quantity_original }}">
-                                </div>
-                            </td>
-                            <td class="mobile-hide">
-                                <div class="price-display">{{ item.unit_price|currency }}</div>
-                            </td>
-                            <td>
-                                <div class="amount-display" id="amount-{{ item.id }}">{{ item.total_amount|currency }}</div>
-                            </td>
-                            <td class="mobile-hide">
-                                <select class="form-select condition-select" data-item-id="{{ item.id }}">
-                                    {% for value, label in item_condition_choices %}
-                                        <option value="{{ value }}"
-                                                {% if item.condition == value %}selected{% endif %}>
-                                            {{ label }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                            <td class="mobile-hide">
-                                <select class="form-select reason-select" data-item-id="{{ item.id }}">
-                                    {% for value, label in item_return_reason_choices %}
-                                        <option value="{{ value }}"
-                                                {% if item.return_reason == value %}selected{% endif %}>
-                                            {{ label }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button type="button"
-                                            class="btn-action btn-update"
-                                            data-item-id="{{ item.id }}"
-                                            title="Update Item">
-                                        <i class="fas fa-sync"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="8" class="text-center p-3">
-                                <div class="empty-state">
-                                    <i class="fas fa-box-open"></i>
-                                    <h4>No Items Found</h4>
-                                    <p>This return invoice has no items to manage.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <!-- Action Buttons -->
-        <div class="form-actions mt-4">
-            <button type="button" class="btn btn-primary" id="updateAllBtn">
-                <i class="fas fa-save"></i>
-                Update All Items
-            </button>
-            <button type="button" class="btn btn-secondary" id="resetAllBtn">
-                <i class="fas fa-undo"></i>
-                Reset All
-            </button>
-            <button type="button" class="btn btn-success" id="submitReturnBtn">
-                <i class="fas fa-check-circle"></i>
-                Submit Return
-            </button>
-            <a href="{% url 'invoice:return_home' %}" class="btn btn-secondary">
-                <i class="fas fa-times"></i>
-                Cancel
-            </a>
+
         </div>
     </div>
 {% endblock content %}
@@ -277,32 +273,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update individual item
     function updateItem(itemId) {
-        // Check if item has changes before updating
-        if (!hasItemChanged(itemId)) {
-            showMessage('No changes detected for this item', 'info');
-            return;
-        }
-        
         const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
         if (!row) {
             console.error(`Row not found for item ID: ${itemId}`);
             return;
         }
-        
+
+        // Check if item has changes before updating
+        if (!hasItemChanged(itemId)) {
+            showMessage('No changes detected for this item', 'info');
+            return;
+        }
+
         const quantityInput = row.querySelector('.quantity-input');
         const conditionSelect = row.querySelector('.condition-select');
         const reasonSelect = row.querySelector('.reason-select');
-        
+        const btn = row.querySelector('.btn-update');
+        const productNameEl = row.querySelector('.product-name');
+        const productName = productNameEl ? productNameEl.textContent.trim() : 'item';
+
         if (!quantityInput || !conditionSelect || !reasonSelect) {
             console.error(`Required elements not found for item ID: ${itemId}`);
             return;
         }
-        
+
+        const originalBtnHtml = btn ? btn.innerHTML : '<i class="fas fa-save"></i>';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+
         const formData = new FormData();
         formData.append('quantity_returned', quantityInput.value);
         formData.append('condition', conditionSelect.value);
         formData.append('return_reason', reasonSelect.value);
-        
+
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
         if (csrfToken) {
             formData.append('csrfmiddlewaretoken', csrfToken.value);
@@ -317,43 +322,73 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 // Update amount display
                 document.getElementById(`amount-${itemId}`).textContent = `${parseFloat(data.item_total).toFixed(2)}`;
-                
-                // Update refund amount (total amount stays as original invoice amount)
+
+                // Update refund amount
                 document.getElementById('refundAmount').textContent = `${parseFloat(data.refund_amount).toFixed(2)}`;
-                
+
                 // Update items to return count
                 updateItemsToReturnCount();
-                
+
                 // Update original values to reflect current state
                 originalValues.set(itemId, {
                     quantity: quantityInput.value,
                     condition: conditionSelect.value,
                     reason: reasonSelect.value
                 });
-                
-                // Show success message
-                showMessage('Item updated successfully!', 'success');
+
+                if (btn) {
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                }
+
+                row.classList.add('row-updated-success');
+                setTimeout(() => {
+                    row.classList.remove('row-updated-success');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalBtnHtml;
+                    }
+                }, 1500);
+
+                showMessage(`Quantity updated to ${quantityInput.value} for "${productName}"`, 'success');
             } else {
-                showMessage(data.error || 'Error updating item', 'error');
+                if (btn) {
+                    btn.innerHTML = '<i class="fas fa-times"></i>';
+                }
+                row.classList.add('row-updated-error');
+                setTimeout(() => {
+                    row.classList.remove('row-updated-error');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalBtnHtml;
+                    }
+                }, 2000);
+
+                showMessage(data.error || `Failed to update quantity for "${productName}"`, 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showMessage('Error updating item', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnHtml;
+            }
+            row.classList.add('row-updated-error');
+            setTimeout(() => row.classList.remove('row-updated-error'), 2000);
+            showMessage(`Error updating quantity for "${productName}"`, 'error');
         });
     }
 
     // Update all items
     async function updateAllItems() {
         const changedItems = getChangedItems();
-        
+
         if (changedItems.length === 0) {
             showMessage('No changes detected in any items', 'info');
             return;
         }
-        
+
         const promises = changedItems.map(itemId => updateItemAsync(itemId));
-        
+
         try {
             await Promise.all(promises);
             showMessage(`${changedItems.length} items updated successfully!`, 'success');
@@ -362,7 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showMessage('Some items failed to update', 'error');
         }
     }
-    
+
     // Async version of updateItem for Promise.all
     async function updateItemAsync(itemId) {
         return new Promise((resolve, reject) => {
@@ -371,27 +406,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 resolve({ success: true, skipped: true });
                 return;
             }
-            
+
             const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
             if (!row) {
                 reject(new Error(`Row not found for item ID: ${itemId}`));
                 return;
             }
-            
+
             const quantityInput = row.querySelector('.quantity-input');
             const conditionSelect = row.querySelector('.condition-select');
             const reasonSelect = row.querySelector('.reason-select');
-            
+            const btn = row.querySelector('.btn-update');
+            const productNameEl = row.querySelector('.product-name');
+            const productName = productNameEl ? productNameEl.textContent.trim() : 'item';
+
             if (!quantityInput || !conditionSelect || !reasonSelect) {
                 reject(new Error(`Required elements not found for item ID: ${itemId}`));
                 return;
             }
-            
+
+            const originalBtnHtml = btn ? btn.innerHTML : '<i class="fas fa-save"></i>';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
+
             const formData = new FormData();
             formData.append('quantity_returned', quantityInput.value);
             formData.append('condition', conditionSelect.value);
             formData.append('return_reason', reasonSelect.value);
-            
+
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
             if (csrfToken) {
                 formData.append('csrfmiddlewaretoken', csrfToken.value);
@@ -404,35 +448,61 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Update amount display
                     const amountElement = document.getElementById(`amount-${itemId}`);
                     if (amountElement) {
                         amountElement.textContent = `${parseFloat(data.item_total).toFixed(2)}`;
                     }
-                    
-                    // Update refund amount (total amount stays as original invoice amount)
+
                     const refundAmountElement = document.getElementById('refundAmount');
-                    
                     if (refundAmountElement) {
                         refundAmountElement.textContent = `${parseFloat(data.refund_amount).toFixed(2)}`;
                     }
-                    
-                    // Update original values to reflect current state
+
                     originalValues.set(itemId, {
                         quantity: quantityInput.value,
                         condition: conditionSelect.value,
                         reason: reasonSelect.value
                     });
-                    
+
+                    if (btn) {
+                        btn.innerHTML = '<i class="fas fa-check"></i>';
+                    }
+                    row.classList.add('row-updated-success');
+                    setTimeout(() => {
+                        row.classList.remove('row-updated-success');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = originalBtnHtml;
+                        }
+                    }, 1500);
+
                     resolve(data);
                 } else {
-                    showMessage(data.error || 'Error updating item', 'error');
+                    if (btn) {
+                        btn.innerHTML = '<i class="fas fa-times"></i>';
+                    }
+                    row.classList.add('row-updated-error');
+                    setTimeout(() => {
+                        row.classList.remove('row-updated-error');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = originalBtnHtml;
+                        }
+                    }, 2000);
+
+                    showMessage(data.error || `Failed to update quantity for "${productName}"`, 'error');
                     reject(new Error(data.error || 'Error updating item'));
                 }
             })
             .catch(error => {
                 console.error('Error updating item:', error);
-                showMessage('Error updating item', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnHtml;
+                }
+                row.classList.add('row-updated-error');
+                setTimeout(() => row.classList.remove('row-updated-error'), 2000);
+                showMessage(`Error updating quantity for "${productName}"`, 'error');
                 reject(error);
             });
         });
@@ -561,6 +631,16 @@ document.addEventListener('DOMContentLoaded', function() {
     quantityInputs.forEach(input => {
         input.addEventListener('input', function() {
             updateItemsToReturnCount();
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const itemId = this.getAttribute('data-item-id');
+                if (itemId) {
+                    updateItem(itemId);
+                }
+            }
         });
     });
 
@@ -693,6 +773,14 @@ document.addEventListener('DOMContentLoaded', function() {
         transform: translateX(0);
         opacity: 1;
     }
+}
+.row-updated-success {
+    background-color: rgba(25, 135, 84, 0.15) !important;
+    transition: background-color 0.3s ease;
+}
+.row-updated-error {
+    background-color: rgba(220, 53, 69, 0.15) !important;
+    transition: background-color 0.3s ease;
 }
     </style>
 {% endblock extra_js %}

@@ -42,13 +42,19 @@
     <div class="table-container">
         <table class="data-table" id="data_table" data-sort="">
             <thead>
-                <tr>
+                <!-- Desktop Header -->
+                <tr class="mobile-hide">
                     <th class="sortable" data-sort="timestamp">Date</th>
                     <th class="sortable" data-sort="user">User</th>
                     <th class="sortable" data-sort="view_name">View Name</th>
                     <th class="sortable" data-sort="required_roles">Required Roles</th>
                     <th class="sortable" data-sort="ip_address">IP Address</th>
                     <th class="sortable" data-sort="url_path">URL Path</th>
+                </tr>
+                <!-- Mobile Header (<768px) -->
+                <tr class="mobile-table-row">
+                    <th class="sortable" data-sort="view_name">View & User</th>
+                    <th>URL & Roles</th>
                 </tr>
             </thead>
             <tbody id="tableBody">

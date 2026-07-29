@@ -67,6 +67,11 @@ class APIToken(models.Model):
                 raise ValidationError({"allowed_ips": f"'{ip_str}' is not a valid IP address."})
         self.allowed_ips = cleaned_ips
 
+    def save(self, *args, **kwargs):
+        self.name = StringProcessor(self.name).toTitle()
+        self.purpose = StringProcessor(self.purpose).toTitle()
+        super().save(*args, **kwargs)
+
     @classmethod
     def generate(cls, name, purpose, expires_at, created_by, allowed_ips=None):
         raw_token = secrets.token_hex(32)

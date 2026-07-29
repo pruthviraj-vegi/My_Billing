@@ -67,7 +67,9 @@
                     </a>
                 {% endif %}
                 {% if perms.invoice.delete_invoice %}
-                    <a href="{% url 'invoice:delete' invoice.id %}" class="btn btn-danger">
+                    <a href="{% url 'invoice:delete' invoice.id %}"
+                       class="btn btn-danger"
+                       onclick="return confirm('⚠️ WARNING: Are you sure you want to delete Invoice #{{ invoice.invoice_number|escapejs }}?\n\nThis action cannot be undone and will permanently delete this invoice.');">
                         <i class="fas fa-trash"></i>
                         Delete Invoice
                     </a>
