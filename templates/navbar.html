@@ -52,13 +52,11 @@
             <a href="{% url 'invoice:search_invoices_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'search_invoices_home' %}active{% endif %}">Search
                Invoices</a>
-            <div class="dropdown-divider"></div>
             {% endif %}
             {% if perms.invoice.view_audittable %}
             <a href="{% url 'invoice:audit_home' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'invoices_audit' %}active{% endif %}">Invoices
                Audit</a>
-            <div class="dropdown-divider"></div>
             {% endif %}
             {% if perms.invoice.view_returninvoice %}
             <a href="{% url 'invoice:return_home' %}"
@@ -93,6 +91,7 @@
                class="dropdown-item {% if request.resolver_match.url_name == 'variant_home' %}active{% endif %}">All
                Variants</a>
             {% endif %}
+            <div class="dropdown-divider"></div>
             {% if perms.inventory.view_supplier_invoice %}
             <a href="{% url 'inventory:supplier_invoice' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'supplier_invoice' %}active{% endif %}">Supplier
@@ -101,6 +100,11 @@
             {% if perms.inventory.view_low_stock %}
             <a href="{% url 'inventory:low_stock' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'low_stock' %}active{% endif %}">Low
+               Stock</a>
+            {% endif %}
+            {% if perms.inventory.view_productvariant %}
+            <a href="{% url 'inventory:damaged_stock' %}"
+               class="dropdown-item {% if request.resolver_match.url_name == 'damaged_stock' %}active{% endif %}">Damaged
                Stock</a>
             {% endif %}
             {% if perms.inventory.change_productvariant %}

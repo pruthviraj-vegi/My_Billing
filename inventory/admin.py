@@ -11,12 +11,13 @@ from .models import (
     Category,
     ClothType,
     Color,
-    Size,
+    DamagedItemRecord,
     GSTHsnCode,
+    InventoryLog,
     Product,
     ProductVariant,
+    Size,
     VariantMedia,
-    InventoryLog,
 )
 
 
@@ -448,3 +449,14 @@ def get_inventory_stats():
         "recent_sales": abs(recent_sales),
         "recent_stock_in": recent_stock_in,
     }
+
+
+@admin.register(DamagedItemRecord)
+class DamagedItemRecordAdmin(admin.ModelAdmin):
+    list_display = [
+        "id", "variant", "quantity", "reason", "status",
+        "supplier", "credit_amount", "created_at",
+    ]
+    list_filter = ["status", "reason", "supplier", "created_at"]
+    search_fields = ["variant__full_name", "variant__barcode", "supplier__name"]
+    readonly_fields = ["created_at", "updated_at", "resolved_at"]

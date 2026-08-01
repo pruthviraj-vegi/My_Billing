@@ -45,6 +45,11 @@ urlpatterns = [
         views_variant.DamageCreate.as_view(),
         name="damage_create",
     ),
+    path(
+        "operations/damage/resolve/<int:record_id>/",
+        views_variant.DamageResolveView.as_view(),
+        name="damage_resolve",
+    ),
     # Media Management
     path(
         "<int:variant_id>/media/upload/",

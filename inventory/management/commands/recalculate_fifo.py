@@ -35,6 +35,8 @@ STOCK_IN_TYPES = {
 # Transaction types that consume from the FIFO queue
 STOCK_OUT_TYPES = {
     InventoryLog.TransactionTypes.SALE,
+    InventoryLog.TransactionTypes.DAMAGE,
+    InventoryLog.TransactionTypes.ADJUSTMENT_OUT,
 }
 
 # Transaction types where cancellation reverses a previous sale
@@ -225,6 +227,30 @@ class Command(BaseCommand):
             qty_change = log.quantity_change  # positive for in, negative for out
 
             if tx_type in STOCK_IN_TYPES:
+                if tx_type == InventoryLog.TransactionTypes.INITIAL and variant.quantity >= 0:
+                    other_logs = [l for l in all_logs if l.id != log.id]
+                    if other_logs:
+                        stock_out_total = Decimal("0")
+                        stock_in_total = Decimal("0")
+                        for l in other_logs:
+                            if l.transaction_type in STOCK_OUT_TYPES:
+                                stock_out_total += abs(l.quantity_change)
+                            elif (
+                                l.transaction_type in STOCK_IN_TYPES
+                                or l.transaction_type in CANCEL_TYPES
+                                or l.transaction_type == InventoryLog.TransactionTypes.ADJUSTMENT_IN
+                            ):
+                                stock_in_total += abs(l.quantity_change)
+
+                        calc_initial = variant.quantity + stock_out_total - stock_in_total
+                        if calc_initial >= 0:
+                            qty_change = calc_initial
+                            if log.quantity_change != calc_initial:
+                                log.quantity_change = calc_initial
+                                log.total_value = calc_initial * (log.purchase_price or Decimal("0"))
+                                if log not in logs_to_save:
+                                    logs_to_save.append(log)
+
                 stock_qty = abs(qty_change)
                 running_quantity += stock_qty
 
@@ -384,12 +410,6 @@ class Command(BaseCommand):
 
             elif tx_type == InventoryLog.TransactionTypes.ADJUSTMENT_IN:
                 running_quantity += abs(qty_change)
-
-            elif tx_type == InventoryLog.TransactionTypes.ADJUSTMENT_OUT:
-                running_quantity -= abs(qty_change)
-
-            elif tx_type == InventoryLog.TransactionTypes.DAMAGE:
-                running_quantity -= abs(qty_change)
 
             # Update new_quantity on every log
             old_new_qty = log.new_quantity

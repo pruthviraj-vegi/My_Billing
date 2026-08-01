@@ -870,3 +870,108 @@ class BarcodeMapping(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class DamagedItemRecord(SoftDeleteModel):
+    """Records damaged items with lifecycle tracking: pending, returned, written off, or repaired.
+
+    Each record tracks a single damage incident for a product variant,
+    including resolution status, linked supplier/invoice, and financial impact.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending Resolution"
+        RETURNED = "RETURNED", "Returned to Supplier"
+        WRITTEN_OFF = "WRITTEN_OFF", "Written Off (Loss)"
+        REPAIRED = "REPAIRED", "Repaired & Restored"
+
+    class DamageReason(models.TextChoices):
+        GENERAL = "GENERAL", "General"
+        EXPIRED = "EXPIRED", "Expired"
+        BROKEN = "BROKEN", "Broken / Unusable"
+        TRANSIT = "TRANSIT", "Transit Damage"
+        WATER = "WATER", "Water Damage"
+        MANUFACTURING = "MANUFACTURING", "Manufacturing Defect"
+        OTHER = "OTHER", "Other"
+
+    variant = models.ForeignKey(
+        "ProductVariant",
+        on_delete=models.CASCADE,
+        related_name="damaged_records",
+    )
+    supplier = models.ForeignKey(
+        "supplier.Supplier",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="damaged_records",
+        help_text="Supplier from whom the damaged goods were purchased",
+    )
+    supplier_invoice = models.ForeignKey(
+        "supplier.SupplierInvoice",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="damaged_records",
+    )
+    quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    reason = models.CharField(
+        max_length=30,
+        choices=DamageReason.choices,
+        default=DamageReason.GENERAL,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    notes = models.TextField(blank=True, null=True)
+
+    # Resolution details
+    resolution_notes = models.TextField(blank=True, null=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="damaged_resolved",
+    )
+    repair_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    credit_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0"),
+        help_text="Credit received from supplier for returned items",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="damaged_created",
+    )
+
+    def __str__(self):
+        return (
+            f"{self.variant.full_name} — "
+            f"{self.quantity} units [{self.get_status_display()}]"
+        )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["variant"]),
+            models.Index(fields=["supplier"]),
+            models.Index(fields=["created_at"]),
+        ]

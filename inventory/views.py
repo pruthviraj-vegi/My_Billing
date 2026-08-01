@@ -371,6 +371,108 @@ def low_stock_page(request):
     return render(request, "inventory/low_stock.html", context)
 
 
+@required_permission("inventory.view_productvariant")
+def damaged_stock_page(request):
+    """Shell page for Damaged Stock management with summary stat cards and filters."""
+    from django.db.models import Q, Sum
+    from inventory.models import DamagedItemRecord
+    from supplier.models import Supplier
+
+    all_active = DamagedItemRecord.objects.filter(is_deleted=False)
+    total_records = all_active.count()
+    pending_count = all_active.filter(status=DamagedItemRecord.Status.PENDING).count()
+    returned_count = all_active.filter(status=DamagedItemRecord.Status.RETURNED).count()
+    repaired_count = all_active.filter(status=DamagedItemRecord.Status.REPAIRED).count()
+    written_off_count = all_active.filter(status=DamagedItemRecord.Status.WRITTEN_OFF).count()
+
+    total_units_damaged = (
+        all_active.aggregate(sum=Sum("quantity"))["sum"] or Decimal("0")
+    )
+
+    total_damaged_value = sum(
+        (rec.quantity * (rec.variant.purchase_price or Decimal("0")))
+        for rec in all_active.filter(status=DamagedItemRecord.Status.PENDING)
+    )
+
+    suppliers = Supplier.objects.filter(is_deleted=False).order_by("name")
+
+    context = {
+        "suppliers": suppliers,
+        "total_records": total_records,
+        "pending_count": pending_count,
+        "returned_count": returned_count,
+        "repaired_count": repaired_count,
+        "written_off_count": written_off_count,
+        "total_units_damaged": total_units_damaged,
+        "total_damaged_value": total_damaged_value,
+        "title": "Damaged Stock Management",
+        "status_choices": DamagedItemRecord.Status.choices,
+    }
+
+    return render(request, "inventory/damaged_stock.html", context)
+
+
+@required_permission("inventory.view_productvariant")
+def damaged_stock_fetch(request):
+    """AJAX endpoint powering Damaged Stock table with searching, filtering, and sorting."""
+    from django.db.models import Q
+    from inventory.models import DamagedItemRecord
+
+    status_filter = request.GET.get("status", "PENDING").strip()
+    search_query = request.GET.get("search", "").strip()
+    supplier_filter = request.GET.get("supplier", "").strip()
+
+    records = (
+        DamagedItemRecord.objects.filter(is_deleted=False)
+        .select_related(
+            "variant",
+            "variant__product",
+            "variant__size",
+            "variant__color",
+            "supplier",
+            "supplier_invoice",
+        )
+    )
+
+    if status_filter and status_filter != "ALL":
+        records = records.filter(status=status_filter)
+
+    if search_query:
+        words = search_query.split()
+        q_filters = Q()
+        for word in words:
+            q_filters |= (
+                Q(variant__product__brand__icontains=word)
+                | Q(variant__product__name__icontains=word)
+                | Q(variant__barcode__icontains=word)
+                | Q(supplier__name__icontains=word)
+                | Q(supplier_invoice__invoice_number__icontains=word)
+            )
+        records = records.filter(q_filters)
+
+    if supplier_filter and supplier_filter.isdigit():
+        records = records.filter(supplier_id=int(supplier_filter))
+
+    sort_mapping = {
+        "id": "id",
+        "created_at": "created_at",
+        "quantity": "quantity",
+        "status": "status",
+        "variant": "variant__product__name",
+        "supplier": "supplier__name",
+    }
+    valid_sorts = table_sorting(request, sort_mapping, "-created_at")
+    records = records.order_by(*valid_sorts)
+
+    return render_paginated_response(
+        request,
+        records,
+        "inventory/damaged_stock_fetch.html",
+        per_page=20,
+    )
+
+
+
 class CreateProduct(RequiredPermissionMixin, View):
     """View to handle product creation."""
 

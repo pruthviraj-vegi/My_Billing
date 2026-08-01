@@ -1,6 +1,7 @@
 """Forms for the Inventory app."""
 
 import logging
+from decimal import Decimal
 
 from django import forms
 
@@ -8,6 +9,7 @@ from .models import (
     Category,
     ClothType,
     Color,
+    DamagedItemRecord,
     GSTHsnCode,
     InventoryLog,
     Product,
@@ -17,6 +19,7 @@ from .models import (
     UOM,
     VariantMedia,
 )
+from supplier.models import Supplier
 
 logger = logging.getLogger(__name__)
 
@@ -977,6 +980,171 @@ class DamageForm(InventoryAdjustmentForm):
     def __init__(self, *args, **kwargs):
         kwargs["adjustment_type"] = "damage"
         super().__init__(*args, **kwargs)
+
+
+class DamageResolveForm(forms.Form):
+    """Unified form for resolving a pending damaged record.
+
+    Supports three resolution types via a dropdown:
+    - RETURNED: Return to supplier (requires supplier, optional invoice)
+    - WRITTEN_OFF: Write off as loss (notes only)
+    - REPAIRED: Repair & restore to stock (optional repair cost)
+    """
+
+    RESOLUTION_CHOICES = [
+        ("", "— Select Resolution Type —"),
+        ("RETURNED", "Return to Supplier"),
+        ("WRITTEN_OFF", "Write Off (Loss)"),
+        ("REPAIRED", "Repair & Restore"),
+    ]
+
+    resolution_type = forms.ChoiceField(
+        choices=RESOLUTION_CHOICES,
+        required=True,
+        label="Resolution Type",
+        widget=forms.Select(attrs={"class": "form-input", "id": "id_resolution_type"}),
+    )
+    supplier = forms.ModelChoiceField(
+        queryset=Supplier.objects.filter(is_deleted=False),
+        required=False,
+        label="Supplier",
+    )
+    supplier_invoice = forms.ModelChoiceField(
+        queryset=SupplierInvoice.objects.none(),
+        required=False,
+        label="Supplier Invoice",
+        help_text="Optional: link to the original purchase invoice",
+    )
+    repair_cost = forms.DecimalField(
+        min_value=Decimal("0"),
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        initial=0,
+        label="Repair Cost",
+        help_text="Optional: total cost of repair",
+    )
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 3, "class": "form-input"}),
+        required=False,
+        label="Resolution Notes",
+    )
+
+    def __init__(self, *args, record=None, **kwargs):
+        self.damage_record = record
+        super().__init__(*args, **kwargs)
+
+        # Style widgets
+        self.fields["supplier"].widget.attrs["class"] = "form-input"
+        self.fields["supplier_invoice"].widget.attrs["class"] = "form-input"
+        self.fields["repair_cost"].widget.attrs["class"] = "form-input"
+
+        if record and record.variant:
+            variant = record.variant
+            from inventory.models import InventoryLog
+
+            # 1. Identify suppliers who have supplied this variant (via InventoryLog or DamagedItemRecord)
+            supplier_ids = list(
+                InventoryLog.objects.filter(
+                    variant=variant,
+                    supplier_invoice__supplier__isnull=False,
+                )
+                .values_list("supplier_invoice__supplier_id", flat=True)
+                .distinct()
+            )
+
+            if record.supplier_id and record.supplier_id not in supplier_ids:
+                supplier_ids.append(record.supplier_id)
+            if (
+                record.supplier_invoice
+                and record.supplier_invoice.supplier_id
+                and record.supplier_invoice.supplier_id not in supplier_ids
+            ):
+                supplier_ids.append(record.supplier_invoice.supplier_id)
+
+            if supplier_ids:
+                supplier_qs = Supplier.objects.filter(
+                    id__in=supplier_ids, is_deleted=False
+                )
+            else:
+                supplier_qs = Supplier.objects.filter(is_deleted=False)
+
+            self.fields["supplier"].queryset = supplier_qs
+
+            # 2. Determine target supplier and filter supplier_invoice queryset
+            target_supplier = record.supplier or (
+                record.supplier_invoice.supplier if record.supplier_invoice else None
+            )
+
+            if not target_supplier and supplier_qs.count() == 1:
+                target_supplier = supplier_qs.first()
+
+            if target_supplier:
+                self.fields["supplier"].initial = target_supplier
+                inv_qs = SupplierInvoice.objects.filter(
+                    supplier=target_supplier, is_deleted=False
+                )
+                variant_inv_qs = inv_qs.filter(
+                    inventory_logs__variant=variant
+                ).distinct()
+                self.fields["supplier_invoice"].queryset = (
+                    variant_inv_qs if variant_inv_qs.exists() else inv_qs
+                )
+            else:
+                variant_inv_qs = SupplierInvoice.objects.filter(
+                    is_deleted=False, inventory_logs__variant=variant
+                ).distinct()
+                self.fields["supplier_invoice"].queryset = (
+                    variant_inv_qs
+                    if variant_inv_qs.exists()
+                    else SupplierInvoice.objects.filter(is_deleted=False)
+                )
+
+            if record.supplier_invoice:
+                self.fields["supplier_invoice"].initial = record.supplier_invoice
+
+    def clean(self):
+        cleaned_data = super().clean()
+        resolution_type = cleaned_data.get("resolution_type")
+        supplier = cleaned_data.get("supplier")
+        supplier_invoice = cleaned_data.get("supplier_invoice")
+
+        if not resolution_type:
+            raise forms.ValidationError("Please select a resolution type.")
+
+        if resolution_type == "RETURNED":
+            if not supplier:
+                self.add_error("supplier", "Supplier is required when returning items to a supplier.")
+
+            if supplier_invoice:
+                # Backend validation: Invoice must belong to the selected supplier
+                if supplier_invoice.supplier != supplier:
+                    self.add_error(
+                        "supplier_invoice",
+                        f"The selected invoice '{supplier_invoice.invoice_number}' does not belong to supplier '{supplier.name}'."
+                    )
+                # Backend validation: Invoice must contain the variant being resolved
+                if self.damage_record and self.damage_record.variant:
+                    variant = self.damage_record.variant
+                    has_supplied = supplier_invoice.inventory_logs.filter(variant=variant).exists()
+                    if not has_supplied:
+                        self.add_error(
+                            "supplier_invoice",
+                            f"The selected invoice does not contain stock for variant '{variant.full_name}'."
+                        )
+
+        elif resolution_type == "WRITTEN_OFF":
+            # Sanitize data on backend: ignore supplier / invoice / repair_cost for write offs
+            cleaned_data["supplier"] = None
+            cleaned_data["supplier_invoice"] = None
+            cleaned_data["repair_cost"] = None
+
+        elif resolution_type == "REPAIRED":
+            # Sanitize data on backend: ignore supplier / invoice for repairs
+            cleaned_data["supplier"] = None
+            cleaned_data["supplier_invoice"] = None
+
+        return cleaned_data
 
 
 class VariantMediaForm(forms.ModelForm):

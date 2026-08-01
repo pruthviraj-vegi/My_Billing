@@ -12,7 +12,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST
-from django.views.generic import CreateView, UpdateView
+from django.views.generic import CreateView, FormView, UpdateView
 
 from base.decorators import RequiredPermissionMixin, required_permission
 from base.utility import render_paginated_response, table_sorting
@@ -22,6 +22,7 @@ from inventory.forms import (
     AdjustmentOutForm,
     ColorForm,
     DamageForm,
+    DamageResolveForm,
     SizeForm,
     StockInForm,
     VariantForm,
@@ -30,13 +31,14 @@ from inventory.forms import (
 from inventory.models import (
     Category,
     Color,
+    DamagedItemRecord,
     InventoryLog,
     Product,
     ProductVariant,
     Size,
     VariantMedia,
 )
-from inventory.services import InventoryService
+from inventory.services import DamageResolutionService, InventoryService
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +218,11 @@ def variant_details(request, variant_id):
         "stock_stats": stock_stats,
         "media_files": media_files,
         "media_form": VariantMediaForm(),
+        "suggestions": DamageResolutionService.suggest_resolution(variant),
+        "pending_damage_records": variant.damaged_records.filter(
+            status=DamagedItemRecord.Status.PENDING,
+            is_deleted=False,
+        ),
     }
 
     return render(request, "inventory/product_variant/details.html", context)
@@ -477,11 +484,16 @@ class EditProductVariant(RequiredPermissionMixin, UpdateView):
                 variant.save()
 
                 supplier_invoice = form.cleaned_data.get("supplier_invoice")
+                # Only pass supplier_invoice when user explicitly selected one;
+                # omit kwarg to use sentinel default and preserve existing link
+                update_kwargs = {}
+                if supplier_invoice is not None:
+                    update_kwargs["supplier_invoice"] = supplier_invoice
                 InventoryService.update_initial_log(
                     variant,
                     self.request.user,
                     "Initial stock",
-                    supplier_invoice=supplier_invoice,
+                    **update_kwargs,
                 )
 
             messages.success(self.request, "Product variant updated successfully")
@@ -915,6 +927,90 @@ class DamageCreate(RequiredPermissionMixin, CreateView):
         logger.error("Form invalid: %s", form.errors)
         messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
+
+
+class DamageResolveView(RequiredPermissionMixin, FormView):
+    """Unified view for resolving pending damage records.
+
+    Replaces the three separate views (DamageReturnView, DamageWriteOffView,
+    DamageRepairView) with a single view + dropdown for resolution type.
+    """
+
+    required_permission = "inventory.add_inventorylog"
+    template_name = "inventory/product_variant/inventory_operation_form.html"
+    form_class = DamageResolveForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        self.record = get_object_or_404(
+            DamagedItemRecord, id=self.kwargs["record_id"], is_deleted=False
+        )
+        kwargs["record"] = self.record
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["title"] = "Resolve Damaged Items"
+        ctx["operation_type"] = "damage_resolve"
+        ctx["selected_variant"] = self.record.variant
+        ctx["damage_record"] = self.record
+        return ctx
+
+    def form_valid(self, form):
+        resolution_type = form.cleaned_data["resolution_type"]
+
+        try:
+            if resolution_type == "RETURNED":
+                DamageResolutionService.return_to_supplier(
+                    record=self.record,
+                    supplier=form.cleaned_data["supplier"],
+                    user=self.request.user,
+                    notes=form.cleaned_data.get("notes", ""),
+                    supplier_invoice=form.cleaned_data.get("supplier_invoice"),
+                )
+                messages.success(
+                    self.request,
+                    f"Returned {self.record.quantity} units of "
+                    f"{self.record.variant.full_name} to supplier "
+                    f"{form.cleaned_data['supplier'].name}.",
+                )
+
+            elif resolution_type == "WRITTEN_OFF":
+                DamageResolutionService.write_off(
+                    record=self.record,
+                    user=self.request.user,
+                    notes=form.cleaned_data.get("notes", ""),
+                )
+                loss = self.record.quantity * (
+                    self.record.variant.purchase_price or Decimal("0.01")
+                )
+                messages.success(
+                    self.request,
+                    f"Written off {self.record.quantity} units "
+                    f"(loss: ₹{loss:,.2f}).",
+                )
+
+            elif resolution_type == "REPAIRED":
+                result = DamageResolutionService.repair(
+                    record=self.record,
+                    user=self.request.user,
+                    notes=form.cleaned_data.get("notes", ""),
+                    repair_cost=form.cleaned_data.get("repair_cost"),
+                )
+                messages.success(
+                    self.request,
+                    f"Repaired {self.record.quantity} units. "
+                    f"Available stock: {result.variant.quantity}.",
+                )
+
+            return redirect(
+                "inventory_variant:details",
+                variant_id=self.record.variant.id,
+            )
+        except Exception as e:
+            logger.error("Error resolving damaged items: %s", e)
+            messages.error(self.request, f"Error: {e}")
+            return self.form_invalid(form)
 
 
 # ========================================
