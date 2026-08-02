@@ -987,7 +987,7 @@ class DamageResolveView(RequiredPermissionMixin, FormView):
                 messages.success(
                     self.request,
                     f"Written off {self.record.quantity} units "
-                    f"(loss: ₹{loss:,.2f}).",
+                    f"(loss: {loss:,.2f}).",
                 )
 
             elif resolution_type == "REPAIRED":

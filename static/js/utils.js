@@ -21,13 +21,13 @@ function debounce(func, wait = 300) {
 }
 
 /**
- * Formats a numeric value into a currency string formatted for Indian Rupees (₹).
+ * Formats a numeric value into a formatted number string (Indian locale standard).
+ * Per project rules, no currency symbol (₹) is generated.
  */
-function formatCurrency(amount, locale = 'en-IN', currency = 'INR') {
+function formatCurrency(amount, locale = 'en-IN') {
   const numericAmount = parseFloat(amount) || 0;
   return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currency,
+    style: 'decimal',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numericAmount);

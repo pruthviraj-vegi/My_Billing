@@ -275,16 +275,16 @@ class CustomerAdmin(admin.ModelAdmin):
     def add_credit_to_selected(self, request, queryset):
         """Add credit to selected customers."""
         # This would typically open a form to input the amount
-        # For now, we'll add a fixed amount of ₹100
+        # For now, we'll add a fixed amount of 100
         for customer in queryset:
             customer.add_credit(100)
         self.message_user(
             request,
-            f"Successfully added ₹100 credit to {queryset.count()} customer(s).",
+            f"Successfully added 100 credit to {queryset.count()} customer(s).",
             level="SUCCESS",
         )
 
-    add_credit_to_selected.short_description = "Add ₹100 credit to selected customers"
+    add_credit_to_selected.short_description = "Add 100 credit to selected customers"
 
     def export_customer_data(self, request, queryset):
         """Export customer data (placeholder for CSV export)."""

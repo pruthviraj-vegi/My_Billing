@@ -535,8 +535,8 @@
     }
     
     function updateTotals() {
-      // Helper function to safely parse formatted numbers (e.g. "1,000.00")
-      const parseNumber = (val) => parseFloat(val.toString().replace(/,/g, '')) || 0;
+      // Helper function to safely parse numbers
+      const parseNumber = (val) => parseFloat(val ? val.toString().replace(/[^\d.-]/g, '') : '') || 0;
 
       const subTotal = parseNumber(subTotalInput.value);
       const cgst = parseNumber(cgstInput.value);
@@ -555,8 +555,8 @@
     }
     
     function autoCalculateGST() {
-      // Clean subtotal of commas before calculating
-      const subTotal = parseFloat(subTotalInput.value.toString().replace(/,/g, '')) || 0;
+      // Clean subtotal before calculating
+      const subTotal = parseFloat(subTotalInput.value ? subTotalInput.value.toString().replace(/[^\d.-]/g, '') : '') || 0;
       const invoiceType = invoiceTypeSelect.value
       const gstType = gstTypeSelect.value
     
@@ -631,7 +631,7 @@
       document.getElementById('invoiceForm').addEventListener('submit', function(e) {
         ;[subTotalInput, cgstInput, igstInput, adjustmentInput].forEach(function(input) {
           if (input && input.value) {
-            input.value = input.value.toString().replace(/,/g, '');
+            input.value = input.value.toString().replace(/[^\d.-]/g, '');
           }
         });
       });

@@ -66,7 +66,7 @@
                     <h3>
                         <i class="fas fa-receipt"></i> GST Invoices
                         <span class="manager-count" id="gstCount">{{ gst_invoices.count }}</span>
-                        <span class="manager-badge manager-badge-primary" id="gstTotal">₹{{ gst_total|floatformat:0 }}</span>
+                        <span class="manager-badge manager-badge-primary" id="gstTotal">{{ gst_total|floatformat:0 }}</span>
                     </h3>
                 </div>
                 <div class="table-container">
@@ -83,7 +83,7 @@
                     <h3>
                         <i class="fas fa-money-bill-wave"></i> Cash Invoices
                         <span class="manager-count" id="cashCount">{{ cash_invoices.count }}</span>
-                        <span class="manager-badge manager-badge-success" id="cashTotal">₹{{ cash_total|floatformat:0 }}</span>
+                        <span class="manager-badge manager-badge-success" id="cashTotal">{{ cash_total|floatformat:0 }}</span>
                     </h3>
                 </div>
                 <div class="table-container">
@@ -504,7 +504,7 @@
                     <div class="item-description" title="${item.customer_name}">${item.customer_name}</div>
                     <div class="item-date">${item.invoice_date}</div>
                 </div>
-                <div class="item-amount">₹${formattedAmount}</div>
+                <div class="item-amount">${formattedAmount}</div>
             </div>
             <button class="move-btn" onclick="toggleItem(${item.id})" title="Move to ${item.current === 'gst' ? 'Cash' : 'GST'}">
                 <i class="fas fa-arrow-${item.current === 'gst' ? 'right' : 'left'}"></i>
@@ -628,8 +628,8 @@
             .filter(item => item.current === 'cash')
             .reduce((sum, item) => sum + item.amount, 0);
 
-        document.getElementById('gstTotal').textContent = `₹${gstTotal.toLocaleString('en-IN')}`;
-        document.getElementById('cashTotal').textContent = `₹${cashTotal.toLocaleString('en-IN')}`;
+        document.getElementById('gstTotal').textContent = `${gstTotal.toLocaleString('en-IN')}`;
+        document.getElementById('cashTotal').textContent = `${cashTotal.toLocaleString('en-IN')}`;
     }
 
     /**

@@ -226,7 +226,7 @@
 
     document.getElementById("variant-hsn").textContent = v.hsn_code || "—";
     document.getElementById("variant-gst").textContent = v.gst_percentage ? v.gst_percentage + "%" : "—";
-    document.getElementById("variant-purchase-price").textContent = "₹" + parseFloat(v.purchase_price).toLocaleString("en-IN");
+    document.getElementById("variant-purchase-price").textContent = parseFloat(v.purchase_price).toLocaleString("en-IN");
 
     // Stock with colour coding
     const stockEl = document.getElementById("variant-stock");
@@ -273,9 +273,9 @@
       finalPrice = mrp * (1 - discount / 100);
     }
 
-    document.getElementById("current-mrp").textContent = "₹" + mrp.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+    document.getElementById("current-mrp").textContent = mrp.toLocaleString("en-IN", { minimumFractionDigits: 2 });
     document.getElementById("current-discount").textContent = discount + "%";
-    document.getElementById("final-price").textContent = "₹" + finalPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+    document.getElementById("final-price").textContent = finalPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 });
   }
 
   mrpField.addEventListener("input", updatePriceSummary);
@@ -336,7 +336,7 @@
             '<span class="summary-label">' +
             '<i class="fas fa-check-circle text-success"></i> ' +
             currentVariant.product_name + '</span>' +
-            '<span class="summary-value">₹' +
+            '<span class="summary-value">' +
             parseFloat(resp.variant.mrp).toLocaleString("en-IN") +
             ' <span class="text-secondary small">(' + now + ')</span></span>' +
             '</div>' + updateHistoryList.innerHTML;

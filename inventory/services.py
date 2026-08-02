@@ -733,7 +733,7 @@ class InventoryService:
             if inventory_log.purchase_price and inventory_log.purchase_price > 0:
                 if variant and variant.purchase_price == inventory_log.purchase_price:
                     score += 10
-                    reasons.append(f"Purchase price match (₹{inventory_log.purchase_price:.2f})")
+                    reasons.append(f"Purchase price match ({inventory_log.purchase_price:.2f})")
 
             confidence_score = min(99 if score < 100 else 100, max(15, score))
 
@@ -1028,13 +1028,13 @@ class DamageResolutionService:
                 "action": "return_supplier",
                 "priority": 1,
                 "reasoning": (
-                    f"High value item (₹{price:,.0f}) with "
+                    f"High value item ({price:,.0f}) with "
                     f"{damage_pct:.0f}% damage — "
                     "supplier may accept return for credit."
                 ),
                 "financial_impact": (
                     f"Potential credit: "
-                    f"₹{variant.damaged_quantity * price:,.0f}"
+                    f"{variant.damaged_quantity * price:,.0f}"
                 ),
             })
 
@@ -1043,7 +1043,7 @@ class DamageResolutionService:
                 "action": "repair",
                 "priority": 2,
                 "reasoning": (
-                    f"Item at ₹{price:,.0f} with {damage_pct:.0f}% damage — "
+                    f"Item at {price:,.0f} with {damage_pct:.0f}% damage — "
                     "repair may be cost-effective."
                 ),
                 "financial_impact": (
@@ -1060,7 +1060,7 @@ class DamageResolutionService:
             ),
             "financial_impact": (
                 f"Loss: "
-                f"₹{variant.damaged_quantity * (price or Decimal('0.01')):,.0f}"
+                f"{variant.damaged_quantity * (price or Decimal('0.01')):,.0f}"
             ),
         })
 

@@ -613,10 +613,10 @@
         modalPricingBlock.innerHTML =
             '<div class="gm-pricing-block">' +
                 '<div class="gm-mrp-row">' +
-                    '<span class="gm-mrp">₹' + selNum.toLocaleString('en-IN') + '</span>' +
+                    '<span class="gm-mrp">' + selNum.toLocaleString('en-IN') + '</span>' +
                     '<div class="gm-badges">' + discountBadge + stockBadge + '</div>' +
                 '</div>' +
-                (mrpNum > selNum ? '<div class="gm-purchase">Original MRP <strong style="text-decoration:line-through;">₹' + mrpNum.toLocaleString('en-IN') + '</strong> &nbsp;&middot;&nbsp; You save ₹' + savings.toLocaleString('en-IN') + '</div>' : '') +
+                (mrpNum > selNum ? '<div class="gm-purchase">Original MRP <strong style="text-decoration:line-through;">' + mrpNum.toLocaleString('en-IN') + '</strong> &nbsp;&middot;&nbsp; You save ' + savings.toLocaleString('en-IN') + '</div>' : '') +
             '</div>';
 
         var detailCells = '';

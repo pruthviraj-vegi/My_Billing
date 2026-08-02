@@ -53,7 +53,7 @@
         </div>
         <div class="detail-row">
           <div class="detail-label">Amount:</div>
-          <div class="detail-value">₹{{ payment.amount|currency }}</div>
+          <div class="detail-value">{{ payment.amount|currency }}</div>
           <div class="detail-label">Payment Method:</div>
           <div class="detail-value">{{ payment.get_method_display }}</div>
         </div>
@@ -68,12 +68,12 @@
             <div class="detail-label">Transaction ID:</div>
             <div class="detail-value">{{ payment.transaction_id }}</div>
             <div class="detail-label">Unallocated Amount:</div>
-            <div class="detail-value">₹{{ payment.unallocated_amount|currency }}</div>
+            <div class="detail-value">{{ payment.unallocated_amount|currency }}</div>
           </div>
         {% else %}
           <div class="detail-row">
             <div class="detail-label">Unallocated Amount:</div>
-            <div class="detail-value">₹{{ payment.unallocated_amount|currency }}</div>
+            <div class="detail-value">{{ payment.unallocated_amount|currency }}</div>
             <div class="detail-label">Created:</div>
             <div class="detail-value">{{ payment.created_at|date:'F j, Y' }}</div>
           </div>

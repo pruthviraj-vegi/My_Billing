@@ -59,7 +59,7 @@
             }
 
             palette.doughnutStrokes = lightShades;
-            palette.doughnutFills = lightShades.map(function(h) { return fade(h); });
+            palette.doughnutFills = lightShades.map(function (h) { return fade(h); });
 
             return palette;
         },
@@ -203,7 +203,7 @@
             const cPctEl = donutWrap ? donutWrap.querySelector('.center-pct') : null;
             const cValEl = donutWrap ? donutWrap.querySelector('.center-val') : null;
 
-            const formattedTotal = '₹' + totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const formattedTotal = totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             // Update center with total initially
             if (cLabelEl) cLabelEl.textContent = 'total value';
@@ -258,7 +258,7 @@
                     }
                     if (cLabelEl) cLabelEl.textContent = item[keys.label];
                     if (cPctEl) cPctEl.textContent = pct + '%';
-                    if (cValEl) cValEl.textContent = '₹' + (item[keys.amount] || 0).toLocaleString('en-IN');
+                    if (cValEl) cValEl.textContent = (item[keys.amount] || 0).toLocaleString('en-IN');
                 }
             }
 

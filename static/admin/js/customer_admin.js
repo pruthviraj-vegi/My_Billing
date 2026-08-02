@@ -223,7 +223,7 @@ function addBulkActionConfirmations() {
                     confirmMessage = `Are you sure you want to reset credit balance for ${selectedRows.length} customer(s)?`;
                     break;
                 case 'add_credit_to_selected':
-                    confirmMessage = `Are you sure you want to add ₹100 credit to ${selectedRows.length} customer(s)?`;
+                    confirmMessage = `Are you sure you want to add 100 credit to ${selectedRows.length} customer(s)?`;
                     break;
                 case 'export_customer_data':
                     confirmMessage = `Are you sure you want to export data for ${selectedRows.length} customer(s)?`;

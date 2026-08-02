@@ -59,9 +59,9 @@
                     <span class="info-label">Amount:</span>
                     <span class="info-value">
                         {% if transaction.is_debit %}
-                            <span class="text-danger">-₹{{ transaction.amount|floatformat:2 }}</span>
+                            <span class="text-danger">-{{ transaction.amount|floatformat:2 }}</span>
                         {% else %}
-                            <span class="text-success">+₹{{ transaction.amount|floatformat:2 }}</span>
+                            <span class="text-success">+{{ transaction.amount|floatformat:2 }}</span>
                         {% endif %}
                     </span>
                 </div>
