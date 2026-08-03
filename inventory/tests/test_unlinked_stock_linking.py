@@ -132,24 +132,8 @@ class UnlinkedStockLinkingTestCase(TestCase):
         self.assertEqual(self.sale_log.supplier_invoice, self.invoice_recent)
         self.assertEqual(self.sale_log.purchase_price, Decimal("550.00"))
 
-    def test_link_supplier_invoice_ajax_endpoint(self):
-        url = "/inventory/unlinked-stock/link/"
-        response = self.client.post(
-            url,
-            data={
-                "log_id": self.initial_log.id,
-                "invoice_id": self.invoice_recent.id,
-                "purchase_price": "550.00",
-            },
-            content_type="application/json",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        json_resp = response.json()
-        self.assertEqual(json_resp["status"], "success")
-
-        self.initial_log.refresh_from_db()
-        self.assertEqual(self.initial_log.supplier_invoice, self.invoice_recent)
+    # The /inventory/unlinked-stock/link/ endpoint was removed when unlinked stock log UI was removed.
+    # Service logic is tested via test_link_supplier_invoice_and_propagation.
 
 
 class AutoRepairUnlinkedLogsTestCase(TestCase):

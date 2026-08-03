@@ -149,14 +149,17 @@ def fetch_credits(request):
 def get_opening_balance(customer, start_date=None):
     """Calculate opening balance without loops using ORM aggregation."""
 
+    invoice_qs = Invoice.objects.filter(
+        customer=customer,
+        payment_type=Invoice.PaymentType.CREDIT,
+        is_cancelled=False,
+    )
+    if start_date is not None:
+        invoice_qs = invoice_qs.filter(invoice_date__lt=start_date)
+
     # 1️⃣ CREDIT INVOICES NET AMOUNT
     invoice_net = (
-        Invoice.objects.filter(
-            customer=customer,
-            payment_type=Invoice.PaymentType.CREDIT,
-            is_cancelled=False,
-            invoice_date__lt=start_date,
-        )
+        invoice_qs
         .annotate(
             net_amount=Coalesce(F("amount"), Decimal(0))
             - Coalesce(F("discount_amount"), Decimal(0))
@@ -165,12 +168,13 @@ def get_opening_balance(customer, start_date=None):
         .aggregate(total=Coalesce(Sum("net_amount"), Decimal(0)))["total"]
     )
 
+    payment_qs = Payment.objects.filter(customer=customer)
+    if start_date is not None:
+        payment_qs = payment_qs.filter(payment_date__lt=start_date)
+
     # 2️⃣ PAYMENT BALANCE (credit - debit)
     payment_balance = (
-        Payment.objects.filter(
-            customer=customer,
-            payment_date__lt=start_date,
-        )
+        payment_qs
         .annotate(
             credit=Case(
                 When(

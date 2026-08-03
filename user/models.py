@@ -72,7 +72,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
 
         self.first_name = StringProcessor(self.first_name).toTitle()
         self.last_name = StringProcessor(self.last_name).toTitle()
-        self.email = StringProcessor(self.email).toLowercase()
+        processed_email = StringProcessor(self.email).toLowercase()
+        self.email = processed_email if processed_email else None
         self.address = StringProcessor(self.address).toTitle()
 
         # Save first to get pk if it doesn't exist (for new instances)

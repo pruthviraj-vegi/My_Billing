@@ -1,9 +1,12 @@
 from datetime import timedelta
 from django.test import TestCase
 from django.utils import timezone
+from django.contrib.contenttypes.models import ContentType
 
 from customer.models import Customer
 from notification.models import MessageLog, MessageStatusChoices
+from notification.services import notify
+from Billing.tests.helpers import create_test_user
 
 
 class MessageLogStaleCleanupTestCase(TestCase):
@@ -61,3 +64,70 @@ class MessageLogStaleCleanupTestCase(TestCase):
         in_flight = MessageLog.is_duplicate_in_flight(self.customer, "balance")
         self.assertTrue(in_flight)
 
+
+class NotifyTests(TestCase):
+    """Tests for the notify() function."""
+
+    def setUp(self):
+        self.user = create_test_user(phone_number="9999999001")
+
+    def test_notify_creates_notification(self):
+        notification = notify(
+            user=self.user,
+            notification_type="test_type",
+            title="Test Title",
+            message="Test message body",
+        )
+        self.assertEqual(notification.user, self.user)
+        self.assertEqual(notification.notification_type, "test_type")
+        self.assertEqual(notification.title, "Test Title")
+        self.assertEqual(notification.message, "Test message body")
+        self.assertFalse(notification.is_read)
+        self.assertIsNone(notification.content_type)
+        self.assertIsNone(notification.object_id)
+
+    def test_notify_with_action_fields(self):
+        notification = notify(
+            user=self.user,
+            notification_type="pdf_ready",
+            title="PDF Ready",
+            message="Your PDF is ready.",
+            action_label="Download",
+            action_url="/download/123",
+        )
+        self.assertEqual(notification.action_label, "Download")
+        self.assertEqual(notification.action_url, "/download/123")
+
+    def test_notify_with_linked_object(self):
+        notification = notify(
+            user=self.user,
+            notification_type="low_stock",
+            title="Low Stock",
+            message="Stock is low.",
+            linked_object=self.user,
+        )
+        self.assertIsNotNone(notification.content_type)
+        self.assertIsNotNone(notification.object_id)
+        ct = ContentType.objects.get_for_model(self.user)
+        self.assertEqual(notification.content_type, ct)
+        self.assertEqual(notification.object_id, self.user.pk)
+
+    def test_notify_without_linked_object(self):
+        notification = notify(
+            user=self.user,
+            notification_type="system",
+            title="System Alert",
+            message="Something happened.",
+        )
+        self.assertIsNone(notification.content_type)
+        self.assertIsNone(notification.object_id)
+
+    def test_notify_default_empty_strings_for_action(self):
+        notification = notify(
+            user=self.user,
+            notification_type="test",
+            title="Test",
+            message="Test",
+        )
+        self.assertEqual(notification.action_label, "")
+        self.assertEqual(notification.action_url, "")

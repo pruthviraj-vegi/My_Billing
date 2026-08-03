@@ -1,8 +1,10 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from customer.models import Customer, CustomerCreditSummary
 from notification.models import MessageLog, MessageStatusChoices, Notification
@@ -28,9 +30,6 @@ class ReportStatementsTests(TestCase):
         )
 
     def test_balance_requires_login(self):
-        """
-        Verify that send_balance endpoint requires authentication.
-        """
         response = self.client.get(
             reverse("report:send_balance", kwargs={"pk": self.customer.pk})
         )
@@ -38,9 +37,6 @@ class ReportStatementsTests(TestCase):
 
     @patch("report.statements.send_customer_message_task.delay")
     def test_balance_queues_task_and_creates_log(self, mock_delay):
-        """
-        Verify that send_balance creates a MessageLog and queues a Celery task on commit.
-        """
         summary, _ = CustomerCreditSummary.objects.get_or_create(customer=self.customer)
         summary.balance_amount = 250.50
         summary.save()
@@ -59,19 +55,14 @@ class ReportStatementsTests(TestCase):
 
         mock_delay.assert_called_once()
 
-        # Check MessageLog creation
         log = MessageLog.objects.get(id=data["log_id"])
         self.assertEqual(log.customer, self.customer)
         self.assertEqual(log.message_type, "balance")
 
     @patch("report.statements.send_customer_message_task.delay")
     def test_balance_prevents_duplicate_sending(self, mock_delay):
-        """
-        Verify duplicate send attempts while a task is pending/processing are blocked.
-        """
         self.client.login(phone_number="1234567890", password="testpassword")
 
-        # First request
         with self.captureOnCommitCallbacks(execute=True):
             res1 = self.client.get(
                 reverse("report:send_balance", kwargs={"pk": self.customer.pk})
@@ -79,21 +70,16 @@ class ReportStatementsTests(TestCase):
         self.assertTrue(res1.json()["success"])
         self.assertEqual(mock_delay.call_count, 1)
 
-        # Duplicate request immediately following
         with self.captureOnCommitCallbacks(execute=True):
             res2 = self.client.get(
                 reverse("report:send_balance", kwargs={"pk": self.customer.pk})
             )
         self.assertFalse(res2.json()["success"])
         self.assertIn("already in progress or was sent recently", res2.json()["message"])
-        self.assertEqual(mock_delay.call_count, 1)  # Still 1 call
+        self.assertEqual(mock_delay.call_count, 1)
 
     @patch("notification.tasks.send_template")
     def test_send_customer_message_task_executes_successfully(self, mock_send_template):
-        """
-        Verify that send_customer_message_task calls send_template, updates status to SENT,
-        and creates a Notification.
-        """
         mock_send_template.return_value = {"success": True}
 
         log = MessageLog.objects.create(
@@ -108,17 +94,12 @@ class ReportStatementsTests(TestCase):
         log.refresh_from_db()
         self.assertEqual(log.status, MessageStatusChoices.SENT)
 
-        # Verify system notification was generated
         notif = Notification.objects.filter(user=self.user).first()
         self.assertIsNotNone(notif)
         self.assertIn("Balance Sent Successfully", notif.title)
 
     @patch("report.statements.send_customer_message_task.delay")
     def test_broker_down_marks_log_as_failed(self, mock_delay):
-        """
-        Verify that if broker (Redis/Celery) raises an exception on .delay(),
-        the MessageLog status is updated to FAILED with error detail on commit.
-        """
         mock_delay.side_effect = Exception("Connection to Redis refused")
 
         self.client.login(phone_number="1234567890", password="testpassword")
@@ -136,10 +117,6 @@ class ReportStatementsTests(TestCase):
 
     @patch("notification.tasks.send_template")
     def test_task_failure_marks_log_failed_and_notifies(self, mock_send_template):
-        """
-        Verify that when task encounters non-retryable failure (retries exhausted),
-        log status is set to FAILED and a failure Notification is delivered to user.
-        """
         mock_send_template.return_value = {"success": False, "detail": "Invalid phone number"}
 
         log = MessageLog.objects.create(
@@ -149,14 +126,12 @@ class ReportStatementsTests(TestCase):
             phone_number=self.customer.phone_number,
         )
 
-        # Simulate retries exhausted (retries == max_retries)
         with patch.object(send_customer_message_task.request, "retries", 2):
             send_customer_message_task(log.id)
 
         log.refresh_from_db()
         self.assertEqual(log.status, MessageStatusChoices.FAILED)
 
-        # Verify failure notification created
         notif = Notification.objects.filter(user=self.user, notification_type="balance_failed").first()
         self.assertIsNotNone(notif)
         self.assertIn("Delivery Failed", notif.title)
@@ -164,9 +139,6 @@ class ReportStatementsTests(TestCase):
     @patch("notification.tasks.send_template")
     @patch("notification.tasks.generate_statement_pdf")
     def test_statement_message_type_execution(self, mock_pdf, mock_send_template):
-        """
-        Verify statement message type generates PDF and sends template.
-        """
         mock_pdf.return_value = {"url": "http://example.com/stmt.pdf", "filename": "stmt.pdf"}
         mock_send_template.return_value = {"success": True}
 
@@ -186,3 +158,109 @@ class ReportStatementsTests(TestCase):
         mock_send_template.assert_called_once()
 
 
+class PdfCleanupServiceTests(TestCase):
+    """Tests for PdfCleanupService.cleanup_stale_jobs() and .cleanup_old()."""
+
+    def setUp(self):
+        from report.models import PdfJob, StatusChoices
+        self.StatusChoices = StatusChoices
+        self.PdfJob = PdfJob
+        self.user = User.objects.create_user(
+            first_name="Cleanup",
+            phone_number="9999999991",
+            password="testpass123",
+        )
+
+    def test_cleanup_stale_marks_old_pending_as_failed(self):
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.PENDING,
+        )
+        self.PdfJob.objects.filter(id=job.id).update(
+            created_at=timezone.now() - timedelta(minutes=20)
+        )
+        from report.services import PdfCleanupService
+        count = PdfCleanupService.cleanup_stale_jobs(minutes=10)
+        self.assertEqual(count, 1)
+        job.refresh_from_db()
+        self.assertEqual(job.status, self.StatusChoices.FAILED)
+        self.assertIn("timed out", job.error_message)
+
+    def test_cleanup_stale_ignores_recent_jobs(self):
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.PENDING,
+        )
+        from report.services import PdfCleanupService
+        count = PdfCleanupService.cleanup_stale_jobs(minutes=30)
+        self.assertEqual(count, 0)
+        job.refresh_from_db()
+        self.assertEqual(job.status, self.StatusChoices.PENDING)
+
+    def test_cleanup_stale_marks_processing_as_failed(self):
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.PROCESSING,
+        )
+        self.PdfJob.objects.filter(id=job.id).update(
+            created_at=timezone.now() - timedelta(minutes=15)
+        )
+        from report.services import PdfCleanupService
+        count = PdfCleanupService.cleanup_stale_jobs(minutes=5)
+        self.assertEqual(count, 1)
+        job.refresh_from_db()
+        self.assertEqual(job.status, self.StatusChoices.FAILED)
+
+    def test_cleanup_stale_ignores_done_jobs(self):
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.DONE,
+        )
+        self.PdfJob.objects.filter(id=job.id).update(
+            created_at=timezone.now() - timedelta(minutes=20)
+        )
+        from report.services import PdfCleanupService
+        count = PdfCleanupService.cleanup_stale_jobs(minutes=10)
+        self.assertEqual(count, 0)
+
+    def test_cleanup_old_deletes_completed_jobs(self):
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.DONE,
+        )
+        self.PdfJob.objects.filter(id=job.id).update(
+            created_at=timezone.now() - timedelta(days=40)
+        )
+        from report.services import PdfCleanupService
+        count = PdfCleanupService.cleanup_old(days=30)
+        self.assertEqual(count, 1)
+        self.assertFalse(self.PdfJob.objects.filter(id=job.id).exists())
+
+    def test_cleanup_old_ignores_recent_completed(self):
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.DONE,
+        )
+        from report.services import PdfCleanupService
+        count = PdfCleanupService.cleanup_old(days=30)
+        self.assertEqual(count, 0)
+        self.assertTrue(self.PdfJob.objects.filter(id=job.id).exists())
+
+    def test_cleanup_old_deletes_failed_jobs(self):
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.FAILED,
+        )
+        self.PdfJob.objects.filter(id=job.id).update(
+            created_at=timezone.now() - timedelta(days=40)
+        )
+        from report.services import PdfCleanupService
+        count = PdfCleanupService.cleanup_old(days=30)
+        self.assertEqual(count, 1)

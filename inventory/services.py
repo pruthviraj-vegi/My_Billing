@@ -204,10 +204,10 @@ class InventoryService:
                 new_quantity = variant.quantity + quantity_change
                 variant.quantity = new_quantity
 
-                if purchase_price != variant.purchase_price:
+                if purchase_price is not None and purchase_price != variant.purchase_price:
                     variant.purchase_price = purchase_price
 
-                if mrp != variant.mrp:
+                if mrp is not None and mrp != variant.mrp:
                     variant.mrp = mrp
 
                 variant.save()
@@ -234,7 +234,7 @@ class InventoryService:
             return None
 
     @staticmethod
-    def sale(variant, quantity_sold, user=None, invoice_item="", notes=""):
+    def sale(variant, quantity_sold, user=None, invoice_item=None, notes=""):
         """Process a sale and automatically update inventory
 
         Args:
@@ -421,6 +421,8 @@ class InventoryService:
             if quantity_returned <= 0:
                 raise ValueError("Return quantity must be positive")
 
+            selling_price = invoice_item.unit_price if invoice_item else variant.final_price
+
             new_quantity = variant.quantity + quantity_returned
             variant.quantity = new_quantity
             variant.save()
@@ -439,14 +441,14 @@ class InventoryService:
             InventoryLog.objects.create(
                 variant=variant,
                 transaction_type=InventoryLog.TransactionTypes.RETURN,
-                quantity_change=quantity_returned,  # Positive for returns
+                quantity_change=quantity_returned,
                 invoice_item=invoice_item,
                 remaining_quantity=quantity_returned,
                 created_by=user,
                 new_quantity=new_quantity,
                 supplier_invoice=supplier_invoice,
-                selling_price=invoice_item.unit_price,
-                total_value=quantity_returned * invoice_item.unit_price,
+                selling_price=selling_price,
+                total_value=quantity_returned * selling_price,
                 purchase_price=variant.purchase_price,
                 notes=notes
                 or f"Customer return: {quantity_returned} units{f' for {invoice_item}' if invoice_item else ''}",
@@ -483,6 +485,8 @@ class InventoryService:
             if quantity_cancelled <= 0:
                 raise ValueError("Return quantity must be positive")
 
+            selling_price = invoice_item.unit_price if invoice_item else variant.final_price
+
             new_quantity = variant.quantity + quantity_cancelled
             variant.quantity = new_quantity
             variant.save()
@@ -507,11 +511,11 @@ class InventoryService:
                 created_by=user,
                 new_quantity=new_quantity,
                 supplier_invoice=supplier_invoice,
-                selling_price=invoice_item.unit_price,
-                total_value=quantity_cancelled * invoice_item.unit_price,
+                selling_price=selling_price,
+                total_value=quantity_cancelled * selling_price,
                 purchase_price=variant.purchase_price,
                 notes=notes
-                or f"Customer cancle: {quantity_cancelled} units{f' for {invoice_item}' if invoice_item else ''}",
+                or f"Customer cancel: {quantity_cancelled} units{f' for {invoice_item}' if invoice_item else ''}",
             )
 
             return {

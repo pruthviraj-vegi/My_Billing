@@ -134,7 +134,7 @@ class HomeView(TemplateView):
         return context
 
 
-def custom_404_view(request, _exception):
+def custom_404_view(request, exception=None):
     """
     Custom 404 error handler.
     Django error handlers must be function-based views that accept:
