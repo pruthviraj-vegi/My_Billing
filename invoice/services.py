@@ -3,6 +3,7 @@ Services for invoice cancellation and return invoice operations.
 """
 
 import logging
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
