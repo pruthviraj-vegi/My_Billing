@@ -32,6 +32,7 @@
   .logout-btn span {
     display: none;
   }
+
   .navbar {
     justify-content: flex-end;
   }
@@ -127,7 +128,7 @@
     /* Indent dropdown items */
   }
 
-  .nav-item.dropdown-open > .dropdown-menu {
+  .nav-item.dropdown-open>.dropdown-menu {
     display: block;
     /* Show when parent has .dropdown-open class */
   }
@@ -175,7 +176,8 @@
 
   /* Three-dots toggle button — injected by sidebar.js */
   .page-actions-toggle {
-    display: none; /* shown via .has-more */
+    display: none;
+    /* shown via .has-more */
     align-items: center;
     justify-content: center;
     width: 38px;
@@ -198,7 +200,7 @@
   }
 
   /* Show toggle when JS has collapsed buttons */
-  .page-actions.has-more > .page-actions-toggle {
+  .page-actions.has-more>.page-actions-toggle {
     display: flex !important;
   }
 
@@ -257,11 +259,24 @@
   /* ── Row action buttons: collapse >2 into three-dots on mobile ── */
   .action-buttons {
     position: relative;
+    display: inline-flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    white-space: nowrap !important;
+  }
+
+  /* Ensure cart update and delete buttons always stay side-by-side in a single row */
+  .data-table td .update-item-btn,
+  .data-table td .delete-item-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0 !important;
   }
 
   /* Hide 3rd+ buttons by default on mobile (before JS collapses them) */
-  .action-buttons > a.btn-action:nth-child(n+3),
-  .action-buttons > button.btn-action:nth-child(n+3) {
+  .action-buttons>a.btn-action:nth-child(n+3),
+  .action-buttons>button.btn-action:nth-child(n+3) {
     display: none;
   }
 
@@ -346,16 +361,18 @@
   }
 
   /* Search button: icon-only on mobile */
-  .search-filter-form > .btn {
+  .search-filter-form>.btn {
     padding: 0.5rem 0.65rem;
-    font-size: 0;       /* hide text */
+    font-size: 0;
+    /* hide text */
     gap: 0;
     flex-shrink: 0;
     min-width: auto;
   }
 
-  .search-filter-form > .btn > i {
-    font-size: 0.85rem; /* icon stays visible */
+  .search-filter-form>.btn>i {
+    font-size: 0.85rem;
+    /* icon stays visible */
   }
 
   /* Expand barcode suggestion dropdown to 100% width on mobile */
@@ -402,7 +419,7 @@
     margin-right: 0;
   }
 
-  .row > * {
+  .row>* {
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
@@ -528,9 +545,6 @@
     gap: var(--section-gap);
   }
 
-  .actions-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
 
   .welcome-title {
     font-size: 1.25rem;
@@ -539,6 +553,7 @@
   .welcome-subtitle {
     font-size: 0.85rem;
   }
+
   .main-layout {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -589,6 +604,7 @@
     align-items: flex-start;
     gap: 0.75rem;
   }
+
   .form-row {
     grid-template-columns: 1fr;
     gap: 0.75rem;
@@ -615,9 +631,11 @@
   .invoice-details {
     padding: 1rem;
   }
+
   .payment-number strong {
     font-size: 13px;
   }
+
   .payment-details {
     padding: 15px;
   }
@@ -635,6 +653,7 @@
   .supplier-contact p {
     font-size: 13px;
   }
+
   .summary-grid {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -645,6 +664,26 @@
     gap: 10px;
   }
 
+  .cart-sidebar-actions {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+  }
+
+  .cart-sidebar-actions .cart-options-row {
+    flex: 0 0 auto;
+    padding: 0.25rem 0.5rem !important;
+  }
+
+  .cart-sidebar-actions .submit-cart-btn {
+    flex: 0 0 auto;
+    margin: 0 !important;
+    padding: 0.3rem 0.75rem !important;
+    font-size: 0.8rem !important;
+    height: 30px !important;
+  }
+
   .payment-summary {
     padding: 15px;
   }
@@ -653,6 +692,7 @@
   .impact-summary {
     padding: 15px;
   }
+
   .cart-summary {
     margin-top: 1rem;
     padding: 1rem;
@@ -679,6 +719,7 @@
     flex-direction: column;
     gap: 1rem;
   }
+
   .quantity-input,
   .price-input {
     width: 60px;
@@ -690,6 +731,7 @@
     padding: 0.25rem 0.375rem;
     font-size: 0.8rem;
   }
+
   .summary-cards-row {
     grid-template-columns: 1fr;
   }
@@ -717,6 +759,7 @@
     flex-direction: column;
     text-align: center;
   }
+
   .pagination-wrapper {
     flex-direction: column;
     gap: 1rem;
@@ -738,6 +781,7 @@
     padding: 0.375rem 0.5rem;
     font-size: 0.875rem;
   }
+
   .word-suggestion-item {
     padding: 0.4rem 0.75rem;
   }
@@ -753,6 +797,7 @@
   .word-suggestion-dropdown {
     max-height: 150px;
   }
+
   .calendar-wrapper .calendar {
     max-width: calc(100vw - 1rem);
     left: 50% !important;
@@ -1010,7 +1055,8 @@
   }
 
   .cal-range-bar-title {
-    display: none !important; /* Hide label on mobile to save vertical space */
+    display: none !important;
+    /* Hide label on mobile to save vertical space */
   }
 
   .cal-date-input-wrap {
@@ -1093,11 +1139,13 @@
   }
 
   .cell-dot-count {
-    display: none !important; /* Hide ratio text on mobile to avoid 1910/1 number clashing */
+    display: none !important;
+    /* Hide ratio text on mobile to avoid 1910/1 number clashing */
   }
 
   .cell-sales {
-    display: none !important; /* Hide currency amount string inside tiny mobile grid cell */
+    display: none !important;
+    /* Hide currency amount string inside tiny mobile grid cell */
   }
 
   .cell-status-indicators {
@@ -1164,6 +1212,7 @@
     min-width: 100%;
     width: 100%;
   }
+
   .color-preview-box {
     min-width: auto;
     width: 100%;
@@ -1175,6 +1224,7 @@
     width: 50px;
     height: 50px;
   }
+
   .comparison-chart-header {
     flex-direction: column;
     align-items: stretch;
@@ -1207,6 +1257,7 @@
   .summary-item {
     padding: 0.5rem;
   }
+
   .perf-dashboard {
     width: 100vw;
     right: -100vw;
@@ -1225,6 +1276,7 @@
     max-height: none !important;
   }
 }
+
 @media (max-width: 480px) {
   .topbar-right {
     gap: 0.125rem;
@@ -1238,6 +1290,7 @@
     height: 44px;
     font-size: 0.95rem;
   }
+
   .notification-panel {
     position: fixed;
     top: var(--topbar-height);
@@ -1253,6 +1306,7 @@
   .notification-panel::before {
     display: none;
   }
+
   .supplier-info-card {
     padding: 1rem;
   }
@@ -1260,6 +1314,7 @@
   .supplier-name h3 {
     font-size: 1.25rem;
   }
+
   .form-row {
     gap: 0.5rem;
   }
@@ -1271,6 +1326,7 @@
   .total-row.total-final {
     font-size: 1rem;
   }
+
   .comparison-chart-container {
     padding: 1rem;
   }
@@ -1289,6 +1345,7 @@
     min-width: auto;
   }
 }
+
 @media (max-width: 640px) {
   .data-table {
     min-width: unset;
@@ -1472,6 +1529,7 @@
     justify-content: center;
   }
 }
+
 @media (max-width: 1024px) {
   .tables-section {
     grid-template-columns: 1fr;
@@ -1490,6 +1548,7 @@
     grid-template-columns: 1fr 1fr 1fr;
   }
 }
+
 @media (max-width: 576px) {
   .modal-dialog {
     margin: 0.5rem;
@@ -1509,6 +1568,7 @@
 
 /* Mobile-only elements default hidden on desktop (>768px) */
 @media (min-width: 769px) {
+
   .mobile-show,
   .mobile-table-cell,
   .mobile-table-row {

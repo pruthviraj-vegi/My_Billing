@@ -8,296 +8,7 @@
         Cart Management
     {% endif %}
 {% endblock title %}
-{% block content %}
-    {% csrf_token %}
-    <div class="page-header">
-        <h2 class="page-title">Carts</h2>
-        <div class="cart-navigation">
-            <button type="button"
-                    class="nav-arrow nav-arrow-left"
-                    onclick="scrollCarts('left')"
-                    id="leftArrow">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <div class="cart-buttons-container" id="cartButtonsContainer">
-                {% for data in carts %}
-                    <a href="{% url 'cart:get_cart_data' data.id %}"
-                       class="btn cart-btn {% if data.id == cart.id %}btn-primary active-cart-btn{% else %}btn-secondary{% endif %}"
-                       data-cart-id="{{ data.id }}">
-                        {{ data.name }} - <span class="value" id="cart-button-total-{{ data.id }}">{{ data.total_amount|currency }}
-                        {% if data.advance_payment > 0 %}({{ data.advance_payment|currency }}){% endif %}
-                    </span>
-                </a>
-            {% endfor %}
-        </div>
-        <button type="button"
-                class="nav-arrow nav-arrow-right"
-                onclick="scrollCarts('right')"
-                id="rightArrow">
-            <i class="fas fa-chevron-right"></i>
-        </button>
-        <button type="button"
-                class="nav-arrow list-cart-btn"
-                onclick="toggleCartList()"
-                id="listCartBtn"
-                title="View all carts in list">
-            {{ carts|length }}
-            <i class="fas fa-list"></i>
-        </button>
-    </div>
-    <!-- Cart List Modal -->
-    <div class="cart-list-modal" id="cartListModal">
-        <div class="cart-list-overlay" onclick="toggleCartList()"></div>
-        <div class="cart-list-content">
-            <div class="cart-list-header">
-                <h3>All Carts - {{ carts|length }}</h3>
-                <button type="button" class="close-list-btn" onclick="toggleCartList()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="cart-list-search">
-                <div class="search-group search-expanded">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text"
-                           class="search-input"
-                           placeholder="Filter carts by name..."
-                           id="cartListSearch"
-                           autocomplete="off"
-                           spellcheck="false"
-                           autocorrect="off"
-                           autocapitalize="none">
-                </div>
-            </div>
-            <div class="cart-list-body">
-                <ul class="cart-list-items">
-                    {% for data in carts %}
-                        <li class="cart-list-item {% if data.id == cart.id %}active{% endif %}">
-                            <a href="{% url 'cart:get_cart_data' data.id %}" class="cart-list-link">
-                                <div class="cart-list-info">
-                                    <span class="cart-list-name">{{ data.name }}</span>
-                                    <span class="cart-list-amount" id="cart-list-total-{{ data.id }}">{{ data.total_amount|currency }}
-                                        {% if data.advance_payment > 0 %}({{ data.advance_payment|currency }}){% endif %}
-                                    </span>
-                                </div>
-                                {% if data.id == cart.id %}<i class="fas fa-check-circle"></i>{% endif %}
-                            </a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
-    </div>
-    <div class="page-actions">
-        {% if perms.cart.add_cart %}
-            <a href="{% url 'cart:auto_cart_create' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                New Cart
-            </a>
-        {% endif %}
-    </div>
-</div>
-<!-- Breadcrumb Navigation -->
-<nav class="breadcrumb breadcrumb-right">
-    <a href="#" class="breadcrumb-item">Carts</a>
-    <span class="breadcrumb-separator">/</span>
-    <span class="breadcrumb-active">Cart Details</span>
-    <span class="breadcrumb-separator">/</span>
-    <span class="breadcrumb-active">{{ cart.created_at|timesince }} ago</span>
-</nav>
-{% if cart %}
-    {% include "cart/models/cart.html" %}
-{% else %}
-    <div class="empty-state">
-        <i class="fas fa-shopping-cart"></i>
-        <h4>No Cart Selected</h4>
-        <p>Please select a cart from the buttons above or create a new one to start adding items.</p>
-    </div>
-{% endif %}
-{% endblock content %}
-{% block extra_js %}
-    <script>
-    function scrollCarts(direction) {
-        const container = document.getElementById('cartButtonsContainer');
-        const scrollAmount = 200; // pixels to scroll
-        
-        if (direction === 'left') {
-            container.scrollLeft -= scrollAmount;
-        } else {
-            container.scrollLeft += scrollAmount;
-        }
-        
-        // Update arrow visibility after scroll
-        updateArrowVisibility();
-    }
-    
-    function updateArrowVisibility() {
-        const container = document.getElementById('cartButtonsContainer');
-        const leftArrow = document.getElementById('leftArrow');
-        const rightArrow = document.getElementById('rightArrow');
-        
-        // Show/hide left arrow
-        if (container.scrollLeft <= 0) {
-            leftArrow.style.opacity = '0.5';
-            leftArrow.style.pointerEvents = 'none';
-        } else {
-            leftArrow.style.opacity = '1';
-            leftArrow.style.pointerEvents = 'auto';
-        }
-        
-        // Show/hide right arrow
-        const maxScrollLeft = container.scrollWidth - container.clientWidth;
-        if (container.scrollLeft >= maxScrollLeft - 5) { // Small tolerance for floating point issues
-            rightArrow.style.opacity = '0.5';
-            rightArrow.style.pointerEvents = 'none';
-        } else {
-            rightArrow.style.opacity = '1';
-            rightArrow.style.pointerEvents = 'auto';
-        }
-        
-    }
-    
-    // Scroll to active cart button
-    function scrollToActiveCart() {
-        const container = document.getElementById('cartButtonsContainer');
-        const activeButton = container.querySelector('.btn-primary');
-        
-        if (activeButton) {
-            const containerRect = container.getBoundingClientRect();
-            const buttonRect = activeButton.getBoundingClientRect();
-            
-            // Calculate scroll position to center the active button
-            const scrollLeft = activeButton.offsetLeft - (container.clientWidth / 2) + (activeButton.clientWidth / 2);
-            
-            container.scrollTo({
-                left: Math.max(0, scrollLeft),
-                behavior: 'smooth'
-            });
-        }
-    }
-    
-    // Toggle cart list modal
-    function toggleCartList() {
-        const modal = document.getElementById('cartListModal');
-        if (modal) {
-            modal.classList.toggle('show');
-            if (modal.classList.contains('show')) {
-                document.body.style.overflow = 'hidden';
-                const searchInput = document.getElementById('cartListSearch');
-                if (searchInput) {
-                    searchInput.value = '';
-                    filterCartList();
-                    if (window.innerWidth > 768) {
-                        searchInput.focus();
-                    }
-                }
-                cartListSelectedIndex = -1;
-            } else {
-                document.body.style.overflow = '';
-            }
-        }
-    }
-
-    var cartListSelectedIndex = -1;
-
-    function getVisibleCartItems() {
-        return Array.from(document.querySelectorAll('.cart-list-item')).filter(
-            item => item.style.display !== 'none'
-        );
-    }
-
-    function highlightCartItem(index) {
-        getVisibleCartItems().forEach((item, i) => {
-            item.classList.toggle('keyboard-selected', i === index);
-        });
-    }
-
-    function navigateCartItem() {
-        const items = getVisibleCartItems();
-        if (cartListSelectedIndex >= 0 && cartListSelectedIndex < items.length) {
-            window.location.href = items[cartListSelectedIndex].querySelector('a').href;
-        }
-    }
-
-    function handleCartListKeydown(e) {
-        const items = getVisibleCartItems();
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            cartListSelectedIndex = Math.min(cartListSelectedIndex + 1, items.length - 1);
-            if (cartListSelectedIndex >= 0) {
-                items[cartListSelectedIndex].scrollIntoView({ block: 'nearest' });
-            }
-            highlightCartItem(cartListSelectedIndex);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            cartListSelectedIndex = Math.max(cartListSelectedIndex - 1, -1);
-            highlightCartItem(cartListSelectedIndex);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            navigateCartItem();
-        }
-    }
-
-    // Cart list search filter
-    function filterCartList() {
-        const query = document.getElementById('cartListSearch').value.toLowerCase().trim();
-        let visibleCount = 0;
-
-        document.querySelectorAll('.cart-list-item').forEach(item => {
-            const name = item.querySelector('.cart-list-name').textContent.toLowerCase();
-            const match = !query || name.includes(query);
-            item.style.display = match ? '' : 'none';
-            if (match) visibleCount++;
-        });
-
-        cartListSelectedIndex = -1;
-        highlightCartItem(-1);
-
-        const countEl = document.querySelector('.cart-list-header h3');
-        if (countEl) {
-            const total = document.querySelectorAll('.cart-list-item').length;
-            countEl.textContent = query
-                ? `Carts (${visibleCount} of ${total})`
-                : `All Carts - ${total}`;
-        }
-    }
-    
-    // Close modal on Escape key
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            const modal = document.getElementById('cartListModal');
-            if (modal && modal.classList.contains('show')) {
-                toggleCartList();
-            }
-        }
-    });
-    
-    // Initialize arrow visibility on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add delay to ensure container is fully rendered
-        setTimeout(() => {
-            // Scroll to active cart first
-            scrollToActiveCart();
-            
-            // Then update arrow visibility
-            setTimeout(() => {
-                updateArrowVisibility();
-                
-                // Update arrow visibility on scroll
-                const container = document.getElementById('cartButtonsContainer');
-                container.addEventListener('scroll', updateArrowVisibility);
-            }, 300);
-        }, 200);
-
-        // Wire up cart list search
-        const searchInput = document.getElementById('cartListSearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', filterCartList);
-            searchInput.addEventListener('keydown', handleCartListKeydown);
-        }
-    });
-    </script>
-    <!-- Load dependencies -->
-    <script src="{% static 'js/wordSuggestion.js' %}"></script>
+{% block extra_css %}
     <style>
     .cart-navigation {
         display: flex;
@@ -623,4 +334,295 @@
         }
     }
     </style>
+{% endblock extra_css %}
+{% block content %}
+    {% csrf_token %}
+    <div class="page-header">
+        <h2 class="page-title">Carts</h2>
+        <div class="cart-navigation">
+            <button type="button"
+                    class="nav-arrow nav-arrow-left"
+                    onclick="scrollCarts('left')"
+                    id="leftArrow">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="cart-buttons-container" id="cartButtonsContainer">
+                {% for data in carts %}
+                    <a href="{% url 'cart:get_cart_data' data.id %}"
+                       class="btn cart-btn {% if data.id == cart.id %}btn-primary active-cart-btn{% else %}btn-secondary{% endif %}"
+                       data-cart-id="{{ data.id }}">
+                        {{ data.name }} - <span class="value" id="cart-button-total-{{ data.id }}">{{ data.total_amount|currency }}
+                        {% if data.advance_payment > 0 %}({{ data.advance_payment|currency }}){% endif %}
+                    </span>
+                </a>
+            {% endfor %}
+        </div>
+        <button type="button"
+                class="nav-arrow nav-arrow-right"
+                onclick="scrollCarts('right')"
+                id="rightArrow">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <button type="button"
+                class="nav-arrow list-cart-btn"
+                onclick="toggleCartList()"
+                id="listCartBtn"
+                title="View all carts in list">
+            {{ carts|length }}
+            <i class="fas fa-list"></i>
+        </button>
+    </div>
+    <!-- Cart List Modal -->
+    <div class="cart-list-modal" id="cartListModal">
+        <div class="cart-list-overlay" onclick="toggleCartList()"></div>
+        <div class="cart-list-content">
+            <div class="cart-list-header">
+                <h3>All Carts - {{ carts|length }}</h3>
+                <button type="button" class="close-list-btn" onclick="toggleCartList()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="cart-list-search">
+                <div class="search-group search-expanded">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text"
+                           class="search-input"
+                           placeholder="Filter carts by name..."
+                           id="cartListSearch"
+                           autocomplete="off"
+                           spellcheck="false"
+                           autocorrect="off"
+                           autocapitalize="none">
+                </div>
+            </div>
+            <div class="cart-list-body">
+                <ul class="cart-list-items">
+                    {% for data in carts %}
+                        <li class="cart-list-item {% if data.id == cart.id %}active{% endif %}">
+                            <a href="{% url 'cart:get_cart_data' data.id %}" class="cart-list-link">
+                                <div class="cart-list-info">
+                                    <span class="cart-list-name">{{ data.name }}</span>
+                                    <span class="cart-list-amount" id="cart-list-total-{{ data.id }}">{{ data.total_amount|currency }}
+                                        {% if data.advance_payment > 0 %}({{ data.advance_payment|currency }}){% endif %}
+                                    </span>
+                                </div>
+                                {% if data.id == cart.id %}<i class="fas fa-check-circle"></i>{% endif %}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="page-actions">
+        {% if perms.cart.add_cart %}
+            <a href="{% url 'cart:auto_cart_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                New Cart
+            </a>
+        {% endif %}
+    </div>
+</div>
+<!-- Breadcrumb Navigation -->
+<nav class="breadcrumb breadcrumb-right">
+    <a href="#" class="breadcrumb-item">Carts</a>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">Cart Details</span>
+    <span class="breadcrumb-separator">/</span>
+    <span class="breadcrumb-active">{{ cart.created_at|timesince }} ago</span>
+</nav>
+{% if cart %}
+    {% include "cart/models/cart.html" %}
+{% else %}
+    <div class="empty-state">
+        <i class="fas fa-shopping-cart"></i>
+        <h4>No Cart Selected</h4>
+        <p>Please select a cart from the buttons above or create a new one to start adding items.</p>
+    </div>
+{% endif %}
+{% endblock content %}
+{% block extra_js %}
+    <script>
+    function scrollCarts(direction) {
+        const container = document.getElementById('cartButtonsContainer');
+        const scrollAmount = 200; // pixels to scroll
+        
+        if (direction === 'left') {
+            container.scrollLeft -= scrollAmount;
+        } else {
+            container.scrollLeft += scrollAmount;
+        }
+        
+        // Update arrow visibility after scroll
+        updateArrowVisibility();
+    }
+    
+    function updateArrowVisibility() {
+        const container = document.getElementById('cartButtonsContainer');
+        const leftArrow = document.getElementById('leftArrow');
+        const rightArrow = document.getElementById('rightArrow');
+        
+        // Show/hide left arrow
+        if (container.scrollLeft <= 0) {
+            leftArrow.style.opacity = '0.5';
+            leftArrow.style.pointerEvents = 'none';
+        } else {
+            leftArrow.style.opacity = '1';
+            leftArrow.style.pointerEvents = 'auto';
+        }
+        
+        // Show/hide right arrow
+        const maxScrollLeft = container.scrollWidth - container.clientWidth;
+        if (container.scrollLeft >= maxScrollLeft - 5) { // Small tolerance for floating point issues
+            rightArrow.style.opacity = '0.5';
+            rightArrow.style.pointerEvents = 'none';
+        } else {
+            rightArrow.style.opacity = '1';
+            rightArrow.style.pointerEvents = 'auto';
+        }
+        
+    }
+    
+    // Scroll to active cart button
+    function scrollToActiveCart() {
+        const container = document.getElementById('cartButtonsContainer');
+        const activeButton = container.querySelector('.btn-primary');
+        
+        if (activeButton) {
+            const containerRect = container.getBoundingClientRect();
+            const buttonRect = activeButton.getBoundingClientRect();
+            
+            // Calculate scroll position to center the active button
+            const scrollLeft = activeButton.offsetLeft - (container.clientWidth / 2) + (activeButton.clientWidth / 2);
+            
+            container.scrollTo({
+                left: Math.max(0, scrollLeft),
+                behavior: 'smooth'
+            });
+        }
+    }
+    
+    // Toggle cart list modal
+    function toggleCartList() {
+        const modal = document.getElementById('cartListModal');
+        if (modal) {
+            modal.classList.toggle('show');
+            if (modal.classList.contains('show')) {
+                document.body.style.overflow = 'hidden';
+                const searchInput = document.getElementById('cartListSearch');
+                if (searchInput) {
+                    searchInput.value = '';
+                    filterCartList();
+                    if (window.innerWidth > 768) {
+                        searchInput.focus();
+                    }
+                }
+                cartListSelectedIndex = -1;
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+    }
+
+    var cartListSelectedIndex = -1;
+
+    function getVisibleCartItems() {
+        return Array.from(document.querySelectorAll('.cart-list-item')).filter(
+            item => item.style.display !== 'none'
+        );
+    }
+
+    function highlightCartItem(index) {
+        getVisibleCartItems().forEach((item, i) => {
+            item.classList.toggle('keyboard-selected', i === index);
+        });
+    }
+
+    function navigateCartItem() {
+        const items = getVisibleCartItems();
+        if (cartListSelectedIndex >= 0 && cartListSelectedIndex < items.length) {
+            window.location.href = items[cartListSelectedIndex].querySelector('a').href;
+        }
+    }
+
+    function handleCartListKeydown(e) {
+        const items = getVisibleCartItems();
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            cartListSelectedIndex = Math.min(cartListSelectedIndex + 1, items.length - 1);
+            if (cartListSelectedIndex >= 0) {
+                items[cartListSelectedIndex].scrollIntoView({ block: 'nearest' });
+            }
+            highlightCartItem(cartListSelectedIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            cartListSelectedIndex = Math.max(cartListSelectedIndex - 1, -1);
+            highlightCartItem(cartListSelectedIndex);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            navigateCartItem();
+        }
+    }
+
+    // Cart list search filter
+    function filterCartList() {
+        const query = document.getElementById('cartListSearch').value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        document.querySelectorAll('.cart-list-item').forEach(item => {
+            const name = item.querySelector('.cart-list-name').textContent.toLowerCase();
+            const match = !query || name.includes(query);
+            item.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+
+        cartListSelectedIndex = -1;
+        highlightCartItem(-1);
+
+        const countEl = document.querySelector('.cart-list-header h3');
+        if (countEl) {
+            const total = document.querySelectorAll('.cart-list-item').length;
+            countEl.textContent = query
+                ? `Carts (${visibleCount} of ${total})`
+                : `All Carts - ${total}`;
+        }
+    }
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const modal = document.getElementById('cartListModal');
+            if (modal && modal.classList.contains('show')) {
+                toggleCartList();
+            }
+        }
+    });
+    
+    // Initialize arrow visibility on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add delay to ensure container is fully rendered
+        setTimeout(() => {
+            // Scroll to active cart first
+            scrollToActiveCart();
+            
+            // Then update arrow visibility
+            setTimeout(() => {
+                updateArrowVisibility();
+                
+                // Update arrow visibility on scroll
+                const container = document.getElementById('cartButtonsContainer');
+                container.addEventListener('scroll', updateArrowVisibility);
+            }, 300);
+        }, 200);
+
+        // Wire up cart list search
+        const searchInput = document.getElementById('cartListSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', filterCartList);
+            searchInput.addEventListener('keydown', handleCartListKeydown);
+        }
+    });
+    </script>
+    <!-- Load dependencies -->
+    <script src="{% static 'js/wordSuggestion.js' %}"></script>
 {% endblock extra_js %}

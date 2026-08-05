@@ -931,14 +931,16 @@ class CartManager {
             <td class="discount-cell mobile-hide">${calculatedDiscount.toFixed(2)}%</td>
             <td class="amount-cell">${this.format(amount)}</td>
             <td class="text-center">
-                <button type="button" class="btn btn-primary update-item-btn" data-item-id="${id}" 
-                        title="Save changes" aria-label="Save item changes">
-                    <i class="fas fa-save" aria-hidden="true"></i>
-                </button>
-                <button type="button" class="btn btn-danger delete-item-btn" data-item-id="${id}" 
-                        title="Remove item" aria-label="Remove item from cart">
-                    <i class="fas fa-trash" aria-hidden="true"></i>
-                </button>
+                <div class="action-buttons d-inline-flex flex-nowrap align-items-center justify-content-center gap-1">
+                    <button type="button" class="btn btn-primary update-item-btn" data-item-id="${id}" 
+                            title="Save changes" aria-label="Save item changes">
+                        <i class="fas fa-save" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger delete-item-btn" data-item-id="${id}" 
+                            title="Remove item" aria-label="Remove item from cart">
+                        <i class="fas fa-trash" aria-hidden="true"></i>
+                    </button>
+                </div>
             </td>
         `;
 
@@ -957,8 +959,13 @@ class CartManager {
      * @param {number} total - New total amount
      */
     updateTotals(total) {
-        this.dom.totalAmount.textContent = this.format(total);
-        // Update cart button total if it exists
+        if (this.dom.totalAmount) {
+            this.dom.totalAmount.textContent = this.format(total);
+        }
+        const finalAmountEl = document.getElementById('finalAmount');
+        if (finalAmountEl) {
+            finalAmountEl.textContent = this.format(total);
+        }
         const cartButtonTotal = document.getElementById(`cart-button-total-${this.cartId}`);
         if (cartButtonTotal) {
             cartButtonTotal.textContent = this.format(total);
@@ -979,6 +986,17 @@ class CartManager {
         if (rows.length === 0) {
             if (this.dom.totalItems) this.dom.totalItems.textContent = '0';
             if (this.dom.totalSelling) this.dom.totalSelling.textContent = this.format(0);
+            if (this.dom.totalAmount) this.dom.totalAmount.textContent = this.format(0);
+            const finalAmountEl = document.getElementById('finalAmount');
+            if (finalAmountEl) finalAmountEl.textContent = this.format(0);
+            const discountedAmountEl = document.getElementById('discountedAmount');
+            if (discountedAmountEl) discountedAmountEl.textContent = this.format(0);
+            const estimatedProfitEl = document.getElementById('estimatedProfit');
+            if (estimatedProfitEl) estimatedProfitEl.textContent = this.format(0);
+            const netAmountEl = document.getElementById('netAmount');
+            if (netAmountEl) netAmountEl.textContent = this.format(0);
+            const cartButtonTotal = document.getElementById(`cart-button-total-${this.cartId}`);
+            if (cartButtonTotal) cartButtonTotal.textContent = this.format(0);
             return;
         }
 
@@ -1040,7 +1058,7 @@ class CartManager {
             estimatedProfitEl.textContent = this.format(isNaN(roundedProfit) || !isFinite(roundedProfit) ? 0 : roundedProfit);
         }
 
-        const netAmountEl = document.getElementById('netAmount');
+        const netAmountEl = document.getElementById('netAmount') || document.getElementById('finalAmount');
         if (netAmountEl) {
             netAmountEl.textContent = this.format(netAmount);
         }
@@ -1066,9 +1084,11 @@ class CartManager {
 
         categories.forEach(cat => {
             const row = document.createElement('div');
-            row.className = 'summary-row';
+            row.className = 'summary-row category-summary-row';
+            row.dataset.category = cat.category_name;
+            const safeName = typeof escapeHtml === 'function' ? escapeHtml(String(cat.category_name)) : String(cat.category_name).replace(/[<>&"']/g, '');
             row.innerHTML = `
-                <span class="summary-label">${cat.category_name}</span>
+                <span class="summary-label">${safeName}</span>
                 <span class="summary-value">${cat.total_qty}</span>
             `;
             body.appendChild(row);
@@ -1178,7 +1198,7 @@ class CartManager {
         // Disable buttons to prevent double-click
         if (this.dom.clearBtn) {
             this.dom.clearBtn.disabled = true;
-            this.dom.clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
+            this.dom.clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         }
 
         try {
@@ -1203,7 +1223,7 @@ class CartManager {
             // Re-enable button
             if (this.dom.clearBtn) {
                 this.dom.clearBtn.disabled = false;
-                this.dom.clearBtn.innerHTML = '<i class="fas fa-trash"></i> Clear Cart';
+                this.dom.clearBtn.innerHTML = '<i class="fas fa-trash"></i>';
             }
         }
     }

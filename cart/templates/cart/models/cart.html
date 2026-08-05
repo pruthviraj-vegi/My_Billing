@@ -62,8 +62,9 @@
     </div>
 
     <!-- RIGHT: Sticky Summary Sidebar -->
-    <div class="col-md-3 d-flex flex-column gap-2 ps-1">
-        <div class="column details-column cart-summary-sidebar">
+    <div class="col-md-3 d-flex flex-column gap-2 ps-1 cart-sidebar-column">
+        <!-- Card 1: Cart Summary Card -->
+        <div class="column details-column cart-summary-card">
             <div class="column-header">
                 <h3>
                     <!-- Receipt Icon -->
@@ -152,7 +153,7 @@
 
                 <!-- Checkout is the solid primary button -->
                 <a href="{% url 'invoice:create_invoice' cart.id %}"
-                   class="btn btn-primary submit-cart-btn w-100"
+                   class="btn btn-primary submit-cart-btn"
                    tabindex="-1">
                     Checkout
                     <!-- Forward Arrow Icon -->
@@ -163,17 +164,17 @@
             </div>
         </div>
 
-        <!-- Categories Card -->
-        <div class="column details-column d-none d-md-block" id="categoriesCard">
+        <!-- Card 2: Categories Summary Card -->
+        <div class="column details-column categories-card" id="categoriesCard">
             <div class="column-header">
                 <h3>
                     <i class="fas fa-tags"></i>
-                    Categories
+                    Categories Summary
                 </h3>
             </div>
-            <div class="details-info-compact" id="categoriesBody">
+            <div class="details-info-compact categories-info-body" id="categoriesBody">
                 {% for cat in category_counts %}
-                <div class="summary-row" data-category="{{ cat.category_name }}">
+                <div class="summary-row category-summary-row" data-category="{{ cat.category_name }}">
                     <span class="summary-label">{{ cat.category_name }}</span>
                     <span class="summary-value">{{ cat.total_qty }}</span>
                 </div>
@@ -216,7 +217,6 @@
     </div>
 </dialog>
 
-{% block extra_js %}
     <!-- Global variables for JavaScript -->
     <script src="{% static 'js/fetchData.js' %}"></script>
     <script>
@@ -237,4 +237,3 @@
     <script src="{% static 'js/counting.js' %}"></script>
     <script src="{% static 'js/html5-qrcode.min.js' %}"></script>
     <script src="{% static 'js/cart.js' %}"></script>
-{% endblock extra_js %}
