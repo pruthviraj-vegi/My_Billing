@@ -162,28 +162,6 @@
                 </div>
             </div>
         </div>
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <h2 class="section-title">Quick Actions</h2>
-            <div class="actions-grid">
-                <a href="{% url 'inventory_products:home' %}" class="action-card">
-                    <i class="fas fa-list"></i>
-                    <span>View All Products</span>
-                </a>
-                <a href="{% url 'inventory:product_create' %}" class="action-card">
-                    <i class="fas fa-plus"></i>
-                    <span>Add Product</span>
-                </a>
-                <a href="{% url 'inventory:low_stock' %}" class="action-card">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>Low Stock Alert</span>
-                </a>
-                <a href="{% url 'inventory:dashboard' %}" class="action-card">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Generate Report</span>
-                </a>
-            </div>
-        </div>
     </div>
     <!-- Error State -->
     <div id="dashboardError" class="error-container hidden">
