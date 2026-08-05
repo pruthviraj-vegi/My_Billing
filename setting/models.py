@@ -149,7 +149,8 @@ class ReportConfiguration(models.Model):
 
         A4 = "A4", "A4"
         A5 = "A5", "A5"
-        MM58 = "58mm", "58mm"  # Renamed from _58mm
+        MM58 = "58mm", "58mm Roll (2-inch)"
+        MM80 = "80mm", "80mm Roll (3-inch)"
         LETTER = "LETTER", "Letter"
         LEGAL = "LEGAL", "Legal"
 
@@ -166,10 +167,27 @@ class ReportConfiguration(models.Model):
         max_length=20, choices=ReportType.choices, default=ReportType.INVOICE
     )
     paper_size = models.CharField(
-        max_length=10, choices=PaperSize.choices, default=PaperSize.A5
+        max_length=10, choices=PaperSize.choices, default=PaperSize.MM80
     )
     currency = models.CharField(
         max_length=3, choices=Currency.choices, default=Currency.INR
+    )
+
+    # Direct Thermal Printer Hardware Settings
+    is_direct_print_enabled = models.BooleanField(
+        default=False, help_text="Enable direct network thermal printing via socket"
+    )
+    printer_ip = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Printer IP Address (e.g. 192.168.1.192)",
+    )
+    printer_port = models.IntegerField(
+        default=9100,
+        blank=True,
+        null=True,
+        help_text="Printer Port (default: 9100)",
     )
 
     # Header Settings

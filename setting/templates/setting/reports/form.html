@@ -106,6 +106,34 @@
                                     </div>
                                 {% endif %}
                             </div>
+                    </div>
+
+                    <!-- Direct Thermal Network Printer Row -->
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="form-group {% if form.is_direct_print_enabled.errors %}has-error{% endif %}">
+                                <label for="{{ form.is_direct_print_enabled.id_for_label }}" class="form-label">
+                                    Direct Network Print
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                                    {{ form.is_direct_print_enabled }}
+                                    <span>Enable Socket Print</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group {% if form.printer_ip.errors %}has-error{% endif %}">
+                                <label for="{{ form.printer_ip.id_for_label }}" class="form-label">Printer IP Address</label>
+                                {{ form.printer_ip }}
+                                <small class="form-help">e.g. 192.168.1.192</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group {% if form.printer_port.errors %}has-error{% endif %}">
+                                <label for="{{ form.printer_port.id_for_label }}" class="form-label">Printer Port</label>
+                                {{ form.printer_port }}
+                                <small class="form-help">Default: 9100</small>
+                            </div>
                         </div>
                     </div>
 

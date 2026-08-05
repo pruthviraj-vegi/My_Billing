@@ -134,8 +134,6 @@ def shop_details_delete(request, pk):
 @required_permission("setting.view_reportconfiguration")
 def report_config_list(request):
     """List all report configurations."""
-
-    # Search functionality
     search_query = request.GET.get("search", "")
     filters = Q()
     if search_query:
@@ -151,7 +149,6 @@ def report_config_list(request):
         "-is_default", "-created_at"
     )
 
-    # Pagination
     paginator = Paginator(configs, 10)
     page_number = request.GET.get("page")
     configs = paginator.get_page(page_number)
@@ -182,6 +179,7 @@ def report_config_create(request):
         "form": form,
         "page_title": "Add Report Configuration",
         "form_action": "Create",
+        "back_url": "setting:report_config_list",
     }
     return render(request, "setting/reports/form.html", context)
 
@@ -205,6 +203,7 @@ def report_config_edit(request, pk):
         "config": config,
         "page_title": "Edit Report Configuration",
         "form_action": "Update",
+        "back_url": "setting:report_config_list",
     }
     return render(request, "setting/reports/form.html", context)
 
@@ -258,12 +257,26 @@ def set_default_config(request, pk):
     config.is_default = True
     config.save()
 
-    return JsonResponse(
-        {
-            "success": True,
-            "message": f"Configuration set as default for {config.get_report_type_display()}",
-        }
+    msg = f"Default placed successfully for {config.get_report_type_display()}."
+
+    is_ajax = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or request.content_type == "application/json"
+        or "application/json" in request.headers.get("Accept", "")
     )
+
+    if is_ajax:
+        return JsonResponse(
+            {
+                "success": True,
+                "message": msg,
+            }
+        )
+
+    messages.success(request, msg)
+    redirect_url = request.META.get("HTTP_REFERER") or "setting:report_config_list"
+    return redirect(redirect_url)
+
 
 
 def shop_settings_dashboard(request):

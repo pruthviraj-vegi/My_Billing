@@ -259,8 +259,8 @@ class SettingViewsTestCase(TestCase):
         self.assertEqual(res_create_get.status_code, 200)
 
     def test_report_config_views(self):
-        """Test report config listing and setting default."""
-        config = ReportConfiguration.objects.create(
+        """Test report config listing and setting default via AJAX and standard POST."""
+        config1 = ReportConfiguration.objects.create(
             report_type=ReportConfiguration.ReportType.INVOICE,
             paper_size=ReportConfiguration.PaperSize.A4,
             is_default=False,
@@ -268,10 +268,26 @@ class SettingViewsTestCase(TestCase):
         res_list = self.client.get(reverse("setting:report_config_list"))
         self.assertEqual(res_list.status_code, 200)
 
-        res_default = self.client.post(
-            reverse("setting:set_default_config", kwargs={"pk": config.pk})
+        # Test AJAX request
+        res_default_ajax = self.client.post(
+            reverse("setting:set_default_config", kwargs={"pk": config1.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
-        self.assertEqual(res_default.status_code, 200)
-        self.assertTrue(res_default.json()["success"])
-        config.refresh_from_db()
-        self.assertTrue(config.is_default)
+        self.assertEqual(res_default_ajax.status_code, 200)
+        self.assertTrue(res_default_ajax.json()["success"])
+        config1.refresh_from_db()
+        self.assertTrue(config1.is_default)
+
+        # Test standard form POST request
+        config2 = ReportConfiguration.objects.create(
+            report_type=ReportConfiguration.ReportType.INVOICE,
+            paper_size=ReportConfiguration.PaperSize.A5,
+            is_default=False,
+        )
+        res_default_form = self.client.post(
+            reverse("setting:set_default_config", kwargs={"pk": config2.pk})
+        )
+        self.assertEqual(res_default_form.status_code, 302)
+        config2.refresh_from_db()
+        self.assertTrue(config2.is_default)
+

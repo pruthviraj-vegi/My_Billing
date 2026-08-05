@@ -177,6 +177,8 @@ def create_invoice(request, pk):
 
     if report_config.paper_size == "58mm":
         template = "report/58mm.html"
+    elif report_config.paper_size == "80mm":
+        template = "report/80mm.html"
     else:
         template = "report/A5.html"
 
@@ -564,22 +566,36 @@ from .printing import (
 def direct_print_invoice(request, pk):
     """Directly print invoice to configured network printer."""
     invoice = get_object_or_404(Invoice, id=pk)
-    
+
     # Get active shop details and configuration
     shop_details = ShopDetails.objects.filter(is_active=True).first()
-    if not shop_details or not shop_details.is_direct_print_enabled or not shop_details.printer_ip:
+    report_config = ReportConfiguration.get_default_config(
+        ReportConfiguration.ReportType.INVOICE
+    )
+
+    # Determine printer configuration (prefer ReportConfiguration, fallback to ShopDetails)
+    is_enabled = bool(report_config.is_direct_print_enabled) or bool(
+        shop_details and getattr(shop_details, 'is_direct_print_enabled', False)
+    )
+    printer_ip = (
+        report_config.printer_ip
+        or (shop_details and getattr(shop_details, 'printer_ip', None))
+    )
+    printer_port = (
+        report_config.printer_port
+        or (shop_details and getattr(shop_details, 'printer_port', 9100))
+        or 9100
+    )
+
+    if not is_enabled or not printer_ip:
         return JsonResponse({
             "success": False,
             "error": "Direct printing is not enabled or printer IP is not configured in Settings."
         }, status=400)
-        
-    report_config = ReportConfiguration.get_default_config(
-        ReportConfiguration.ReportType.INVOICE
-    )
-    
+
     # Check paper size/width
     width = 32 if report_config.paper_size == "58mm" else 48
-    
+
     try:
         print_data = format_invoice_for_direct_print(invoice, shop_details, report_config, width=width)
     except Exception as e:
@@ -588,11 +604,11 @@ def direct_print_invoice(request, pk):
             "success": False,
             "error": f"Error formatting invoice: {str(e)}"
         }, status=500)
-        
+
     # Send to printer
     success, err_msg = send_to_network_printer(
-        shop_details.printer_ip,
-        shop_details.printer_port or 9100,
+        printer_ip,
+        printer_port,
         print_data
     )
     
@@ -609,19 +625,33 @@ def direct_print_estimate(request, pk):
     
     # Get active shop details and configuration
     shop_details = ShopDetails.objects.filter(is_active=True).first()
-    if not shop_details or not shop_details.is_direct_print_enabled or not shop_details.printer_ip:
+    report_config = ReportConfiguration.get_default_config(
+        ReportConfiguration.ReportType.ESTIMATE
+    )
+
+    # Determine printer configuration (prefer ReportConfiguration, fallback to ShopDetails)
+    printer_ip = (
+        report_config.printer_ip
+        or (shop_details and getattr(shop_details, 'printer_ip', None))
+    )
+    printer_port = (
+        report_config.printer_port
+        or (shop_details and getattr(shop_details, 'printer_port', 9100))
+        or 9100
+    )
+
+    is_enabled = bool(report_config.is_direct_print_enabled) or bool(
+        shop_details and getattr(shop_details, 'is_direct_print_enabled', False)
+    )
+    if not is_enabled or not printer_ip:
         return JsonResponse({
             "success": False,
             "error": "Direct printing is not enabled or printer IP is not configured in Settings."
         }, status=400)
-        
-    report_config = ReportConfiguration.get_default_config(
-        ReportConfiguration.ReportType.ESTIMATE
-    )
-    
+
     # Check paper size/width
     width = 32 if report_config.paper_size == "58mm" else 48
-    
+
     try:
         print_data = format_estimate_for_direct_print(cart, shop_details, report_config, width=width)
     except Exception as e:
@@ -630,11 +660,11 @@ def direct_print_estimate(request, pk):
             "success": False,
             "error": f"Error formatting estimate: {str(e)}"
         }, status=500)
-        
+
     # Send to printer
     success, err_msg = send_to_network_printer(
-        shop_details.printer_ip,
-        shop_details.printer_port or 9100,
+        printer_ip,
+        printer_port,
         print_data
     )
     

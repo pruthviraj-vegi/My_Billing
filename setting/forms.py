@@ -33,9 +33,6 @@ class ShopDetailsForm(forms.ModelForm):
             "website",
             "logo",
             "is_active",
-            "is_direct_print_enabled",
-            "printer_ip",
-            "printer_port",
         ]
         widgets = {
             "shop_name": forms.TextInput(
@@ -68,13 +65,6 @@ class ShopDetailsForm(forms.ModelForm):
             "website": forms.URLInput(attrs={"placeholder": "Website URL (optional)"}),
             "logo": forms.FileInput(attrs={"accept": "image/*"}),
             "is_active": forms.CheckboxInput(),
-            "is_direct_print_enabled": forms.CheckboxInput(),
-            "printer_ip": forms.TextInput(
-                attrs={"placeholder": "e.g., 192.168.1.100"}
-            ),
-            "printer_port": forms.NumberInput(
-                attrs={"placeholder": "e.g., 9100"}
-            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -111,9 +101,6 @@ class ShopDetailsForm(forms.ModelForm):
             "website": "Website",
             "logo": "Logo Image",
             "is_active": "Active",
-            "is_direct_print_enabled": "Enable Direct Network Printing",
-            "printer_ip": "Printer IP Address",
-            "printer_port": "Printer Port",
         }
         for field_name, label in labels.items():
             if field_name in self.fields:
@@ -128,9 +115,6 @@ class ShopDetailsForm(forms.ModelForm):
             "phone_number": "Primary contact number",
             "phone_two": "Secondary contact number (optional)",
             "logo": "Upload your shop logo (optional)",
-            "is_direct_print_enabled": "Check to print directly to the network printer via socket connection",
-            "printer_ip": "IP Address of the receipt printer on the local network (e.g. 192.168.1.100)",
-            "printer_port": "Port of the receipt printer (typically 9100)",
         }
         for field_name, help_text in help_texts.items():
             if field_name in self.fields:
@@ -175,6 +159,9 @@ class ReportConfigurationForm(forms.ModelForm):
             "report_type",
             "paper_size",
             "currency",
+            "is_direct_print_enabled",
+            "printer_ip",
+            "printer_port",
             "show_logo",
             "show_shop_name",
             "show_address",
@@ -205,6 +192,9 @@ class ReportConfigurationForm(forms.ModelForm):
             "report_type": forms.Select(),
             "paper_size": forms.Select(),
             "currency": forms.Select(),
+            "is_direct_print_enabled": forms.CheckboxInput(attrs={"class": "form-checkbox"}),
+            "printer_ip": forms.TextInput(attrs={"class": "form-input", "placeholder": "e.g., 192.168.1.192"}),
+            "printer_port": forms.NumberInput(attrs={"class": "form-input", "placeholder": "9100"}),
             "terms_conditions": forms.Textarea(
                 attrs={
                     "rows": 4,

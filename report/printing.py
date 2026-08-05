@@ -298,16 +298,17 @@ def format_invoice_for_direct_print(invoice, shop_details, report_config, width=
             buf.extend((b"-" * width) + b"\n")
 
     # 5. UPI QR Code
-    upi_method = shop_details.payment_methods.filter(
-        is_active=True, payment_type="UPI"
-    ).first()
-    if upi_method and upi_method.upi_id:
-        upi_uri = f"upi://pay?pa={upi_method.upi_id}&pn={shop_details.shop_name}&am={invoice.net_amount_due:.2f}&cu=INR"
-        buf.extend(center)
-        buf.extend(b"Scan to Pay:\n")
-        buf.extend(make_escpos_qr_code(upi_uri))
-        buf.extend(upi_method.upi_id.encode("ascii", errors="ignore") + b"\n")
-        buf.extend(left)
+    if report_config.show_qr_code and shop_details:
+        upi_method = shop_details.payment_methods.filter(
+            is_active=True, payment_type="UPI"
+        ).first()
+        if upi_method and upi_method.upi_id:
+            upi_uri = f"upi://pay?pa={upi_method.upi_id}&pn={shop_details.shop_name}&am={invoice.net_amount_due:.2f}&cu=INR"
+            buf.extend(center)
+            buf.extend(b"Scan to Pay:\n")
+            buf.extend(make_escpos_qr_code(upi_uri))
+            buf.extend(upi_method.upi_id.encode("ascii", errors="ignore") + b"\n")
+            buf.extend(left)
 
     # 6. Terms & Conditions
     if report_config.show_terms_conditions:
