@@ -99,6 +99,16 @@
   background: var(--primary-700, #1d4ed8);
 }
 
+.modal-overlay .modal-btn-danger {
+  background: var(--danger, #dc3545);
+  color: #ffffff;
+}
+
+.modal-overlay .modal-btn-danger:hover {
+  background: var(--danger-hover, #c82333);
+}
+
+
 
 /* ========================================
    BILLING SYSTEM - MAIN CSS (v3 - Cleaned & Consolidated)

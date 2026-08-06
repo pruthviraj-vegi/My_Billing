@@ -58,6 +58,12 @@ urlpatterns = [
     ),
     path("downloads/", views_jobs.downloads_page, name="downloads_page"),
     path("downloads/fetch/", views_jobs.downloads_fetch, name="downloads_fetch"),
+    path(
+        "downloads/<int:job_id>/delete/",
+        views_jobs.delete_pdf_job,
+        name="delete_pdf_job",
+    ),
+
     # ── WhatsApp / messaging ───────────────────────────────────
     path("send-invoice/<int:pk>/", statements.send_invoice, name="send_invoice"),
     path(

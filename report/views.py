@@ -554,7 +554,6 @@ def generate_invoice_report_pdf(request):
     return generate_pdf(template, filename, context)
 
 
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from .printing import (
     send_to_network_printer,
@@ -562,7 +561,6 @@ from .printing import (
     format_estimate_for_direct_print,
 )
 
-@login_required
 def direct_print_invoice(request, pk):
     """Directly print invoice to configured network printer."""
     invoice = get_object_or_404(Invoice, id=pk)
@@ -618,7 +616,6 @@ def direct_print_invoice(request, pk):
         return JsonResponse({"success": False, "error": err_msg}, status=500)
 
 
-@login_required
 def direct_print_estimate(request, pk):
     """Directly print estimate (cart) to configured network printer."""
     cart = get_object_or_404(Cart, id=pk)

@@ -30,7 +30,7 @@
         <i class="fas fa-download"></i>
       </a>
     {% elif job.status == 'failed' %}
-      <span class="btn-action btn-delete" title="{{ job.error_message }}">
+      <span class="btn-action opacity-50-transparent text-warning" title="{{ job.error_message }}">
         <i class="fas fa-exclamation-triangle"></i>
       </span>
     {% else %}
@@ -38,7 +38,14 @@
         <i class="fas fa-spinner fa-spin"></i>
       </span>
     {% endif %}
+      <button type="button"
+              class="btn-action btn-delete"
+              title="Delete PDF"
+              onclick="confirmDeleteJob('{{ job.id }}', '{{ job.title|escapejs }}')">
+        <i class="fas fa-trash-alt"></i>
+      </button>
     </div>
+
   </td>
 </tr>
 {% empty %}

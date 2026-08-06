@@ -7,7 +7,6 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth import logout
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.db.models import Count, DecimalField, F, Q, Sum, OuterRef, Subquery
 from django.db.models.functions import Abs, Coalesce, TruncDate, TruncMonth, TruncWeek

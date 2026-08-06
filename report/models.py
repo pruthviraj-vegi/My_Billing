@@ -10,6 +10,7 @@ from invoice.models import Invoice
 
 logger = logging.getLogger(__name__)
 
+
 User = get_user_model()
 
 
@@ -60,6 +61,20 @@ class InvoicePDF(models.Model):
 
     def __str__(self):
         return f"PDF for {self.invoice.invoice_number}"
+
+    def delete_file_and_record(self):
+        """Delete PDF file from R2 storage (if exists) and hard-delete record."""
+        if self.pdf_url:
+            try:
+                from api.cloudflare import delete_from_r2, BucketType
+                delete_from_r2(self.pdf_url, bucket_type=BucketType.INVOICE)
+            except Exception as e:
+                logger.warning("Failed to delete R2 file for InvoicePDF %s: %s", self.id, e)
+        return super().delete()
+
+    def delete(self, using=None, keep_parents=False):
+        """Override delete to ensure R2 file deletion and hard delete."""
+        return self.delete_file_and_record()
 
     def is_pdf_outdated(self):
         """
@@ -180,6 +195,20 @@ class CustomerStatementPDF(models.Model):
     def __str__(self):
         return f"Statement for {self.customer} ({self.from_date} to {self.to_date})"
 
+    def delete_file_and_record(self):
+        """Delete statement PDF file from R2 storage (if exists) and hard-delete record."""
+        if self.pdf_url:
+            try:
+                from api.cloudflare import delete_from_r2, BucketType
+                delete_from_r2(self.pdf_url, bucket_type=BucketType.STATEMENT)
+            except Exception as e:
+                logger.warning("Failed to delete R2 file for CustomerStatementPDF %s: %s", self.id, e)
+        return super().delete()
+
+    def delete(self, using=None, keep_parents=False):
+        """Override delete to ensure R2 file deletion and hard delete."""
+        return self.delete_file_and_record()
+
     def is_balance_outdated(self, current_balance):
         """
         Check if the customer's balance has changed since PDF generation.
@@ -231,9 +260,12 @@ class CustomerStatementPDF(models.Model):
     def invalidate_all_customer_pdfs(cls, customer):
         """
         Delete all cached PDFs for a customer when balance changes.
-        This ensures no outdated statements exist.
+        This ensures no outdated statements exist in R2 or database.
         """
-        deleted_count = cls.objects.filter(customer=customer).delete()[0]
+        deleted_count = 0
+        for pdf in cls.objects.filter(customer=customer):
+            pdf.delete()
+            deleted_count += 1
         if deleted_count > 0:
             logger.debug(
                 "Invalidated %s cached statement PDFs for customer %s",
@@ -343,3 +375,27 @@ class PdfJob(models.Model):
         from report.services import PdfCleanupService
 
         return PdfCleanupService.cleanup_old(days=days)
+
+    def delete_file_and_job(self):
+        """Delete file from storage / Cloudflare R2 (if exists) and hard-delete DB row."""
+        if self.file:
+            # 1. Delete from Django storage (local filesystem or storage backend)
+            try:
+                self.file.delete(save=False)
+            except Exception as e:
+                logger.warning("Could not delete file for PdfJob %s: %s", self.id, e)
+
+            # 2. Delete from Cloudflare R2 storage if file URL exists
+            try:
+                from api.cloudflare import delete_from_r2, BucketType
+                if hasattr(self.file, "url") and self.file.url:
+                    delete_from_r2(self.file.url, bucket_type=BucketType.INVOICE)
+            except Exception as e:
+                logger.debug("R2 file deletion skipped/failed for PdfJob %s: %s", self.id, e)
+
+        # 3. Hard delete database row
+        return super().delete()
+
+    def delete(self, using=None, keep_parents=False):
+        """Override delete to ensure storage/R2 file cleanup and hard delete."""
+        return self.delete_file_and_job()

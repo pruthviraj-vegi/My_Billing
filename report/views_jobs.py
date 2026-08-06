@@ -149,3 +149,11 @@ def downloads_fetch(request):
     jobs = PdfJob.objects.filter(created_by=request.user).order_by("-created_at")
 
     return render_paginated_response(request, jobs, "report/downloads_fetch.html", 20)
+
+
+@require_POST
+def delete_pdf_job(request, job_id):
+    """Delete a PdfJob and its associated PDF file from disk/storage."""
+    job = get_object_or_404(PdfJob, id=job_id, created_by=request.user)
+    job.delete_file_and_job()
+    return JsonResponse({"success": True, "message": "PDF file deleted successfully."})
