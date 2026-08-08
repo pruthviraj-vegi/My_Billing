@@ -92,6 +92,11 @@
                Variants</a>
             {% endif %}
             <div class="dropdown-divider"></div>
+            {% if perms.inventory.view_bulkupload %}
+            <a href="{% url 'inventory_bulk_upload:home' %}"
+               class="dropdown-item {% if 'inventory_bulk_upload' in request.resolver_match.namespace %}active{% endif %}">Bulk
+               Upload</a>
+            {% endif %}
             {% if perms.inventory.view_supplier_invoice %}
             <a href="{% url 'inventory:supplier_invoice' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'supplier_invoice' %}active{% endif %}">Supplier
@@ -143,7 +148,6 @@
             <a href="{% url 'inventory:media_gallery' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'media_gallery' %}active{% endif %}">Media
                Gallery</a>
-
          </div>
       </li>
       {% endif %}

@@ -221,6 +221,22 @@ class Command(BaseCommand):
         fifo_queue = deque()  # deque of [log_obj, remaining_decimal]
         running_quantity = Decimal("0")
         new_logs_to_create = []  # New logs for multi-batch FIFO splits
+        sales_by_invoice_item = {}  # invoice_item_id -> list of allocated sale logs
+
+        # Pre-calculate totals for INITIAL log check
+        total_stock_out = Decimal("0")
+        total_stock_in_except_initial = Decimal("0")
+        for l in all_logs:
+            if l.transaction_type in STOCK_OUT_TYPES:
+                total_stock_out += abs(l.quantity_change)
+            elif l.transaction_type in STOCK_IN_TYPES:
+                if l.transaction_type != InventoryLog.TransactionTypes.INITIAL:
+                    total_stock_in_except_initial += abs(l.quantity_change)
+            elif (
+                l.transaction_type in CANCEL_TYPES
+                or l.transaction_type == InventoryLog.TransactionTypes.ADJUSTMENT_IN
+            ):
+                total_stock_in_except_initial += abs(l.quantity_change)
 
         for log in all_logs:
             tx_type = log.transaction_type
@@ -228,43 +244,23 @@ class Command(BaseCommand):
 
             if tx_type in STOCK_IN_TYPES:
                 if tx_type == InventoryLog.TransactionTypes.INITIAL and variant.quantity >= 0:
-                    other_logs = [l for l in all_logs if l.id != log.id]
-                    if other_logs:
-                        stock_out_total = Decimal("0")
-                        stock_in_total = Decimal("0")
-                        for l in other_logs:
-                            if l.transaction_type in STOCK_OUT_TYPES:
-                                stock_out_total += abs(l.quantity_change)
-                            elif (
-                                l.transaction_type in STOCK_IN_TYPES
-                                or l.transaction_type in CANCEL_TYPES
-                                or l.transaction_type == InventoryLog.TransactionTypes.ADJUSTMENT_IN
-                            ):
-                                stock_in_total += abs(l.quantity_change)
-
-                        calc_initial = variant.quantity + stock_out_total - stock_in_total
-                        if calc_initial >= 0:
-                            qty_change = calc_initial
-                            if log.quantity_change != calc_initial:
-                                log.quantity_change = calc_initial
-                                log.total_value = calc_initial * (log.purchase_price or Decimal("0"))
-                                if log not in logs_to_save:
-                                    logs_to_save.append(log)
+                    calc_initial = variant.quantity + total_stock_out - total_stock_in_except_initial
+                    if calc_initial >= 0:
+                        qty_change = calc_initial
+                        if log.quantity_change != calc_initial:
+                            log.quantity_change = calc_initial
+                            log.total_value = calc_initial * (log.purchase_price or Decimal("0"))
+                            if log not in logs_to_save:
+                                logs_to_save.append(log)
 
                 stock_qty = abs(qty_change)
                 running_quantity += stock_qty
 
                 # RETURN with invoice_item → restore to original source batch
-                if tx_type == InventoryLog.TransactionTypes.RETURN and log.invoice_item:
+                if tx_type == InventoryLog.TransactionTypes.RETURN and log.invoice_item_id:
                     reversed_to_source = False
-                    # Find original SALE logs for this invoice_item
-                    original_sales = [
-                        l
-                        for l in all_logs
-                        if l.transaction_type in STOCK_OUT_TYPES
-                        and l.invoice_item_id == log.invoice_item_id
-                        and l.source_inventory_log is not None
-                    ]
+                    # Find original SALE logs for this invoice_item using O(1) map
+                    original_sales = sales_by_invoice_item.get(log.invoice_item_id, [])
                     if original_sales:
                         # Restore remaining_quantity on the original source batches
                         qty_to_restore = stock_qty
@@ -275,6 +271,8 @@ class Command(BaseCommand):
                                 abs(sale.allocated_quantity or 0), qty_to_restore
                             )
                             source = sale.source_inventory_log
+                            if not source:
+                                continue
                             # Set supplier_invoice on the RETURN log from source
                             if source.supplier_invoice and not log.supplier_invoice:
                                 log.supplier_invoice = source.supplier_invoice
@@ -324,6 +322,9 @@ class Command(BaseCommand):
                             log.total_value = allocatable * log.selling_price
                         is_first_allocation = False
 
+                        if log.invoice_item_id:
+                            sales_by_invoice_item.setdefault(log.invoice_item_id, []).append(log)
+
                         if log not in logs_to_save:
                             logs_to_save.append(log)
                     else:
@@ -349,6 +350,8 @@ class Command(BaseCommand):
                             notes=f"FIFO split: {allocatable} units from {source_log.timestamp.date()}",
                         )
                         new_logs_to_create.append(new_log)
+                        if new_log.invoice_item_id:
+                            sales_by_invoice_item.setdefault(new_log.invoice_item_id, []).append(new_log)
 
                     # Decrement source remaining
                     fifo_queue[0][1] -= allocatable
@@ -372,19 +375,15 @@ class Command(BaseCommand):
 
                 # Try to reverse the FIFO by finding the source of the original sale
                 reversed_to_source = False
-                if log.invoice_item:
-                    # Find the sale log(s) for this invoice_item
-                    original_sales = [
-                        l
-                        for l in all_logs
-                        if l.transaction_type in STOCK_OUT_TYPES
-                        and l.invoice_item_id == log.invoice_item_id
-                        and l.source_inventory_log is not None
-                    ]
+                if log.invoice_item_id:
+                    # Find the sale log(s) for this invoice_item using O(1) map
+                    original_sales = sales_by_invoice_item.get(log.invoice_item_id, [])
                     if original_sales:
                         # Restore remaining_quantity on the original source
                         for sale in original_sales:
                             source = sale.source_inventory_log
+                            if not source:
+                                continue
                             # Set supplier_invoice on the CANCEL log from source
                             if source.supplier_invoice and not log.supplier_invoice:
                                 log.supplier_invoice = source.supplier_invoice

@@ -1,17 +1,37 @@
-"""
-Services module for complex inventory operations like stock in, out, sale, return,
-cancellation, and damage tracking.
-"""
-
+import csv
+import io
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.db.models import Sum
+from django.urls import reverse
 from django.utils import timezone
 
-from .models import DamagedItemRecord, InventoryLog
+from .models import (
+    BulkUpload,
+    BulkUploadItem,
+    Category,
+    ClothType,
+    Color,
+    DamagedItemRecord,
+    GSTHsnCode,
+    InventoryLog,
+    Product,
+    ProductVariant,
+    Size,
+    UOM,
+)
 from supplier.models import SupplierInvoice
+
+try:
+    from rapidfuzz import process, fuzz
+except ImportError:
+    try:
+        from fuzzywuzzy import process, fuzz
+    except ImportError:
+        process = None
+        fuzz = None
 
 logger = logging.getLogger(__name__)
 
@@ -1069,3 +1089,471 @@ class DamageResolutionService:
         })
 
         return sorted(suggestions, key=lambda s: s["priority"])
+
+
+class BulkUploadService:
+    """Service class for BulkUpload batch and item operations."""
+
+    REQUIRED_CSV_FIELDS = [
+        "brand", "name", "category", "cloth_type", "uom", "hsn_code",
+        "quantity", "purchase_price", "mrp", "size", "color", "minimum_quantity",
+    ]
+
+    @staticmethod
+    def fuzzy_match(value, model, field="name", threshold=80, cache=None):
+        """Find the best fuzzy match for a value against a model field.
+
+        Returns (matched_instance, confidence, nearby_candidates).
+        """
+        if not value or not value.strip():
+            return None, 0, []
+
+        value = value.strip()
+        cache_key = (model, field)
+        exact_cache_key = (model, field, "exact_map")
+
+        if cache is not None and cache_key in cache:
+            instances = cache[cache_key]
+            exact_map = cache[exact_cache_key]
+        else:
+            instances = list(model.objects.filter(**{f"{field}__isnull": False}))
+            exact_map = {getattr(inst, field, "").strip().lower(): inst for inst in instances if getattr(inst, field, None)}
+            if cache is not None:
+                cache[cache_key] = instances
+                cache[exact_cache_key] = exact_map
+
+        # Fast O(1) exact match check
+        exact_inst = exact_map.get(value.lower())
+        if exact_inst:
+            return exact_inst, 100, []
+
+        # Fuzzy match check
+        if process is None or not instances:
+            return None, 0, []
+
+        names = {inst.pk: getattr(inst, field, "") for inst in instances}
+        choices_list = list(names.values())
+
+        matches = process.extract(value, choices_list, limit=5, scorer=fuzz.token_sort_ratio)
+        nearby = [{"name": m[0], "score": m[1]} for m in matches if m[1] >= 60]
+
+        best_match = matches[0] if matches else None
+        if best_match and best_match[1] >= threshold:
+            for inst in instances:
+                if getattr(inst, field, "") == best_match[0]:
+                    return inst, best_match[1], nearby
+            return None, 0, nearby
+
+        return None, 0, nearby
+
+    @classmethod
+    def process_csv_import(cls, batch, csv_file):
+        """Parse CSV file, create BulkUploadItem records with fuzzy-matched FK lookups."""
+        try:
+            decoded = csv_file.read().decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return {"success": False, "message": "File must be UTF-8 encoded CSV."}
+
+        reader = csv.DictReader(io.StringIO(decoded))
+        if not reader.fieldnames:
+            return {"success": False, "message": "CSV file has no headers."}
+
+        headers_lower = [h.strip().lower() for h in reader.fieldnames]
+        missing = [f for f in cls.REQUIRED_CSV_FIELDS if f not in headers_lower]
+        if missing:
+            return {
+                "success": False,
+                "message": f"Missing required columns: {', '.join(missing)}",
+            }
+
+        rows_created = 0
+        errors = []
+        matches_log = []
+        sort_order = batch.items.count()
+        fuzzy_cache = {}
+        items_to_create = []
+
+        with transaction.atomic():
+            for row_num, row in enumerate(reader, start=2):
+                try:
+                    normalized = {
+                        key.strip().lower(): (val or "").strip()
+                        for key, val in row.items()
+                    }
+
+                    brand = normalized.get("brand", "")
+                    name = normalized.get("name", "")
+                    if not brand or not name:
+                        errors.append(f"Row {row_num}: brand and name are required.")
+                        continue
+
+                    category, _, _ = cls.fuzzy_match(
+                        normalized.get("category", ""), Category, "name", threshold=80, cache=fuzzy_cache
+                    )
+                    cloth_type, _, _ = cls.fuzzy_match(
+                        normalized.get("cloth_type", ""), ClothType, "name", threshold=80, cache=fuzzy_cache
+                    )
+                    uom, _, _ = cls.fuzzy_match(
+                        normalized.get("uom", ""), UOM, "name", threshold=80, cache=fuzzy_cache
+                    )
+                    hsn_code, _, _ = cls.fuzzy_match(
+                        normalized.get("hsn_code", ""), GSTHsnCode, "code", threshold=90, cache=fuzzy_cache
+                    )
+                    size, _, _ = cls.fuzzy_match(
+                        normalized.get("size", ""), Size, "name", threshold=80, cache=fuzzy_cache
+                    )
+                    color, _, _ = cls.fuzzy_match(
+                        normalized.get("color", ""), Color, "name", threshold=80, cache=fuzzy_cache
+                    )
+
+                    if category:
+                        matches_log.append(f"Row {row_num}: matched category '{normalized.get('category','')}' → '{category.name}'")
+                    if cloth_type:
+                        matches_log.append(f"Row {row_num}: matched cloth type '{normalized.get('cloth_type','')}' → '{cloth_type.name}'")
+                    if uom:
+                        matches_log.append(f"Row {row_num}: matched UOM '{normalized.get('uom','')}' → '{uom.name}'")
+                    if hsn_code:
+                        matches_log.append(f"Row {row_num}: matched HSN '{normalized.get('hsn_code','')}' → '{hsn_code.code}'")
+                    if size:
+                        matches_log.append(f"Row {row_num}: matched size '{normalized.get('size','')}' → '{size.name}'")
+                    if color:
+                        matches_log.append(f"Row {row_num}: matched color '{normalized.get('color','')}' → '{color.name}'")
+
+                    def parse_decimal(val, default="0"):
+                        try:
+                            return Decimal(val or default)
+                        except InvalidOperation:
+                            return Decimal(default)
+
+                    sort_order += 1
+                    items_to_create.append(
+                        BulkUploadItem(
+                            bulk_upload=batch,
+                            brand=brand,
+                            name=name,
+                            description=normalized.get("description", ""),
+                            category=category,
+                            cloth_type=cloth_type,
+                            uom=uom,
+                            hsn_code=hsn_code,
+                            size=size,
+                            color=color,
+                            quantity=parse_decimal(normalized.get("quantity"), "1"),
+                            minimum_quantity=parse_decimal(normalized.get("minimum_quantity"), "0"),
+                            purchase_price=parse_decimal(normalized.get("purchase_price"), "0"),
+                            mrp=parse_decimal(normalized.get("mrp"), "0"),
+                            discount_percentage=parse_decimal(normalized.get("discount_percentage"), "0"),
+                            commission_percentage=parse_decimal(normalized.get("commission_percentage"), "0"),
+                            sort_order=sort_order,
+                        )
+                    )
+                    rows_created += 1
+
+                except Exception as e:
+                    logger.exception("Error processing row %d", row_num)
+                    errors.append(f"Row {row_num}: {str(e)}")
+
+            if items_to_create:
+                BulkUploadItem.objects.bulk_create(items_to_create, batch_size=500)
+
+        return {
+            "success": True,
+            "rows_created": rows_created,
+            "errors": errors,
+            "matches": matches_log,
+            "message": f"Imported {rows_created} items from CSV." + (
+                f" {len(errors)} errors." if errors else ""
+            ),
+        }
+
+    @staticmethod
+    def update_item(item, data):
+        """Update fields and FK lookups on a BulkUploadItem."""
+        updatable_fields = {
+            "brand": str, "name": str, "quantity": Decimal,
+            "minimum_quantity": Decimal, "purchase_price": Decimal,
+            "mrp": Decimal, "discount_percentage": Decimal,
+            "commission_percentage": Decimal, "description": str,
+        }
+
+        for field, converter in updatable_fields.items():
+            if field in data:
+                try:
+                    val = data[field]
+                    if val is not None and val != "":
+                        setattr(item, field, converter(val))
+                except (ValueError, InvalidOperation):
+                    pass
+
+        fk_map = {
+            "product": Product,
+            "variant": ProductVariant,
+            "category": Category,
+            "cloth_type": ClothType,
+            "uom": UOM,
+            "hsn_code": GSTHsnCode,
+            "size": Size,
+            "color": Color,
+        }
+        for field, model_cls in fk_map.items():
+            if field in data:
+                val = data[field]
+                if val:
+                    try:
+                        instance = model_cls.objects.get(pk=int(val))
+                        setattr(item, field, instance)
+                    except (ValueError, model_cls.DoesNotExist):
+                        setattr(item, field, None)
+                else:
+                    setattr(item, field, None)
+
+        item.save()
+        return {
+            "success": True,
+            "message": "Item updated.",
+            "line_total": str(item.line_total),
+        }
+
+    @classmethod
+    def delete_item(cls, item):
+        """Delete a BulkUploadItem and recalculate parent batch completion status."""
+        batch = item.bulk_upload
+        item.delete()
+        all_committed = cls.recalculate_batch_status(batch)
+
+        return {
+            "success": True,
+            "message": "Item deleted.",
+            "batch_completed": all_committed,
+            "batch_status": batch.get_status_display(),
+        }
+
+    @staticmethod
+    def recalculate_batch_status(batch):
+        """Recalculate parent batch status based on remaining items."""
+        all_items = batch.items.filter(is_deleted=False)
+        all_committed = all_items.exists() and not all_items.filter(status=BulkUploadItem.ItemStatus.DRAFT).exists()
+
+        if all_committed and batch.status != BulkUpload.BatchStatus.COMMITTED:
+            batch.status = BulkUpload.BatchStatus.COMMITTED
+            batch.save()
+        elif not all_committed and batch.status == BulkUpload.BatchStatus.COMMITTED:
+            batch.status = BulkUpload.BatchStatus.DRAFT
+            batch.save()
+
+        return all_committed
+
+    @classmethod
+    def commit_item(cls, item, user, data=None):
+        """Commit a single BulkUploadItem to inventory (Product & ProductVariant)."""
+        batch = item.bulk_upload
+
+        if data and isinstance(data, dict):
+            updatable = ["brand", "name", "description"]
+            for f in updatable:
+                if f in data and data[f] is not None:
+                    setattr(item, f, str(data[f]).strip())
+            for f in ["quantity", "minimum_quantity", "purchase_price", "mrp", "discount_percentage", "commission_percentage"]:
+                if f in data and data[f] is not None and data[f] != "":
+                    try:
+                        setattr(item, f, Decimal(str(data[f])))
+                    except InvalidOperation:
+                        pass
+            fk_map = {
+                "product": Product, "variant": ProductVariant, "category": Category,
+                "cloth_type": ClothType, "uom": UOM, "hsn_code": GSTHsnCode,
+                "size": Size, "color": Color,
+            }
+            for field, model_cls in fk_map.items():
+                if field in data:
+                    val = data[field]
+                    if val:
+                        try:
+                            setattr(item, field, model_cls.objects.get(pk=int(val)))
+                        except (ValueError, model_cls.DoesNotExist):
+                            pass
+            item.save()
+
+        try:
+            with transaction.atomic():
+                # 1. Product creation or lookup
+                product = item.product
+                if not product and item.brand and item.name:
+                    product = Product.objects.filter(
+                        brand__iexact=item.brand.strip(),
+                        name__iexact=item.name.strip(),
+                        is_deleted=False,
+                    ).first()
+
+                if not product:
+                    if not item.brand or not item.name:
+                        return {
+                            "success": False,
+                            "message": "Brand and Product Name are required to create a Product.",
+                        }
+                    if not item.hsn_code:
+                        return {
+                            "success": False,
+                            "message": "HSN Code is required to create a Product.",
+                        }
+
+                    product = Product.objects.create(
+                        brand=item.brand.strip(),
+                        name=item.name.strip(),
+                        description=item.description,
+                        category=item.category,
+                        cloth_type=item.cloth_type,
+                        uom=item.uom,
+                        hsn_code=item.hsn_code,
+                    )
+                else:
+                    updated = False
+                    if item.category and not product.category:
+                        product.category = item.category
+                        updated = True
+                    if item.cloth_type and not product.cloth_type:
+                        product.cloth_type = item.cloth_type
+                        updated = True
+                    if item.uom and not product.uom:
+                        product.uom = item.uom
+                        updated = True
+                    if item.hsn_code and not product.hsn_code:
+                        product.hsn_code = item.hsn_code
+                        updated = True
+                    if updated:
+                        product.save()
+
+                # 2. ProductVariant creation or lookup
+                variant = item.variant
+                if not variant:
+                    variant = ProductVariant.objects.filter(
+                        product=product,
+                        size=item.size,
+                        color=item.color,
+                        is_deleted=False,
+                    ).first()
+
+                if not variant:
+                    variant = ProductVariant.objects.create(
+                        product=product,
+                        size=item.size,
+                        color=item.color,
+                        quantity=item.quantity,
+                        minimum_quantity=item.minimum_quantity,
+                        purchase_price=item.purchase_price,
+                        mrp=item.mrp,
+                        discount_percentage=item.discount_percentage,
+                        commission_percentage=item.commission_percentage or Decimal("0"),
+                        created_by=user,
+                    )
+                    variant.create_barcode(save=True)
+                    InventoryService.create_initial_log(
+                        variant,
+                        user,
+                        f"Bulk upload batch #{batch.id}",
+                        batch.supplier_invoice,
+                    )
+                else:
+                    if item.quantity > 0:
+                        InventoryService.update_stock_in_log(
+                            variant=variant,
+                            quantity_change=item.quantity,
+                            user=user,
+                            notes=f"Bulk upload batch #{batch.id}",
+                            supplier_invoice=batch.supplier_invoice,
+                            purchase_price=item.purchase_price,
+                            mrp=item.mrp,
+                        )
+                    else:
+                        variant.purchase_price = item.purchase_price
+                        variant.mrp = item.mrp
+                        variant.discount_percentage = item.discount_percentage
+                        if item.commission_percentage:
+                            variant.commission_percentage = item.commission_percentage
+                        variant.save()
+
+                # Link back to item and mark status as COMMITTED
+                item.product = product
+                item.variant = variant
+                item.status = BulkUploadItem.ItemStatus.COMMITTED
+                item.save()
+
+                all_committed = cls.recalculate_batch_status(batch)
+
+            variant_url = reverse("inventory_variant:details", kwargs={"variant_id": variant.id})
+            barcode_url = reverse("report:barcode", kwargs={"pk": variant.id})
+            return {
+                "success": True,
+                "message": f"Saved to Product '{product.display_name}' and Variant ({variant.barcode})!",
+                "product_id": product.id,
+                "product_name": product.display_name,
+                "variant_id": variant.id,
+                "variant_url": variant_url,
+                "barcode": variant.barcode,
+                "barcode_url": barcode_url,
+                "batch_completed": all_committed,
+                "batch_status": batch.get_status_display(),
+            }
+
+        except Exception as e:
+            logger.exception("Error committing BulkUploadItem %s", item.id)
+            return {"success": False, "message": f"Error saving to Product/Variant: {str(e)}"}
+
+    @classmethod
+    def commit_all_items(cls, batch, user):
+        """Commit all uncommitted items in a batch to inventory in a single transaction."""
+        uncommitted_items = list(batch.items.filter(is_deleted=False, status=BulkUploadItem.ItemStatus.DRAFT))
+        if not uncommitted_items:
+            return {
+                "success": False,
+                "message": "No uncommitted items found in this batch.",
+                "committed_count": 0,
+            }
+
+        committed_count = 0
+        errors = []
+        with transaction.atomic():
+            for item in uncommitted_items:
+                res = cls.commit_item(item, user)
+                if res.get("success"):
+                    committed_count += 1
+                else:
+                    errors.append(f"Item #{item.id}: {res.get('message')}")
+
+            all_committed = cls.recalculate_batch_status(batch)
+
+        return {
+            "success": True,
+            "message": f"Successfully committed {committed_count} items to inventory." + (
+                f" {len(errors)} items had errors." if errors else ""
+            ),
+            "committed_count": committed_count,
+            "errors": errors,
+            "batch_completed": all_committed,
+            "batch_status": batch.get_status_display(),
+        }
+
+    @classmethod
+    def delete_uncommitted_items(cls, batch):
+        """Delete all uncommitted items from a batch."""
+        uncommitted_items = batch.items.filter(is_deleted=False, status=BulkUploadItem.ItemStatus.DRAFT)
+        count = uncommitted_items.count()
+        if count == 0:
+            return {
+                "success": False,
+                "message": "No uncommitted items found to delete.",
+                "deleted_count": 0,
+            }
+
+        with transaction.atomic():
+            uncommitted_items.delete()
+            all_committed = cls.recalculate_batch_status(batch)
+
+        return {
+            "success": True,
+            "message": f"Deleted {count} uncommitted items from batch.",
+            "deleted_count": count,
+            "batch_completed": all_committed,
+            "batch_status": batch.get_status_display(),
+        }
+

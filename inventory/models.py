@@ -975,3 +975,153 @@ class DamagedItemRecord(SoftDeleteModel):
             models.Index(fields=["supplier"]),
             models.Index(fields=["created_at"]),
         ]
+
+
+class BulkUpload(SoftDeleteModel):
+    """A batch for adding inventory stock-in entries against an existing SupplierInvoice."""
+
+    class BatchStatus(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        COMMITTED = "COMMITTED", "Committed"
+
+    supplier_invoice = models.ForeignKey(
+        "supplier.SupplierInvoice", on_delete=models.PROTECT, related_name="batches"
+    )
+    status = models.CharField(
+        max_length=20, choices=BatchStatus.choices, default=BatchStatus.DRAFT
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="bulk_uploads_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class BulkUploadItem(SoftDeleteModel):
+    """One product row in a draft batch.
+
+    Contains all input fields from ProductForm and VariantForm (except supplier_invoice
+    which belongs to the parent BulkUpload batch).
+    """
+
+    class ItemStatus(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        COMMITTED = "COMMITTED", "Committed"
+
+    bulk_upload = models.ForeignKey(
+        BulkUpload, on_delete=models.CASCADE, related_name="items"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ItemStatus.choices,
+        default=ItemStatus.DRAFT,
+        db_index=True,
+    )
+    product = models.ForeignKey(
+        "inventory.Product",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bulk_items",
+    )
+    variant = models.ForeignKey(
+        "inventory.ProductVariant",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bulk_items",
+    )
+
+    # Product Form Fields (except supplier_invoice)
+    brand = models.CharField(max_length=255, blank=True, default="")
+    name = models.CharField(max_length=255, blank=True, default="")
+    description = models.TextField(blank=True, null=True)
+    category = models.ForeignKey(
+        "inventory.Category",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bulk_items",
+    )
+    cloth_type = models.ForeignKey(
+        "inventory.ClothType",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bulk_items",
+    )
+    uom = models.ForeignKey(
+        "inventory.UOM",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bulk_items",
+    )
+    hsn_code = models.ForeignKey(
+        "inventory.GSTHsnCode",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bulk_items",
+    )
+
+    # Variant Form Fields
+    size = models.ForeignKey(
+        "inventory.Size",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bulk_items",
+    )
+    color = models.ForeignKey(
+        "inventory.Color",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bulk_items",
+    )
+    quantity = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("1")
+    )
+    minimum_quantity = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    purchase_price = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    mrp = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    discount_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0")
+    )
+    commission_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0"), null=True, blank=True
+    )
+
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "created_at"]
+        indexes = [
+            models.Index(fields=["bulk_upload", "sort_order"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["variant"]),
+            models.Index(fields=["product"]),
+        ]
+
+    @property
+    def line_total(self):
+        return self.quantity * self.purchase_price
+
+    @property
+    def is_committed(self):
+        return self.status == self.ItemStatus.COMMITTED

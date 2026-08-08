@@ -1,0 +1,607 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}
+    Bulk Upload Batch #{{ batch.id }}
+{% endblock title %}
+{% block content %}
+
+    <!-- Page Header -->
+    <div class="page-header mb-3">
+        <h2 class="page-title">Batch #{{ batch.id }} — {{ batch.supplier_invoice.invoice_number }}</h2>
+        <div class="page-actions">
+            <button type="button" class="btn btn-primary" id="uploadBtn">
+                <i class="fas fa-upload me-1"></i>
+                Upload CSV
+            </button>
+            <button type="button" class="btn btn-secondary" id="refreshBtn">
+                <i class="fas fa-sync-alt me-1"></i>
+                Refresh
+            </button>
+            <a href="{% url 'inventory_bulk_upload:home' %}"
+               class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Back
+            </a>
+        </div>
+    </div>
+
+    {% csrf_token %}
+    <input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="display:none;">
+    <div id="uploadStatus" class="mb-2" style="display:none;"></div>
+
+    <nav class="breadcrumb breadcrumb-right mb-3 py-1">
+        <a href="{% url 'inventory_bulk_upload:home' %}" class="breadcrumb-item">Bulk Upload</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Batch #{{ batch.id }}</span>
+    </nav>
+
+    <!-- 2-Column Layout: Batch Info (left) + Items (right) -->
+    <div class="row g-3">
+
+        <!-- LEFT: Batch Info (col-2) -->
+        <div class="col-lg-2 col-md-3 col-12">
+            <div class="details-column">
+                <div class="column-header">
+                    <h3><i class="fas fa-upload me-1"></i> Batch</h3>
+                </div>
+                <div class="details-info-compact">
+                    <div class="detail-name-compact">
+                        <h4>Batch #{{ batch.id }}</h4>
+                        <span class="detail-status status-badge {% if batch.status == 'COMMITTED' %}status-active{% else %}status-inactive{% endif %}" id="batchStatusBadge">
+                            {{ batch.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="detail-contact-compact">
+                        <div class="contact-item">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>{{ batch.supplier_invoice.invoice_number }}</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-building"></i>
+                            <span>{{ batch.supplier_invoice.supplier.name }}</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-calendar"></i>
+                            <span>{{ batch.created_at|date:"M d, Y" }}</span>
+                        </div>
+                        {% if batch.created_by %}
+                        <div class="contact-item">
+                            <i class="fas fa-user"></i>
+                            <span>{{ batch.created_by.username }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="contact-item">
+                            <i class="fas fa-list"></i>
+                            <span><strong>Items:</strong> <span id="itemCount">{{ items.count }}</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Batch Totals -->
+                    <div style="border-top: 1px solid var(--border-color); margin-top: 0.75rem; padding-top: 0.75rem;">
+                        <div class="total-amount-display">
+                            <div class="total-row">
+                                <span class="total-label">Total Qty:</span>
+                                <span class="total-value" id="sumTotalQty">{{ summary.total_qty|floatformat:0|default:"0" }}</span>
+                            </div>
+                            <div class="total-row">
+                                <span class="total-label">Purchase:</span>
+                                <span class="total-value" id="sumPurchaseVal">{{ summary.total_purchase_value|floatformat:2|default:"0.00" }}</span>
+                            </div>
+                            <div class="total-row total-final">
+                                <span class="total-label">Selling:</span>
+                                <span class="total-value" id="sumSellingVal">{{ summary.total_selling_value|floatformat:2|default:"0.00" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Items List (col-10) -->
+        <div class="col-lg-10 col-md-9 col-12">
+            <div class="form-card">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 bulk-items-header-bar" style="border-bottom: 1px solid var(--border-color);">
+                    <h5 class="section-title mb-0">
+                        <i class="fas fa-boxes me-2" style="color: var(--text-secondary);"></i> Items in Batch
+                    </h5>
+                    <div class="d-flex gap-2 batch-actions-group">
+                        <button type="button" class="btn btn-success btn-sm" id="commitAllBtn">
+                            <i class="fas fa-check-double me-1"></i> Commit All
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="deleteUncommittedBtn">
+                            <i class="fas fa-trash-alt me-1"></i> Clear Drafts
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="toggleAllBtn">
+                            <i class="fas fa-arrows-alt-v me-1"></i> Toggle All
+                        </button>
+                    </div>
+                </div>
+
+                <div id="itemsContainer">
+                    {% for item in items %}
+                        {% include "inventory/bulk_upload/_item_row.html" with item=item %}
+                    {% empty %}
+                        <div class="text-center p-4" id="emptyState">
+                            <i class="fas fa-box-open fa-2x mb-2" style="color: var(--text-secondary);"></i>
+                            <h6 style="color: var(--text-primary);">No Items Yet</h6>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;">Upload a CSV file above to populate items into this batch.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+        const BATCH_ID = {{ batch.id }};
+        const UPLOAD_URL = '{% url "inventory_bulk_upload:upload_csv" batch.id %}';
+        const COMMIT_ALL_URL = '{% url "inventory_bulk_upload:commit_all" batch.id %}';
+        const DELETE_UNCOMMITTED_URL = '{% url "inventory_bulk_upload:delete_uncommitted" batch.id %}';
+        const UPDATE_URL_TPL = '{% url "inventory_bulk_upload:item_update" batch.id 999999 %}'.replace('999999', '{itemId}');
+        const COMMIT_URL_TPL = '{% url "inventory_bulk_upload:item_commit" batch.id 999999 %}'.replace('999999', '{itemId}');
+        const DELETE_URL_TPL = '{% url "inventory_bulk_upload:item_delete" batch.id 999999 %}'.replace('999999', '{itemId}');
+        const CSRF_TOKEN = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        document.addEventListener('DOMContentLoaded', function() {
+
+        // CSV Upload
+        document.getElementById('uploadBtn').addEventListener('click', function() {
+            document.getElementById('csvFileInput').click();
+        });
+
+        document.getElementById('csvFileInput').addEventListener('change', function() {
+            if (!this.files.length) return;
+            const formData = new FormData();
+            formData.append('csv_file', this.files[0]);
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<div class="alert alert-info py-1 px-2 mb-2"><i class="fas fa-spinner fa-spin"></i> Processing CSV...</div>';
+            this.disabled = true;
+            fetch(UPLOAD_URL, { method: 'POST', body: formData, headers: { 'X-CSRFToken': CSRF_TOKEN } })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        let html = '<div class="alert alert-success py-1 px-2 mb-2"><i class="fas fa-check-circle"></i> ' + data.message + '</div>';
+                        if (data.matches && data.matches.length) {
+                            html += '<div class="alert alert-info py-1 px-2 mb-2"><strong>Fuzzy matches:</strong><ul class="mb-0 ps-3">';
+                            data.matches.forEach(m => { html += '<li>' + m + '</li>'; });
+                            html += '</ul></div>';
+                        }
+                        if (data.errors && data.errors.length) {
+                            html += '<div class="alert alert-warning py-1 px-2 mb-2"><strong>Warnings:</strong><ul class="mb-0 ps-3">';
+                            data.errors.forEach(err => { html += '<li>' + err + '</li>'; });
+                            html += '</ul></div>';
+                        }
+                        statusDiv.innerHTML = html;
+                        location.reload();
+                    } else {
+                        statusDiv.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-2"><i class="fas fa-times-circle"></i> ' + data.message + '</div>';
+                    }
+                    document.getElementById('csvFileInput').disabled = false;
+                    document.getElementById('csvFileInput').value = '';
+                })
+                .catch(err => {
+                    statusDiv.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-2"><i class="fas fa-times-circle"></i> Upload failed: ' + err.message + '</div>';
+                    document.getElementById('csvFileInput').disabled = false;
+                    document.getElementById('csvFileInput').value = '';
+                });
+        });
+
+        // Toggle single item row
+        $(document).on('click', '.item-header-bar, .btn-toggle-expand', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const card = $(this).closest('.bulk-item-card');
+            const body = card.find('.item-expand-body');
+            const icon = card.find('.toggle-icon');
+            
+            body.slideToggle(150, function() {
+                const isVisible = body.is(':visible');
+                if (isVisible) {
+                    card.css('border-color', 'var(--primary)');
+                    icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                } else {
+                    card.css('border-color', 'var(--border-color)');
+                    icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                }
+            });
+        });
+
+        // Toggle ALL items
+        let allExpanded = false;
+        $(document).on('click', '#toggleAllBtn', function(e) {
+            e.preventDefault();
+            allExpanded = !allExpanded;
+            $('.bulk-item-card').each(function() {
+                const card = $(this);
+                const body = card.find('.item-expand-body');
+                const icon = card.find('.toggle-icon');
+                if (allExpanded) {
+                    body.slideDown(150);
+                    card.css('border-color', 'var(--primary)');
+                    icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                } else {
+                    body.slideUp(150);
+                    card.css('border-color', 'var(--border-color)');
+                    icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                }
+            });
+        });
+
+        // --- Per-item calculation (inside each row) ---
+        function recalcCard(card) {
+            const qty = parseFloat(card.querySelector('.inp-qty')?.value) || 0;
+            const purch = parseFloat(card.querySelector('.inp-purch')?.value) || 0;
+            const mrp = parseFloat(card.querySelector('.inp-mrp')?.value) || 0;
+            const disc = parseFloat(card.querySelector('.inp-disc')?.value) || 0;
+
+            const purchTotal = qty * purch;
+            const sellTotal = qty * mrp;
+            const afterDisc = mrp - (mrp * disc / 100);
+            const profit = afterDisc - purch;
+            const marginPct = purch > 0 ? (profit / purch) * 100 : 0;
+
+            // Update header line total
+            const totalSpan = card.querySelector('.cell-total');
+            if (totalSpan) totalSpan.textContent = formatCurrency(purchTotal);
+
+            // Update inline calculations
+            const set = (cls, val) => { const el = card.querySelector('.' + cls); if (el) el.textContent = val; };
+            set('item-calc-purch-total', formatCurrency(purchTotal));
+            set('item-calc-sell-total', formatCurrency(sellTotal));
+            set('item-calc-after-disc', formatCurrency(afterDisc));
+            set('item-calc-profit', formatCurrency(profit));
+            set('item-calc-margin-pct', marginPct.toFixed(2) + '%');
+
+            updateBatchSummary();
+        }
+
+        function updateBatchSummary() {
+            let totalQty = 0, totalPurch = 0, totalSell = 0;
+            document.querySelectorAll('.bulk-item-card').forEach(card => {
+                const qty = parseFloat(card.querySelector('.inp-qty')?.value) || 0;
+                const purch = parseFloat(card.querySelector('.inp-purch')?.value) || 0;
+                const mrp = parseFloat(card.querySelector('.inp-mrp')?.value) || 0;
+                totalQty += qty;
+                totalPurch += (qty * purch);
+                totalSell += (qty * mrp);
+            });
+            document.getElementById('itemCount').textContent = document.querySelectorAll('.bulk-item-card').length;
+            document.getElementById('sumTotalQty').textContent = totalQty;
+            document.getElementById('sumPurchaseVal').textContent = formatCurrency(totalPurch);
+            document.getElementById('sumSellingVal').textContent = formatCurrency(totalSell);
+        }
+
+        // Init calculations for all cards on load
+        document.querySelectorAll('.bulk-item-card').forEach(recalcCard);
+
+        // Real-time recalc on input
+        document.addEventListener('input', function(e) {
+            if (e.target.matches('.inp-qty, .inp-purch, .inp-mrp, .inp-disc')) {
+                const card = e.target.closest('.bulk-item-card');
+                if (card) recalcCard(card);
+            }
+        });
+
+        // Auto-fill from Product
+        document.addEventListener('change', function(e) {
+            if (e.target.matches('.inp-product')) {
+                const card = e.target.closest('.bulk-item-card');
+                const opt = e.target.options[e.target.selectedIndex];
+                if (opt && opt.value) {
+                    if (card.querySelector('.inp-brand')) card.querySelector('.inp-brand').value = opt.dataset.brand || '';
+                    if (card.querySelector('.inp-name')) card.querySelector('.inp-name').value = opt.dataset.name || '';
+                    if (card.querySelector('.inp-category')) card.querySelector('.inp-category').value = opt.dataset.category || '';
+                    if (card.querySelector('.inp-cloth')) card.querySelector('.inp-cloth').value = opt.dataset.cloth || '';
+                    if (card.querySelector('.inp-uom')) card.querySelector('.inp-uom').value = opt.dataset.uom || '';
+                    if (card.querySelector('.inp-hsn')) card.querySelector('.inp-hsn').value = opt.dataset.hsn || '';
+                    if (card.querySelector('.inp-variant')) card.querySelector('.inp-variant').value = '';
+                }
+            }
+        });
+
+        // Auto-fill from Variant
+        document.addEventListener('change', function(e) {
+            if (e.target.matches('.inp-variant')) {
+                const card = e.target.closest('.bulk-item-card');
+                const opt = e.target.options[e.target.selectedIndex];
+                if (opt && opt.value) {
+                    if (card.querySelector('.inp-product')) card.querySelector('.inp-product').value = opt.dataset.product || '';
+                    if (card.querySelector('.inp-brand')) card.querySelector('.inp-brand').value = opt.dataset.brand || '';
+                    if (card.querySelector('.inp-name')) card.querySelector('.inp-name').value = opt.dataset.name || '';
+                    if (card.querySelector('.inp-category')) card.querySelector('.inp-category').value = opt.dataset.category || '';
+                    if (card.querySelector('.inp-cloth')) card.querySelector('.inp-cloth').value = opt.dataset.cloth || '';
+                    if (card.querySelector('.inp-uom')) card.querySelector('.inp-uom').value = opt.dataset.uom || '';
+                    if (card.querySelector('.inp-hsn')) card.querySelector('.inp-hsn').value = opt.dataset.hsn || '';
+                    if (card.querySelector('.inp-size')) card.querySelector('.inp-size').value = opt.dataset.size || '';
+                    if (card.querySelector('.inp-color')) card.querySelector('.inp-color').value = opt.dataset.color || '';
+                    if (card.querySelector('.inp-purch')) card.querySelector('.inp-purch').value = opt.dataset.purch || '0.00';
+                    if (card.querySelector('.inp-mrp')) card.querySelector('.inp-mrp').value = opt.dataset.mrp || '0.00';
+                    recalcCard(card);
+                }
+            }
+        });
+
+        // Save item
+        function getCardInputs(card) {
+            return {
+                itemId: card.dataset.itemId,
+                product: card.querySelector('.inp-product')?.value || '',
+                variant: card.querySelector('.inp-variant')?.value || '',
+                brand: card.querySelector('.inp-brand')?.value || '',
+                name: card.querySelector('.inp-name')?.value || '',
+                category: card.querySelector('.inp-category')?.value || '',
+                cloth_type: card.querySelector('.inp-cloth')?.value || '',
+                uom: card.querySelector('.inp-uom')?.value || '',
+                hsn_code: card.querySelector('.inp-hsn')?.value || '',
+                size: card.querySelector('.inp-size')?.value || '',
+                color: card.querySelector('.inp-color')?.value || '',
+                quantity: card.querySelector('.inp-qty')?.value || '1',
+                purchase_price: card.querySelector('.inp-purch')?.value || '0',
+                mrp: card.querySelector('.inp-mrp')?.value || '0',
+                discount_percentage: card.querySelector('.inp-disc')?.value || '0',
+                commission_percentage: card.querySelector('.inp-comm')?.value || '0',
+                minimum_quantity: card.querySelector('.inp-min-qty')?.value || '0',
+                description: card.querySelector('.inp-desc')?.value || '',
+            };
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.btn-save-item')) return;
+            e.preventDefault();
+            const btn = e.target.closest('.btn-save-item');
+            const card = btn.closest('.bulk-item-card');
+            const inputs = getCardInputs(card);
+            const url = UPDATE_URL_TPL.replace('{itemId}', inputs.itemId);
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify(inputs)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) { recalcCard(card); showNotification('Item saved', 'success'); }
+                else { showNotification(data.message || 'Save failed', 'error'); }
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+            })
+            .catch(err => {
+                showNotification('Network error: ' + err.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+            });
+        });
+
+        // Commit item to Product & ProductVariant
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.btn-commit-item')) return;
+            e.preventDefault();
+            const btn = e.target.closest('.btn-commit-item');
+            const card = btn.closest('.bulk-item-card');
+            const inputs = getCardInputs(card);
+            const url = COMMIT_URL_TPL.replace('{itemId}', inputs.itemId);
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving to Inventory...';
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify(inputs)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    
+                    // Update header badge
+                    const headerBadge = card.querySelector('.item-status-badge');
+                    if (headerBadge) {
+                        headerBadge.className = 'badge bg-success item-status-badge';
+                        headerBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i>Committed';
+                    }
+
+                    // Update header title
+                    const titleEl = card.querySelector('.item-card-title');
+                    if (titleEl && data.product_name) {
+                        titleEl.textContent = data.product_name + (data.barcode ? ` [${data.barcode}]` : '');
+                    }
+
+                    // Update action status badge
+                    const actionBadge = card.querySelector('.item-action-status');
+                    if (actionBadge) {
+                        actionBadge.className = 'badge bg-success item-action-status';
+                        actionBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i>Committed';
+                    }
+
+                    // Replace Commit button with View Variant Details & Print Barcode links to prevent duplicate submissions
+                    let linksHtml = '';
+                    if (data.variant_url) {
+                        linksHtml += `<a href="${data.variant_url}" target="_blank" class="btn btn-outline-info w-100 justify-content-center btn-view-variant"><i class="fas fa-external-link-alt me-1"></i> View Variant Details</a>`;
+                    }
+                    if (data.barcode_url) {
+                        linksHtml += `<a href="${data.barcode_url}" target="_blank" class="btn btn-outline-secondary w-100 justify-content-center btn-print-barcode"><i class="fas fa-barcode me-1"></i> Print Barcode</a>`;
+                    }
+                    const wrapper = card.querySelector('.committed-links-wrapper');
+                    if (wrapper) {
+                        wrapper.innerHTML = linksHtml;
+                        wrapper.style.display = 'flex';
+                    } else {
+                        btn.insertAdjacentHTML('afterend', linksHtml);
+                    }
+                    btn.remove();
+
+                    // Hide/remove Save Draft and Delete buttons since item is now committed
+                    card.querySelector('.btn-save-item')?.remove();
+                    card.querySelector('.btn-del-item')?.remove();
+
+                    // Update batch status UI if all items committed
+                    updateBatchStatusUI(data);
+
+                    // Open barcode page in new tab
+                    if (data.barcode_url) {
+                        window.open(data.barcode_url, '_blank');
+                    }
+                } else {
+                    showNotification(data.message || 'Save to Product/Variant failed', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check-circle me-1"></i> Save to Product & Variant';
+                }
+            })
+            .catch(err => {
+                showNotification('Network error: ' + err.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle me-1"></i> Save to Product & Variant';
+            });
+        });
+
+        function updateBatchStatusUI(data) {
+            const batchBadge = document.getElementById('batchStatusBadge');
+            if (batchBadge && data.batch_completed !== undefined) {
+                if (data.batch_completed) {
+                    batchBadge.className = 'detail-status status-badge status-active';
+                    batchBadge.textContent = 'Committed';
+                } else {
+                    batchBadge.className = 'detail-status status-badge status-inactive';
+                    batchBadge.textContent = 'Draft';
+                }
+            }
+        }
+
+        // Delete item
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.btn-del-item')) return;
+            e.preventDefault();
+            if (!confirm('Delete this item from the batch?')) return;
+            const btn = e.target.closest('.btn-del-item');
+            const card = btn.closest('.bulk-item-card');
+            const url = DELETE_URL_TPL.replace('{itemId}', card.dataset.itemId);
+            btn.disabled = true;
+            fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN } })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    card.remove();
+                    updateBatchSummary();
+                    updateBatchStatusUI(data);
+                    if (!document.querySelector('.bulk-item-card')) {
+                        document.getElementById('itemsContainer').innerHTML =
+                            '<div class="text-center p-4"><i class="fas fa-box-open fa-2x mb-2" style="color: var(--text-secondary);"></i>' +
+                            '<h6 style="color: var(--text-primary);">No Items Yet</h6></div>';
+                    }
+                    showNotification('Item deleted', 'success');
+                } else {
+                    showNotification(data.message || 'Delete failed', 'error');
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => { showNotification('Error: ' + err.message, 'error'); btn.disabled = false; });
+        });
+        document.getElementById('refreshBtn').addEventListener('click', function() { location.reload(); });
+
+        // Commit All items
+        document.getElementById('commitAllBtn')?.addEventListener('click', function() {
+            if (!confirm('Commit all uncommitted items in this batch to inventory?')) return;
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Committing All...';
+            fetch(COMMIT_ALL_URL, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    showNotification(data.message || 'Bulk commit failed', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check-double me-1"></i> Commit All';
+                }
+            })
+            .catch(err => {
+                showNotification('Error: ' + err.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-double me-1"></i> Commit All';
+            });
+        });
+
+        // Clear Draft / Uncommitted items
+        document.getElementById('deleteUncommittedBtn')?.addEventListener('click', function() {
+            if (!confirm('Delete all uncommitted draft items from this batch? This action cannot be undone.')) return;
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Deleting...';
+            fetch(DELETE_UNCOMMITTED_URL, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    showNotification(data.message || 'Delete failed', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Clear Drafts';
+                }
+            })
+            .catch(err => {
+                showNotification('Error: ' + err.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Clear Drafts';
+            });
+        });
+
+        // Initialize Select2 on product & variant search dropdowns
+        Select2Helper.init('.inp-product, .inp-variant', {
+            placeholder: 'Type to search...',
+            allowClear: true,
+            width: '100%'
+        });
+
+        // Re-bind change events via jQuery (Select2 needs jQuery .on('change'))
+        $(document).on('change', '.inp-product', function() {
+            const card = this.closest('.bulk-item-card');
+            const opt = this.options[this.selectedIndex];
+            if (opt && opt.value) {
+                if (card.querySelector('.inp-brand')) card.querySelector('.inp-brand').value = opt.dataset.brand || '';
+                if (card.querySelector('.inp-name')) card.querySelector('.inp-name').value = opt.dataset.name || '';
+                if (card.querySelector('.inp-category')) card.querySelector('.inp-category').value = opt.dataset.category || '';
+                if (card.querySelector('.inp-cloth')) card.querySelector('.inp-cloth').value = opt.dataset.cloth || '';
+                if (card.querySelector('.inp-uom')) card.querySelector('.inp-uom').value = opt.dataset.uom || '';
+                if (card.querySelector('.inp-hsn')) card.querySelector('.inp-hsn').value = opt.dataset.hsn || '';
+                // Clear variant when product is selected
+                $(card).find('.inp-variant').val('').trigger('change.select2');
+            }
+        });
+
+        $(document).on('change', '.inp-variant', function() {
+            const card = this.closest('.bulk-item-card');
+            const opt = this.options[this.selectedIndex];
+            if (opt && opt.value) {
+                // Set product dropdown via Select2
+                $(card).find('.inp-product').val(opt.dataset.product || '').trigger('change.select2');
+                if (card.querySelector('.inp-brand')) card.querySelector('.inp-brand').value = opt.dataset.brand || '';
+                if (card.querySelector('.inp-name')) card.querySelector('.inp-name').value = opt.dataset.name || '';
+                if (card.querySelector('.inp-category')) card.querySelector('.inp-category').value = opt.dataset.category || '';
+                if (card.querySelector('.inp-cloth')) card.querySelector('.inp-cloth').value = opt.dataset.cloth || '';
+                if (card.querySelector('.inp-uom')) card.querySelector('.inp-uom').value = opt.dataset.uom || '';
+                if (card.querySelector('.inp-hsn')) card.querySelector('.inp-hsn').value = opt.dataset.hsn || '';
+                if (card.querySelector('.inp-size')) card.querySelector('.inp-size').value = opt.dataset.size || '';
+                if (card.querySelector('.inp-color')) card.querySelector('.inp-color').value = opt.dataset.color || '';
+                if (card.querySelector('.inp-purch')) card.querySelector('.inp-purch').value = opt.dataset.purch || '0.00';
+                if (card.querySelector('.inp-mrp')) card.querySelector('.inp-mrp').value = opt.dataset.mrp || '0.00';
+                recalcCard(card);
+            }
+        });
+
+        }); // DOMContentLoaded
+    </script>
+{% endblock extra_js %}

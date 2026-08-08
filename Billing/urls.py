@@ -30,6 +30,7 @@ urlpatterns = [
     path("inventory/", include("inventory.urls")),
     path("inventory/products/", include("inventory.urls_products")),
     path("inventory/products/variants/", include("inventory.urls_variant")),
+    path("inventory/bulk-upload/", include("inventory.urls_bulk_upload")),
     path("cart/", include("cart.urls")),
     path("invoice/", include("invoice.urls")),
     path("report/", include("report.urls")),

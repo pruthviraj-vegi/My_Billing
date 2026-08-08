@@ -6,6 +6,7 @@ from decimal import Decimal
 from django import forms
 
 from .models import (
+    BulkUpload,
     Category,
     ClothType,
     Color,
@@ -1244,3 +1245,26 @@ class InventoryPriceUpdateForm(forms.ModelForm):
         if mrp is not None and mrp <= 0:
             raise forms.ValidationError("Selling price must be greater than 0")
         return mrp
+
+
+class BulkUploadForm(forms.ModelForm):
+    """Form for creating and editing BulkUpload batches."""
+
+    class Meta:
+        model = BulkUpload
+        fields = ["supplier_invoice", "status"]
+        widgets = {
+            "supplier_invoice": SupplierInvoiceSelect(
+                attrs={"autofocus": True, "placeholder": "Select supplier invoice"}
+            ),
+            "status": forms.Select(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-input"
+
+        self.fields["supplier_invoice"].queryset = SupplierInvoice.objects.filter(
+            supplier__is_deleted=False
+        ).order_by("-created_at")
