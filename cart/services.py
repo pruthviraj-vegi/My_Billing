@@ -48,11 +48,67 @@ class CartService:
             )
         )["total"] or Decimal("0.00")
 
+        frequent_prices_map = CartService.get_frequent_sold_prices([item.product_variant for item in cart_items])
+
+        for item in cart_items:
+            item.frequent_sold_prices = frequent_prices_map.get(item.product_variant.id, [])
+
         return {
             "cart_items": cart_items,
             "category_counts": category_counts,
             "total_selling_price": total_selling_price,
         }
+
+    @staticmethod
+    def get_frequent_sold_prices(variants):
+        """
+        Fetch the top 3 most frequently used past selling prices for given variants,
+        excluding their current mrp, final_price, and purchase_price.
+        """
+        frequent_prices_map = {}
+        if not variants:
+            return frequent_prices_map
+
+        # Create a lookup for quick exclusion
+        variant_data = {
+            v.id: {
+                "mrp": float(v.mrp),
+                "final_price": float(getattr(v, "final_price", v.mrp)),
+                "purchase_price": float(v.purchase_price)
+            } for v in variants
+        }
+        variant_ids = list(variant_data.keys())
+
+        try:
+            from invoice.models import InvoiceItem
+            from django.db.models import Count
+
+            recent_sales = (
+                InvoiceItem.objects.filter(
+                    product_variant_id__in=variant_ids,
+                    invoice__is_cancelled=False,
+                )
+                .values("product_variant_id", "unit_price")
+                .annotate(sale_count=Count("id"))
+                .order_by("product_variant_id", "-sale_count")
+            )
+            for sale in recent_sales:
+                v_id = sale["product_variant_id"]
+                p = float(sale["unit_price"])
+                
+                # Exclude standard prices
+                vd = variant_data[v_id]
+                if p == vd["mrp"] or p == vd["final_price"] or p == vd["purchase_price"]:
+                    continue
+                    
+                if v_id not in frequent_prices_map:
+                    frequent_prices_map[v_id] = []
+                if p not in frequent_prices_map[v_id] and len(frequent_prices_map[v_id]) < 3:
+                    frequent_prices_map[v_id].append(p)
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
+        return frequent_prices_map
 
     @staticmethod
     def add_variant_to_cart(cart, variant, quantity=1, price=None):

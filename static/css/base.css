@@ -3475,6 +3475,73 @@ form.submitting * {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
+.price-bubble-container {
+  position: relative;
+  display: inline-block; /* Shrinks container to input width */
+}
+
+.price-suggestions-wrapper {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  z-index: 1050;
+  white-space: nowrap;
+}
+
+.suggestion-bubble {
+  position: relative;
+  background: var(--primary, #4f46e5);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  animation: bubblePopIn 0.3s ease;
+  border: none;
+}
+
+.suggestion-bubble:hover {
+  background: var(--primary-hover, #4338ca);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  color: white;
+}
+
+.suggestion-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  top: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px 5px 0;
+  border-style: solid;
+  border-color: var(--primary, #4f46e5) transparent;
+  display: block;
+  width: 0;
+  transition: border-color 0.2s ease;
+}
+
+.suggestion-bubble:hover::after {
+  border-color: var(--primary-hover, #4338ca) transparent;
+}
+
+@keyframes bubblePopIn {
+  0% { transform: scale(0.8) translateY(5px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+
+
 .amount-cell {
   font-weight: 600;
   color: var(--success);

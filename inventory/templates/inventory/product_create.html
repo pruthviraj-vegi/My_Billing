@@ -4,51 +4,7 @@
   Create Product
 {% endblock title %}
 {% block content %}
-  <style>
-    .gst-bubble-container {
-      position: relative;
-    }
-    .gst-apply-bubble {
-      position: absolute;
-      top: -38px;
-      right: 10px;
-      background: var(--primary-color, #4f46e5);
-      color: white;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      transition: all 0.2s ease;
-      z-index: 10;
-      animation: popIn 0.3s ease;
-      white-space: nowrap;
-    }
-    .gst-apply-bubble:hover {
-      background: var(--primary-hover, #4338ca);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-    }
-    .gst-apply-bubble::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      right: 15px;
-      border-width: 5px 5px 0;
-      border-style: solid;
-      border-color: var(--primary-color, #4f46e5) transparent;
-      display: block;
-      width: 0;
-    }
-    .gst-apply-bubble:hover::after {
-      border-color: var(--primary-hover, #4338ca) transparent;
-    }
-    @keyframes popIn {
-      0% { transform: scale(0.8) translateY(5px); opacity: 0; }
-      100% { transform: scale(1) translateY(0); opacity: 1; }
-    }
-  </style>
+
   <!-- Page Header -->
   <div class="page-header">
     <h2 class="page-title">Create New Product</h2>
@@ -253,9 +209,9 @@
                   <div class="form-group {% if variant_form.purchase_price.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.purchase_price.id_for_label }}"
                            class="form-label">{{ variant_form.purchase_price.label }}</label>
-                    <div class="gst-bubble-container" style="position: relative;">
+                    <div class="price-bubble-container" style="position: relative;">
                       {{ variant_form.purchase_price }}
-                      <div id="gst-apply-bubble" class="gst-apply-bubble d-none"></div>
+                      <div id="gst-apply-bubble" class="suggestion-bubble d-none" style="position: absolute; top: -38px; right: 10px; z-index: 10;"></div>
                     </div>
                     <small class="form-help {% if variant_form.purchase_price.errors %}has-error{% endif %}">
                       {% if variant_form.purchase_price.errors %}

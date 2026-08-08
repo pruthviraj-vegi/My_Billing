@@ -297,6 +297,10 @@ def scan_barcode(request):
             )
             action_type = "Add" if created else "Update"
 
+            # Fetch frequent sold prices for the variant
+            frequent_prices_map = CartService.get_frequent_sold_prices([product_variant])
+            frequent_sold_prices = frequent_prices_map.get(product_variant.id, [])
+
             # Build cart item data for response
             cart_item_data = {
                 "id": cart_item.id,
@@ -313,9 +317,12 @@ def scan_barcode(request):
                     "barcode": product_variant.barcode,
                     "full_name": product_variant.full_name,
                     "mrp": float(product_variant.mrp),
+                    "final_price": float(product_variant.final_price),
+                    "discount_percentage": float(product_variant.discount_percentage or 0),
                     "simple_name": product_variant.simple_name,
                     "purchase_price": float(product_variant.purchase_price),
                     "product_name": product_variant.product.brand,
+                    "frequent_sold_prices": frequent_sold_prices,
                 },
             }
 

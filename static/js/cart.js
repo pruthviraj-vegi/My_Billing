@@ -118,12 +118,42 @@ class CartManager {
         this.initPriceToggle();
         this.initBarcodeSuggestions();
         this.initBarcodeScanner();
+        this.initPriceSuggestionsBubble();
 
         // Cleanup in-flight requests on page unload
         window.addEventListener('beforeunload', () => {
             this.abortControllers.forEach(controller => controller.abort());
             this.abortControllers.clear();
         });
+    }
+
+    /**
+     * Initialize price suggestion bubble show/hide logic on focus and hover
+     * @private
+     */
+    initPriceSuggestionsBubble() {
+        if (!this.dom.body) return;
+
+        this.dom.body.addEventListener('focusin', (e) => {
+            if (e.target.matches('.price-input')) {
+                const container = e.target.closest('.price-bubble-container');
+                const bubble = container?.querySelector('.price-suggestions-wrapper');
+                if (bubble && bubble.children.length > 0) bubble.classList.remove('d-none');
+            }
+        });
+
+        this.dom.body.addEventListener('focusout', (e) => {
+            if (e.target.matches('.price-input')) {
+                setTimeout(() => {
+                    const container = e.target.closest('.price-bubble-container');
+                    if (container && !container.contains(document.activeElement)) {
+                        const bubble = container.querySelector('.price-suggestions-wrapper');
+                        if (bubble) bubble.classList.add('d-none');
+                    }
+                }, 200);
+            }
+        });
+
     }
 
     /*** ───────── OFFLINE DETECTION ───────── ***/
@@ -620,6 +650,44 @@ class CartManager {
     }
 
     onTableClick(e) {
+        const bubbleChip = e.target.closest('.suggestion-bubble');
+        if (bubbleChip) {
+            e.preventDefault();
+            const targetPrice = bubbleChip.dataset.price;
+            if (targetPrice === undefined || targetPrice === null) return;
+
+            const row = bubbleChip.closest('tr');
+            if (!row) return;
+
+            const priceInput = row.querySelector('.price-input');
+            const qtyInput = row.querySelector('.quantity-input');
+            const amountCell = row.querySelector('.amount-cell');
+            const discountCell = row.querySelector('.discount-cell');
+            const priceToggleCell = row.querySelector('.price-toggle-cell');
+
+            if (priceInput) {
+                const numericPrice = parseFloat(targetPrice) || 0;
+                priceInput.value = numericPrice;
+
+                // Update amount & discount visually
+                const qty = parseFloat(qtyInput?.value) || 0;
+                const sell = parseFloat(priceToggleCell?.dataset.sellingPrice) || 0;
+                if (amountCell) amountCell.textContent = this.format(qty * numericPrice);
+                if (discountCell) discountCell.textContent = `${this.calcDiscount(sell, numericPrice).toFixed(2)}%`;
+
+                // Hide floating wrapper if present
+                const bubble = bubbleChip.closest('.price-suggestions-wrapper');
+                if (bubble) bubble.classList.add('d-none');
+
+                // Save item change via API
+                const itemId = priceInput.dataset.itemId;
+                if (itemId) {
+                    this.updateItem(itemId);
+                }
+            }
+            return;
+        }
+
         const btn = e.target.closest('.update-item-btn, .delete-item-btn');
         if (!btn) return;
 
@@ -748,33 +816,36 @@ class CartManager {
                 }
                 if (data.remaining_stock !== undefined) {
                     this.dom.remainingStock.textContent = this.format(data.remaining_stock);
-                    // Show stock warning (non-blocking)
-                    const variantName = row.querySelector('td:nth-child(3)')?.textContent || 'Product';
-                    this.showStockWarning(data.remaining_stock, variantName.trim());
                 }
+
+                // Update totals
+                this.updateTotals(data.cart_total);
+
+                // Update categories
+                if (data.category_counts) {
+                    this.updateCategories(data.category_counts);
+                }
+
+                this.notify('Item updated successfully', 'success');
             }
-
-            // Update totals (removed duplicate recalculateTotals call)
-            this.updateTotals(data.cart_total);
-
-            // Update categories
-            if (data.category_counts) {
-                this.updateCategories(data.category_counts);
-            }
-
-            this.notify('Item updated successfully', 'success');
         } catch (err) {
-            console.error('[CartManager] Error updating item:', err);
-            this.rollbackItemUpdate(id, originalValues);
-            this.notify(err.message || 'Update failed - values restored', 'error');
+            if (err.message !== 'Request cancelled') {
+                console.error('[CartManager] Error updating item:', err);
+                this.notify(this.parseErrorMessage(err, 'update'), 'error');
+
+                // Rollback on failure
+                qtyInput.value = originalValues.quantity;
+                priceInput.value = originalValues.price;
+                amountCell.textContent = originalValues.amount;
+                if (discountCell) discountCell.textContent = originalValues.discount;
+                if (this.dom.totalAmount) this.dom.totalAmount.textContent = originalValues.totalAmount;
+            }
         } finally {
-            // Re-enable inputs
             qtyInput.disabled = false;
             priceInput.disabled = false;
-
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save"></i>';
+                btn.innerHTML = '<i class="fas fa-save" aria-hidden="true"></i>';
             }
             this.focusBarcode();
         }
@@ -882,7 +953,9 @@ class CartManager {
                 simple_name: variantName = 'N/A',
                 mrp: sellingPrice = data.price || '0.00',
                 purchase_price: purchasePrice = '0.00',
+                final_price: finalPrice = data.product_variant?.final_price || sellingPrice,
                 discount_percentage: discount = 0,
+                frequent_sold_prices: frequentSoldPrices = [],
             } = {},
         } = data;
 
@@ -891,14 +964,29 @@ class CartManager {
         const safeBrand = typeof escapeHtml === 'function' ? escapeHtml(String(brand)) : String(brand).replace(/[<>&"']/g, '');
         const safeVariantName = typeof escapeHtml === 'function' ? escapeHtml(String(variantName)) : String(variantName).replace(/[<>&"']/g, '');
 
-        let calculatedDiscount = discount;
-        if (sellingPrice > 0 && data.price) {
-            calculatedDiscount = this.calcDiscount(sellingPrice, data.price);
+        let calculatedDiscount = data.discount_percentage;
+        if (calculatedDiscount === undefined || calculatedDiscount === null) {
+            calculatedDiscount = discount;
+            if (sellingPrice > 0 && data.price) {
+                calculatedDiscount = this.calcDiscount(sellingPrice, data.price);
+            }
         }
 
         const isShowingPurchasePrice = this.priceToggleState;
         const displayPrice = isShowingPurchasePrice ? parseFloat(purchasePrice) : parseFloat(sellingPrice);
         const priceDisplay = this.formatPriceAnimation(displayPrice);
+
+        // Build price suggestion chips for floating bubble
+        let chipsHtml = ``;
+
+        if (frequentSoldPrices && frequentSoldPrices.length > 0) {
+            frequentSoldPrices.forEach(p => {
+                chipsHtml += `
+                <div class="suggestion-bubble" data-price="${p}" title="Set Past Sold Price">
+                    ${this.format(p)}
+                </div>`;
+            });
+        }
 
         const row = document.createElement('tr');
         row.id = `cart-item-${id}`;
@@ -924,9 +1012,15 @@ class CartManager {
                        title="Press Enter to update" aria-label="Quantity">
             </td>
             <td>
-                <input type="number" class="form-input price-input" value="${price}" 
-                       data-item-id="${id}" min="0" step="1" 
-                       title="Press Enter to update" aria-label="Price">
+                <div class="price-bubble-container" style="position: relative;">
+                    <input type="number" class="form-input price-input" value="${price}" 
+                           data-item-id="${id}"
+                           min="0" step="1" 
+                           title="Press Enter to update" aria-label="Selling Price">
+                    <div class="price-suggestions-wrapper d-none">
+                        ${chipsHtml}
+                    </div>
+                </div>
             </td>
             <td class="discount-cell mobile-hide">${calculatedDiscount.toFixed(2)}%</td>
             <td class="amount-cell">${this.format(amount)}</td>
