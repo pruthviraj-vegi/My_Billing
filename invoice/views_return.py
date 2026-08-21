@@ -3,7 +3,6 @@ Views for invoice return operations.
 """
 
 import logging
-from datetime import datetime
 from decimal import Decimal
 
 from django.contrib import messages
@@ -17,7 +16,7 @@ from django.views.generic import DetailView
 from django.views.generic.edit import CreateView
 
 from base.decorators import required_permission, RequiredPermissionMixin
-
+from base.getDates import DatesRange, end_of_day, parse_date, start_of_day
 from base.utility import render_paginated_response, table_sorting
 from inventory.services import InventoryService
 from invoice.choices import (
@@ -49,9 +48,23 @@ def home(request):
     status_choices = ReturnInvoice.RefundStatus.choices
     refund_type_choices = ReturnInvoice.RefundType.choices
 
+    # Fetch available financial years
+    return_fys = set(
+        ReturnInvoice.objects.values_list("financial_year", flat=True)
+        .distinct()
+        .filter(financial_year__isnull=False)
+    )
+    invoice_fys = set(
+        Invoice.objects.values_list("financial_year", flat=True)
+        .distinct()
+        .filter(financial_year__isnull=False)
+    )
+    financial_years = sorted(list(return_fys | invoice_fys), reverse=True)
+
     context = {
         "status_choices": status_choices,
         "refund_type_choices": refund_type_choices,
+        "financial_years": financial_years,
     }
 
     return render(request, "invoice_return/home.html", context)
@@ -61,11 +74,27 @@ def home(request):
 def fetch_return_invoices(request):
     """AJAX endpoint to fetch return invoices with search, filter, and pagination."""
     # Get search and filter parameters
-    search_query = request.GET.get("search", "")
-    status_filter = request.GET.get("status", "")
-    refund_type_filter = request.GET.get("refund_type", "")
-    date_from = request.GET.get("date_from", "")
-    date_to = request.GET.get("date_to", "")
+    search_query = request.GET.get("search", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    refund_type_filter = request.GET.get("refund_type", "").strip()
+    financial_year = request.GET.get("financial_year", "").strip()
+    date_filter = (
+        request.GET.get("date_filter")
+        or request.GET.get("date_range")
+        or ""
+    ).strip()
+    date_from_str = (
+        request.GET.get("date_from")
+        or request.GET.get("from_date")
+        or request.GET.get("start_date")
+        or ""
+    ).strip()
+    date_to_str = (
+        request.GET.get("date_to")
+        or request.GET.get("to_date")
+        or request.GET.get("end_date")
+        or ""
+    ).strip()
 
     # Apply search filter
     filters = Q()
@@ -75,6 +104,7 @@ def fetch_return_invoices(request):
             filters &= (
                 Q(return_number__icontains=word)
                 | Q(customer__name__icontains=word)
+                | Q(customer__phone_number__icontains=word)
                 | Q(invoice__invoice_number__icontains=word)
                 | Q(notes__icontains=word)
             )
@@ -87,20 +117,34 @@ def fetch_return_invoices(request):
     if refund_type_filter:
         filters &= Q(refund_type=refund_type_filter)
 
-    # Apply date filters
-    if date_from:
-        try:
-            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d").date()
-            filters &= Q(return_date__date__gte=date_from_obj)
-        except ValueError:
-            pass
+    # Apply financial year filter
+    if financial_year:
+        filters &= Q(financial_year=financial_year)
 
-    if date_to:
+    # Apply date filters
+    if date_filter == "custom" or (not date_filter and (date_from_str or date_to_str)):
+        from_dt = parse_date(date_from_str) if date_from_str else None
+        to_dt = parse_date(date_to_str) if date_to_str else None
+
+        if from_dt and to_dt and from_dt > to_dt:
+            from_dt, to_dt = to_dt, from_dt
+
+        if from_dt:
+            filters &= Q(return_date__gte=start_of_day(from_dt))
+        if to_dt:
+            filters &= Q(return_date__lte=end_of_day(to_dt))
+    elif date_filter in ("all", "all_time", "full_date", ""):
+        # Full history / no date bounds
+        pass
+    else:
         try:
-            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d").date()
-            filters &= Q(return_date__date__lte=date_to_obj)
-        except ValueError:
-            pass
+            date_range_obj = DatesRange(date_filter)
+            filters &= Q(
+                return_date__gte=date_range_obj.from_date,
+                return_date__lte=date_range_obj.to_date,
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning("Invalid date_filter preset '%s': %s", date_filter, e)
 
     # Apply sorting
     valid_sorts = table_sorting(request, valid_sort_fields, "-created_at")

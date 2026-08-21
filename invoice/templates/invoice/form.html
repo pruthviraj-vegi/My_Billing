@@ -4,6 +4,8 @@
 {% block title %}
 {{ title }}
 {% endblock title %}
+
+
 {% block content %}
 <!-- Page Header -->
 <div class="page-header">
@@ -474,6 +476,7 @@
         // Make advance amount and due date readonly for cash invoices
         advanceAmountField.readOnly = true;
         dueDateField.readOnly = true;
+        dueDateField.setAttribute('data-disabled', 'true');
 
         // Clear values when readonly
         advanceAmountField.value = '0';
@@ -483,26 +486,25 @@
         advanceAmountField.removeAttribute('required');
         dueDateField.removeAttribute('required');
 
-        // Add visual indication
-        advanceAmountField.parentElement.classList.add('field-disabled');
-        dueDateField.parentElement.classList.add('field-disabled');
-
-
+        // Add visual indication to form group and wrapper
+        advanceAmountField.closest('.form-group')?.classList.add('field-disabled');
+        dueDateField.closest('.form-group')?.classList.add('field-disabled');
+        dueDateField.closest('.input-date-wrapper')?.classList.add('field-disabled');
 
         // For cash invoices, payment status will automatically be set to PAID
       } else {
         // Enable fields for credit invoices
         advanceAmountField.readOnly = false;
         dueDateField.readOnly = false;
+        dueDateField.removeAttribute('data-disabled');
 
         // Add required attribute for credit invoices
         dueDateField.setAttribute('required', 'required');
 
         // Remove visual indication
-        advanceAmountField.parentElement.classList.remove('field-disabled');
-        dueDateField.parentElement.classList.remove('field-disabled');
-
-
+        advanceAmountField.closest('.form-group')?.classList.remove('field-disabled');
+        dueDateField.closest('.form-group')?.classList.remove('field-disabled');
+        dueDateField.closest('.input-date-wrapper')?.classList.remove('field-disabled');
       }
 
       // Update totals after field changes
@@ -556,6 +558,17 @@
     updateTotals();
     // Listen for changes
     PaymentTypeSelect.addEventListener('change', toggleFields);
+
+    // Initialize custom lively Animated Date & Time Pickers
+    const invoiceDateInput = document.getElementById('id_invoice_date');
+    const dueDateInput = document.getElementById('id_due_date');
+
+    if (invoiceDateInput && typeof attachAnimatedDatePicker === 'function') {
+      attachAnimatedDatePicker(invoiceDateInput, { enableTime: true });
+    }
+    if (dueDateInput && typeof attachAnimatedDatePicker === 'function') {
+      attachAnimatedDatePicker(dueDateInput, { enableTime: true });
+    }
   });
 </script>
 {% endblock extra_js %}

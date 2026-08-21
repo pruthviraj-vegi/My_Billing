@@ -61,17 +61,29 @@
             return date instanceof Date && !isNaN(date.getTime());
         },
 
-        convertToISO: (ddmmyyyy) => {
-            if (!ddmmyyyy) return null;
-            const parts = ddmmyyyy.split('-');
+        convertToISO: (dateStr) => {
+            if (!dateStr) return null;
+            const str = String(dateStr).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                return dateUtils.isValid(str) ? str : null;
+            }
+            const parts = str.split('-');
             if (parts.length !== 3) return null;
 
-            const [day, month, year] = parts.map(p => parseInt(p, 10));
-            if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-            if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-
-            const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            return this.isValid(iso) ? iso : null;
+            if (parts[0].length === 4) {
+                const [year, month, day] = parts.map(p => parseInt(p, 10));
+                if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+                if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+                const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                return dateUtils.isValid(iso) ? iso : null;
+            } else {
+                const [day, month, year] = parts.map(p => parseInt(p, 10));
+                if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+                if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+                const fullYear = year < 100 ? (2000 + year) : year;
+                const iso = `${fullYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                return dateUtils.isValid(iso) ? iso : null;
+            }
         },
 
         validateRange: (fromDate, toDate) => {
@@ -81,7 +93,7 @@
     };
 
     // Build DOM structure using DocumentFragment for better performance
-    const buildDropdownStructure = (selectOptions, selectedText, ids) => {
+    const buildDropdownStructure = (selectOptions, selectedText, ids, options = {}) => {
         const fragment = document.createDocumentFragment();
 
         // Create wrapper
@@ -146,49 +158,51 @@
         quickSelectList.appendChild(ul);
         panelContent.appendChild(quickSelectList);
 
-        // Build custom date inputs
-        const customDateList = document.createElement('div');
-        customDateList.className = 'date-list';
-        customDateList.style.cssText = 'width: 100%; margin-top: 0.75rem;';
+        // Build custom date inputs (unless showCustomDates is explicitly false)
+        if (options.showCustomDates !== false) {
+            const customDateList = document.createElement('div');
+            customDateList.className = 'date-list custom-date-section';
+            customDateList.style.cssText = 'width: 100%; margin-top: 0.75rem;';
 
-        const customUl = document.createElement('ul');
-        customUl.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
+            const customUl = document.createElement('ul');
+            customUl.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
 
-        // Date inputs row
-        const dateRow = document.createElement('li');
-        dateRow.style.cssText = 'display: flex; gap: 0.5rem; width: 100%; margin: 0;';
+            // Date inputs row
+            const dateRow = document.createElement('li');
+            dateRow.style.cssText = 'display: flex; gap: 0.5rem; width: 100%; margin: 0;';
 
-        const fromPicker = document.createElement('div');
-        fromPicker.className = 'date-picker';
-        fromPicker.style.cssText = 'flex: 1; min-width: 120px;';
-        fromPicker.innerHTML = `<div class="form-custom cal-icon"><input class="form-input" type="text" id="${ids.fromDate}" placeholder="From: dd-mm-yyyy" readonly aria-label="From date"></div>`;
+            const fromPicker = document.createElement('div');
+            fromPicker.className = 'date-picker';
+            fromPicker.style.cssText = 'flex: 1; min-width: 120px;';
+            fromPicker.innerHTML = `<div class="form-custom cal-icon"><input class="form-input form-date-input" type="text" id="${ids.fromDate}" placeholder="From Date" readonly aria-label="From date" data-datepicker-time="false"></div>`;
 
-        const toPicker = document.createElement('div');
-        toPicker.className = 'date-picker pe-0';
-        toPicker.style.cssText = 'flex: 1; min-width: 120px;';
-        toPicker.innerHTML = `<div class="form-custom cal-icon"><input class="form-input" type="text" id="${ids.toDate}" placeholder="To: dd-mm-yyyy" readonly aria-label="To date"></div>`;
+            const toPicker = document.createElement('div');
+            toPicker.className = 'date-picker pe-0';
+            toPicker.style.cssText = 'flex: 1; min-width: 120px;';
+            toPicker.innerHTML = `<div class="form-custom cal-icon"><input class="form-input form-date-input" type="text" id="${ids.toDate}" placeholder="To Date" readonly aria-label="To date" data-datepicker-time="false"></div>`;
 
-        dateRow.appendChild(fromPicker);
-        dateRow.appendChild(toPicker);
+            dateRow.appendChild(fromPicker);
+            dateRow.appendChild(toPicker);
 
-        // Submit button row
-        const submitRow = document.createElement('li');
-        submitRow.className = 'student-submit';
-        submitRow.style.cssText = 'width: 100%; margin: 0;';
+            // Submit button row
+            const submitRow = document.createElement('li');
+            submitRow.className = 'student-submit';
+            submitRow.style.cssText = 'width: 100%; margin: 0;';
 
-        const submitBtn = document.createElement('button');
-        submitBtn.id = ids.submit;
-        submitBtn.type = 'button';
-        submitBtn.className = 'btn btn-primary';
-        submitBtn.style.width = '100%';
-        submitBtn.textContent = 'Submit';
+            const submitBtn = document.createElement('button');
+            submitBtn.id = ids.submit;
+            submitBtn.type = 'button';
+            submitBtn.className = 'btn btn-primary';
+            submitBtn.style.width = '100%';
+            submitBtn.textContent = 'Submit';
 
-        submitRow.appendChild(submitBtn);
+            submitRow.appendChild(submitBtn);
 
-        customUl.appendChild(dateRow);
-        customUl.appendChild(submitRow);
-        customDateList.appendChild(customUl);
-        panelContent.appendChild(customDateList);
+            customUl.appendChild(dateRow);
+            customUl.appendChild(submitRow);
+            customDateList.appendChild(customUl);
+            panelContent.appendChild(customDateList);
+        }
 
         panel.appendChild(panelContent);
 
@@ -274,7 +288,8 @@
             const { fragment, wrapper, selectBox, panel } = buildDropdownStructure(
                 selectOptions,
                 selectedOption.text,
-                ids
+                ids,
+                options
             );
 
             // Replace original select
@@ -315,49 +330,15 @@
 
             // Initialize DatePickers
             const initDatePickers = () => {
-                if (typeof DatePicker === 'undefined') return;
-
-                if (!fromDatePicker && fromDateInput) {
-                    try {
-                        fromDatePicker = new DatePicker(`#${ids.fromDate}`, {
-                            mode: 'single',
-                            format: 'd-m-Y',
-                            showIcon: true,
-                            iconPosition: 'right',
-                            clickOpens: true,
-                            allowInput: false,
-                            closeOnSelect: false,
-                            onChange: (date) => {
-                                if (date) {
-                                    const isoDate = date.toISOString().split('T')[0];
-                                    fromDateInput.setAttribute('data-iso-date', isoDate);
-                                }
-                            }
-                        });
-                    } catch (error) {
-                        handleError(error, 'DatePicker initialization (from)');
+                if (fromDateInput && !fromDatePicker) {
+                    if (window.attachAnimatedDatePicker) {
+                        fromDatePicker = window.attachAnimatedDatePicker(fromDateInput, { enableTime: false });
                     }
                 }
 
-                if (!toDatePicker && toDateInput) {
-                    try {
-                        toDatePicker = new DatePicker(`#${ids.toDate}`, {
-                            mode: 'single',
-                            format: 'd-m-Y',
-                            showIcon: true,
-                            iconPosition: 'right',
-                            clickOpens: true,
-                            allowInput: false,
-                            closeOnSelect: false,
-                            onChange: (date) => {
-                                if (date) {
-                                    const isoDate = date.toISOString().split('T')[0];
-                                    toDateInput.setAttribute('data-iso-date', isoDate);
-                                }
-                            }
-                        });
-                    } catch (error) {
-                        handleError(error, 'DatePicker initialization (to)');
+                if (toDateInput && !toDatePicker) {
+                    if (window.attachAnimatedDatePicker) {
+                        toDatePicker = window.attachAnimatedDatePicker(toDateInput, { enableTime: false });
                     }
                 }
             };
@@ -473,10 +454,12 @@
 
                 const isDatepickerClick = path.some(el => {
                     return el.classList && (
+                        el.classList.contains('adp-popup') ||
                         el.classList.contains('datepicker-container') ||
                         el.classList.contains('datepicker-popup')
                     ) || el === fromDateInput || el === toDateInput;
                 }) || (e.target && e.target.closest && (
+                    e.target.closest('.adp-popup') ||
                     e.target.closest('.datepicker-container') ||
                     e.target.closest('.datepicker-popup')
                 )) || e.target === fromDateInput || e.target === toDateInput;

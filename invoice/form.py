@@ -8,6 +8,7 @@ from datetime import timedelta
 from django import forms
 from django.utils import timezone
 
+from base.widgets import AnimatedDatePickerWidget
 from customer.models import Customer
 from invoice.models import AuditTable, Invoice, InvoiceAudit, ReturnInvoice
 from user.models import CustomUser
@@ -50,12 +51,15 @@ class InvoiceForm(forms.ModelForm):
                 }
             ),
             "payment_method": forms.Select(),
-            "invoice_date": forms.DateTimeInput(attrs={"type": "datetime-local"}),
-            "due_date": forms.DateTimeInput(
-                attrs={
-                    "type": "datetime-local",
-                    "readonly": True,
-                }
+            "invoice_date": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-days",
+                attrs={"placeholder": "Select Date & Time"},
+            ),
+            "due_date": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-check",
+                attrs={"placeholder": "Select Due Date & Time"},
             ),
             "notes": forms.Textarea(
                 attrs={
@@ -76,7 +80,9 @@ class InvoiceForm(forms.ModelForm):
         # Add appropriate classes based on widget type
         for _, field in self.fields.items():
             widget = field.widget
-            if isinstance(widget, forms.Select):
+            if isinstance(widget, AnimatedDatePickerWidget):
+                continue  # Widget handles its own classes and wrapper
+            elif isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
             elif isinstance(widget, forms.Textarea):
                 widget.attrs["class"] = "form-textarea"
@@ -90,6 +96,19 @@ class InvoiceForm(forms.ModelForm):
         ] = " form-input indian-number"
         self.fields["advance_amount"].widget.attrs["class"] = "form-input indian-number"
         self.fields["amount"].widget.attrs["class"] = "form-input indian-number"
+
+        # Format initial datetime for animated datepicker
+        try:
+            if not self.instance.pk:
+                if not self.initial.get("invoice_date"):
+                    self.initial["invoice_date"] = timezone.now().strftime("%Y-%m-%dT%H:%M")
+            else:
+                if self.instance.invoice_date:
+                    self.initial["invoice_date"] = self.instance.invoice_date.strftime("%Y-%m-%dT%H:%M")
+                if self.instance.due_date:
+                    self.initial["due_date"] = self.instance.due_date.strftime("%Y-%m-%dT%H:%M")
+        except Exception as e:
+            logger.error("Error setting initial datetime: %s", e)
 
         # Set initial customer for new invoices
         try:
@@ -164,7 +183,6 @@ class InvoiceForm(forms.ModelForm):
         cleaned_data = super().clean()
         amount = cleaned_data.get("amount")
         discount_amount = cleaned_data.get("discount_amount", 0)
-        discount_amount = cleaned_data.get("discount_amount", 0)
         payment_type = cleaned_data.get("payment_type")
         due_date = cleaned_data.get("due_date")
         customer = cleaned_data.get("customer")
@@ -225,10 +243,16 @@ class AuditTableForm(forms.ModelForm):
                 }
             ),
             "audit_type": forms.Select(attrs={"class": "form-select"}),
-            "start_date": forms.DateInput(
-                attrs={"class": "form-input", "type": "date"}
+            "start_date": AnimatedDatePickerWidget(
+                enable_time=False,
+                icon_class="fa-calendar-days",
+                attrs={"placeholder": "Select start date"},
             ),
-            "end_date": forms.DateInput(attrs={"class": "form-input", "type": "date"}),
+            "end_date": AnimatedDatePickerWidget(
+                enable_time=False,
+                icon_class="fa-calendar-check",
+                attrs={"placeholder": "Select end date"},
+            ),
             "financial_year": forms.TextInput(
                 attrs={"class": "form-input", "placeholder": "e.g., 24-25"}
             ),
@@ -261,15 +285,27 @@ class AuditFilterForm(forms.Form):
     # Date range fields
     start_date = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={"class": "form-input", "type": "date"}),
+        widget=AnimatedDatePickerWidget(
+            enable_time=False,
+            attrs={"placeholder": "Start date"},
+        ),
     )
 
     end_date = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={"class": "form-input", "type": "date"}),
+        widget=AnimatedDatePickerWidget(
+            enable_time=False,
+            attrs={"placeholder": "End date"},
+        ),
     )
 
-    # Filter fields
+    changed_by = forms.ModelChoiceField(
+        queryset=CustomUser.objects.none(),
+        required=False,
+        empty_label="All Users",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
     financial_year = forms.ChoiceField(
         required=False,
         choices=[("", "All Financial Years")],
@@ -290,10 +326,11 @@ class AuditFilterForm(forms.Form):
         self.fields["financial_year"].choices = fy_choices
 
         # Populate changed_by queryset with users who have made audit records
-        audit_users = CustomUser.objects.filter(
-            id__in=InvoiceAudit.objects.values_list("changed_by", flat=True).distinct()
-        ).order_by("full_name")
-        self.fields["changed_by"].queryset = audit_users
+        if "changed_by" in self.fields:
+            audit_users = CustomUser.objects.filter(
+                id__in=InvoiceAudit.objects.values_list("changed_by", flat=True).distinct()
+            ).order_by("first_name", "last_name")
+            self.fields["changed_by"].queryset = audit_users
 
 
 class ReturnInvoiceForm(forms.ModelForm):
@@ -344,8 +381,9 @@ class ReturnInvoiceForm(forms.ModelForm):
                     "min": "0",
                 }
             ),
-            "return_date": forms.DateTimeInput(
-                attrs={"class": "form-input", "type": "datetime-local"}
+            "return_date": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-days",
             ),
             "notes": forms.Textarea(
                 attrs={

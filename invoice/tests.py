@@ -139,3 +139,104 @@ class InvoiceCancellationServiceTests(TestCase):
         inv.refresh_from_db()
         success, msg = InvoiceCancellationService.cancel(inv, self.user, "Second cancel")
         self.assertFalse(success)
+
+
+class ReturnInvoiceFetchViewTests(TestCase):
+    """Tests for fetch_return_invoices AJAX view with date search and filters."""
+
+    def setUp(self):
+        from django.contrib.auth.models import Permission
+        from django.utils import timezone
+        from datetime import timedelta
+
+        self.user = create_test_user(is_staff=True)
+        # Grant view_returninvoice permission
+        perm = Permission.objects.get(codename="view_returninvoice")
+        self.user.user_permissions.add(perm)
+        self.client.force_login(self.user)
+
+        self.customer = create_test_customer(created_by=self.user)
+        self.invoice = create_test_invoice(
+            customer=self.customer,
+            sold_by=self.user,
+            created_by=self.user,
+            amount=Decimal("1000.00"),
+            payment_type="CASH",
+            payment_status="PAID",
+        )
+
+        now = timezone.now()
+        # Create return invoice 1 (today)
+        self.return_inv1 = ReturnInvoice.objects.create(
+            invoice=self.invoice,
+            customer=self.customer,
+            return_number="RET-001",
+            total_amount=Decimal("300.00"),
+            status=RefundStatusChoices.PENDING,
+            created_by=self.user,
+            return_date=now,
+            financial_year="26-27",
+        )
+        # Create return invoice 2 (30 days ago)
+        self.return_inv2 = ReturnInvoice.objects.create(
+            invoice=self.invoice,
+            customer=self.customer,
+            return_number="RET-002",
+            total_amount=Decimal("200.00"),
+            status=RefundStatusChoices.APPROVED,
+            created_by=self.user,
+            return_date=now - timedelta(days=30),
+            financial_year="25-26",
+        )
+
+    def test_fetch_all_returns(self):
+        from django.urls import reverse
+        response = self.client.get(reverse("invoice:fetch_return_invoices"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("RET-001", data.get("html"))
+        self.assertIn("RET-002", data.get("html"))
+
+    def test_fetch_with_date_preset_today(self):
+        from django.urls import reverse
+        response = self.client.get(
+            reverse("invoice:fetch_return_invoices"),
+            {"date_filter": "today"},
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("RET-001", data.get("html"))
+        self.assertNotIn("RET-002", data.get("html"))
+
+    def test_fetch_with_custom_date_range(self):
+        from django.urls import reverse
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        d_from = (timezone.now() - timedelta(days=5)).strftime("%Y-%m-%d")
+        d_to = (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        response = self.client.get(
+            reverse("invoice:fetch_return_invoices"),
+            {"date_filter": "custom", "date_from": d_from, "date_to": d_to},
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("RET-001", data.get("html"))
+        self.assertNotIn("RET-002", data.get("html"))
+
+    def test_fetch_with_financial_year(self):
+        from django.urls import reverse
+        response = self.client.get(
+            reverse("invoice:fetch_return_invoices"),
+            {"financial_year": "25-26"},
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("RET-002", data.get("html"))
+        self.assertNotIn("RET-001", data.get("html"))
+

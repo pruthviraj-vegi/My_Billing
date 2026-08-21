@@ -2,12 +2,13 @@
 Forms for the supplier app.
 """
 
-from datetime import datetime
 from decimal import Decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
+from base.widgets import AnimatedDatePickerWidget
 from .models import Supplier, SupplierInvoice, SupplierPayment
 
 
@@ -164,12 +165,10 @@ class SupplierInvoiceForm(forms.ModelForm):
                     "autofocus": True,
                 }
             ),
-            "invoice_date": forms.DateTimeInput(
-                attrs={
-                    "type": "datetime-local",
-                    "placeholder": "Enter Invoice Date",
-                    "value": datetime.now().strftime("%Y-%m-%dT%H:%M"),
-                }
+            "invoice_date": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-days",
+                attrs={"placeholder": "Select Invoice Date"},
             ),
             "invoice_type": forms.Select(),
             "gst_type": forms.Select(),
@@ -195,7 +194,9 @@ class SupplierInvoiceForm(forms.ModelForm):
             if field_name == "attachments":
                 continue
             widget = field.widget
-            if isinstance(widget, forms.Select):
+            if isinstance(widget, AnimatedDatePickerWidget):
+                continue  # Widget handles its own classes and wrapper
+            elif isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
             elif isinstance(widget, forms.Textarea):
                 widget.attrs["class"] = "form-textarea"
@@ -220,6 +221,9 @@ class SupplierInvoiceForm(forms.ModelForm):
                     self.fields["gst_type"].initial = "CGST_SGST"
             else:
                 self.fields["gst_type"].initial = "CGST_SGST"
+
+            # Set initial invoice date for new invoices
+            self.fields["invoice_date"].initial = timezone.now().strftime("%Y-%m-%dT%H:%M")
 
             for field_name in [
                 "sub_total",
@@ -358,7 +362,11 @@ class SupplierPaymentForm(forms.ModelForm):
             "transaction_id": forms.TextInput(
                 attrs={"placeholder": "Transaction reference (optional)"}
             ),
-            "payment_date": forms.DateTimeInput(attrs={"type": "datetime-local"}),
+            "payment_date": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-days",
+                attrs={"placeholder": "Select Payment Date"},
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -376,7 +384,9 @@ class SupplierPaymentForm(forms.ModelForm):
             if field_name == "attachments":
                 continue
             widget = field.widget
-            if isinstance(widget, forms.Select):
+            if isinstance(widget, AnimatedDatePickerWidget):
+                continue  # Widget handles its own classes and wrapper
+            elif isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
             else:
                 widget.attrs["class"] = "form-input"

@@ -408,7 +408,7 @@
             return;
           }
           
-          const hiddenSelect = window.dateFilter_styled?.hiddenSelect || document.getElementById('dateFilter');
+          const hiddenSelect = window.dateFilter_styled?.hiddenSelect || document.getElementById('dateFilter_hidden') || document.getElementById('dateFilter');
           if (hiddenSelect) {
             hiddenSelect.setAttribute('data-from-date', fromVal);
             hiddenSelect.setAttribute('data-to-date', toVal);
@@ -426,6 +426,7 @@
       // Convert select to styled dropdown with onChange callback
       if (typeof convertSelectToStyledDropdown !== 'undefined') {
         window.dateFilter_styled = convertSelectToStyledDropdown('dateFilter', {
+          showCustomDates: false,
           onChange: function(data) {
             const standaloneBox = document.getElementById('standaloneCustomDates');
             
@@ -434,7 +435,7 @@
               
               // Also map internal dropdown dates if they were submitted somehow
               if (data.fromDate && data.toDate) {
-                const hiddenSelect = window.dateFilter_styled?.hiddenSelect;
+                const hiddenSelect = window.dateFilter_styled?.hiddenSelect || document.getElementById('dateFilter_hidden');
                 if (hiddenSelect) {
                   hiddenSelect.setAttribute('data-from-date', data.fromDate);
                   hiddenSelect.setAttribute('data-to-date', data.toDate);
@@ -453,16 +454,6 @@
             debouncedUpdate();
           }
         });
-        
-        // Hide the internal custom date inputs from the styled dropdown panel 
-        // to force the user to use the standalone inputs
-        const style = document.createElement('style');
-        style.textContent = `
-          .date-dropdown-panel .date-list:nth-of-type(2) {
-            display: none !important;
-          }
-        `;
-        document.head.appendChild(style);
       }
 
       // Wait for dropdown to be ready, then set initial value and load data

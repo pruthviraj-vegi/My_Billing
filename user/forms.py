@@ -7,6 +7,7 @@ import logging
 from django import forms
 from django.utils import timezone
 
+from base.widgets import AnimatedDatePickerWidget
 from .models import CustomUser, Salary, Transaction
 
 logger = logging.getLogger(__name__)
@@ -201,15 +202,15 @@ class SalaryForm(forms.ModelForm):
                 }
             ),
             "commission": forms.CheckboxInput(attrs={}),
-            "effective_from": forms.DateTimeInput(
-                attrs={
-                    "type": "datetime-local",
-                }
+            "effective_from": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-days",
+                attrs={"placeholder": "Effective from"},
             ),
-            "effective_to": forms.DateTimeInput(
-                attrs={
-                    "type": "datetime-local",
-                }
+            "effective_to": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-check",
+                attrs={"placeholder": "Effective to"},
             ),
         }
 
@@ -225,7 +226,9 @@ class SalaryForm(forms.ModelForm):
         # Add appropriate classes to all fields based on widget type
         for visible in self.visible_fields():
             widget = visible.field.widget
-            if isinstance(widget, forms.CheckboxInput):
+            if isinstance(widget, AnimatedDatePickerWidget):
+                continue  # Widget handles its own classes and wrapper
+            elif isinstance(widget, forms.CheckboxInput):
                 widget.attrs["class"] = "form-checkbox"
             elif isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
@@ -322,12 +325,10 @@ class TransactionForm(forms.ModelForm):
                     "rows": 2,
                 }
             ),
-            "date": forms.DateTimeInput(
-                attrs={
-                    "type": "datetime-local",
-                    "placeholder": "Enter date",
-                    "autofocus": True,
-                }
+            "date": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-days",
+                attrs={"placeholder": "Select date & time"},
             ),
         }
 
@@ -350,7 +351,9 @@ class TransactionForm(forms.ModelForm):
         # Add appropriate classes to all fields based on widget type
         for visible in self.visible_fields():
             widget = visible.field.widget
-            if isinstance(widget, forms.CheckboxInput):
+            if isinstance(widget, AnimatedDatePickerWidget):
+                continue  # Widget handles its own classes and wrapper
+            elif isinstance(widget, forms.CheckboxInput):
                 widget.attrs["class"] = "form-checkbox"
             elif isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"

@@ -37,6 +37,8 @@
           href="{% static 'assets/plugins/select2/css/selectTheme.css' %}" />
     <!-- Datelite DatePicker CSS -->
     <link rel="stylesheet" href="{% static 'assets/plugins/datelite.css' %}" />
+    <!-- Animated Date & Time Picker CSS -->
+    <link rel="stylesheet" href="{% static 'css/animated-datepicker.css' %}" />
     <!-- Non-critical CSS (load with JavaScript) -->
     <script>
       // Load non-critical CSS asynchronously
@@ -585,6 +587,8 @@
     <script src="{% static 'js/utils.js' %}"></script>
     <!-- Sidebar Navigation JS -->
     <script src="{% static 'js/sidebar.js' %}"></script>
+    <!-- Animated Date & Time Picker JS (auto-inits all .form-date-input) -->
+    <script src="{% static 'js/animated-datepicker.js' %}"></script>
     {% block extra_js %}
     {% endblock extra_js %}
     {% comment %} <script src="{% static 'js/performance-analyzer.js' %}"></script> {% endcomment %}

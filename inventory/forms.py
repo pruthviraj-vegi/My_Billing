@@ -5,6 +5,8 @@ from decimal import Decimal
 
 from django import forms
 
+from base.widgets import AnimatedDatePickerWidget
+
 from .models import (
     BulkUpload,
     Category,
@@ -635,11 +637,10 @@ class GSTHsnCodeForm(forms.ModelForm):
                     "max": "25.00",
                 }
             ),
-            "effective_from": forms.DateInput(
-                attrs={
-                    "type": "date",
-                    "placeholder": "Select effective date",
-                }
+            "effective_from": AnimatedDatePickerWidget(
+                enable_time=False,
+                icon_class="fa-calendar-days",
+                attrs={"placeholder": "Select effective date"},
             ),
             "description": forms.Textarea(
                 attrs={
@@ -656,7 +657,9 @@ class GSTHsnCodeForm(forms.ModelForm):
         # Add form-input class to text/number/date fields, form-check-input to checkboxes
         for _field_name, field in self.fields.items():
             widget = field.widget
-            if isinstance(widget, forms.CheckboxInput):
+            if isinstance(widget, AnimatedDatePickerWidget):
+                continue  # Widget handles its own classes and wrapper
+            elif isinstance(widget, forms.CheckboxInput):
                 widget.attrs["class"] = "form-check-input"
             else:
                 widget.attrs["class"] = "form-input"

@@ -6,6 +6,8 @@ proper validation for fields such as phone numbers, emails, and payment amounts.
 """
 
 from django import forms
+
+from base.widgets import AnimatedDatePickerWidget
 from .models import Customer, Payment
 
 
@@ -173,11 +175,10 @@ class PaymentForm(forms.ModelForm):
                     "help_text": "Enter the transaction reference for the payment",
                 }
             ),
-            "payment_date": forms.DateTimeInput(
-                attrs={
-                    "type": "datetime-local",
-                    "help_text": "Select the date and time for the payment",
-                }
+            "payment_date": AnimatedDatePickerWidget(
+                enable_time=True,
+                icon_class="fa-calendar-days",
+                attrs={"placeholder": "Select payment date & time"},
             ),
             "notes": forms.Textarea(
                 attrs={
@@ -207,7 +208,9 @@ class PaymentForm(forms.ModelForm):
         # Apply appropriate classes to fields
         for _, field in self.fields.items():
             widget = field.widget
-            if isinstance(widget, forms.Select):
+            if isinstance(widget, AnimatedDatePickerWidget):
+                continue  # Widget handles its own classes and wrapper
+            elif isinstance(widget, forms.Select):
                 widget.attrs["class"] = "form-select"
             elif isinstance(widget, forms.Textarea):
                 widget.attrs["class"] = "form-textarea"

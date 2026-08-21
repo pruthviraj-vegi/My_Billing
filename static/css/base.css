@@ -1372,6 +1372,10 @@ form.submitting * {
   color: var(--text-primary);
 }
 
+
+
+
+
 .form-help {
   font-size: var(--help-font-size);
   color: var(--text-secondary);
@@ -2016,6 +2020,34 @@ form.submitting * {
 
 .filter-select:focus {
   border-color: var(--border-color-focus);
+}
+
+.custom-date-inline-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.custom-date-inline-group.d-none {
+  display: none !important;
+}
+
+.filter-date-item {
+  width: 130px;
+  position: relative;
+}
+
+.search-filter-form .form-date-input,
+.search-filter-form .filter-date-input {
+  width: 130px !important;
+  max-width: 130px !important;
+  height: 36px;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-body);
+  color: var(--text-primary);
+  font-size: var(--input-font-size);
 }
 
 /* --- Active Filters Display --- */
