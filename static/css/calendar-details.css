@@ -117,12 +117,14 @@
   background: transparent !important;
   outline: none !important;
   box-shadow: none !important;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-primary);
   height: 100%;
+  width: 90px;
   padding: 0 2px;
   line-height: 1;
+  cursor: pointer;
 }
 
 .cal-details-date-input::-webkit-calendar-picker-indicator {

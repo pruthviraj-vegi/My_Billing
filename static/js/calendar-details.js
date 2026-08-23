@@ -1,23 +1,124 @@
 (function () {
   "use strict";
 
-  function formatDateStr(d) {
+  function formatDateToISO(d) {
+    if (!d) return "";
     var y = d.getFullYear();
     var m = String(d.getMonth() + 1).padStart(2, '0');
     var day = String(d.getDate()).padStart(2, '0');
     return y + '-' + m + '-' + day;
   }
 
+  function formatDateToDMY(val) {
+    if (!val) return "";
+    if (typeof val === 'string') {
+      val = val.trim();
+      var isoMatch = val.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      if (isoMatch) {
+        var y = isoMatch[1];
+        var m = String(parseInt(isoMatch[2], 10)).padStart(2, '0');
+        var d = String(parseInt(isoMatch[3], 10)).padStart(2, '0');
+        return d + '-' + m + '-' + y;
+      }
+      var dmyMatch = val.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+      if (dmyMatch) {
+        var d2 = String(parseInt(dmyMatch[1], 10)).padStart(2, '0');
+        var m2 = String(parseInt(dmyMatch[2], 10)).padStart(2, '0');
+        var y2 = dmyMatch[3];
+        return d2 + '-' + m2 + '-' + y2;
+      }
+    }
+    var dObj = val instanceof Date ? val : parseISODate(val);
+    if (!isNaN(dObj.getTime())) {
+      var year = dObj.getFullYear();
+      var month = String(dObj.getMonth() + 1).padStart(2, '0');
+      var dayStr = String(dObj.getDate()).padStart(2, '0');
+      return dayStr + '-' + month + '-' + year;
+    }
+    return String(val);
+  }
+
+  function normalizeDateStr(str) {
+    if (!str) return null;
+    str = String(str).trim();
+    if (!str) return null;
+
+    // ISO format: YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
+    var isoMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (isoMatch) {
+      var y = parseInt(isoMatch[1], 10);
+      var m = String(parseInt(isoMatch[2], 10)).padStart(2, '0');
+      var d = String(parseInt(isoMatch[3], 10)).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+
+    // DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY
+    var dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (dmyMatch) {
+      var d = String(parseInt(dmyMatch[1], 10)).padStart(2, '0');
+      var m = String(parseInt(dmyMatch[2], 10)).padStart(2, '0');
+      var y = parseInt(dmyMatch[3], 10);
+      return y + '-' + m + '-' + d;
+    }
+
+    // Fallback: Date parse
+    var parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+      return formatDateToISO(parsed);
+    }
+    return null;
+  }
+
+  function parseISODate(isoStr) {
+    if (!isoStr) return new Date();
+    if (isoStr instanceof Date) return isoStr;
+    var norm = normalizeDateStr(isoStr);
+    if (norm) {
+      var parts = norm.split('-').map(function (n) { return parseInt(n, 10); });
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+    }
+    var d = new Date(isoStr);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+
+  function setInputValue(input, isoDate) {
+    if (!input || !isoDate) return;
+    var dmy = formatDateToDMY(isoDate);
+    input.value = dmy;
+    input.setAttribute("data-iso-date", isoDate);
+    if (input._animatedDatePickerInstance) {
+      var d = parseISODate(isoDate);
+      input._animatedDatePickerInstance.selectedDate = d;
+      input._animatedDatePickerInstance.viewYear = d.getFullYear();
+      input._animatedDatePickerInstance.viewMonth = d.getMonth();
+    }
+  }
+
   var urlParams = new URLSearchParams(window.location.search);
-  var startDate = urlParams.get("start");
-  var endDate = urlParams.get("end");
+  var rawStart = urlParams.get("start");
+  var rawEnd = urlParams.get("end");
+
+  var startDate = normalizeDateStr(rawStart);
+  var endDate = normalizeDateStr(rawEnd);
 
   var now = new Date();
-  if (!startDate || !endDate) {
+  if (!startDate && !endDate) {
     var firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    startDate = formatDateStr(firstDay);
-    endDate = formatDateStr(lastDay);
+    startDate = formatDateToISO(firstDay);
+    endDate = formatDateToISO(lastDay);
+  } else if (!startDate) {
+    startDate = endDate;
+  } else if (!endDate) {
+    endDate = startDate;
+  }
+
+  if (startDate > endDate) {
+    var tmpDate = startDate;
+    startDate = endDate;
+    endDate = tmpDate;
   }
 
   /* ── DOM refs ── */
@@ -30,8 +131,8 @@
   var applyBtn = document.getElementById("detailsApplyRangeBtn");
   var presetBtns = document.querySelectorAll(".range-preset-btn");
 
-  if (fromInput) fromInput.value = startDate;
-  if (toInput) toInput.value = endDate;
+  setInputValue(fromInput, startDate);
+  setInputValue(toInput, endDate);
 
   var activeCharts = [];
 
@@ -45,7 +146,7 @@
   /* ── Fetch ── */
   function fetchData(cb) {
     if (loadEl) loadEl.style.display = "flex";
-    fetch("/calendar/details-api/?start=" + startDate + "&end=" + endDate)
+    fetch("/calendar/details-api/?start=" + encodeURIComponent(startDate) + "&end=" + encodeURIComponent(endDate))
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (loadEl) loadEl.style.display = "none";
@@ -57,16 +158,28 @@
   }
 
   function updateSelectedRange(s, e) {
+    s = normalizeDateStr(s) || s;
+    e = normalizeDateStr(e) || e;
+    if (s > e) {
+      var tmp = s;
+      s = e;
+      e = tmp;
+    }
     startDate = s;
     endDate = e;
 
-    // Update URL without page reload
-    var newUrl = window.location.pathname + "?start=" + s + "&end=" + e;
-    window.history.pushState({ path: newUrl }, "", newUrl);
+    setInputValue(fromInput, s);
+    setInputValue(toInput, e);
 
-    var startDt = new Date(s + "T00:00:00");
-    var endDt = new Date(e + "T00:00:00");
-    var dayDiff = Math.round((endDt - startDt) / 86400000) + 1;
+    // Update URL without page reload
+    var sDMY = formatDateToDMY(s);
+    var eDMY = formatDateToDMY(e);
+    var newUrl = window.location.pathname + "?start=" + encodeURIComponent(sDMY) + "&end=" + encodeURIComponent(eDMY);
+    window.history.replaceState({ path: newUrl }, "", newUrl);
+
+    var startDt = parseISODate(s);
+    var endDt = parseISODate(e);
+    var dayDiff = Math.round((endDt.getTime() - startDt.getTime()) / 86400000) + 1;
 
     if (rangeLabel) {
       rangeLabel.textContent =
@@ -92,11 +205,17 @@
 
   if (applyBtn) {
     applyBtn.addEventListener("click", function () {
-      var fVal = fromInput ? fromInput.value : "";
-      var tVal = toInput ? toInput.value : "";
+      var fVal = fromInput ? (fromInput.getAttribute("data-iso-date") || fromInput.value) : "";
+      var tVal = toInput ? (toInput.getAttribute("data-iso-date") || toInput.value) : "";
       if (!fVal || !tVal) return;
-      var s = fVal < tVal ? fVal : tVal;
-      var e = fVal < tVal ? tVal : fVal;
+      var s = normalizeDateStr(fVal);
+      var e = normalizeDateStr(tVal);
+      if (!s || !e) return;
+      if (s > e) {
+        var tmp = s;
+        s = e;
+        e = tmp;
+      }
       updateSelectedRange(s, e);
     });
   }
@@ -108,19 +227,17 @@
           var today = new Date();
           var s, e;
           if (preset === "today") {
-            s = formatDateStr(today);
-            e = formatDateStr(today);
+            s = formatDateToISO(today);
+            e = formatDateToISO(today);
           } else if (preset === "this_month") {
-            s = formatDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
-            e = formatDateStr(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+            s = formatDateToISO(new Date(today.getFullYear(), today.getMonth(), 1));
+            e = formatDateToISO(new Date(today.getFullYear(), today.getMonth() + 1, 0));
           } else if (preset === "last_30") {
             var prior30 = new Date();
             prior30.setDate(today.getDate() - 29);
-            s = formatDateStr(prior30);
-            e = formatDateStr(today);
+            s = formatDateToISO(prior30);
+            e = formatDateToISO(today);
           }
-          if (fromInput) fromInput.value = s;
-          if (toInput) toInput.value = e;
           updateSelectedRange(s, e);
         }, 200)
       : function () {
@@ -128,19 +245,17 @@
           var today = new Date();
           var s, e;
           if (preset === "today") {
-            s = formatDateStr(today);
-            e = formatDateStr(today);
+            s = formatDateToISO(today);
+            e = formatDateToISO(today);
           } else if (preset === "this_month") {
-            s = formatDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
-            e = formatDateStr(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+            s = formatDateToISO(new Date(today.getFullYear(), today.getMonth(), 1));
+            e = formatDateToISO(new Date(today.getFullYear(), today.getMonth() + 1, 0));
           } else if (preset === "last_30") {
             var prior30 = new Date();
             prior30.setDate(today.getDate() - 29);
-            s = formatDateStr(prior30);
-            e = formatDateStr(today);
+            s = formatDateToISO(prior30);
+            e = formatDateToISO(today);
           }
-          if (fromInput) fromInput.value = s;
-          if (toInput) toInput.value = e;
           updateSelectedRange(s, e);
         };
 
