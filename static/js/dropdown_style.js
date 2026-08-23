@@ -67,7 +67,7 @@
             if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
                 return dateUtils.isValid(str) ? str : null;
             }
-            const parts = str.split('-');
+            const parts = str.split(/[-/]/);
             if (parts.length !== 3) return null;
 
             if (parts[0].length === 4) {
@@ -84,6 +84,14 @@
                 const iso = `${fullYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 return dateUtils.isValid(iso) ? iso : null;
             }
+        },
+
+        formatToDMY: (dateStr) => {
+            if (!dateStr) return '';
+            const iso = dateUtils.convertToISO(dateStr);
+            if (!iso) return String(dateStr);
+            const [y, m, d] = iso.split('-');
+            return `${d}-${m}-${y}`;
         },
 
         validateRange: (fromDate, toDate) => {
@@ -133,11 +141,11 @@
 
         // Build quick select options
         const quickSelectList = document.createElement('div');
-        quickSelectList.className = 'date-list';
+        quickSelectList.className = 'date-list quick-select-section';
         quickSelectList.style.width = '100%';
 
         const ul = document.createElement('ul');
-        ul.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
+        ul.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
 
         selectOptions.forEach(opt => {
             const li = document.createElement('li');
@@ -149,7 +157,7 @@
             btn.setAttribute('data-value', opt.value);
             btn.setAttribute('role', 'option');
             btn.textContent = opt.text;
-            btn.style.cssText = 'width: 100%; display: block; text-align: center; padding: 0.5rem 1rem; font-size: 0.875rem; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-surface, #ffffff); color: var(--text-primary, #1e293b); text-decoration: none; border-radius: 6px; transition: all 0.2s ease;';
+            btn.style.cssText = 'width: 100%; display: block; text-align: center; padding: 0.5rem 0.5rem; font-size: 0.875rem; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-surface, #ffffff); color: var(--text-primary, #1e293b); text-decoration: none; border-radius: 6px; transition: all 0.2s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
 
             li.appendChild(btn);
             ul.appendChild(li);
@@ -162,7 +170,13 @@
         if (options.showCustomDates !== false) {
             const customDateList = document.createElement('div');
             customDateList.className = 'date-list custom-date-section';
-            customDateList.style.cssText = 'width: 100%; margin-top: 0.75rem;';
+            customDateList.style.cssText = 'width: 100%; display: none;';
+
+            // Header row with back button to return to presets
+            const headerRow = document.createElement('div');
+            headerRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;';
+            headerRow.innerHTML = `<button type="button" class="btn btn-sm back-to-presets-btn" id="${ids.backBtn}" style="background: none; border: none; font-size: 0.8rem; color: var(--primary, #2563eb); cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-arrow-left"></i> Presets</button><span style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">Custom Dates</span>`;
+            customDateList.appendChild(headerRow);
 
             const customUl = document.createElement('ul');
             customUl.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
@@ -192,9 +206,20 @@
             const submitBtn = document.createElement('button');
             submitBtn.id = ids.submit;
             submitBtn.type = 'button';
-            submitBtn.className = 'btn btn-primary';
-            submitBtn.style.width = '100%';
+            submitBtn.className = 'btn btn-primary custom-date-submit-btn';
+            submitBtn.style.cssText = 'width: 100%; display: flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; border-radius: 6px; background: var(--primary, #2563eb); color: var(--text-on-primary, #ffffff); border: 1px solid var(--primary, #2563eb); cursor: pointer; transition: all 0.2s ease;';
             submitBtn.textContent = 'Submit';
+
+            submitBtn.addEventListener('mouseenter', () => {
+                submitBtn.style.background = 'var(--primary-hover, #1d4ed8)';
+                submitBtn.style.borderColor = 'var(--primary-hover, #1d4ed8)';
+                submitBtn.style.color = 'var(--text-on-primary, #ffffff)';
+            });
+            submitBtn.addEventListener('mouseleave', () => {
+                submitBtn.style.background = 'var(--primary, #2563eb)';
+                submitBtn.style.borderColor = 'var(--primary, #2563eb)';
+                submitBtn.style.color = 'var(--text-on-primary, #ffffff)';
+            });
 
             submitRow.appendChild(submitBtn);
 
@@ -278,7 +303,8 @@
                 panel: `${selectId}_panel_${timestamp}`,
                 fromDate: `${selectId}_from_${timestamp}`,
                 toDate: `${selectId}_to_${timestamp}`,
-                submit: `${selectId}_submit_${timestamp}`
+                submit: `${selectId}_submit_${timestamp}`,
+                backBtn: `${selectId}_back_${timestamp}`
             };
 
             // Create state
@@ -291,6 +317,11 @@
                 ids,
                 options
             );
+
+            // Inherit w-100 class if present on original select
+            if (selectElement.classList.contains('w-100')) {
+                wrapper.classList.add('w-100');
+            }
 
             // Replace original select
             const parent = selectElement.parentNode;
@@ -354,48 +385,83 @@
                 panel.style.bottom = '';
                 panel.style.maxHeight = '';
                 panel.style.overflowY = '';
-                panel.style.marginTop = '0.5rem';
+                panel.style.marginTop = '0.35rem';
                 panel.style.marginBottom = '';
 
                 const selectBoxRect = selectBox.getBoundingClientRect();
-                const panelRect = panel.getBoundingClientRect();
                 const viewportWidth = window.innerWidth;
                 const viewportHeight = window.innerHeight;
-                const minSpace = 20;
+                const minSpace = 10;
 
-                // Horizontal adjustment
-                let leftAdjust = 0;
-                if (panelRect.right > viewportWidth - minSpace) {
-                    leftAdjust = viewportWidth - panelRect.right - minSpace;
-                } else if (panelRect.left < minSpace) {
-                    leftAdjust = minSpace - panelRect.left;
+                // On small screens or when selectBox is on the right half of the screen, align right
+                if (viewportWidth <= 768 || selectBoxRect.left > viewportWidth / 2) {
+                    panel.style.right = '0';
+                    panel.style.left = 'auto';
+                } else {
+                    panel.style.left = '0';
+                    panel.style.right = 'auto';
                 }
 
-                if (leftAdjust !== 0) {
-                    const currentLeft = parseFloat(getComputedStyle(panel).left) || 0;
-                    panel.style.left = `${currentLeft + leftAdjust}px`;
+                const panelRect = panel.getBoundingClientRect();
+
+                // Horizontal boundary checking
+                if (panelRect.right > viewportWidth - minSpace) {
+                    panel.style.right = '0';
+                    panel.style.left = 'auto';
+                    panel.style.maxWidth = `${viewportWidth - minSpace * 2}px`;
+                }
+
+                const updatedPanelRect = panel.getBoundingClientRect();
+                if (updatedPanelRect.left < minSpace) {
+                    panel.style.left = '0';
+                    panel.style.right = 'auto';
+                    panel.style.maxWidth = `${viewportWidth - minSpace * 2}px`;
                 }
 
                 // Vertical adjustment
                 const spaceBelow = viewportHeight - selectBoxRect.bottom;
                 const spaceAbove = selectBoxRect.top;
-                const panelHeight = panelRect.height;
+                const panelHeight = panel.getBoundingClientRect().height;
 
                 if (spaceBelow < panelHeight + minSpace && spaceAbove > spaceBelow) {
                     // Show above
                     panel.style.top = 'auto';
                     panel.style.bottom = '100%';
                     panel.style.marginTop = '';
-                    panel.style.marginBottom = '0.5rem';
+                    panel.style.marginBottom = '0.35rem';
                 } else if (spaceBelow < panelHeight + minSpace) {
                     // Limit height
                     const maxHeight = spaceBelow - minSpace;
-                    if (maxHeight > 100) {
+                    if (maxHeight > 120) {
                         panel.style.maxHeight = `${maxHeight}px`;
                         panel.style.overflowY = 'auto';
                     }
                 }
             };
+
+            const quickSelectSection = panel.querySelector('.quick-select-section');
+            const customDateSection = panel.querySelector('.custom-date-section');
+            const backButton = document.getElementById(ids.backBtn);
+
+            // View switcher between quick presets and custom date inputs
+            const showView = (view) => {
+                if (view === 'custom') {
+                    if (quickSelectSection) quickSelectSection.style.display = 'none';
+                    if (customDateSection) customDateSection.style.display = 'block';
+                } else {
+                    if (customDateSection) customDateSection.style.display = 'none';
+                    if (quickSelectSection) quickSelectSection.style.display = 'block';
+                }
+                scheduleUpdate(panel, adjustPosition);
+            };
+
+            // Set initial active state and view
+            showView(state.currentValue === 'custom' ? 'custom' : 'presets');
+            dateButtons.forEach(btn => {
+                if (btn.getAttribute('data-value') === state.currentValue) {
+                    btn.classList.add('active');
+                }
+            });
 
             // Toggle dropdown
             const toggleDropdown = (forceClose = false) => {
@@ -407,6 +473,7 @@
                 selectBox.setAttribute('aria-expanded', String(shouldOpen));
 
                 if (shouldOpen) {
+                    showView((state.currentValue === 'custom' || hiddenSelect.value === 'custom') ? 'custom' : 'presets');
                     scheduleUpdate(panel, () => {
                         adjustPosition();
                         initDatePickers();
@@ -448,24 +515,29 @@
                 window.removeEventListener('scroll', handlePositionUpdate, true);
             });
 
-            // Click outside to close
+            // Click outside to close`
             const handleOutsideClick = (e) => {
-                const path = e.composedPath ? e.composedPath() : [];
+                // Must use composedPath() because datepickers often rebuild/detach their DOM
+                // on click before the event bubbles up to the document.
+                const path = e.composedPath ? e.composedPath() : [e.target];
 
-                const isDatepickerClick = path.some(el => {
-                    return el.classList && (
+                let isDatepickerClick = false;
+                let isPanelClick = false;
+                let isSelectBoxClick = false;
+
+                for (const el of path) {
+                    if (el === panel) isPanelClick = true;
+                    if (el === selectBox) isSelectBoxClick = true;
+                    if (el === fromDateInput || el === toDateInput) isDatepickerClick = true;
+
+                    if (el.classList && (
                         el.classList.contains('adp-popup') ||
                         el.classList.contains('datepicker-container') ||
                         el.classList.contains('datepicker-popup')
-                    ) || el === fromDateInput || el === toDateInput;
-                }) || (e.target && e.target.closest && (
-                    e.target.closest('.adp-popup') ||
-                    e.target.closest('.datepicker-container') ||
-                    e.target.closest('.datepicker-popup')
-                )) || e.target === fromDateInput || e.target === toDateInput;
-
-                const isPanelClick = path.includes(panel) || panel.contains(e.target);
-                const isSelectBoxClick = path.includes(selectBox) || selectBox.contains(e.target);
+                    )) {
+                        isDatepickerClick = true;
+                    }
+                }
 
                 if (!isPanelClick && !isSelectBoxClick && !isDatepickerClick && state.isOpen) {
                     toggleDropdown(true);
@@ -473,6 +545,17 @@
             };
             document.addEventListener('click', handleOutsideClick);
             listeners.push(() => document.removeEventListener('click', handleOutsideClick));
+
+            // Back button to return to presets
+            if (backButton) {
+                const handleBackClick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showView('presets');
+                };
+                backButton.addEventListener('click', handleBackClick);
+                listeners.push(() => backButton.removeEventListener('click', handleBackClick));
+            }
 
             // Prevent dropdown close on date input click
             const stopProp = (e) => e.stopPropagation();
@@ -489,8 +572,33 @@
                     const value = btn.getAttribute('data-value');
                     const text = btn.textContent.trim();
 
+                    // If user clicks "Custom Dates", hide the presets and show only custom date inputs
+                    if (value === 'custom') {
+                        dateButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+
+                        showView('custom');
+
+                        if (fromDateInput) {
+                            setTimeout(() => {
+                                fromDateInput.focus();
+                                fromDateInput.click();
+                            }, 50);
+                        }
+                        return;
+                    }
+
+                    showView('presets');
+
+                    dateButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
                     state.currentValue = value;
                     state.isInternalChange = true;
+
+                    // Clean custom date attributes when choosing preset
+                    hiddenSelect.removeAttribute('data-from-date');
+                    hiddenSelect.removeAttribute('data-to-date');
 
                     hiddenSelect.value = value;
                     if (label) label.textContent = text;
@@ -518,6 +626,11 @@
 
                 if (!fromDateInput?.value || !toDateInput?.value) {
                     handleError(new Error('Both dates required'), 'Custom date submission');
+                    if (typeof showNotification === 'function') {
+                        showNotification('Please select both From Date and To Date', 'warning');
+                    } else {
+                        alert('Please select both From Date and To Date');
+                    }
                     return;
                 }
 
@@ -528,11 +641,21 @@
 
                 if (!fromDate || !toDate) {
                     handleError(new Error('Invalid date format'), 'Custom date submission');
+                    if (typeof showNotification === 'function') {
+                        showNotification('Invalid date format. Please select valid dates.', 'error');
+                    } else {
+                        alert('Invalid date format. Please select valid dates.');
+                    }
                     return;
                 }
 
                 if (!dateUtils.validateRange(fromDate, toDate)) {
                     handleError(new Error('From date must be before To date'), 'Custom date submission');
+                    if (typeof showNotification === 'function') {
+                        showNotification('From date must be before or equal to To date', 'warning');
+                    } else {
+                        alert('From date must be before or equal to To date');
+                    }
                     return;
                 }
 
@@ -559,6 +682,15 @@
 
                 hiddenSelect.setAttribute('data-from-date', fromDate);
                 hiddenSelect.setAttribute('data-to-date', toDate);
+
+                // Update active state
+                dateButtons.forEach(b => {
+                    if (b.getAttribute('data-value') === 'custom') {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
 
                 toggleDropdown(true);
 
@@ -589,6 +721,16 @@
                 if (!selectedOption) return;
 
                 if (label) label.textContent = selectedOption.text;
+
+                showView((hiddenSelect.value === 'custom') ? 'custom' : 'presets');
+
+                dateButtons.forEach(b => {
+                    if (b.getAttribute('data-value') === hiddenSelect.value) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
 
                 const fromDate = hiddenSelect.getAttribute('data-from-date');
                 const toDate = hiddenSelect.getAttribute('data-to-date');

@@ -131,20 +131,23 @@
     border-radius: 0.5rem !important;
   }
 
-  /* Date dropdown panel: constrain to viewport on mobile */
+  /* Date dropdown panel: correctly positioned under dropdown trigger on mobile */
   .date-dropdown-panel {
-    position: fixed !important;
-    top: calc(var(--topbar-height) + 3rem) !important;
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
     bottom: auto !important;
-    left: 0.5rem !important;
-    right: 0.5rem !important;
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    max-height: 60vh;
+    right: 0 !important;
+    left: auto !important;
+    width: min(320px, calc(100vw - 1rem)) !important;
+    min-width: 280px !important;
+    max-width: calc(100vw - 1rem) !important;
+    max-height: 80vh;
     overflow-y: auto;
     z-index: 1100 !important;
     margin-top: 0 !important;
+    box-sizing: border-box !important;
+    border-radius: 0.75rem !important;
+    padding: 0.75rem !important;
   }
 
   .breadcrumb { display: none; }
@@ -168,8 +171,10 @@
     gap: 0.3rem;
     position: relative;
   }
-  /* Primary Action Button on Mobile: Sleek Light Rounded Square */
-  .page-actions .btn-primary {
+  /* Primary Action Button on Mobile: Sleek Rounded Square */
+  .page-actions > .btn-primary,
+  .page-actions > a.btn-primary,
+  .page-actions > button.btn-primary {
     font-size: 0;
     width: 38px;
     height: 38px;
@@ -179,21 +184,26 @@
     align-items: center;
     justify-content: center;
     border-radius: 0.5rem;
-    background: rgba(255, 255, 255, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    color: #ffffff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    backdrop-filter: blur(4px);
+    background: var(--primary);
+    border: 1px solid var(--primary);
+    color: var(--text-on-primary, #ffffff);
+    box-shadow: var(--shadow-sm);
     transition: all 0.2s ease;
   }
-  .page-actions .btn-primary:hover,
-  .page-actions .btn-primary:focus {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
-    color: #ffffff;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  .page-actions > .btn-primary:hover,
+  .page-actions > a.btn-primary:hover,
+  .page-actions > button.btn-primary:hover,
+  .page-actions > .btn-primary:focus,
+  .page-actions > a.btn-primary:focus,
+  .page-actions > button.btn-primary:focus {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: var(--text-on-primary, #ffffff);
+    box-shadow: var(--shadow-md);
   }
-  .page-actions .btn-primary i {
+  .page-actions > .btn-primary i,
+  .page-actions > a.btn-primary i,
+  .page-actions > button.btn-primary i {
     font-size: 0.9rem;
     margin: 0;
   }
@@ -201,29 +211,29 @@
   .page-actions > .btn:not(.btn-primary) {
     display: none;
   }
-  /* 3-dots toggle (injected by JS): Sleek Light Rounded Square */
+  /* 3-dots toggle (injected by JS): Sleek Rounded Square */
   .page-actions-toggle {
     display: none;
     align-items: center;
     justify-content: center;
     width: 38px;
     height: 38px;
-    background: rgba(255, 255, 255, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     border-radius: 0.5rem;
-    color: #ffffff;
+    color: var(--text-primary);
     font-size: 0.95rem;
     cursor: pointer;
     flex-shrink: 0;
     letter-spacing: 1px;
     line-height: 1;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    backdrop-filter: blur(4px);
+    box-shadow: var(--shadow-sm);
     transition: all 0.2s ease;
   }
   .page-actions-toggle:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: var(--bg-surface-hover);
+    border-color: var(--primary);
+    color: var(--primary);
   }
   .page-actions.has-more .page-actions-toggle {
     display: flex;

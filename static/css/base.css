@@ -1013,7 +1013,7 @@ h1, h2, h3, h4, h5, h6, .card-title, .section-title, .modal-title {
   display: none;
 }
 
-/* Scoped form-select inside page-actions (sits on the blue gradient header) */
+/* Scoped form-select inside page-actions */
 .page-actions .form-select {
   min-width: 160px;
   max-width: 200px;
@@ -1021,31 +1021,33 @@ h1, h2, h3, h4, h5, h6, .card-title, .section-title, .modal-title {
   padding: 0 2.2rem 0 0.75rem;
   font-size: 0.8rem;
   font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--border-color);
   border-radius: 0.5rem;
-  background-color: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
-  /* White chevron arrow for dark header background */
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.5rem center;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.6rem center;
   background-repeat: no-repeat;
-  background-size: 1.5em 1.5em;
+  background-size: 1.25rem 1.25rem;
 }
 
 .page-actions .form-select:hover {
-  background-color: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.45);
+  background-color: var(--bg-surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: var(--shadow-md);
 }
 
 .page-actions .form-select:focus {
-  background-color: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
+  background-color: var(--bg-surface);
+  border-color: var(--border-color-focus, var(--primary));
+  box-shadow: 0 0 0 3px var(--primary-bg, rgba(37, 99, 235, 0.15));
   transform: none;
 }
 
@@ -1054,36 +1056,68 @@ h1, h2, h3, h4, h5, h6, .card-title, .section-title, .modal-title {
   color: var(--text-primary);
 }
 
-/* Scoped btn inside page-actions (on the blue gradient header) */
-.page-actions .btn {
+/* Scoped btn inside page-actions */
+.page-actions > .btn,
+.page-actions > a.btn,
+.page-actions > button.btn,
+.page-actions > form > .btn {
   height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #fff;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   font-size: 0.8rem;
   padding: 0 1rem;
   box-sizing: border-box;
   border-radius: 0.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
 }
 
-.page-actions .btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.45);
-  color: #fff;
+.page-actions > .btn:hover,
+.page-actions > a.btn:hover,
+.page-actions > button.btn:hover,
+.page-actions > form > .btn:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
-.page-actions .btn-danger {
+.page-actions > .btn-primary,
+.page-actions > a.btn-primary,
+.page-actions > button.btn-primary,
+.page-actions > form > .btn-primary {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--text-on-primary, #ffffff) !important;
+}
+
+.page-actions > .btn-primary:hover,
+.page-actions > a.btn-primary:hover,
+.page-actions > button.btn-primary:hover,
+.page-actions > form > .btn-primary:hover {
+  background: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+  color: var(--text-on-primary, #ffffff) !important;
+}
+
+.page-actions > .btn-danger,
+.page-actions > a.btn-danger,
+.page-actions > button.btn-danger,
+.page-actions > form > .btn-danger {
   background-color: var(--danger, #dc3545) !important;
   border-color: var(--danger, #dc3545) !important;
   color: var(--text-on-primary, #ffffff) !important;
 }
 
-.page-actions .btn-danger:hover {
+.page-actions > .btn-danger:hover,
+.page-actions > a.btn-danger:hover,
+.page-actions > button.btn-danger:hover,
+.page-actions > form > .btn-danger:hover {
   background-color: var(--danger-hover, #c82333) !important;
   border-color: var(--danger-active, #bb2d3b) !important;
   color: var(--text-on-primary, #ffffff) !important;
@@ -1091,13 +1125,19 @@ h1, h2, h3, h4, h5, h6, .card-title, .section-title, .modal-title {
   box-shadow: 0 4px 12px rgba(220, 53, 69, 0.45) !important;
 }
 
-.page-actions .btn-warning {
+.page-actions > .btn-warning,
+.page-actions > a.btn-warning,
+.page-actions > button.btn-warning,
+.page-actions > form > .btn-warning {
   background-color: var(--warning, #ffc107) !important;
   border-color: var(--warning, #ffc107) !important;
   color: #212529 !important;
 }
 
-.page-actions .btn-warning:hover {
+.page-actions > .btn-warning:hover,
+.page-actions > a.btn-warning:hover,
+.page-actions > button.btn-warning:hover,
+.page-actions > form > .btn-warning:hover {
   background-color: #ffca2c !important;
   border-color: #ffc720 !important;
   color: #212529 !important;
@@ -1105,9 +1145,9 @@ h1, h2, h3, h4, h5, h6, .card-title, .section-title, .modal-title {
   box-shadow: 0 4px 12px rgba(255, 193, 7, 0.45) !important;
 }
 
-/* Dark theme: keep same style since the header gradient stays blue */
+/* Dark theme form-select inside page-actions */
 [data-theme="dark"] .page-actions .form-select {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
 }
 
 /* Styled dropdown (via dropdown_style.js) inside page-actions header */
@@ -1116,38 +1156,34 @@ h1, h2, h3, h4, h5, h6, .card-title, .section-title, .modal-title {
 }
 
 .page-actions .selectBox {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   height: 36px;
   padding: 0 2rem 0 0.75rem;
   border-radius: 0.5rem;
   box-sizing: border-box;
   display: flex;
   align-items: center;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
 }
 
 .page-actions .selectBox:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface-hover);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
 }
 
 .page-actions .selectBox p,
 .page-actions .selectBox .select-icon,
 .page-actions .selectBox .down-icon {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 0.8rem;
 }
 
 .page-actions .selectBox .date-filter-label {
   font-weight: 500;
-}
-
-/* Hide custom date range inputs in page-actions dropdown (not needed on dashboards) */
-.page-actions .date-dropdown-panel .date-picker,
-.page-actions .date-dropdown-panel .student-submit {
-  display: none !important;
 }
 
 /* Standalone custom date popup (used in commission page) */
@@ -6372,6 +6408,19 @@ WORD SUGGESTION SYSTEM STYLES
   min-width: 150px;
 }
 
+.multipleSelection.w-100 {
+  width: 100%;
+}
+
+.multipleSelection.w-100 .selectBox {
+  width: 100%;
+}
+
+.multipleSelection.w-100 .date-dropdown-panel {
+  width: 100%;
+  min-width: 100%;
+}
+
 .selectBox {
   position: relative;
   background: var(--bg-surface);
@@ -6467,9 +6516,10 @@ WORD SUGGESTION SYSTEM STYLES
   display: inline-block;
 }
 
-.date-btn:hover {
+.date-btn:hover,
+.date-btn.active {
   background: var(--primary);
-  color: var(--text-on-primary);
+  color: var(--text-on-primary, #ffffff);
   border-color: var(--primary);
 }
 
@@ -6499,9 +6549,34 @@ WORD SUGGESTION SYSTEM STYLES
   margin-top: 0.5rem;
 }
 
-.student-submit .btn {
-  width: 100%;
-  justify-content: center;
+.student-submit .btn,
+.date-dropdown-panel .custom-date-submit-btn,
+.custom-date-section .custom-date-submit-btn {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--primary) !important;
+  color: var(--text-on-primary, #ffffff) !important;
+  border: 1px solid var(--primary) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  height: auto !important;
+  box-shadow: none !important;
+}
+
+.student-submit .btn:hover,
+.date-dropdown-panel .custom-date-submit-btn:hover,
+.custom-date-section .custom-date-submit-btn:hover {
+  background: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+  color: var(--text-on-primary, #ffffff) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1)) !important;
 }
 
 /* ========================================
