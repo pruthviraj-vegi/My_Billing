@@ -40,13 +40,7 @@ class PaymentMethodChoices(models.TextChoices):
     """Payment method choices"""
 
     CASH = "CASH", "Cash"
-    CHEQUE = "CHEQUE", "Cheque"
-    CASH_ON_DELIVERY = "CASH_ON_DELIVERY", "Cash on Delivery"
-    CREDIT_CARD = "CREDIT_CARD", "Credit Card"
-    DEBIT_CARD = "DEBIT_CARD", "Debit Card"
     UPI = "UPI", "UPI"
-    ONLINE_PAYMENT = "ONLINE_PAYMENT", "Online Payment"
-    OTHER = "OTHER", "Other"
 
 
 class AuditTypeChoices(models.TextChoices):

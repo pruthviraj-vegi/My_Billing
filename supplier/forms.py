@@ -193,6 +193,10 @@ class SupplierInvoiceForm(ThemedFormMixin, forms.ModelForm):
         # Apply theme classes via mixin
         self.apply_theme_classes()
 
+        self.fields["invoice_type"].choices = SupplierInvoice.InvoiceType.choices
+        self.fields["gst_type"].choices = SupplierInvoice.GstType.choices
+        self.fields["invoice_type"].widget.attrs["class"] = "select-toggle"
+        self.fields["gst_type"].widget.attrs["class"] = "select-toggle"
         self.fields["sub_total"].widget.attrs["class"] = "form-input indian-number"
         self.fields["cgst_amount"].widget.attrs["class"] = "form-input indian-number"
         self.fields["igst_amount"].widget.attrs["class"] = "form-input indian-number"
@@ -383,6 +387,7 @@ class SupplierPaymentForm(ThemedFormMixin, forms.ModelForm):
         # Make transaction_id optional
         self.fields["transaction_id"].required = False
         self.fields["method"].initial = SupplierPayment.PaymentMethod.CASH
+        self.fields["method"].widget.attrs["class"] = "select-toggle"
         self.fields["amount"].widget.attrs["class"] = "form-input indian-number"
 
     def clean_amount(self):

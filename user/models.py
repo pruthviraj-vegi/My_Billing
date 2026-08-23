@@ -91,7 +91,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name} ({self.phone_number})"
+        return f"{self.first_name} {self.last_name}"
 
     @property
     def username(self):

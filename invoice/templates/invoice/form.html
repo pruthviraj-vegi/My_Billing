@@ -336,8 +336,6 @@
   $(document).ready(function () {
     setupModal('id_customer', 'Customer', 'new_customer', '#add_new_customer', '{% url "customer:create_ajax" %}');
     $('#id_customer').select2({ width: '100%' });
-    $('#id_payment_method').select2({ width: '100%' });
-    $('#id_sold_by').select2({ width: '100%' });
 
     // Handle walk-in customer - force CASH payment type
     const defaultCustomerId = "{{ default_customer.id|default:'1' }}";
@@ -468,9 +466,8 @@
       balanceDisplay.textContent = formatCurrency(balance);
     };
 
-
     toggleFields = function () {
-      const selectedValue = PaymentTypeSelect.value;
+      const selectedValue = PaymentTypeSelect ? PaymentTypeSelect.value : 'CASH';
 
       if (selectedValue === 'CASH') {
         // Make advance amount and due date readonly for cash invoices
@@ -490,8 +487,6 @@
         advanceAmountField.closest('.form-group')?.classList.add('field-disabled');
         dueDateField.closest('.form-group')?.classList.add('field-disabled');
         dueDateField.closest('.input-date-wrapper')?.classList.add('field-disabled');
-
-        // For cash invoices, payment status will automatically be set to PAID
       } else {
         // Enable fields for credit invoices
         advanceAmountField.readOnly = false;
@@ -513,7 +508,7 @@
 
     // Handle form submission to ensure empty fields are treated as zero
     document.querySelector('form').addEventListener('submit', function (e) {
-      const selectedValue = PaymentTypeSelect.value;
+      const selectedValue = PaymentTypeSelect ? PaymentTypeSelect.value : 'CASH';
 
       // Set empty numeric fields to 0 before submission
       if (!discountAmountField.value || discountAmountField.value === '') {
@@ -556,8 +551,10 @@
     // Initial setup
     toggleFields();
     updateTotals();
-    // Listen for changes
-    PaymentTypeSelect.addEventListener('change', toggleFields);
+    // Listen for changes on select
+    if (PaymentTypeSelect) {
+      PaymentTypeSelect.addEventListener('change', toggleFields);
+    }
 
     // Initialize custom lively Animated Date & Time Pickers
     const invoiceDateInput = document.getElementById('id_invoice_date');

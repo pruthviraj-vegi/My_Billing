@@ -152,6 +152,67 @@
   height: 148px;
   resize: vertical;
 }
+
+/* Fluid Animated Conditional Fields */
+.fluid-conditional-field {
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              margin 0.3s ease,
+              padding 0.3s ease;
+  overflow: hidden;
+  will-change: opacity, transform, max-height;
+}
+
+.fluid-conditional-field.is-hidden {
+  opacity: 0 !important;
+  max-height: 0 !important;
+  transform: translateY(-8px) scale(0.98);
+  pointer-events: none !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  visibility: hidden;
+}
+
+.fluid-conditional-field.is-visible {
+  opacity: 1 !important;
+  max-height: 250px !important;
+  transform: translateY(0) scale(1);
+  pointer-events: auto !important;
+  visibility: visible;
+}
+
+/* Fluid Animated Summary Rows */
+.total-row.fluid-row {
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              max-height 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              padding 0.28s ease,
+              margin 0.28s ease;
+  overflow: hidden;
+}
+
+.total-row.fluid-row.is-hidden {
+  opacity: 0 !important;
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  transform: translateY(-4px);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.total-row.fluid-row.is-visible {
+  opacity: 1 !important;
+  max-height: 60px !important;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+}
 </style>
 {% endblock extra_css %}
 {% block content %}
@@ -240,10 +301,10 @@
                 </div>
               </div>
               <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-6" id="invoiceTypeGroup">
                   <div class="form-group {% if form.invoice_type.errors %}has-error{% endif %}">
                     <label for="{{ form.invoice_type.id_for_label }}" class="form-label">{{ form.invoice_type.label }}</label>
-                    {{ form.invoice_type|add_class:"form-select" }}
+                    {{ form.invoice_type }}
                     <small class="form-help">
                       {% if form.invoice_type.errors %}
                         {% for error in form.invoice_type.errors %}
@@ -257,10 +318,10 @@
                     </small>
                   </div>
                 </div>
-                <div class="col-md-6" id="gstTypeGroup">
+                <div class="col-md-6 fluid-conditional-field is-visible" id="gstTypeGroup">
                   <div class="form-group {% if form.gst_type.errors %}has-error{% endif %}">
                     <label for="{{ form.gst_type.id_for_label }}" class="form-label">{{ form.gst_type.label }}</label>
-                    {{ form.gst_type|add_class:"form-select" }}
+                    {{ form.gst_type }}
                     <small class="form-help">
                       {% if form.gst_type.errors %}
                         {% for error in form.gst_type.errors %}
@@ -281,7 +342,7 @@
             <div class="form-section">
               <h5 class="section-title">Amount Details</h5>
               <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-4" id="subTotalGroup">
                   <div class="form-group {% if form.sub_total.errors %}has-error{% endif %}">
                     <label for="{{ form.sub_total.id_for_label }}" class="form-label">{{ form.sub_total.label }}</label>
                     {{ form.sub_total }}
@@ -298,41 +359,7 @@
                     </small>
                   </div>
                 </div>
-                <div class="col-md-4" id="cgstGroup">
-                  <div class="form-group {% if form.cgst_amount.errors %}has-error{% endif %}">
-                    <label for="{{ form.cgst_amount.id_for_label }}" class="form-label">{{ form.cgst_amount.label }}</label>
-                    {{ form.cgst_amount }}
-                    <small class="form-help">
-                      {% if form.cgst_amount.errors %}
-                        {% for error in form.cgst_amount.errors %}
-                          <span class="form-error-inline">
-                            <i class="fas fa-exclamation-circle"></i>
-                            {{ error }}
-                          </span>
-                        {% endfor %}
-                      {% endif %}
-                      <span class="form-help-text">Enter CGST Amount Tax Amount (SGST is Calculated)</span>
-                    </small>
-                  </div>
-                </div>
-                <div class="col-md-4" id="igstGroup">
-                  <div class="form-group {% if form.igst_amount.errors %}has-error{% endif %}">
-                    <label for="{{ form.igst_amount.id_for_label }}" class="form-label">{{ form.igst_amount.label }}</label>
-                    {{ form.igst_amount }}
-                    <small class="form-help">
-                      {% if form.igst_amount.errors %}
-                        {% for error in form.igst_amount.errors %}
-                          <span class="form-error-inline">
-                            <i class="fas fa-exclamation-circle"></i>
-                            {{ error }}
-                          </span>
-                        {% endfor %}
-                      {% endif %}
-                      <span class="form-help-text">Enter IGST Amount Tax Amount</span>
-                    </small>
-                  </div>
-                </div>
-                <div class="col-md-4">
+                <div class="col-md-4" id="adjustmentGroup">
                   <div class="form-group {% if form.adjustment_amount.errors %}has-error{% endif %}">
                     <label for="{{ form.adjustment_amount.id_for_label }}" class="form-label">{{ form.adjustment_amount.label }}</label>
                     {{ form.adjustment_amount }}
@@ -349,6 +376,39 @@
                     </small>
                   </div>
                 </div>
+                <div class="col-md-4" id="taxFieldGroup">
+                  <div class="form-group {% if form.cgst_amount.errors %}has-error{% endif %}" id="cgstField">
+                    <label for="{{ form.cgst_amount.id_for_label }}" class="form-label">{{ form.cgst_amount.label }}</label>
+                    {{ form.cgst_amount }}
+                    <small class="form-help">
+                      {% if form.cgst_amount.errors %}
+                        {% for error in form.cgst_amount.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Enter CGST Amount Tax Amount (SGST is Calculated)</span>
+                    </small>
+                  </div>
+                  <div class="form-group {% if form.igst_amount.errors %}has-error{% endif %}" id="igstField" style="display: none;">
+                    <label for="{{ form.igst_amount.id_for_label }}" class="form-label">{{ form.igst_amount.label }}</label>
+                    {{ form.igst_amount }}
+                    <small class="form-help">
+                      {% if form.igst_amount.errors %}
+                        {% for error in form.igst_amount.errors %}
+                          <span class="form-error-inline">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {{ error }}
+                          </span>
+                        {% endfor %}
+                      {% endif %}
+                      <span class="form-help-text">Enter IGST Amount Tax Amount</span>
+                    </small>
+                  </div>
+                </div>
+                
               </div>
             </div>            <!-- Notes & Attachments Section -->
             <div class="form-section mb-0">
@@ -449,15 +509,15 @@
                   <span class="total-label">Sub Total:</span>
                   <span class="total-value" id="subTotalDisplay">0.00</span>
                 </div>
-                <div class="total-row hidden" id="cgstDisplayRow">
+                <div class="total-row fluid-row is-hidden" id="cgstDisplayRow">
                   <span class="total-label">CGST:</span>
                   <span class="total-value" id="cgstDisplay">0.00</span>
                 </div>
-                <div class="total-row hidden" id="sgstDisplayRow">
+                <div class="total-row fluid-row is-hidden" id="sgstDisplayRow">
                   <span class="total-label">SGST:</span>
                   <span class="total-value" id="sgstDisplay">0.00</span>
                 </div>
-                <div class="total-row hidden" id="igstDisplayRow">
+                <div class="total-row fluid-row is-hidden" id="igstDisplayRow">
                   <span class="total-label">IGST:</span>
                   <span class="total-value" id="igstDisplay">0.00</span>
                 </div>
@@ -498,24 +558,36 @@
   <script>
     // Global variables
     let invoiceTypeSelect, gstTypeSelect, subTotalInput, cgstInput, igstInput, adjustmentInput
-    let gstTypeGroup, cgstGroup, igstGroup
+    let invoiceTypeGroup, gstTypeGroup, subTotalGroup, taxFieldGroup, cgstField, igstField, adjustmentGroup
     let subTotalDisplay, cgstDisplay, sgstDisplay, igstDisplay, adjustmentDisplay, totalAmountDisplay
     let cgstDisplayRow, sgstDisplayRow, igstDisplayRow
     
     // Global functions
     function updateFormState() {
       const invoiceType = invoiceTypeSelect.value
-      const gstType = gstTypeSelect.value
       const isGstApplicable = invoiceType === 'GST_APPLICABLE'
+
+      // Default GST type to CGST_SGST if currently unset or empty
+      if (isGstApplicable && (!gstTypeSelect.value || gstTypeSelect.value === '')) {
+        gstTypeSelect.value = 'CGST_SGST'
+        gstTypeSelect.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+
+      const gstType = gstTypeSelect.value
       const isCgstSgst = isGstApplicable && gstType === 'CGST_SGST'
       const isIgst = isGstApplicable && gstType === 'IGST'
     
       // Show/hide the GST Type dropdown
       setVisibility(gstTypeGroup, isGstApplicable)
     
-      // Show/hide CGST/IGST input fields
-      setVisibility(cgstGroup, isCgstSgst)
-      setVisibility(igstGroup, isIgst)
+      // Show/hide Tax Column and toggle between CGST & IGST in place
+      if (taxFieldGroup) {
+        taxFieldGroup.style.display = isGstApplicable ? '' : 'none'
+      }
+      if (cgstField && igstField) {
+        cgstField.style.display = isCgstSgst ? '' : 'none'
+        igstField.style.display = isIgst ? '' : 'none'
+      }
     
       // Show/hide CGST/SGST/IGST display rows in the summary
       setVisibility(cgstDisplayRow, isCgstSgst)
@@ -577,12 +649,14 @@
     }
     
     function setVisibility(element, isVisible) {
+      if (!element) return;
       if (isVisible) {
-        element.classList.remove('hidden')
-        element.classList.add('visible')
+        element.classList.remove('is-hidden');
+        element.classList.add('is-visible');
+        element.classList.remove('hidden');
       } else {
-        element.classList.remove('visible')
-        element.classList.add('hidden')
+        element.classList.remove('is-visible');
+        element.classList.add('is-hidden');
       }
     }
     
@@ -596,9 +670,13 @@
       adjustmentInput = document.getElementById('{{ form.adjustment_amount.id_for_label }}')
     
       // Input Groups
+      invoiceTypeGroup = document.getElementById('invoiceTypeGroup')
       gstTypeGroup = document.getElementById('gstTypeGroup')
-      cgstGroup = document.getElementById('cgstGroup')
-      igstGroup = document.getElementById('igstGroup')
+      subTotalGroup = document.getElementById('subTotalGroup')
+      taxFieldGroup = document.getElementById('taxFieldGroup')
+      cgstField = document.getElementById('cgstField')
+      igstField = document.getElementById('igstField')
+      adjustmentGroup = document.getElementById('adjustmentGroup')
     
       // Display Elements
       subTotalDisplay = document.getElementById('subTotalDisplay')

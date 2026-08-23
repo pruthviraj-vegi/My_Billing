@@ -83,6 +83,9 @@ class InvoiceForm(ThemedFormMixin, forms.ModelForm):
 
         # Make due_date not required by default (will be handled in clean method)
         self.fields["due_date"].required = False
+        self.fields["sold_by"].widget.attrs["class"] = "select-toggle"
+        self.fields["payment_type"].widget.attrs["class"] = "select-toggle"
+        self.fields["payment_method"].widget.attrs["class"] = "select-toggle"
         self.fields["discount_amount"].widget.attrs[
             "class"
         ] = " form-input indian-number"
