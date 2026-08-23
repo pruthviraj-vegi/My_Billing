@@ -13,19 +13,7 @@
         <h2 class="page-title">Invoice Dashboard</h2>
         <div class="page-actions">
             <!-- Date Filter Dropdown -->
-            <form method="get" class="d-inline" id="dateFilterForm">
-                <select name="date_filter" class="form-select" id="dateFilter">
-                    <option value="today">Today</option>
-                    <option value="yesterday">Yesterday</option>
-                    <option value="this_month">This Month</option>
-                    <option value="last_month">Last Month</option>
-                    <option value="this_finance">This Finance</option>
-                    <option value="last_finance">Last Finance</option>
-                    <option value="this_quarter">This Quarter</option>
-                    <option value="last_quarter">Last Quarter</option>
-                    <option value="full_date">Full Date</option>
-                </select>
-            </form>
+            {% include "common/_date_filter.html" with hide_custom=True %}
             <a href="{% url 'invoice:home' %}" class="btn">
                 <i class="fas fa-list"></i>
                 View All Invoices
@@ -215,49 +203,49 @@
     {% load static %}
     <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
     <script src="{% static 'js/modern-charts.js' %}"></script>
-    <script src="{% static 'js/dropdown_style.js' %}"></script>
     <script src="{% static 'js/counting.js' %}"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Charts
-    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-    const paymentCtx = document.getElementById('paymentStatusChart').getContext('2d');
-    const paymentTypeCtx = document.getElementById('paymentTypeChart').getContext('2d');
-    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-    
-    let revenueChart = ModernCharts.initRevenueChart(revenueCtx);
-    let paymentChart = ModernCharts.initDoughnut(paymentCtx);
-    let paymentTypeChart = ModernCharts.initDoughnut(paymentTypeCtx);
-    let categoryChart = ModernCharts.initDoughnut(categoryCtx);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Charts
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        const paymentCtx = document.getElementById('paymentStatusChart').getContext('2d');
+        const paymentTypeCtx = document.getElementById('paymentTypeChart').getContext('2d');
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        
+        let revenueChart = ModernCharts.initRevenueChart(revenueCtx);
+        let paymentChart = ModernCharts.initDoughnut(paymentCtx);
+        let paymentTypeChart = ModernCharts.initDoughnut(paymentTypeCtx);
+        let categoryChart = ModernCharts.initDoughnut(categoryCtx);
 
-    // Fetch Data Function
-    async function fetchDashboardData(filter) {
-        try {
-            // Don't block the UI
-            // document.getElementById('dashboardLoading').style.display = 'flex';
-            // document.getElementById('dashboardContent').style.display = 'none';
-            document.getElementById('dashboardError').style.display = 'none';
-            
-            // Subtle loading indication
-            document.getElementById('dashboardContent').style.opacity = '0.6';
+        // Fetch Data Function
+        async function fetchDashboardData(filter) {
+            try {
+                document.getElementById('dashboardError').style.display = 'none';
+                
+                // Subtle loading indication
+                document.getElementById('dashboardContent').style.opacity = '0.6';
 
-            const response = await fetch(`{% url "invoice:dashboard_fetch" %}?date_filter=${filter}`);
-            const data = await response.json();
+                let filterVal = typeof filter === 'object' && filter ? filter.value : (filter || 'this_month');
+                let url = `{% url "invoice:dashboard_fetch" %}?date_filter=${encodeURIComponent(filterVal)}`;
+                if (typeof filter === 'object' && filter && filter.fromDate && filter.toDate) {
+                    url += `&from_date=${encodeURIComponent(filter.fromDate)}&to_date=${encodeURIComponent(filter.toDate)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
             
-            if (data.success) {
-                updateDashboard(data);
+                if (data.success) {
+                    updateDashboard(data);
+                    document.getElementById('dashboardContent').style.opacity = '1';
+                } else {
+                    throw new Error(data.message || 'Failed to fetch data');
+                }
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
                 document.getElementById('dashboardContent').style.opacity = '1';
-            } else {
-                throw new Error(data.message || 'Failed to fetch data');
+                document.getElementById('dashboardError').style.display = 'flex';
             }
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-            document.getElementById('dashboardContent').style.opacity = '1';
-            document.getElementById('dashboardError').style.display = 'flex';
-        } finally {
-            // document.getElementById('dashboardLoading').style.display = 'none';
         }
-    }
 
     function updateDashboard(data) {
         // Update Stats with counting animation
@@ -315,35 +303,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initialize styled date filter dropdown
-    let dateFilterStyled = null;
-    function getDateFilterValue() {
-        if (dateFilterStyled) return dateFilterStyled.getValue();
-        const el = document.getElementById('dateFilter');
-        return el ? el.value : 'today';
-    }
-
-    if (typeof convertSelectToStyledDropdown !== 'undefined') {
-        dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
-            onChange: function(data) {
-                fetchDashboardData(data.value);
-            }
-        });
-    } else {
-        // Fallback: use native select change event
-        const dateFilter = document.getElementById('dateFilter');
-        if (dateFilter) {
-            dateFilter.addEventListener('change', (e) => {
-                fetchDashboardData(e.target.value);
-            });
+    initDateFilter('dateFilter', {
+        onChange: function(data) {
+            fetchDashboardData(data);
         }
-    }
+    });
 
     const retryBtn = document.getElementById('retryDashboardBtn');
     if (retryBtn) {
         retryBtn.addEventListener('click', () => {
             document.getElementById('dashboardError').style.display = 'none';
             document.getElementById('dashboardContent').style.display = 'block';
-            fetchDashboardData(getDateFilterValue());
+            const curData = getDateFilterData('dateFilter');
+            fetchDashboardData(curData.isValid ? curData.data : 'this_month');
         });
     }
 

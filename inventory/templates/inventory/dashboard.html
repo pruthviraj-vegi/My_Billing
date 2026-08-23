@@ -13,19 +13,7 @@
         <h2 class="page-title">Inventory Dashboard</h2>
         <div class="page-actions">
             <!-- Date Filter Dropdown -->
-            <form method="get" class="d-inline" id="dateFilterForm">
-                <select name="date_filter" class="form-select" id="dateFilter">
-                    <option value="today">Today</option>
-                    <option value="yesterday">Yesterday</option>
-                    <option value="this_month">This Month</option>
-                    <option value="last_month">Last Month</option>
-                    <option value="this_finance">This Finance</option>
-                    <option value="last_finance">Last Finance</option>
-                    <option value="this_quarter">This Quarter</option>
-                    <option value="last_quarter">Last Quarter</option>
-                    <option value="full_date">Full Date</option>
-                </select>
-            </form>
+            {% include "common/_date_filter.html" with hide_custom=True %}
             {% if perms.inventory.view_product %}
                 <a href="{% url 'inventory:product_create' %}" class="btn">
                     <i class="fas fa-plus"></i>
@@ -180,7 +168,6 @@
     {% load static %}
     <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
     <script src="{% static 'js/modern-charts.js' %}"></script>
-    <script src="{% static 'js/dropdown_style.js' %}"></script>
     <script src="{% static 'js/counting.js' %}"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -209,15 +196,18 @@
     // Fetch Data Function
     async function fetchDashboardData(filter) {
         try {
-            // Don't block the UI
-            // document.getElementById('dashboardLoading').style.display = 'flex';
-            // document.getElementById('dashboardContent').style.display = 'none';
             document.getElementById('dashboardError').style.display = 'none';
             
             // Subtle loading indication
             document.getElementById('dashboardContent').style.opacity = '0.6';
 
-            const response = await fetch(`{% url "inventory:dashboard_fetch" %}?date_filter=${filter}`);
+            let filterVal = typeof filter === 'object' && filter ? filter.value : (filter || 'this_month');
+            let url = `{% url "inventory:dashboard_fetch" %}?date_filter=${encodeURIComponent(filterVal)}`;
+            if (typeof filter === 'object' && filter && filter.fromDate && filter.toDate) {
+                url += `&from_date=${encodeURIComponent(filter.fromDate)}&to_date=${encodeURIComponent(filter.toDate)}`;
+            }
+
+            const response = await fetch(url);
             const data = await response.json();
             
             if (data.success) {
@@ -260,35 +250,19 @@
     }
 
     // Initialize styled date filter dropdown
-    let dateFilterStyled = null;
-    function getDateFilterValue() {
-        if (dateFilterStyled) return dateFilterStyled.getValue();
-        const el = document.getElementById('dateFilter');
-        return el ? el.value : 'today';
-    }
-
-    if (typeof convertSelectToStyledDropdown !== 'undefined') {
-        dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
-            onChange: function(data) {
-                fetchDashboardData(data.value);
-            }
-        });
-    } else {
-        // Fallback: use native select change event
-        const dateFilter = document.getElementById('dateFilter');
-        if (dateFilter) {
-            dateFilter.addEventListener('change', (e) => {
-                fetchDashboardData(e.target.value);
-            });
+    initDateFilter('dateFilter', {
+        onChange: function(data) {
+            fetchDashboardData(data);
         }
-    }
+    });
 
     const retryBtn = document.getElementById('retryDashboardBtn');
     if (retryBtn) {
         retryBtn.addEventListener('click', () => {
             document.getElementById('dashboardError').style.display = 'none';
             document.getElementById('dashboardContent').style.display = 'block';
-            fetchDashboardData(getDateFilterValue());
+            const curData = getDateFilterData('dateFilter');
+            fetchDashboardData(curData.isValid ? curData.data : 'this_month');
         });
     }
 

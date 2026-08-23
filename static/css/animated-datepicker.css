@@ -137,9 +137,10 @@
   animation: dateIconPulse 1.8s infinite ease-in-out;
 }
 
-/* ── Disabled & Readonly States ── */
+/* ── Disabled States (functional readonly is NOT styled as disabled) ── */
 .form-date-input:disabled,
-.form-date-input[readonly] {
+.field-disabled .form-date-input,
+.form-group.field-disabled .form-date-input {
   background-color: var(--bg-surface-hover) !important;
   color: var(--text-secondary) !important;
   border-color: var(--border-color) !important;

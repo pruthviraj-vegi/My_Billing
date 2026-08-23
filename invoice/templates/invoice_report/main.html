@@ -10,29 +10,8 @@
     <h2 class="page-title">Invoice Report</h2>
     <div class="page-actions">
       <!-- Date Filter Dropdown -->
-      <div class="d-inline-flex align-items-center position-relative">
-        <form method="get" class="d-inline" id="dateFilterForm">
-          <select name="date_filter" class="form-select" id="dateFilter">
-            <option value="this_month">This Month</option>
-            <option value="last_month">Last Month</option>
-            <option value="this_quarter">This Quarter</option>
-            <option value="last_quarter">Last Quarter</option>
-            <option value="this_finance">This Finance</option>
-            <option value="last_finance">Last Finance</option>
-            <option value="full_date">Full Date</option>
-            <option value="custom">Custom Dates</option>
-          </select>
-        </form>
-        <!-- Custom Date Inputs (shown dynamically via JS) -->
-        <div id="standaloneCustomDates" class="custom-date-popup d-none">
-          <div class="d-flex gap-2 mb-2">
-            <input type="date" id="standaloneFrom" class="form-control form-control-sm" aria-label="From Date">
-            <input type="date" id="standaloneTo" class="form-control form-control-sm" aria-label="To Date">
-          </div>
-          <button type="button" class="btn btn-sm btn-submit w-100" id="standaloneSubmit">Submit</button>
-        </div>
-      </div>
-      <button type="button" class="btn btn-info" id="downloadReportBtn">
+      {% include "common/_date_filter.html" %}
+      <button type="button" class="btn btn-info ms-2" id="downloadReportBtn">
         <i class="fas fa-download"></i>
         Download Report
       </button>
@@ -162,8 +141,6 @@
 {% endblock content %}
 {% block extra_js %}
   <script src="{% static 'js/fetchData.js' %}"></script>
-  <!-- Visual Select to Styled Dropdown Converter -->
-  <script src="{% static 'js/dropdown_style.js' %}"></script>
   <script>
     const urls = {
       report: '{% url "invoice:report_fetch" %}',
@@ -174,8 +151,7 @@
   </script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Initialize AJAX for both tables - they share the same form
-      // We need to initialize them separately since they have different URLs
+      // Initialize AJAX for all tables - they share the same form
       initTableAjax('dateFilterForm', 'report_table', urls.report, {
         method: 'GET',
         loadingText: 'Loading transactions...',
@@ -201,77 +177,12 @@
         reloadTable('return_report_table')
       }
 
-      // Handle standalone submit for custom date range
-      const standaloneSubmitBtn = document.getElementById('standaloneSubmit');
-      if (standaloneSubmitBtn) {
-        standaloneSubmitBtn.addEventListener('click', function() {
-          const fromVal = document.getElementById('standaloneFrom').value;
-          const toVal = document.getElementById('standaloneTo').value;
-          
-          if (!fromVal || !toVal) {
-            if (typeof showToast === 'function') {
-              showToast('error', 'Please select both dates');
-            } else if (typeof showNotification === 'function') {
-              showNotification('Please select both dates', 'error');
-            } else {
-              alert('Please select both dates');
-            }
-            return;
-          }
-          
-          if (new Date(fromVal) > new Date(toVal)) {
-            if (typeof showToast === 'function') {
-              showToast('error', 'From date must be before To date');
-            } else if (typeof showNotification === 'function') {
-              showNotification('From date must be before To date', 'error');
-            } else {
-              alert('From date must be before To date');
-            }
-            return;
-          }
-          
-          const hiddenSelect = window.dateFilter_styled?.hiddenSelect || document.getElementById('dateFilter_hidden') || document.getElementById('dateFilter');
-          if (hiddenSelect) {
-            hiddenSelect.setAttribute('data-from-date', fromVal);
-            hiddenSelect.setAttribute('data-to-date', toVal);
-            hiddenSelect.value = 'custom';
-          }
-          
-          // Hide standalone box after submit
-          document.getElementById('standaloneCustomDates').classList.add('d-none');
-          
-          // Reload tables
+      // Initialize centralized date filter dropdown
+      initDateFilter('dateFilter', {
+        onChange: function (data) {
           reloadAllTables();
-        });
-      }
-
-      // Initialize styled dropdown for date filter
-      if (typeof convertSelectToStyledDropdown !== 'undefined') {
-        window.dateFilter_styled = convertSelectToStyledDropdown('dateFilter', {
-          showCustomDates: false,
-          onChange: function (data) {
-            const standaloneBox = document.getElementById('standaloneCustomDates');
-            
-            if (data.value === 'custom') {
-              if (standaloneBox) standaloneBox.classList.remove('d-none');
-              
-              if (data.fromDate && data.toDate) {
-                const hiddenSelect = window.dateFilter_styled?.hiddenSelect || document.getElementById('dateFilter_hidden');
-                if (hiddenSelect) {
-                  hiddenSelect.setAttribute('data-from-date', data.fromDate);
-                  hiddenSelect.setAttribute('data-to-date', data.toDate);
-                }
-              }
-              // Wait for standalone submit
-              return;
-            } else {
-              if (standaloneBox) standaloneBox.classList.add('d-none');
-            }
-            
-            reloadAllTables();
-          }
-        });
-      }
+        }
+      });
 
       // Request Async Report Generation
       const downloadReportBtn = document.getElementById('downloadReportBtn')

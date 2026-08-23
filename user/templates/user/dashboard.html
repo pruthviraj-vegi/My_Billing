@@ -12,17 +12,7 @@
     <div class="page-header page-header-sticky">
         <h2 class="page-title">User Dashboard</h2>
         <div class="page-actions">
-            <select name="date_filter" class="form-select" id="dateFilter">
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="this_month">This Month</option>
-                <option value="last_month">Last Month</option>
-                <option value="this_finance">This Finance</option>
-                <option value="last_finance">Last Finance</option>
-                <option value="this_quarter">This Quarter</option>
-                <option value="last_quarter">Last Quarter</option>
-                <option value="full_date">Full Date</option>
-            </select>
+            {% include "common/_date_filter.html" with hide_custom=True %}
         </div>
     </div>
     <!-- Breadcrumb Navigation -->
@@ -133,7 +123,6 @@
     {% load static %}
     <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
     <script src="{% static 'js/modern-charts.js' %}"></script>
-    <script src="{% static 'js/dropdown_style.js' %}"></script>
     <script src="{% static 'js/counting.js' %}"></script>
     <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -149,7 +138,13 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('dashboardError').style.display = 'none';
             document.getElementById('dashboardContent').style.opacity = '0.6';
 
-            const response = await fetch(`{% url "user:dashboard_fetch" %}?date_filter=${filter}`);
+            let filterVal = typeof filter === 'object' && filter ? filter.value : (filter || 'this_month');
+            let url = `{% url "user:dashboard_fetch" %}?date_filter=${encodeURIComponent(filterVal)}`;
+            if (typeof filter === 'object' && filter && filter.fromDate && filter.toDate) {
+                url += `&from_date=${encodeURIComponent(filter.fromDate)}&to_date=${encodeURIComponent(filter.toDate)}`;
+            }
+
+            const response = await fetch(url);
             const data = await response.json();
 
             if (data.success) {
@@ -190,33 +185,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initialize styled date filter dropdown
-    let dateFilterStyled = null;
-    function getDateFilterValue() {
-        if (dateFilterStyled) return dateFilterStyled.getValue();
-        var el = document.getElementById('dateFilter');
-        return el ? el.value : 'today';
-    }
-
-    if (typeof convertSelectToStyledDropdown !== 'undefined') {
-        dateFilterStyled = convertSelectToStyledDropdown('dateFilter', {
-            onChange: function(data) {
-                fetchDashboardData(data.value);
-            }
-        });
-    } else {
-        var dateFilter = document.getElementById('dateFilter');
-        if (dateFilter) {
-            dateFilter.addEventListener('change', function(e) {
-                fetchDashboardData(e.target.value);
-            });
+    initDateFilter('dateFilter', {
+        onChange: function(data) {
+            fetchDashboardData(data);
         }
-    }
+    });
 
     var retryBtn = document.getElementById('retryDashboardBtn');
     if (retryBtn) {
         retryBtn.addEventListener('click', function() {
             document.getElementById('dashboardError').style.display = 'none';
-            fetchDashboardData(getDateFilterValue());
+            const curData = getDateFilterData('dateFilter');
+            fetchDashboardData(curData.isValid ? curData.data : 'this_month');
         });
     }
 

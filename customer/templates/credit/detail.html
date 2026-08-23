@@ -193,7 +193,6 @@
         </div>
       </div>
     </div>
-  </div>
   <!-- Download Report Modal -->
   <div class="modal-overlay" id="downloadReportModal">
     <div class="modal-content">
@@ -209,15 +208,7 @@
           {% csrf_token %}
           <div class="form-group mb-3">
             <label for="reportDateFilter" class="form-label">Select Date Range</label>
-            <select name="date_filter" class="form-select" id="reportDateFilter">
-              <option value="this_month">This Month</option>
-              <option value="last_month">Last Month</option>
-              <option value="this_quarter">This Quarter</option>
-              <option value="last_quarter">Last Quarter</option>
-              <option value="this_finance">This Finance</option>
-              <option value="last_finance">Last Finance</option>
-              <option value="custom">Custom Date</option>
-            </select>
+            {% include "common/_date_filter.html" with filter_id="reportDateFilter" wrap_form=False container_class="w-100" custom_class="w-100" %}
           </div>
         </form>
       </div>
@@ -236,9 +227,7 @@
   </div>
 {% endblock content %}
 {% block extra_js %}
-  <script src="{% static 'js/dateFilterUtils.js' %}"></script>
   <script src="{% static 'js/fetchData.js' %}"></script>
-  <script src="{% static 'js/dropdown_style.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       // Summary card click handlers
@@ -271,169 +260,124 @@
       const closeModalBtn = document.getElementById('closeDownloadModal')
       const cancelBtn = document.getElementById('cancelDownloadBtn')
       const submitBtn = document.getElementById('submitDownloadBtn')
-      const customerId = "{{ customer.id }}"
       let dropdownInitialized = false
 
       // Open modal
-      downloadBtn.addEventListener('click', function () {
-        downloadModal.style.display = 'flex'
-        
-        // Initialize dropdown after modal is shown (only once)
-        if (!dropdownInitialized && typeof convertSelectToStyledDropdown !== 'undefined') {
-          setTimeout(() => {
-            if (!window.reportDateFilter_styled) {
-              const selectElement = document.getElementById('reportDateFilter')
-              if (selectElement) {
-                window.reportDateFilter_styled = convertSelectToStyledDropdown('reportDateFilter', {
-                  onChange: function(data) {
-                    if (data.value === 'custom' && data.fromDate && data.toDate) {
-                      const hiddenSelect = window.reportDateFilter_styled?.hiddenSelect;
-                      if (hiddenSelect) {
-                        hiddenSelect.setAttribute('data-from-date', data.fromDate);
-                        hiddenSelect.setAttribute('data-to-date', data.toDate);
+      if (downloadBtn && downloadModal) {
+        downloadBtn.addEventListener('click', function () {
+          downloadModal.style.display = 'flex'
+          
+          // Initialize dropdown after modal is shown (only once)
+          if (!dropdownInitialized && typeof convertSelectToStyledDropdown !== 'undefined') {
+            setTimeout(() => {
+              if (!window.reportDateFilter_styled) {
+                const selectElement = document.getElementById('reportDateFilter')
+                if (selectElement) {
+                  window.reportDateFilter_styled = convertSelectToStyledDropdown('reportDateFilter', {
+                    onChange: function(data) {
+                      if (data.value === 'custom' && data.fromDate && data.toDate) {
+                        const hiddenSelect = window.reportDateFilter_styled?.hiddenSelect;
+                        if (hiddenSelect) {
+                          hiddenSelect.setAttribute('data-from-date', data.fromDate);
+                          hiddenSelect.setAttribute('data-to-date', data.toDate);
+                        }
                       }
                     }
-                  }
-                });
+                  });
+                  dropdownInitialized = true
+                }
+              } else {
                 dropdownInitialized = true
               }
-            } else {
-              dropdownInitialized = true
-            }
-          }, 100)
-        }
-      })
+            }, 100)
+          }
+        })
+      }
 
       // Close modal handlers
       function closeModal() {
-        downloadModal.style.display = 'none'
+        if (downloadModal) {
+          downloadModal.style.display = 'none'
+        }
       }
 
-      closeModalBtn.addEventListener('click', closeModal)
-      cancelBtn.addEventListener('click', closeModal)
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal)
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal)
 
       // Close on backdrop click
-      downloadModal.addEventListener('click', function(e) {
-        if (e.target === downloadModal) {
-          closeModal()
-        }
-      })
+      if (downloadModal) {
+        downloadModal.addEventListener('click', function(e) {
+          if (e.target === downloadModal) {
+            closeModal()
+          }
+        })
+      }
 
       // Submit download
-      submitBtn.addEventListener('click', function() {
-        // Get date filter data using reusable function
-        const filterResult = getDateFilterData();
-        
-        if (!filterResult.isValid) {
-          showNotification(filterResult.error , "error");
-          return;
-        }
-
-        // Set loading state using reusable function
-        setButtonLoading(submitBtn, true, 'Generating...');
-
-        // Build URL with query parameters using reusable function
-        const downloadUrl = buildDateFilterUrl(urls.create_pdf, filterResult.data);
-
-        // Open PDF in new tab
-        try {
-          window.open(downloadUrl, '_blank');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', function() {
+          const filterResult = getDateFilterData('reportDateFilter');
           
-          // Close modal after short delay
-          setTimeout(() => {
-            closeModal();
+          if (!filterResult.isValid) {
+            showNotification(filterResult.error, "error");
+            return;
+          }
+
+          setButtonLoading(submitBtn, true, 'Generating...');
+          const downloadUrl = buildDateFilterUrl(urls.create_pdf, filterResult.data);
+
+          try {
+            window.open(downloadUrl, '_blank');
+            setTimeout(() => {
+              closeModal();
+              setButtonLoading(submitBtn, false);
+            }, 500);
+          } catch (error) {
+            showNotification(error, "error");
             setButtonLoading(submitBtn, false);
-          }, 500);
-        } catch (error) {
-          showNotification(error, "error");
-          setButtonLoading(submitBtn, false);
-        }
-      })
+          }
+        })
+      }
 
       // Send PDF Statement button handler
       const sendPdfBtn = document.getElementById('send_pdf_statement')
-      
-      sendPdfBtn.addEventListener('click', async function() {
-        // Get date filter data using reusable function
-        const filterResult = getDateFilterData();
-        
-        if (!filterResult.isValid) {
-          showNotification(`⚠️ ${filterResult.error}` , "error")
-          return;
-        }
-
-        /* ============================================================================
-         * CLIENT-SIDE VALIDATION (UX ONLY - NOT SECURITY)
-         * ============================================================================
-         * IMPORTANT: This validation improves user experience but provides ZERO security.
-         * 
-         * WHY CLIENT-SIDE VALIDATION IS INSUFFICIENT:
-         * 1. Easily Bypassed: Users can disable JavaScript or modify it in DevTools
-         * 2. No Trust Boundary: Client code runs on user's machine (untrusted environment)
-         * 3. API Vulnerability: Direct API calls bypass all client-side checks
-         * 4. Browser Tools: Tools like Postman/curl can send any data directly
-         * 
-         * SECURITY RISKS OF TRUSTING CLIENT-PROVIDED DATES:
-         * 1. Data Exfiltration: Attacker requests date range covering entire database
-         *    Example: from_date='1900-01-01', to_date='2099-12-31'
-         * 2. Performance DoS: Massive date ranges cause expensive database queries
-         *    Example: 100-year range on millions of records = server timeout
-         * 3. Privacy Violation: Access to data outside authorized time period
-         *    Example: Employee requests future dates to see unreleased financial data
-         * 4. SQL Injection: Malformed dates could exploit poor server validation
-         *    Example: from_date="2024-01-01' OR '1'='1" (if not using parameterized queries)
-         * 
-         * EXAMPLE MALICIOUS ATTACK:
-         * Attacker opens DevTools console and runs:
-         *   fetch('/report/send-pdf-statement/230/', {
-         *     method: 'POST',
-         *     headers: {'Content-Type': 'application/json', 'X-CSRFToken': 'token'},
-         *     body: JSON.stringify({
-         *       date_filter: 'custom',
-         *       from_date: '1900-01-01',  // Entire history
-         *       to_date: '2099-12-31',    // Far future
-         *     })
-         *   })
-         * Result: Server generates massive PDF with all customer data, sends via WhatsApp
-         * 
-         * REQUIRED SERVER-SIDE VALIDATIONS (Django View):
-         * See implementation example below this validation block.
-         * ============================================================================
-         */
-
-        // Set loading state using reusable function
-        setButtonLoading(sendPdfBtn, true, 'Sending...');
-
-        // Build URL with query parameters using reusable function
-        const sendUrl = buildDateFilterUrl(urls.send_pdf, filterResult.data);
-
-        try {
-          const response = await fetch(sendUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-
-          // Handle response using reusable function
-          const data = await handleFetchResponse(response);
-
-          // Success handling
-          if (data.success || data.status === 'success') {
-            showNotification('✅ PDF statement sent successfully via WhatsApp!', 'success');
-            
-            setTimeout(() => {
-              closeModal();
-            }, 500);
-          } else {
-            throw new Error(data.error || data.message || 'Unexpected response from server');
+      if (sendPdfBtn) {
+        sendPdfBtn.addEventListener('click', async function() {
+          const filterResult = getDateFilterData('reportDateFilter');
+          
+          if (!filterResult.isValid) {
+            showNotification(`⚠️ ${filterResult.error}`, "error")
+            return;
           }
-        } catch (error) {
-          showNotification('PDF Sending Failed', "error");
-        } finally {
-          setButtonLoading(sendPdfBtn, false);
-        }
-      })
+
+          setButtonLoading(sendPdfBtn, true, 'Sending...');
+          const sendUrl = buildDateFilterUrl(urls.send_pdf, filterResult.data);
+
+          try {
+            const response = await fetch(sendUrl, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+
+            const data = await handleFetchResponse(response);
+
+            if (data.success || data.status === 'success') {
+              showNotification('✅ PDF statement sent successfully via WhatsApp!', 'success');
+              setTimeout(() => {
+                closeModal();
+              }, 500);
+            } else {
+              throw new Error(data.error || data.message || 'Unexpected response from server');
+            }
+          } catch (error) {
+            showNotification('PDF Sending Failed', "error");
+          } finally {
+            setButtonLoading(sendPdfBtn, false);
+          }
+        })
+      }
 
       // Send Balance button handler
       const sendBalanceBtn = document.getElementById('sendBalanceBtn')

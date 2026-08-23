@@ -216,8 +216,11 @@
                 return;
             }
 
+            // Build URL from Django pattern
+            const deleteUrl = '{% url "invoice:delete_return_invoice" 0 %}'.replace('/0/', '/' + id + '/');
+
             // Send DELETE request to backend
-            fetch(`/invoice/returns/delete/${id}/`, {
+            fetch(deleteUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -239,3 +242,4 @@
         }
     </script>
 {% endblock extra_js %}
+

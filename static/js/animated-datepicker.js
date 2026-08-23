@@ -15,6 +15,9 @@
   let activePickerInstance = null;
   let sharedListenersRegistered = false;
 
+  // RAF-throttled position update (Fix #5)
+  let positionRAF = null;
+
   /**
    * Register document/window listeners once for all picker instances.
    * Only the activePickerInstance responds, avoiding duplicate listeners.
@@ -44,18 +47,20 @@
       }
     });
 
-    // Recalculate position on scroll/resize
-    window.addEventListener('scroll', () => {
-      if (activePickerInstance && activePickerInstance.isOpen && activePickerInstance.popup) {
-        activePickerInstance.positionPopup();
-      }
-    }, { passive: true });
+    // Recalculate position on scroll/resize — RAF-throttled (Fix #5)
+    const throttledReposition = () => {
+      if (!activePickerInstance || !activePickerInstance.isOpen || !activePickerInstance.popup) return;
+      if (positionRAF) return; // Already scheduled
+      positionRAF = requestAnimationFrame(() => {
+        if (activePickerInstance && activePickerInstance.isOpen) {
+          activePickerInstance.positionPopup();
+        }
+        positionRAF = null;
+      });
+    };
 
-    window.addEventListener('resize', () => {
-      if (activePickerInstance && activePickerInstance.isOpen && activePickerInstance.popup) {
-        activePickerInstance.positionPopup();
-      }
-    }, { passive: true });
+    window.addEventListener('scroll', throttledReposition, { passive: true });
+    window.addEventListener('resize', throttledReposition, { passive: true });
   }
 
   class AnimatedDatePicker {
@@ -73,8 +78,20 @@
         onSelect: null
       }, options);
 
-      // Parse initial value or default to now
-      this.selectedDate = this.parseDate(this.input.value) || new Date();
+      // Parse min/max date constraints from data attributes (Fix #12)
+      this.minDate = this._parseConstraintDate(this.input.dataset.minDate);
+      this.maxDate = this._parseConstraintDate(this.input.dataset.maxDate);      // Parse initial value or default to now
+      const parsedInitial = this.parseDate(this.input.value);
+      if (parsedInitial) {
+        this.selectedDate = parsedInitial;
+        this.input.value = this.formatValue(this.selectedDate);
+        const y = this.selectedDate.getFullYear();
+        const m = this.padZero(this.selectedDate.getMonth() + 1);
+        const d = this.padZero(this.selectedDate.getDate());
+        this.input.setAttribute('data-iso-date', `${y}-${m}-${d}`);
+      } else {
+        this.selectedDate = new Date();
+      }
       this.viewYear = this.selectedDate.getFullYear();
       this.viewMonth = this.selectedDate.getMonth();
 
@@ -92,18 +109,87 @@
       this.initTrigger();
     }
 
+    /**
+     * Parse a constraint date string. Supports:
+     * - "today" → today's date
+     * - "+Ny" / "-Ny" → N years from/before today
+     * - "+Nm" / "-Nm" → N months from/before today
+     * - "YYYY-MM-DD" → specific date
+     * Returns a Date object or null. (Fix #12)
+     */
+    _parseConstraintDate(str) {
+      if (!str || typeof str !== 'string') return null;
+      const trimmed = str.trim().toLowerCase();
+      if (!trimmed) return null;
+
+      if (trimmed === 'today') {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+      }
+
+      // Relative: +1y, -2y, +6m, -3m
+      const relMatch = trimmed.match(/^([+-]?\d+)([ym])$/);
+      if (relMatch) {
+        const offset = parseInt(relMatch[1], 10);
+        const unit = relMatch[2];
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        if (unit === 'y') d.setFullYear(d.getFullYear() + offset);
+        else if (unit === 'm') d.setMonth(d.getMonth() + offset);
+        return d;
+      }
+
+      // Absolute date
+      const d = this.parseDate(trimmed);
+      if (d) d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    /**
+     * Check whether a given date is within the allowed range. (Fix #12)
+     */
+    _isDateDisabled(year, month, day) {
+      if (!this.minDate && !this.maxDate) return false;
+      const d = new Date(year, month, day);
+      d.setHours(0, 0, 0, 0);
+      if (this.minDate && d < this.minDate) return true;
+      if (this.maxDate && d > this.maxDate) return true;
+      return false;
+    }
+
     parseDate(str) {
       if (!str || typeof str !== 'string') return null;
       const trimmed = str.trim();
       if (!trimmed) return null;
 
+      // Handle DD-MM-YYYY or DD/MM/YYYY
+      const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[\sT]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+      if (dmyMatch) {
+        const day = parseInt(dmyMatch[1], 10);
+        const month = parseInt(dmyMatch[2], 10) - 1;
+        const year = parseInt(dmyMatch[3], 10);
+        const hours = parseInt(dmyMatch[4] || '0', 10);
+        const minutes = parseInt(dmyMatch[5] || '0', 10);
+        const seconds = parseInt(dmyMatch[6] || '0', 10);
+        const d = new Date(year, month, day, hours, minutes, seconds);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
       // Parse YYYY-MM-DD and YYYY-MM-DD[T/ ]HH:mm(:ss) directly with local components
       const parts = trimmed.split(/[\sT]+/);
-      const dateParts = parts[0].split('-').map(Number);
+      const dateParts = parts[0].split(/[-/]/).map(Number);
       if (dateParts.length === 3 && !dateParts.some(isNaN)) {
-        const year = dateParts[0];
-        const month = dateParts[1] - 1;
-        const day = dateParts[2];
+        let year, month, day;
+        if (dateParts[0] > 31 || dateParts[0] > 1000) {
+          year = dateParts[0];
+          month = dateParts[1] - 1;
+          day = dateParts[2];
+        } else {
+          day = dateParts[0];
+          month = dateParts[1] - 1;
+          year = dateParts[2] < 100 ? (2000 + dateParts[2]) : dateParts[2];
+        }
         let hours = 0;
         let minutes = 0;
         let seconds = 0;
@@ -133,11 +219,11 @@
       const month = this.padZero(d.getMonth() + 1);
       const day = this.padZero(d.getDate());
       if (!this.options.enableTime) {
-        return `${year}-${month}-${day}`;
+        return `${day}-${month}-${year}`;
       }
       const hours = this.padZero(d.getHours());
       const minutes = this.padZero(d.getMinutes());
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
+      return `${day}-${month}-${year} ${hours}:${minutes}`;
     }
 
     initTrigger() {
@@ -303,6 +389,8 @@
       this.popup.style.zIndex = '999999';
     }
 
+    // ── Build methods split for readability (Fix #13) ──
+
     buildPopup() {
       if (this.popup) this.popup.remove();
 
@@ -310,10 +398,124 @@
       this.popup.className = 'adp-popup' + (this.options.enableTime ? ' has-time' : '');
 
       // Calendar Column
+      const calendarCol = this._buildCalendarColumn();
+
+      // Assemble Layout
+      if (this.options.enableTime) {
+        const bodyGrid = document.createElement('div');
+        bodyGrid.className = 'adp-body-grid';
+        bodyGrid.appendChild(calendarCol);
+
+        // Side Column (Time + Action Presets)
+        const sideCol = this._buildSideColumn();
+        bodyGrid.appendChild(sideCol);
+        this.popup.appendChild(bodyGrid);
+      } else {
+        this.popup.appendChild(calendarCol);
+
+        // Date-only footer
+        const footer = this._buildDateOnlyFooter();
+        this.popup.appendChild(footer);
+      }
+
+      document.body.appendChild(this.popup);
+      this.renderCalendar();
+    }
+
+    /** Build the calendar column: header + weekdays + days grid. (Fix #13) */
+    _buildCalendarColumn() {
       const calendarCol = document.createElement('div');
       calendarCol.className = 'adp-calendar-col';
 
       // Header (Month / Year Navigation)
+      const header = this._buildHeader();
+      calendarCol.appendChild(header);
+
+      // Weekdays Header
+      const weekdays = document.createElement('div');
+      weekdays.className = 'adp-weekdays';
+      WEEKDAY_NAMES.forEach(w => {
+        const wd = document.createElement('div');
+        wd.className = 'adp-weekday';
+        wd.textContent = w;
+        weekdays.appendChild(wd);
+      });
+      calendarCol.appendChild(weekdays);
+
+      // Days Grid container
+      this.daysContainer = document.createElement('div');
+      this.daysContainer.className = 'adp-days';
+
+      // Event delegation for day clicks (Fix #4)
+      this.daysContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.adp-day');
+        if (!btn || btn.classList.contains('disabled')) return;
+
+        const day = parseInt(btn.textContent, 10);
+
+        if (btn.classList.contains('other-month')) {
+          // Determine if it's previous or next month based on position
+          const allDays = [...this.daysContainer.querySelectorAll('.adp-day')];
+          const idx = allDays.indexOf(btn);
+          const firstDayOfMonth = new Date(this.viewYear, this.viewMonth, 1).getDay();
+
+          if (idx < firstDayOfMonth) {
+            // Previous month
+            this.viewMonth--;
+            if (this.viewMonth < 0) {
+              this.viewMonth = 11;
+              this.viewYear--;
+            }
+          } else {
+            // Next month
+            this.viewMonth++;
+            if (this.viewMonth > 11) {
+              this.viewMonth = 0;
+              this.viewYear++;
+            }
+          }
+          this.selectDate(this.viewYear, this.viewMonth, day);
+        } else {
+          this.selectDate(this.viewYear, this.viewMonth, day);
+        }
+      });
+
+      // Arrow key navigation within calendar grid (Fix #11)
+      this.daysContainer.addEventListener('keydown', (e) => {
+        const focused = document.activeElement;
+        if (!focused || !focused.classList.contains('adp-day')) return;
+
+        const days = [...this.daysContainer.querySelectorAll('.adp-day:not(.disabled)')];
+        const idx = days.indexOf(focused);
+        if (idx === -1) return;
+
+        let next;
+        switch (e.key) {
+          case 'ArrowRight': next = days[idx + 1]; break;
+          case 'ArrowLeft':  next = days[idx - 1]; break;
+          case 'ArrowDown':  next = days[idx + 7]; break;
+          case 'ArrowUp':    next = days[idx - 7]; break;
+          case 'Enter':
+          case ' ':
+            e.preventDefault();
+            focused.click();
+            return;
+          default: return;
+        }
+
+        if (next) {
+          e.preventDefault();
+          next.focus();
+        }
+      });
+
+      calendarCol.appendChild(this.daysContainer);
+
+      return calendarCol;
+    }
+
+    /** Build month/year header with navigation buttons. (Fix #13) */
+    _buildHeader() {
       const header = document.createElement('div');
       header.className = 'adp-header';
 
@@ -336,18 +538,11 @@
         this.renderCalendar();
       });
 
-      // Year select dropdown
+      // Year select dropdown — dynamic range (Fix #10)
       const yearSelect = document.createElement('select');
       yearSelect.className = 'adp-year-select';
       yearSelect.setAttribute('aria-label', 'Select Year');
-      const currentYear = new Date().getFullYear();
-      for (let y = currentYear - 10; y <= currentYear + 10; y++) {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.textContent = y;
-        if (y === this.viewYear) opt.selected = true;
-        yearSelect.appendChild(opt);
-      }
+      this._populateYearSelect(yearSelect);
       yearSelect.addEventListener('change', (e) => {
         this.viewYear = parseInt(e.target.value, 10);
         this.renderCalendar();
@@ -393,206 +588,199 @@
 
       header.appendChild(titleGroup);
       header.appendChild(navBtns);
-      calendarCol.appendChild(header);
 
-      // Weekdays Header
-      const weekdays = document.createElement('div');
-      weekdays.className = 'adp-weekdays';
-      WEEKDAY_NAMES.forEach(w => {
-        const wd = document.createElement('div');
-        wd.className = 'adp-weekday';
-        wd.textContent = w;
-        weekdays.appendChild(wd);
-      });
-      calendarCol.appendChild(weekdays);
+      return header;
+    }
 
-      // Days Grid container
-      this.daysContainer = document.createElement('div');
-      this.daysContainer.className = 'adp-days';
-      calendarCol.appendChild(this.daysContainer);
+    /** Populate year select with a range that always includes the current view year. (Fix #10) */
+    _populateYearSelect(yearSelect) {
+      yearSelect.innerHTML = '';
+      const currentYear = new Date().getFullYear();
+      const rangeStart = Math.min(currentYear - 15, this.viewYear - 5);
+      const rangeEnd = Math.max(currentYear + 10, this.viewYear + 5);
 
-      // Assemble Layout
-      if (this.options.enableTime) {
-        const bodyGrid = document.createElement('div');
-        bodyGrid.className = 'adp-body-grid';
-        bodyGrid.appendChild(calendarCol);
-
-        // Side Column (Time + Action Presets)
-        const sideCol = document.createElement('div');
-        sideCol.className = 'adp-side-col';
-
-        // Time Box
-        const timeBox = document.createElement('div');
-        timeBox.className = 'adp-time-box';
-
-        const timeTitle = document.createElement('div');
-        timeTitle.className = 'adp-time-title';
-        timeTitle.innerHTML = '<i class="fa-solid fa-clock"></i> Time';
-
-        const timeControls = document.createElement('div');
-        timeControls.className = 'adp-time-controls';
-
-        // Hours input
-        this.hoursInput = document.createElement('input');
-        this.hoursInput.type = 'number';
-        this.hoursInput.className = 'adp-time-input';
-        this.hoursInput.min = 1;
-        this.hoursInput.max = 12;
-        this.hoursInput.value = this.padZero(this.displayHours);
-        this.hoursInput.setAttribute('aria-label', 'Hours');
-        this.hoursInput.addEventListener('change', () => {
-          let val = parseInt(this.hoursInput.value, 10);
-          if (isNaN(val) || val < 1) val = 1;
-          if (val > 12) val = 12;
-          this.displayHours = val;
-          this.hoursInput.value = this.padZero(val);
-          this.commitDate();
-        });
-
-        // Colon
-        const colon = document.createElement('span');
-        colon.className = 'adp-time-colon';
-        colon.textContent = ':';
-
-        // Minutes input
-        this.minutesInput = document.createElement('input');
-        this.minutesInput.type = 'number';
-        this.minutesInput.className = 'adp-time-input';
-        this.minutesInput.min = 0;
-        this.minutesInput.max = 59;
-        this.minutesInput.value = this.padZero(this.displayMinutes);
-        this.minutesInput.setAttribute('aria-label', 'Minutes');
-        this.minutesInput.addEventListener('change', () => {
-          let val = parseInt(this.minutesInput.value, 10);
-          if (isNaN(val) || val < 0) val = 0;
-          if (val > 59) val = 59;
-          this.displayMinutes = val;
-          this.minutesInput.value = this.padZero(val);
-          this.commitDate();
-        });
-
-        // AM/PM Button
-        this.ampmBtn = document.createElement('button');
-        this.ampmBtn.type = 'button';
-        this.ampmBtn.className = 'adp-ampm-btn';
-        this.ampmBtn.textContent = this.ampm;
-        this.ampmBtn.setAttribute('aria-label', 'Toggle AM/PM');
-        this.ampmBtn.addEventListener('click', () => {
-          this.ampm = this.ampm === 'AM' ? 'PM' : 'AM';
-          this.ampmBtn.textContent = this.ampm;
-          this.commitDate();
-        });
-
-        timeControls.appendChild(this.hoursInput);
-        timeControls.appendChild(colon);
-        timeControls.appendChild(this.minutesInput);
-        timeControls.appendChild(this.ampmBtn);
-
-        timeBox.appendChild(timeTitle);
-        timeBox.appendChild(timeControls);
-        sideCol.appendChild(timeBox);
-
-        // Side Actions
-        const sideActions = document.createElement('div');
-        sideActions.className = 'adp-side-actions';
-
-        const nowBtn = document.createElement('button');
-        nowBtn.type = 'button';
-        nowBtn.className = 'adp-preset-btn';
-        nowBtn.textContent = 'Now';
-        nowBtn.addEventListener('click', () => {
-          const now = new Date();
-          this.selectedDate = now;
-          this.viewYear = now.getFullYear();
-          this.viewMonth = now.getMonth();
-          let hours = now.getHours();
-          this.ampm = hours >= 12 ? 'PM' : 'AM';
-          this.displayHours = hours % 12 || 12;
-          this.displayMinutes = now.getMinutes();
-          if (this.hoursInput) this.hoursInput.value = this.padZero(this.displayHours);
-          if (this.minutesInput) this.minutesInput.value = this.padZero(this.displayMinutes);
-          if (this.ampmBtn) this.ampmBtn.textContent = this.ampm;
-          this.commitDate();
-          this.renderCalendar();
-        });
-
-        const clearBtn = document.createElement('button');
-        clearBtn.type = 'button';
-        clearBtn.className = 'adp-preset-btn';
-        clearBtn.textContent = 'Clear';
-        clearBtn.addEventListener('click', () => {
-          this.input.value = '';
-          this.selectedDate = null;
-          this.renderCalendar();
-          this.input.dispatchEvent(new Event('input', { bubbles: true }));
-          this.input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-
-        const doneBtn = document.createElement('button');
-        doneBtn.type = 'button';
-        doneBtn.className = 'adp-done-btn';
-        doneBtn.textContent = 'Done';
-        doneBtn.addEventListener('click', () => {
-          this.commitDate();
-          this.close();
-        });
-
-        sideActions.appendChild(nowBtn);
-        sideActions.appendChild(clearBtn);
-        sideActions.appendChild(doneBtn);
-        sideCol.appendChild(sideActions);
-
-        bodyGrid.appendChild(sideCol);
-        this.popup.appendChild(bodyGrid);
-      } else {
-        this.popup.appendChild(calendarCol);
-
-        // Date-only footer
-        const footer = document.createElement('div');
-        footer.className = 'adp-footer';
-
-        const todayBtn = document.createElement('button');
-        todayBtn.type = 'button';
-        todayBtn.className = 'adp-preset-btn';
-        todayBtn.textContent = 'Today';
-        todayBtn.addEventListener('click', () => {
-          const now = new Date();
-          this.selectedDate = now;
-          this.viewYear = now.getFullYear();
-          this.viewMonth = now.getMonth();
-          this.commitDate();
-          this.renderCalendar();
-        });
-
-        const clearBtn = document.createElement('button');
-        clearBtn.type = 'button';
-        clearBtn.className = 'adp-preset-btn';
-        clearBtn.textContent = 'Clear';
-        clearBtn.addEventListener('click', () => {
-          this.input.value = '';
-          this.selectedDate = null;
-          this.renderCalendar();
-          this.input.dispatchEvent(new Event('input', { bubbles: true }));
-          this.input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-
-        const doneBtn = document.createElement('button');
-        doneBtn.type = 'button';
-        doneBtn.className = 'adp-done-btn';
-        doneBtn.textContent = 'Done';
-        doneBtn.addEventListener('click', () => {
-          this.commitDate();
-          this.close();
-        });
-
-        footer.appendChild(todayBtn);
-        footer.appendChild(clearBtn);
-        footer.appendChild(doneBtn);
-        this.popup.appendChild(footer);
+      for (let y = rangeStart; y <= rangeEnd; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === this.viewYear) opt.selected = true;
+        yearSelect.appendChild(opt);
       }
+    }
 
-      document.body.appendChild(this.popup);
-      this.renderCalendar();
+    /** Build the time controls + action buttons side column. (Fix #13) */
+    _buildSideColumn() {
+      const sideCol = document.createElement('div');
+      sideCol.className = 'adp-side-col';
+
+      // Time Box
+      const timeBox = document.createElement('div');
+      timeBox.className = 'adp-time-box';
+
+      const timeTitle = document.createElement('div');
+      timeTitle.className = 'adp-time-title';
+      timeTitle.innerHTML = '<i class="fa-solid fa-clock"></i> Time';
+
+      const timeControls = document.createElement('div');
+      timeControls.className = 'adp-time-controls';
+
+      // Hours input
+      this.hoursInput = document.createElement('input');
+      this.hoursInput.type = 'number';
+      this.hoursInput.className = 'adp-time-input';
+      this.hoursInput.min = 1;
+      this.hoursInput.max = 12;
+      this.hoursInput.value = this.padZero(this.displayHours);
+      this.hoursInput.setAttribute('aria-label', 'Hours');
+      this.hoursInput.addEventListener('change', () => {
+        let val = parseInt(this.hoursInput.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 12) val = 12;
+        this.displayHours = val;
+        this.hoursInput.value = this.padZero(val);
+        this.commitDate();
+      });
+
+      // Colon
+      const colon = document.createElement('span');
+      colon.className = 'adp-time-colon';
+      colon.textContent = ':';
+
+      // Minutes input
+      this.minutesInput = document.createElement('input');
+      this.minutesInput.type = 'number';
+      this.minutesInput.className = 'adp-time-input';
+      this.minutesInput.min = 0;
+      this.minutesInput.max = 59;
+      this.minutesInput.value = this.padZero(this.displayMinutes);
+      this.minutesInput.setAttribute('aria-label', 'Minutes');
+      this.minutesInput.addEventListener('change', () => {
+        let val = parseInt(this.minutesInput.value, 10);
+        if (isNaN(val) || val < 0) val = 0;
+        if (val > 59) val = 59;
+        this.displayMinutes = val;
+        this.minutesInput.value = this.padZero(val);
+        this.commitDate();
+      });
+
+      // AM/PM Button
+      this.ampmBtn = document.createElement('button');
+      this.ampmBtn.type = 'button';
+      this.ampmBtn.className = 'adp-ampm-btn';
+      this.ampmBtn.textContent = this.ampm;
+      this.ampmBtn.setAttribute('aria-label', 'Toggle AM/PM');
+      this.ampmBtn.addEventListener('click', () => {
+        this.ampm = this.ampm === 'AM' ? 'PM' : 'AM';
+        this.ampmBtn.textContent = this.ampm;
+        this.commitDate();
+      });
+
+      timeControls.appendChild(this.hoursInput);
+      timeControls.appendChild(colon);
+      timeControls.appendChild(this.minutesInput);
+      timeControls.appendChild(this.ampmBtn);
+
+      timeBox.appendChild(timeTitle);
+      timeBox.appendChild(timeControls);
+      sideCol.appendChild(timeBox);
+
+      // Side Actions
+      const sideActions = document.createElement('div');
+      sideActions.className = 'adp-side-actions';
+
+      const nowBtn = document.createElement('button');
+      nowBtn.type = 'button';
+      nowBtn.className = 'adp-preset-btn';
+      nowBtn.textContent = 'Now';
+      nowBtn.addEventListener('click', () => {
+        const now = new Date();
+        this.selectedDate = now;
+        this.viewYear = now.getFullYear();
+        this.viewMonth = now.getMonth();
+        let hours = now.getHours();
+        this.ampm = hours >= 12 ? 'PM' : 'AM';
+        this.displayHours = hours % 12 || 12;
+        this.displayMinutes = now.getMinutes();
+        if (this.hoursInput) this.hoursInput.value = this.padZero(this.displayHours);
+        if (this.minutesInput) this.minutesInput.value = this.padZero(this.displayMinutes);
+        if (this.ampmBtn) this.ampmBtn.textContent = this.ampm;
+        this.commitDate();
+        this.renderCalendar();
+      });
+
+      const clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'adp-preset-btn';
+      clearBtn.textContent = 'Clear';
+      clearBtn.addEventListener('click', () => {
+        this.input.value = '';
+        this.selectedDate = null;
+        this.renderCalendar();
+        this.input.dispatchEvent(new Event('input', { bubbles: true }));
+        this.input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+
+      const doneBtn = document.createElement('button');
+      doneBtn.type = 'button';
+      doneBtn.className = 'adp-done-btn';
+      doneBtn.textContent = 'Done';
+      doneBtn.addEventListener('click', () => {
+        this.commitDate();
+        this.close();
+      });
+
+      sideActions.appendChild(nowBtn);
+      sideActions.appendChild(clearBtn);
+      sideActions.appendChild(doneBtn);
+      sideCol.appendChild(sideActions);
+
+      return sideCol;
+    }
+
+    /** Build the date-only footer (Today / Clear / Done). (Fix #13) */
+    _buildDateOnlyFooter() {
+      const footer = document.createElement('div');
+      footer.className = 'adp-footer';
+
+      const todayBtn = document.createElement('button');
+      todayBtn.type = 'button';
+      todayBtn.className = 'adp-preset-btn';
+      todayBtn.textContent = 'Today';
+      todayBtn.addEventListener('click', () => {
+        const now = new Date();
+        this.selectedDate = now;
+        this.viewYear = now.getFullYear();
+        this.viewMonth = now.getMonth();
+        this.commitDate();
+        this.renderCalendar();
+      });
+
+      const clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'adp-preset-btn';
+      clearBtn.textContent = 'Clear';
+      clearBtn.addEventListener('click', () => {
+        this.input.value = '';
+        this.selectedDate = null;
+        this.renderCalendar();
+        this.input.dispatchEvent(new Event('input', { bubbles: true }));
+        this.input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+
+      const doneBtn = document.createElement('button');
+      doneBtn.type = 'button';
+      doneBtn.className = 'adp-done-btn';
+      doneBtn.textContent = 'Done';
+      doneBtn.addEventListener('click', () => {
+        this.commitDate();
+        this.close();
+      });
+
+      footer.appendChild(todayBtn);
+      footer.appendChild(clearBtn);
+      footer.appendChild(doneBtn);
+
+      return footer;
     }
 
     renderCalendar() {
@@ -602,9 +790,16 @@
       const monthSelect = this.popup.querySelector('.adp-month-select');
       const yearSelect = this.popup.querySelector('.adp-year-select');
       if (monthSelect) monthSelect.value = this.viewMonth;
-      if (yearSelect) yearSelect.value = this.viewYear;
+      if (yearSelect) {
+        // Ensure the year is in range, repopulate if needed (Fix #10)
+        if (!yearSelect.querySelector(`option[value="${this.viewYear}"]`)) {
+          this._populateYearSelect(yearSelect);
+        }
+        yearSelect.value = this.viewYear;
+      }
 
-      this.daysContainer.innerHTML = '';
+      // Build days using DocumentFragment for single reflow (Fix #4)
+      const fragment = document.createDocumentFragment();
 
       const firstDay = new Date(this.viewYear, this.viewMonth, 1).getDay();
       const daysInMonth = new Date(this.viewYear, this.viewMonth + 1, 0).getDate();
@@ -615,19 +810,22 @@
 
       // Previous month trailing days
       for (let i = firstDay - 1; i >= 0; i--) {
+        const dayNum = daysInPrevMonth - i;
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'adp-day other-month';
-        btn.textContent = daysInPrevMonth - i;
-        btn.addEventListener('click', () => {
-          this.viewMonth--;
-          if (this.viewMonth < 0) {
-            this.viewMonth = 11;
-            this.viewYear--;
-          }
-          this.selectDate(this.viewYear, this.viewMonth, daysInPrevMonth - i);
-        });
-        this.daysContainer.appendChild(btn);
+        btn.textContent = dayNum;
+
+        // Check disabled state for prev month days (Fix #12)
+        let prevMonth = this.viewMonth - 1;
+        let prevYear = this.viewYear;
+        if (prevMonth < 0) { prevMonth = 11; prevYear--; }
+        if (this._isDateDisabled(prevYear, prevMonth, dayNum)) {
+          btn.classList.add('disabled');
+          btn.setAttribute('aria-disabled', 'true');
+        }
+
+        fragment.appendChild(btn);
       }
 
       // Current month days
@@ -648,11 +846,13 @@
           btn.classList.add('selected');
         }
 
-        btn.addEventListener('click', () => {
-          this.selectDate(this.viewYear, this.viewMonth, d);
-        });
+        // Check disabled state (Fix #12)
+        if (this._isDateDisabled(this.viewYear, this.viewMonth, d)) {
+          btn.classList.add('disabled');
+          btn.setAttribute('aria-disabled', 'true');
+        }
 
-        this.daysContainer.appendChild(btn);
+        fragment.appendChild(btn);
       }
 
       // Next month leading days (fill up 6 rows = 42 cells total for consistent height)
@@ -663,19 +863,28 @@
         btn.type = 'button';
         btn.className = 'adp-day other-month';
         btn.textContent = n;
-        btn.addEventListener('click', () => {
-          this.viewMonth++;
-          if (this.viewMonth > 11) {
-            this.viewMonth = 0;
-            this.viewYear++;
-          }
-          this.selectDate(this.viewYear, this.viewMonth, n);
-        });
-        this.daysContainer.appendChild(btn);
+
+        // Check disabled state for next month days (Fix #12)
+        let nextMonth = this.viewMonth + 1;
+        let nextYear = this.viewYear;
+        if (nextMonth > 11) { nextMonth = 0; nextYear++; }
+        if (this._isDateDisabled(nextYear, nextMonth, n)) {
+          btn.classList.add('disabled');
+          btn.setAttribute('aria-disabled', 'true');
+        }
+
+        fragment.appendChild(btn);
       }
+
+      // Single DOM operation: clear + append (Fix #4)
+      this.daysContainer.innerHTML = '';
+      this.daysContainer.appendChild(fragment);
     }
 
     selectDate(year, month, day) {
+      // Check if date is disabled (Fix #12)
+      if (this._isDateDisabled(year, month, day)) return;
+
       let finalHours = this.displayHours % 12;
       if (this.ampm === 'PM') finalHours += 12;
 
@@ -702,6 +911,10 @@
 
       const formatted = this.formatValue(this.selectedDate);
       this.input.value = formatted;
+      const year = this.selectedDate.getFullYear();
+      const month = this.padZero(this.selectedDate.getMonth() + 1);
+      const day = this.padZero(this.selectedDate.getDate());
+      this.input.setAttribute('data-iso-date', `${year}-${month}-${day}`);
       this.input.dispatchEvent(new Event('input', { bubbles: true }));
       this.input.dispatchEvent(new Event('change', { bubbles: true }));
 
@@ -785,21 +998,28 @@
     initAllDatePickers(document);
 
     // Watch for dynamically added date inputs (e.g. modals, popups, AJAX content)
+    // Debounced MutationObserver to avoid excessive processing (Fix #6)
     if (window.MutationObserver) {
+      let mutationTimer = null;
       const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-          if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-            mutation.addedNodes.forEach(node => {
-              if (node.nodeType === Node.ELEMENT_NODE) {
-                if (node.matches && node.matches('.form-date-input, input[type="date"], input[type="datetime-local"]')) {
-                  initAllDatePickers(node.parentElement || document);
-                } else if (node.querySelectorAll) {
-                  initAllDatePickers(node);
+        // Debounce: wait 100ms after the last mutation batch before scanning
+        if (mutationTimer) clearTimeout(mutationTimer);
+        mutationTimer = setTimeout(() => {
+          mutationTimer = null;
+          for (const mutation of mutations) {
+            if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+              mutation.addedNodes.forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                  if (node.matches && node.matches('.form-date-input, input[type="date"], input[type="datetime-local"]')) {
+                    initAllDatePickers(node.parentElement || document);
+                  } else if (node.querySelectorAll) {
+                    initAllDatePickers(node);
+                  }
                 }
-              }
-            });
+              });
+            }
           }
-        }
+        }, 100);
       });
       observer.observe(document.body, { childList: true, subtree: true });
     }

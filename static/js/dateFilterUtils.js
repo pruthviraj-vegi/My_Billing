@@ -16,13 +16,16 @@
 
 /**
  * Get date filter data from the styled dropdown and custom date inputs
+ * @param {string} filterId - ID of the select element (defaults to 'dateFilter')
  * @returns {Object} Result object with isValid, data, and error properties
  */
-function getDateFilterData() {
-    const styledRef = window.reportDateFilter_styled;
+function getDateFilterData(filterId = 'dateFilter') {
+    const styledRef = window[filterId + '_styled'] || window.dateFilter_styled || window.reportDateFilter_styled;
     const hiddenSelect = styledRef?.hiddenSelect ||
+        document.getElementById(filterId) ||
+        document.getElementById(filterId + '_hidden') ||
         document.getElementById('reportDateFilter') ||
-        document.getElementById('reportDateFilter_hidden');
+        document.getElementById('dateFilter');
 
     if (!hiddenSelect) {
         return {
@@ -39,8 +42,8 @@ function getDateFilterData() {
 
     // Validate custom dates if selected
     if (selectedValue === 'custom') {
-        const customFromDate = document.getElementById('customFromDate');
-        const customToDate = document.getElementById('customToDate');
+        const customFromDate = document.getElementById(filterId + '_fromDate') || document.getElementById('customFromDate') || document.getElementById('standaloneFrom');
+        const customToDate = document.getElementById(filterId + '_toDate') || document.getElementById('customToDate') || document.getElementById('standaloneTo');
 
         let fromDate = null;
         let toDate = null;
@@ -51,10 +54,15 @@ function getDateFilterData() {
             toDate = hiddenSelect.getAttribute('data-to-date');
         }
 
-        // Fallback to standalone inputs if dropdown attributes are not found
-        if ((!fromDate || !toDate) && customFromDate && customToDate) {
-            fromDate = customFromDate.getAttribute('data-iso-date');
-            toDate = customToDate.getAttribute('data-iso-date');
+        // Fallback to styled instance inputs or standalone inputs if dropdown attributes are not found
+        if (!fromDate || !toDate) {
+            if (styledRef?.fromDateInput && styledRef?.toDateInput) {
+                fromDate = styledRef.fromDateInput.getAttribute('data-iso-date') || styledRef.fromDateInput.value;
+                toDate = styledRef.toDateInput.getAttribute('data-iso-date') || styledRef.toDateInput.value;
+            } else if (customFromDate && customToDate) {
+                fromDate = customFromDate.getAttribute('data-iso-date') || customFromDate.value;
+                toDate = customToDate.getAttribute('data-iso-date') || customToDate.value;
+            }
         }
 
         if (!fromDate || !toDate) {
@@ -83,6 +91,53 @@ function getDateFilterData() {
         error: null,
         data: requestData
     };
+}
+
+/**
+ * Initialize a standardized date filter dropdown
+ * @param {string} selectId - ID of the select element (defaults to 'dateFilter')
+ * @param {Object} options - Configuration options ({ onChange, showCustomDates, ... })
+ * @returns {Object|null} Styled dropdown instance
+ */
+function initDateFilter(selectId = 'dateFilter', options = {}) {
+    const selectEl = document.getElementById(selectId);
+    if (!selectEl) return null;
+
+    const datasetShowCustom = selectEl.getAttribute('data-show-custom');
+    const showCustom = options.showCustomDates !== undefined
+        ? options.showCustomDates
+        : (datasetShowCustom !== null ? datasetShowCustom === 'true' : true);
+
+    if (typeof convertSelectToStyledDropdown !== 'undefined') {
+        const instance = convertSelectToStyledDropdown(selectId, {
+            showCustomDates: showCustom,
+            onChange: function(data) {
+                if (typeof options.onChange === 'function') {
+                    options.onChange(data);
+                }
+            },
+            onError: function(err) {
+                if (typeof options.onError === 'function') {
+                    options.onError(err);
+                } else {
+                    console.error('Date filter error:', err);
+                }
+            }
+        });
+        window[selectId + '_styled'] = instance;
+        return instance;
+    } else {
+        // Fallback: Native select change event
+        selectEl.addEventListener('change', function(e) {
+            if (typeof options.onChange === 'function') {
+                options.onChange({
+                    value: e.target.value,
+                    text: e.target.options[e.target.selectedIndex]?.text || e.target.value
+                });
+            }
+        });
+        return null;
+    }
 }
 
 /**

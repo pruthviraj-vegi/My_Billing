@@ -107,15 +107,7 @@
         <form id="downloadReportForm" class="d-flex flex-column gap-2">
           <div class="form-group mb-3">
             <label for="reportDateFilter" class="form-label">Select Date Range</label>
-            <select name="date_filter" class="form-select" id="reportDateFilter">
-              <option value="this_month">This Month</option>
-              <option value="last_month">Last Month</option>
-              <option value="this_quarter">This Quarter</option>
-              <option value="last_quarter">Last Quarter</option>
-              <option value="this_finance">This Finance</option>
-              <option value="last_finance">Last Finance</option>
-              <option value="custom">Custom Date</option>
-            </select>
+            {% include "common/_date_filter.html" with filter_id="reportDateFilter" wrap_form=False container_class="w-100" custom_class="w-100" %}
           </div>
         </form>
       </div>
@@ -140,8 +132,6 @@
   </script>
   <script src="{% static 'js/wordSuggestion.js' %}"></script>
   <script src="{% static 'js/fetchData.js' %}"></script>
-  <script src="{% static 'js/dropdown_style.js' %}"></script>
-  <script src="{% static 'js/dateFilterUtils.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       $('#searchInput').wordSuggestion({
@@ -184,7 +174,6 @@
         // Initialize dropdown after modal is shown (only once)
         if (!dropdownInitialized && typeof convertSelectToStyledDropdown !== 'undefined') {
           setTimeout(() => {
-            // Check if already converted
             if (!window.reportDateFilter_styled) {
               const selectElement = document.getElementById('reportDateFilter')
               if (selectElement) {
@@ -215,25 +204,18 @@
 
       // Submit download
       submitBtn.addEventListener('click', function() {
-        // Get date filter data using reusable function
-        const filterResult = getDateFilterData()
+        const filterResult = getDateFilterData('reportDateFilter')
 
         if (!filterResult.isValid) {
           showNotification(filterResult.error, 'error')
           return
         }
 
-        // Set loading state using reusable function
         setButtonLoading(submitBtn, true, 'Generating...')
-
-        // Build URL with query parameters using reusable function
         const downloadUrl = buildDateFilterUrl(urls.purchase_orders_pdf, filterResult.data)
 
-        // Open PDF in new tab
         try {
           window.open(downloadUrl, '_blank')
-          
-          // Close modal after short delay
           setTimeout(() => {
             closeModal()
             setButtonLoading(submitBtn, false)
