@@ -8,6 +8,7 @@ from datetime import timedelta
 from django import forms
 from django.utils import timezone
 
+from base.forms import ThemedFormMixin
 from base.widgets import AnimatedDatePickerWidget
 from customer.models import Customer
 from invoice.models import AuditTable, Invoice, InvoiceAudit, ReturnInvoice
@@ -16,7 +17,7 @@ from user.models import CustomUser
 logger = logging.getLogger(__name__)
 
 
-class InvoiceForm(forms.ModelForm):
+class InvoiceForm(ThemedFormMixin, forms.ModelForm):
     """Form for creating and editing standard invoices."""
 
     class Meta:
@@ -77,17 +78,8 @@ class InvoiceForm(forms.ModelForm):
             if field.required:
                 field.label = f"{field.label} *"
 
-        # Add appropriate classes based on widget type
-        for _, field in self.fields.items():
-            widget = field.widget
-            if isinstance(widget, AnimatedDatePickerWidget):
-                continue  # Widget handles its own classes and wrapper
-            elif isinstance(widget, forms.Select):
-                widget.attrs["class"] = "form-select"
-            elif isinstance(widget, forms.Textarea):
-                widget.attrs["class"] = "form-textarea"
-            else:
-                widget.attrs["class"] = "form-input"
+        # Apply theme classes via mixin
+        self.apply_theme_classes()
 
         # Make due_date not required by default (will be handled in clean method)
         self.fields["due_date"].required = False

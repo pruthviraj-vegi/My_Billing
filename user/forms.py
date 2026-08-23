@@ -7,6 +7,7 @@ import logging
 from django import forms
 from django.utils import timezone
 
+from base.forms import ThemedFormMixin
 from base.widgets import AnimatedDatePickerWidget
 from .models import CustomUser, Salary, Transaction
 
@@ -188,7 +189,7 @@ class PasswordResetForm(forms.Form):
         return new_password
 
 
-class SalaryForm(forms.ModelForm):
+class SalaryForm(ThemedFormMixin, forms.ModelForm):
     """Form for creating and editing salary records."""
 
     class Meta:
@@ -203,12 +204,12 @@ class SalaryForm(forms.ModelForm):
             ),
             "commission": forms.CheckboxInput(attrs={}),
             "effective_from": AnimatedDatePickerWidget(
-                enable_time=True,
+                enable_time=False,
                 icon_class="fa-calendar-days",
                 attrs={"placeholder": "Effective from"},
             ),
             "effective_to": AnimatedDatePickerWidget(
-                enable_time=True,
+                enable_time=False,
                 icon_class="fa-calendar-check",
                 attrs={"placeholder": "Effective to"},
             ),
@@ -223,19 +224,8 @@ class SalaryForm(forms.ModelForm):
             if field.required:
                 field.label = f"{field.label} *"
 
-        # Add appropriate classes to all fields based on widget type
-        for visible in self.visible_fields():
-            widget = visible.field.widget
-            if isinstance(widget, AnimatedDatePickerWidget):
-                continue  # Widget handles its own classes and wrapper
-            elif isinstance(widget, forms.CheckboxInput):
-                widget.attrs["class"] = "form-checkbox"
-            elif isinstance(widget, forms.Select):
-                widget.attrs["class"] = "form-select"
-            elif isinstance(widget, forms.Textarea):
-                widget.attrs["class"] = "form-textarea"
-            else:
-                widget.attrs["class"] = "form-input"
+        # Apply theme classes via mixin
+        self.apply_theme_classes()
 
         if not self.instance.pk:
             # For new salary, set default effective_from to today
@@ -285,7 +275,7 @@ class SalaryForm(forms.ModelForm):
         return cleaned_data
 
 
-class TransactionForm(forms.ModelForm):
+class TransactionForm(ThemedFormMixin, forms.ModelForm):
     """Form for creating and editing transactions."""
 
     class Meta:
@@ -348,16 +338,5 @@ class TransactionForm(forms.ModelForm):
             if field.required:
                 field.label = f"{field.label} *"
 
-        # Add appropriate classes to all fields based on widget type
-        for visible in self.visible_fields():
-            widget = visible.field.widget
-            if isinstance(widget, AnimatedDatePickerWidget):
-                continue  # Widget handles its own classes and wrapper
-            elif isinstance(widget, forms.CheckboxInput):
-                widget.attrs["class"] = "form-checkbox"
-            elif isinstance(widget, forms.Select):
-                widget.attrs["class"] = "form-select"
-            elif isinstance(widget, forms.Textarea):
-                widget.attrs["class"] = "form-textarea"
-            else:
-                widget.attrs["class"] = "form-input"
+        # Apply theme classes via mixin
+        self.apply_theme_classes()

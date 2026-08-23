@@ -6,6 +6,38 @@ from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate
 
+from base.widgets import AnimatedDatePickerWidget
+
+
+class ThemedFormMixin:
+    """
+    Mixin that auto-applies project CSS classes to form widgets.
+
+    Call ``self.apply_theme_classes()`` inside ``__init__`` to assign
+    the correct CSS class to each field widget based on its type:
+
+    * ``AnimatedDatePickerWidget`` → skipped (handles its own classes)
+    * ``CheckboxInput``           → ``form-checkbox``
+    * ``SelectMultiple / Select`` → ``form-select``
+    * ``Textarea``                → ``form-textarea``
+    * everything else             → ``form-input``
+    """
+
+    def apply_theme_classes(self):
+        """Apply theme-appropriate CSS classes to all form field widgets."""
+        for _name, field in self.fields.items():
+            widget = field.widget
+            if isinstance(widget, AnimatedDatePickerWidget):
+                continue  # Widget handles its own classes and wrapper
+            elif isinstance(widget, forms.CheckboxInput):
+                widget.attrs.setdefault("class", "form-checkbox")
+            elif isinstance(widget, (forms.SelectMultiple, forms.Select)):
+                widget.attrs.setdefault("class", "form-select")
+            elif isinstance(widget, forms.Textarea):
+                widget.attrs.setdefault("class", "form-textarea")
+            else:
+                widget.attrs.setdefault("class", "form-input")
+
 
 class CustomLoginForm(AuthenticationForm):
     """

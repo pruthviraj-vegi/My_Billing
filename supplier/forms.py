@@ -8,6 +8,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
+from base.forms import ThemedFormMixin
 from base.widgets import AnimatedDatePickerWidget
 from .models import Supplier, SupplierInvoice, SupplierPayment
 
@@ -133,7 +134,7 @@ class MultipleFileField(forms.FileField):
         return [cleaned_item] if cleaned_item else []
 
 
-class SupplierInvoiceForm(forms.ModelForm):
+class SupplierInvoiceForm(ThemedFormMixin, forms.ModelForm):
     """Form to create or update a supplier invoice."""
 
     attachments = MultipleFileField(
@@ -189,19 +190,8 @@ class SupplierInvoiceForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.supplier = supplier
 
-        # Add appropriate classes based on widget type
-        for field_name, field in self.fields.items():
-            if field_name == "attachments":
-                continue
-            widget = field.widget
-            if isinstance(widget, AnimatedDatePickerWidget):
-                continue  # Widget handles its own classes and wrapper
-            elif isinstance(widget, forms.Select):
-                widget.attrs["class"] = "form-select"
-            elif isinstance(widget, forms.Textarea):
-                widget.attrs["class"] = "form-textarea"
-            else:
-                widget.attrs["class"] = "form-input"
+        # Apply theme classes via mixin
+        self.apply_theme_classes()
 
         self.fields["sub_total"].widget.attrs["class"] = "form-input indian-number"
         self.fields["cgst_amount"].widget.attrs["class"] = "form-input indian-number"
@@ -330,7 +320,7 @@ class SupplierInvoiceForm(forms.ModelForm):
         return files
 
 
-class SupplierPaymentForm(forms.ModelForm):
+class SupplierPaymentForm(ThemedFormMixin, forms.ModelForm):
     """Form to record a payment made to a supplier."""
 
     attachments = MultipleFileField(
@@ -379,17 +369,8 @@ class SupplierPaymentForm(forms.ModelForm):
             if field.required:
                 field.label = f"{field.label} *"
 
-        # Add appropriate classes based on widget type
-        for field_name, field in self.fields.items():
-            if field_name == "attachments":
-                continue
-            widget = field.widget
-            if isinstance(widget, AnimatedDatePickerWidget):
-                continue  # Widget handles its own classes and wrapper
-            elif isinstance(widget, forms.Select):
-                widget.attrs["class"] = "form-select"
-            else:
-                widget.attrs["class"] = "form-input"
+        # Apply theme classes via mixin
+        self.apply_theme_classes()
 
         # Set initial payment date to current time
         if not self.instance.pk:

@@ -184,6 +184,10 @@ USE_L10N = True
 USE_I18N = False
 USE_TZ = False
 
+FORMAT_MODULE_PATH = [
+    "Billing.formats",
+]
+
 # CSRF Configuration
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",

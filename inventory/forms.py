@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django import forms
 
+from base.forms import ThemedFormMixin
 from base.widgets import AnimatedDatePickerWidget
 
 from .models import (
@@ -600,7 +601,7 @@ class UOMForm(forms.ModelForm):
         return conversion_factor
 
 
-class GSTHsnCodeForm(forms.ModelForm):
+class GSTHsnCodeForm(ThemedFormMixin, forms.ModelForm):
     """Form for creating and editing GST HSN Code"""
 
     class Meta:
@@ -654,15 +655,11 @@ class GSTHsnCodeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Add form-input class to text/number/date fields, form-check-input to checkboxes
-        for _field_name, field in self.fields.items():
-            widget = field.widget
-            if isinstance(widget, AnimatedDatePickerWidget):
-                continue  # Widget handles its own classes and wrapper
-            elif isinstance(widget, forms.CheckboxInput):
-                widget.attrs["class"] = "form-check-input"
-            else:
-                widget.attrs["class"] = "form-input"
+        # Apply theme classes via mixin (handles datepicker, select, textarea, etc.)
+        self.apply_theme_classes()
+        # Checkboxes need explicit class since mixin uses setdefault
+        if isinstance(self.fields['is_active'].widget, forms.CheckboxInput):
+            self.fields['is_active'].widget.attrs['class'] = 'form-check-input'
 
     def clean_code(self):
         """Validate HSN code format and ensure uniqueness"""

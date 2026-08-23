@@ -7,6 +7,7 @@ proper validation for fields such as phone numbers, emails, and payment amounts.
 
 from django import forms
 
+from base.forms import ThemedFormMixin
 from base.widgets import AnimatedDatePickerWidget
 from .models import Customer, Payment
 
@@ -129,7 +130,7 @@ class CustomerForm(forms.ModelForm):
         return email
 
 
-class PaymentForm(forms.ModelForm):
+class PaymentForm(ThemedFormMixin, forms.ModelForm):
     """
     Form for processing and logging customer Payments.
 
@@ -205,17 +206,8 @@ class PaymentForm(forms.ModelForm):
             if field.required:
                 field.label = f"{field.label} *"
 
-        # Apply appropriate classes to fields
-        for _, field in self.fields.items():
-            widget = field.widget
-            if isinstance(widget, AnimatedDatePickerWidget):
-                continue  # Widget handles its own classes and wrapper
-            elif isinstance(widget, forms.Select):
-                widget.attrs["class"] = "form-select"
-            elif isinstance(widget, forms.Textarea):
-                widget.attrs["class"] = "form-textarea"
-            else:
-                widget.attrs["class"] = "form-input"
+        # Apply theme classes via mixin
+        self.apply_theme_classes()
 
         self.fields["amount"].widget.attrs["class"] = "form-input indian-number"
 

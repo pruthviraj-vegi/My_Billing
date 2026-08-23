@@ -8,7 +8,7 @@ with no manual wrapper markup.
 """
 
 from django import forms
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 
 
 class AnimatedDatePickerWidget(forms.DateTimeInput):
@@ -71,11 +71,13 @@ class AnimatedDatePickerWidget(forms.DateTimeInput):
             name, value, attrs=attrs, renderer=renderer
         )
 
-        return mark_safe(
-            f'<div class="input-date-wrapper">'
-            f'<span class="input-date-icon">'
-            f'<i class="fa-solid {self.icon_class}"></i>'
-            f"</span>"
-            f"{input_html}"
-            f"</div>"
+        return format_html(
+            '<div class="input-date-wrapper">'
+            '<span class="input-date-icon">'
+            '<i class="fa-solid {}"></i>'
+            "</span>"
+            "{}"
+            "</div>",
+            self.icon_class,
+            input_html,
         )
