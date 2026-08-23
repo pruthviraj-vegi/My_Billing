@@ -12,6 +12,61 @@ from django.template.loader import render_to_string
 from base.getDates import DatesManipulation, quarter_start_end
 
 
+def parse_flexible_date(value, default=None):
+    """
+    Parse a date from string, date, or datetime into a datetime.date object.
+    Supports multiple date formats (ISO, Indian/UK, US, etc.).
+
+    Args:
+        value (str | datetime | date | None): Input date string or object.
+        default (date | None): Default fallback if parsing fails or input is empty.
+
+    Returns:
+        date | None: Parsed date or default fallback.
+    """
+    if value is None:
+        return default
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str):
+        return default
+
+    cleaned = value.strip()
+    if not cleaned:
+        return default
+
+    # If ISO format with time e.g. 2026-08-31T00:00:00 or with space
+    if "T" in cleaned:
+        cleaned = cleaned.split("T")[0].strip()
+    elif " " in cleaned and (cleaned.count("-") >= 2 or cleaned.count("/") >= 2 or cleaned.count(".") >= 2):
+        cleaned = cleaned.split(" ")[0].strip()
+
+    formats = (
+        "%Y-%m-%d",
+        "%d-%m-%Y",
+        "%d/%m/%Y",
+        "%Y/%m/%d",
+        "%d.%m.%Y",
+        "%Y.%m.%d",
+        "%m-%d-%Y",
+        "%m/%d/%Y",
+        "%b %d, %Y",
+        "%d %b %Y",
+        "%b %d %Y",
+        "%d %b, %Y",
+        "%B %d, %Y",
+        "%d %B %Y",
+    )
+    for fmt in formats:
+        try:
+            return datetime.strptime(cleaned, fmt).date()
+        except ValueError:
+            continue
+    return default
+
+
 def get_financial_year(value):
     """
     Get financial year from a given date.
@@ -30,22 +85,9 @@ def get_financial_year(value):
     """
 
     # --- Step 1: Parse the input into a datetime.date object ---
-    if isinstance(value, str):
-        # Try common formats
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%b %d, %Y"):
-            try:
-                parsed_date = datetime.strptime(value, fmt).date()
-                break
-            except ValueError:
-                continue
-        else:
-            raise ValueError(f"Unrecognized date format: {value}")
-    elif isinstance(value, datetime):
-        parsed_date = value.date()
-    elif isinstance(value, date):
-        parsed_date = value
-    else:
-        raise ValueError("Input must be a string, datetime, or date object")
+    parsed_date = parse_flexible_date(value)
+    if parsed_date is None:
+        raise ValueError(f"Unrecognized date format or invalid input: {value}")
 
     # --- Step 2: Calculate the financial year ---
     if parsed_date.month >= 4:  # April to Dec

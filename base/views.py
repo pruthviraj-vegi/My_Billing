@@ -563,17 +563,23 @@ def calendar_details_api(request):
     from invoice.models import Invoice, InvoiceItem
     from invoice.models import ReturnInvoice, ReturnInvoiceItem
     from customer.models import Customer
+    from base.utility import parse_flexible_date
 
     start_str = request.GET.get("start", "")
     end_str = request.GET.get("end", "")
 
     today = timezone.now().date()
-    try:
-        start_date = datetime.datetime.strptime(start_str, "%Y-%m-%d").date()
-        end_date = datetime.datetime.strptime(end_str, "%Y-%m-%d").date()
-    except (ValueError, TypeError):
-        start_date = today
-        end_date = today
+    start_date = parse_flexible_date(start_str, default=None)
+    end_date = parse_flexible_date(end_str, default=None)
+
+    if start_date is None and end_date is None:
+        start_date = today.replace(day=1)
+        _, num_days = calendar.monthrange(today.year, today.month)
+        end_date = today.replace(day=num_days)
+    elif start_date is None:
+        start_date = end_date
+    elif end_date is None:
+        end_date = start_date
 
     if start_date > end_date:
         start_date, end_date = end_date, start_date

@@ -1,7 +1,7 @@
 """Celery tasks for asynchronous customer message processing."""
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from celery import shared_task
 from django.conf import settings
@@ -18,12 +18,18 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_date(val):
-    """Accept date object or 'YYYY-MM-DD' string."""
+    """Accept date object or flexible date string."""
     if isinstance(val, (datetime, timezone.datetime)):
         return val.date()
+    if isinstance(val, date):
+        return val
     if hasattr(val, "strftime") and not isinstance(val, str):
         return val
-    return datetime.strptime(val, "%Y-%m-%d").date()
+    from base.utility import parse_flexible_date
+    res = parse_flexible_date(val)
+    if res:
+        return res
+    return datetime.strptime(str(val), "%Y-%m-%d").date()
 
 
 @shared_task(bind=True, max_retries=2)

@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -438,13 +438,10 @@ def update_return_item(request, item_id):
         # Update return invoice totals
         return_invoice = item.return_invoice
 
-        # Calculate return amount (sum of all return item amounts)
-        return_amount = sum(
-            ri_item.total_amount
-            for ri_item in ReturnInvoiceItem.objects.filter(
-                return_invoice=return_invoice
-            )
-        )
+        # Calculate return amount (sum of all return item amounts) at DB level
+        return_amount = ReturnInvoiceItem.objects.filter(
+            return_invoice=return_invoice
+        ).aggregate(total=Sum('total_amount'))['total'] or Decimal('0')
 
         # Total amount should be the original invoice amount
         return_invoice.total_amount = return_invoice.invoice.amount

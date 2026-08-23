@@ -21,19 +21,15 @@ def end_of_day(dt):
 
 
 def parse_date(date_str, fallback=None):
-    """Parse date string in multiple formats: dd-mm-yyyy or yyyy-mm-dd"""
+    """Parse date string in multiple formats: dd-mm-yyyy, yyyy-mm-dd, etc."""
     if not date_str:
         return fallback
-    try:
-        # Try dd-mm-yyyy format first (original format)
-        return datetime.strptime(date_str, "%d-%m-%Y")
-    except (ValueError, TypeError):
-        try:
-            # Try yyyy-mm-dd format (ISO format)
-            return datetime.strptime(date_str, "%Y-%m-%d")
-        except (ValueError, TypeError) as e:
-            logger.error("Failed to parse date '%s': %s", date_str, e)
-            return fallback
+    from base.utility import parse_flexible_date
+
+    parsed = parse_flexible_date(date_str, default=None)
+    if parsed:
+        return datetime.combine(parsed, datetime.min.time())
+    return fallback
 
 
 # ---------- Dates Logic ----------
