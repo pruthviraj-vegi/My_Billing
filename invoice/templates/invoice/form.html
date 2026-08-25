@@ -349,13 +349,13 @@
       const balanceAmount = document.getElementById('balance-amount');
 
       if (customerId && customerId !== defaultCustomerId && parseInt(customerId) !== parseInt(defaultCustomerId)) {
-        fetch(`/api/balance_by_id/${customerId}/`)
+        fetch(`/customer/${customerId}/balance/`)
           .then(response => {
             if (!response.ok) throw new Error('Network response was not ok');
             return response.json();
           })
           .then(data => {
-            if (data.error) {
+            if (data.error || !data.success) {
               if (balanceContainer) balanceContainer.style.display = 'none';
             } else {
               if (balanceCustomerName) balanceCustomerName.textContent = data.name || 'Unknown';
@@ -363,13 +363,13 @@
               const bal = parseFloat(data.balance);
               if (bal < 0) {
                 balanceText = formatCurrency(Math.abs(bal));
-                if (balanceContainer) balanceContainer.className = 'alert alert-success';
+                if (balanceContainer) balanceContainer.className = 'alert alert-success alert-flex-hidden';
               } else if (bal > 0) {
                 balanceText = formatCurrency(bal);
-                if (balanceContainer) balanceContainer.className = 'alert alert-danger';
+                if (balanceContainer) balanceContainer.className = 'alert alert-danger alert-flex-hidden';
               } else {
                 balanceText = '0.00';
-                if (balanceContainer) balanceContainer.className = 'alert alert-info';
+                if (balanceContainer) balanceContainer.className = 'alert alert-info alert-flex-hidden';
               }
               if (balanceContainer) balanceContainer.style.display = 'flex';
               if (balanceAmount) balanceAmount.textContent = balanceText;

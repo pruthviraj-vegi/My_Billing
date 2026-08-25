@@ -4,6 +4,7 @@ import datetime
 from decimal import Decimal
 
 from django.test import TestCase
+from django.urls import reverse
 
 from customer.services import CustomerPaymentService
 from customer.models import Customer, Payment
@@ -536,3 +537,52 @@ class BuildLedgerRowsTests(TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["type"], "Purchased")
         self.assertEqual(rows[0]["credit"], Decimal("2000.00"))
+
+
+class GetCustomerBalanceViewTests(TestCase):
+    """Tests for get_customer_balance AJAX endpoint."""
+
+    def setUp(self):
+        self.user = create_test_user()
+        from django.contrib.auth.models import Permission
+        perm = Permission.objects.get(codename="view_customer", content_type__app_label="customer")
+        self.user.user_permissions.add(perm)
+        self.client.force_login(self.user)
+
+        self.customer = create_test_customer(name="John Doe", phone="9876543210", created_by=self.user)
+
+    def test_get_customer_balance_success(self):
+        # Create a credit invoice
+        create_test_invoice(
+            customer=self.customer,
+            amount=Decimal("1500.00"),
+            payment_type="CREDIT",
+            payment_status="UNPAID",
+            created_by=self.user,
+        )
+
+        response = self.client.get(reverse("customer:balance", kwargs={"pk": self.customer.pk}))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["id"], self.customer.pk)
+        self.assertEqual(data["name"], "John Doe")
+        self.assertEqual(data["balance"], 1500.00)
+
+    def test_get_customer_balance_permission_denied(self):
+        user_no_perms = create_test_user(phone_number="1112223334")
+        self.client.force_login(user_no_perms)
+
+        response = self.client.get(reverse("customer:balance", kwargs={"pk": self.customer.pk}))
+        self.assertEqual(response.status_code, 403)
+
+    def test_get_customer_balance_not_found(self):
+        response = self.client.get(reverse("customer:balance", kwargs={"pk": 999999}))
+        self.assertEqual(response.status_code, 404)
+
+    def test_get_customer_balance_deleted_customer(self):
+        self.customer.is_deleted = True
+        self.customer.save()
+
+        response = self.client.get(reverse("customer:balance", kwargs={"pk": self.customer.pk}))
+        self.assertEqual(response.status_code, 404)

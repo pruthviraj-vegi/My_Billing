@@ -31,7 +31,7 @@ from base.utility import (
 from invoice.models import Invoice
 
 from .forms import CustomerForm
-from .models import Customer, Payment
+from .models import Customer, CustomerCreditSummary, Payment
 
 logger = logging.getLogger(__name__)
 
@@ -477,3 +477,38 @@ def create_customer_ajax(request):
         return JsonResponse(
             {"success": False, "message": "An error occurred. Please try again."}
         )
+
+
+def get_customer_balance(request, pk):
+    """
+    AJAX endpoint to fetch the current credit balance for a customer.
+
+    Args:
+        request: The HTTP request object.
+        pk (int): Customer primary key.
+
+    Returns:
+        JsonResponse: JSON object containing customer id, name, phone, and balance.
+    """
+    if not (
+        request.user.has_perm("customer.view_customer")
+        or request.user.has_perm("invoice.add_invoice")
+        or request.user.has_perm("cart.view_cart")
+    ):
+        return JsonResponse({"error": "Permission denied"}, status=403)
+
+    customer = get_object_or_404(Customer, pk=pk, is_deleted=False)
+    summary = getattr(customer, "credit_summary", None)
+    if not summary:
+        summary = CustomerCreditSummary.update_or_create_summary(customer)
+
+    return JsonResponse(
+        {
+            "success": True,
+            "id": customer.id,
+            "name": customer.name or "Unknown",
+            "phone_number": customer.phone_number,
+            "balance": float(summary.balance_amount),
+        }
+    )
+

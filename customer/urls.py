@@ -18,6 +18,7 @@ urlpatterns = [
     ),
     path("<int:pk>/edit/", views.EditCustomer.as_view(), name="edit"),
     path("<int:pk>/delete/", views.DeleteCustomer.as_view(), name="delete"),
+    path("<int:pk>/balance/", views.get_customer_balance, name="balance"),
     ## credit details
     path("credit/", views_credit.home, name="credit_home"),
     path("create/ajax/", views.create_customer_ajax, name="create_ajax"),
