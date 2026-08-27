@@ -13,7 +13,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 from base.decorators import RequiredPermissionMixin, required_permission
-from base.utility import render_paginated_response
+from base.utility import build_search_filter, render_paginated_response
 from .forms import BulkUploadForm
 from .models import (
     BulkUpload,
@@ -55,14 +55,10 @@ def bulk_upload_fetch(request):
     search_query = request.GET.get("search", "")
     sort_by = request.GET.get("sort", "-created_at")
 
-    filters = Q()
-    if search_query:
-        term = search_query.strip()
-        for word in term.split():
-            filters &= (
-                Q(supplier_invoice__invoice_number__icontains=word)
-                | Q(status__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        ["supplier_invoice__invoice_number", "status"],
+    )
 
     batches = (
         BulkUpload.objects

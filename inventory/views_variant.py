@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, FormView, UpdateView
 
 from base.decorators import RequiredPermissionMixin, required_permission
-from base.utility import render_paginated_response, table_sorting
+from base.utility import build_search_filter, render_paginated_response, table_sorting
 
 from inventory.forms import (
     AdjustmentInForm,
@@ -90,22 +90,20 @@ def get_variants_data(request):
     stock_filter = request.GET.get("stock", "")
 
     # Apply search filter
-    filters = Q()
-    if search_query:
-        # Split query into words so multiple terms can be matched
-        terms = [t.strip("(),[]{}") for t in search_query.split() if t.strip("(),[]{}")]
-        for term in terms:
-            filters &= (
-                Q(product__brand__icontains=term)
-                | Q(product__name__icontains=term)
-                | Q(barcode__icontains=term)
-                | Q(product__description__icontains=term)
-                | Q(product__category__name__icontains=term)
-                | Q(size__name__icontains=term)
-                | Q(color__name__icontains=term)
-                | Q(mrp__icontains=term)
-                | Q(purchase_price__icontains=term)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "product__brand",
+            "product__name",
+            "barcode",
+            "product__description",
+            "product__category__name",
+            "size__name",
+            "color__name",
+            "mrp",
+            "purchase_price",
+        ],
+    )
 
     # Apply category filter (supports both ID and name search)
     if category_filter:

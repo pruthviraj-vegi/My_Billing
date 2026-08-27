@@ -142,11 +142,53 @@ class CartService:
     @staticmethod
     def resolve_variant_by_barcode(barcode):
         """
-        Resolves a ProductVariant by direct barcode match or BarcodeMapping.
+        Resolves a ProductVariant by direct barcode match or BarcodeMapping,
+        falling back to weighted fuzzy search for misspelled names, brands, or codes.
         """
-        variant = ProductVariant.objects.filter(barcode=barcode).first()
+        if not barcode:
+            return None
+        barcode_clean = str(barcode).strip()
+        variant = (
+            ProductVariant.objects.filter(
+                barcode__iexact=barcode_clean, is_deleted=False, status="ACTIVE"
+            )
+            .select_related("product", "product__category", "size", "color")
+            .first()
+        )
         if not variant:
-            mapping = BarcodeMapping.objects.filter(barcode=barcode).select_related("variant").first()
-            if mapping:
+            mapping = (
+                BarcodeMapping.objects.filter(barcode__iexact=barcode_clean)
+                .select_related(
+                    "variant",
+                    "variant__product",
+                    "variant__product__category",
+                    "variant__size",
+                    "variant__color",
+                )
+                .first()
+            )
+            if (
+                mapping
+                and mapping.variant
+                and not mapping.variant.is_deleted
+                and mapping.variant.status == "ACTIVE"
+            ):
                 variant = mapping.variant
+
+        if not variant and len(barcode_clean) >= 2:
+            from base.weighted_search import search_variants_weighted
+
+            fuzzy_results = search_variants_weighted(
+                barcode_clean, limit=1, min_score=60.0
+            )
+            if fuzzy_results:
+                variant = (
+                    ProductVariant.objects.filter(
+                        id=fuzzy_results[0]["id"],
+                        is_deleted=False,
+                        status="ACTIVE",
+                    )
+                    .select_related("product", "product__category", "size", "color")
+                    .first()
+                )
         return variant

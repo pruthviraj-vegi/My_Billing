@@ -30,7 +30,7 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 from base.decorators import required_permission, RequiredPermissionMixin
 
-from base.utility import render_paginated_response, table_sorting
+from base.utility import build_search_filter, render_paginated_response, table_sorting
 from invoice.models import Invoice, ReturnInvoice
 
 from .forms import PaymentForm
@@ -85,16 +85,10 @@ def credit_customers_data(request):
     )  # Single JOIN, exclude customers with both credit and debit = 0
 
     # ===== SEARCH =====
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(name__icontains=word)
-                | Q(phone_number__icontains=word)
-                | Q(email__icontains=word)
-                | Q(address__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        ["name", "phone_number", "email", "address"],
+    )
 
     # ===== SORTING (All in database!) =====
     # Map frontend sort keys to database fields

@@ -22,6 +22,7 @@ from barcode.base import Barcode
 from barcode.writer import SVGWriter
 
 from base.getDates import getDates
+from base.utility import build_search_filter
 
 from cart.models import Cart, CartItem
 from customer.models import Customer
@@ -385,23 +386,21 @@ def build_variants_context(params):
                 size, status, stock, sort.
     """
 
-    filters = Q()
-
     search_query = params.get("search", "")
-    if search_query:
-        terms = search_query.split()
-        for term in terms:
-            filters &= (
-                Q(product__brand__icontains=term)
-                | Q(product__name__icontains=term)
-                | Q(barcode__icontains=term)
-                | Q(product__description__icontains=term)
-                | Q(product__category__name__icontains=term)
-                | Q(size__name__icontains=term)
-                | Q(color__name__icontains=term)
-                | Q(mrp__icontains=term)
-                | Q(purchase_price__icontains=term)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "product__brand",
+            "product__name",
+            "barcode",
+            "product__description",
+            "product__category__name",
+            "size__name",
+            "color__name",
+            "mrp",
+            "purchase_price",
+        ],
+    )
 
     category_filter = params.get("category", "")
     if category_filter:

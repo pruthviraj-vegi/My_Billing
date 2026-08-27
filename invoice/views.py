@@ -508,17 +508,16 @@ def get_data(request):
     financial_year = request.GET.get("financial_year", "")
 
     # Apply search filter
-    filters = Q()
-    if search_query:
-        terms = [t.strip("(),[]{}") for t in search_query.split() if t.strip("(),[]{}")]
-        for word in terms:
-            filters &= (
-                Q(invoice_number__icontains=word)
-                | Q(customer__name__icontains=word)
-                | Q(customer__phone_number__icontains=word)
-                | Q(customer__address__icontains=word)
-                | Q(notes__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "invoice_number",
+            "customer__name",
+            "customer__phone_number",
+            "customer__address",
+            "notes",
+        ],
+    )
 
     # Apply status filter
     if status_filter:

@@ -13,6 +13,7 @@ from invoice.form import InvoiceCancellationForm
 from invoice.models import Invoice, InvoiceCancellation
 
 from base.decorators import required_permission
+from base.utility import build_search_filter
 
 logger = logging.getLogger(__name__)
 
@@ -90,15 +91,14 @@ def cancelled_invoices_list(request):
     payment_type = request.GET.get("payment_type", "")
 
     # Apply search
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(invoice_number__icontains=word)
-                | Q(customer__name__icontains=word)
-                | Q(cancellation_reason__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "invoice_number",
+            "customer__name",
+            "cancellation_reason",
+        ],
+    )
 
     # Apply payment type filter
     if payment_type:

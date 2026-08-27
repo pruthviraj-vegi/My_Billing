@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
 
 from base.decorators import RequiredPermissionMixin, required_permission
-from base.utility import render_paginated_response, table_sorting
+from base.utility import build_search_filter, render_paginated_response, table_sorting
 
 from .models import Product, ProductVariant
 from .forms import ProductForm, CategoryForm, ClothTypeForm, UOMForm, GSTHsnCodeForm
@@ -53,17 +53,16 @@ def fetch_products(request):
     category_filter = request.GET.get("category", "")
 
     # Apply search filter
-    filters = Q()
-    if search_query:
-        words = [w.strip("(),[]{}") for w in search_query.split() if w.strip("(),[]{}")]
-        for word in words:
-            filters &= (
-                Q(brand__icontains=word)
-                | Q(name__icontains=word)
-                | Q(description__icontains=word)
-                | Q(category__name__icontains=word)
-                | Q(hsn_code__code__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "brand",
+            "name",
+            "description",
+            "category__name",
+            "hsn_code__code",
+        ],
+    )
 
     # Apply category filter
     if category_filter:

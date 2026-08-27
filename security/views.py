@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.shortcuts import render
 
 from base.decorators import required_permission
-from base.utility import render_paginated_response, table_sorting
+from base.utility import build_search_filter, render_paginated_response, table_sorting
 
 from .models import LoginEvent, UnauthorizedAccess
 
@@ -23,19 +23,18 @@ def fetch_logins_events(request):
 
     search_query = request.GET.get("search", "")
 
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for term in terms:
-            filters |= (
-                Q(user__first_name__icontains=term)
-                | Q(user__last_name__icontains=term)
-                | Q(user__phone_number__icontains=term)
-                | Q(user__address__icontains=term)
-                | Q(event_type__icontains=term)
-                | Q(ip_address__icontains=term)
-                | Q(user_agent__icontains=term)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "user__first_name",
+            "user__last_name",
+            "user__phone_number",
+            "user__address",
+            "event_type",
+            "ip_address",
+            "user_agent",
+        ],
+    )
 
     sort_fields = {
         "occurred_at",
@@ -64,20 +63,19 @@ def fetch_unauthorised_events(request):
 
     search_query = request.GET.get("search", "")
 
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for term in terms:
-            filters |= (
-                Q(user__first_name__icontains=term)
-                | Q(user__last_name__icontains=term)
-                | Q(user__phone_number__icontains=term)
-                | Q(user__address__icontains=term)
-                | Q(view_name__icontains=term)
-                | Q(required_roles__icontains=term)
-                | Q(ip_address__icontains=term)
-                | Q(url_path__icontains=term)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "user__first_name",
+            "user__last_name",
+            "user__phone_number",
+            "user__address",
+            "view_name",
+            "required_roles",
+            "ip_address",
+            "url_path",
+        ],
+    )
 
     sort_fields = {
         "timestamp",

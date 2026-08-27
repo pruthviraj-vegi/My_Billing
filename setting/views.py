@@ -25,6 +25,7 @@ from setting.models import (
 )
 
 from base.decorators import required_permission
+from base.utility import build_search_filter
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +36,10 @@ def shop_details_list(request):
 
     # Search functionality
     search_query = request.GET.get("search", "")
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(shop_name__icontains=word)
-                | Q(city__icontains=word)
-                | Q(state__icontains=word)
-                | Q(phone_number__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        ["shop_name", "city", "state", "phone_number"],
+    )
 
     # Base queryset
     shops = ShopDetails.objects.filter(filters).order_by("-created_at")
@@ -135,15 +130,10 @@ def shop_details_delete(request, pk):
 def report_config_list(request):
     """List all report configurations."""
     search_query = request.GET.get("search", "")
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(report_type__icontains=word)
-                | Q(terms_conditions__icontains=word)
-                | Q(thank_you_message__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        ["report_type", "terms_conditions", "thank_you_message"],
+    )
 
     configs = ReportConfiguration.objects.filter(filters).order_by(
         "-is_default", "-created_at"
@@ -316,16 +306,10 @@ def payment_details_list(request):
 
     # Search functionality
     search_query = request.GET.get("search", "")
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(payment_name__icontains=word)
-                | Q(upi_id__icontains=word)
-                | Q(account_number__icontains=word)
-                | Q(bank_name__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        ["payment_name", "upi_id", "account_number", "bank_name"],
+    )
 
     payments = PaymentDetails.objects.filter(filters).order_by(
         "display_order", "-is_default", "-created_at"
@@ -436,11 +420,10 @@ def barcode_config_list(request):
 
     # Search functionality
     search_query = request.GET.get("search", "")
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= Q(config_name__icontains=word) | Q(heading_text__icontains=word)
+    filters = build_search_filter(
+        search_query,
+        ["config_name", "heading_text"],
+    )
 
     configs = BarcodeConfiguration.objects.filter(filters).order_by(
         "-is_default", "-created_at"

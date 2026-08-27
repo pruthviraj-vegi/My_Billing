@@ -20,6 +20,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, TemplateView, UpdateView
 
 from base.decorators import required_permission, RequiredPermissionMixin
+from base.weighted_search import search_variants_weighted
 
 from inventory.models import BarcodeMapping, ProductVariant
 from inventory.views_variant import get_variants_data
@@ -212,12 +213,34 @@ def barcode_suggestions(request):
     """
     Return JSON list of product variants matching the query string.
     Used for live barcode suggestion dropdown in cart page.
+    Supports exact/substring matching and fuzzy typo tolerance for misspelled words.
     """
     search = request.GET.get("search", "").strip()
     if len(search) < 2:
         return JsonResponse([], safe=False)
 
-    variants = get_variants_data(request)[:10]
+    # 1. Exact/substring matches via get_variants_data
+    variants = list(get_variants_data(request)[:10])
+    seen_ids = {v.id for v in variants}
+
+    # 2. Fuzzy weighted search fallback/supplement for spelling mistakes
+    if len(variants) < 10:
+        fuzzy_results = search_variants_weighted(search, limit=10, min_score=45.0)
+        fuzzy_ids = [r["id"] for r in fuzzy_results if r.get("id") not in seen_ids]
+        if fuzzy_ids:
+            fuzzy_variants_dict = {
+                v.id: v
+                for v in ProductVariant.objects.filter(
+                    id__in=fuzzy_ids,
+                    is_deleted=False,
+                    status="ACTIVE",
+                ).select_related("product", "product__category", "size", "color")
+            }
+            for fid in fuzzy_ids:
+                if fid in fuzzy_variants_dict and len(variants) < 10:
+                    variants.append(fuzzy_variants_dict[fid])
+                    seen_ids.add(fid)
+
     if not variants:
         return JsonResponse([], safe=False)
 

@@ -15,7 +15,7 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic.edit import CreateView, DeleteView, View
 
-from base.utility import render_paginated_response, table_sorting
+from base.utility import build_search_filter, render_paginated_response, table_sorting
 from base.decorators import required_permission, RequiredPermissionMixin
 
 from invoice.form import AuditTableForm
@@ -210,15 +210,14 @@ def get_data(request):
     financial_year = request.GET.get("financial_year", "")
 
     # Apply search filter
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(title__icontains=word)
-                | Q(description__icontains=word)
-                | Q(audit_type__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "title",
+            "description",
+            "audit_type",
+        ],
+    )
 
     # Apply audit_type filter
     if audit_type:

@@ -30,7 +30,7 @@ from django.views.generic import View
 
 from base.decorators import RequiredPermissionMixin, required_permission
 from base.getDates import getDates
-from base.utility import render_paginated_response, table_sorting
+from base.utility import build_search_filter, render_paginated_response, table_sorting
 from supplier.models import Supplier, SupplierInvoice
 
 from .forms import (
@@ -438,17 +438,17 @@ def damaged_stock_fetch(request):
         records = records.filter(status=status_filter)
 
     if search_query:
-        words = search_query.split()
-        q_filters = Q()
-        for word in words:
-            q_filters |= (
-                Q(variant__product__brand__icontains=word)
-                | Q(variant__product__name__icontains=word)
-                | Q(variant__barcode__icontains=word)
-                | Q(supplier__name__icontains=word)
-                | Q(supplier_invoice__invoice_number__icontains=word)
-            )
-        records = records.filter(q_filters)
+        filters = build_search_filter(
+            search_query,
+            [
+                "variant__product__brand",
+                "variant__product__name",
+                "variant__barcode",
+                "supplier__name",
+                "supplier_invoice__invoice_number",
+            ],
+        )
+        records = records.filter(filters)
 
     if supplier_filter and supplier_filter.isdigit():
         records = records.filter(supplier_id=int(supplier_filter))

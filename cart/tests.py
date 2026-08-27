@@ -108,3 +108,50 @@ class ResolveVariantByBarcodeTests(TestCase):
         )
         result = CartService.resolve_variant_by_barcode("CONFLICT")
         self.assertEqual(result, variant_with_same_barcode_as_mapping)
+
+    def test_fuzzy_match_resolves_spelling_mistake(self):
+        product = create_test_product(brand="Levi's", name="Cotton Denim Shirt")
+        variant = create_test_variant(product=product, barcode="LEV-SHIRT-01", user=self.user)
+        from base.weighted_search import invalidate_cache, PRODUCT_VARIANT_WEIGHTED_CACHE_KEY
+        invalidate_cache(PRODUCT_VARIANT_WEIGHTED_CACHE_KEY)
+
+        # Misspelled brand/product queries
+        result = CartService.resolve_variant_by_barcode("shrit")
+        self.assertEqual(result, variant)
+
+        result_brand = CartService.resolve_variant_by_barcode("leevis")
+        self.assertEqual(result_brand, variant)
+
+
+class BarcodeSuggestionsTests(TestCase):
+    """Tests for barcode_suggestions view endpoint."""
+
+    def setUp(self):
+        self.user = create_test_user(is_staff=True)
+        self.client.force_login(self.user)
+        self.product = create_test_product(brand="Adidas", name="Sports T-Shirt")
+        self.variant = create_test_variant(
+            product=self.product, barcode="ADI-TSHIRT-01", user=self.user
+        )
+        from base.weighted_search import invalidate_cache, PRODUCT_VARIANT_WEIGHTED_CACHE_KEY
+        invalidate_cache(PRODUCT_VARIANT_WEIGHTED_CACHE_KEY)
+
+    def test_suggestions_exact_match(self):
+        response = self.client.get("/cart/barcode-suggestions/?search=Adidas")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(any(item["barcode"] == "ADI-TSHIRT-01" for item in data))
+
+    def test_suggestions_fuzzy_misspelling_match(self):
+        # Misspelled search term "adidass" or "shrit"
+        response = self.client.get("/cart/barcode-suggestions/?search=adidass")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(len(data) > 0)
+        self.assertEqual(data[0]["barcode"], "ADI-TSHIRT-01")
+
+    def test_suggestions_short_query_returns_empty(self):
+        response = self.client.get("/cart/barcode-suggestions/?search=a")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+

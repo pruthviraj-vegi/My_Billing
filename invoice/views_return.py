@@ -17,7 +17,7 @@ from django.views.generic.edit import CreateView
 
 from base.decorators import required_permission, RequiredPermissionMixin
 from base.getDates import DatesRange, end_of_day, parse_date, start_of_day
-from base.utility import render_paginated_response, table_sorting
+from base.utility import build_search_filter, render_paginated_response, table_sorting
 from inventory.services import InventoryService
 from invoice.choices import (
     ItemConditionChoices,
@@ -97,17 +97,16 @@ def fetch_return_invoices(request):
     ).strip()
 
     # Apply search filter
-    filters = Q()
-    if search_query:
-        terms = search_query.split()
-        for word in terms:
-            filters &= (
-                Q(return_number__icontains=word)
-                | Q(customer__name__icontains=word)
-                | Q(customer__phone_number__icontains=word)
-                | Q(invoice__invoice_number__icontains=word)
-                | Q(notes__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            "return_number",
+            "customer__name",
+            "customer__phone_number",
+            "invoice__invoice_number",
+            "notes",
+        ],
+    )
 
     # Apply status filter
     if status_filter:

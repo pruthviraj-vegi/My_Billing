@@ -29,6 +29,7 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from base.decorators import required_permission, RequiredPermissionMixin
 from base.getDates import getDates
 from base.utility import (
+    build_search_filter,
     get_period_label,
     get_periodic_data,
     render_paginated_response,
@@ -444,26 +445,24 @@ def get_suppliers_data(request):
 
     # Get primary sort field (first in list)
     # Build filters
-    filters = Q()
-    if search_query:
-        terms = [t.strip("(),[]{}") for t in search_query.split() if t.strip("(),[]{}")]
-        for word in terms:
-            filters &= (
-                # Contact information
-                Q(name__icontains=word)
-                | Q(contact_person__icontains=word)
-                | Q(phone__icontains=word)
-                | Q(email__icontains=word)
-                | Q(gstin__icontains=word)
-                |
-                # Address fields
-                Q(first_line__icontains=word)
-                | Q(second_line__icontains=word)
-                | Q(city__icontains=word)
-                | Q(state__icontains=word)
-                | Q(pincode__icontains=word)
-                | Q(country__icontains=word)
-            )
+    filters = build_search_filter(
+        search_query,
+        [
+            # Contact information
+            "name",
+            "contact_person",
+            "phone",
+            "email",
+            "gstin",
+            # Address fields
+            "first_line",
+            "second_line",
+            "city",
+            "state",
+            "pincode",
+            "country",
+        ],
+    )
 
     # Base queryset
     suppliers = Supplier.objects.filter(filters)
