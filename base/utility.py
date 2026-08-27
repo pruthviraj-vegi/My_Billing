@@ -380,12 +380,13 @@ def table_sorting(request, valid_sorts=None, default_sort="-id"):
 
 def build_search_filter(search_query: str, fields: list[str]) -> Q:
     """
-    Splits search_query into individual terms and builds an AND-combined
-    Q object matching any of the specified model fields.
+    Splits search_query into individual terms, strips punctuation (brackets, parentheses, commas),
+    and builds an AND-combined Q object matching any of the specified model fields.
     """
     filters = Q()
     if search_query:
-        terms = search_query.strip().split()
+        # Strip punctuation like brackets, parentheses, commas to prevent SQL failure on formatted suggestions
+        terms = [t.strip("(),[]{}") for t in search_query.strip().split() if t.strip("(),[]{}")]
         for word in terms:
             term_q = Q()
             for field in fields:

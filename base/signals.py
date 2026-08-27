@@ -7,12 +7,17 @@ import logging
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from base.suggestions import (
+from base.weighted_search import (
     CUSTOMER_SEARCH_FIELDS,
+    CUSTOMER_WEIGHTED_CACHE_KEY,
     INVOICE_SEARCH_FIELDS,
+    INVOICE_WEIGHTED_CACHE_KEY,
     PRODUCT_SEARCH_FIELDS,
     PRODUCT_VARIANT_SEARCH_FIELDS,
+    PRODUCT_VARIANT_WEIGHTED_CACHE_KEY,
+    PRODUCT_WEIGHTED_CACHE_KEY,
     SUPPLIER_SEARCH_FIELDS,
+    SUPPLIER_WEIGHTED_CACHE_KEY,
     get_instance_tokens,
     invalidate_cache,
 )
@@ -26,23 +31,22 @@ logger = logging.getLogger(__name__)
 
 def check_and_invalidate(instance, fields, cache_key, old_tokens=None):
     """
-    Compares old tokens (from pre_save) with new tokens (current instance).
-    Invalidates cache ONLY if tokens have changed.
-    For new instances (created=True), old_tokens will be None/Empty.
+    Helper function to check if tokens changed and invalidate cache.
+    Avoids code duplication across all post_save receivers.
     """
     new_tokens = get_instance_tokens(instance, fields)
 
     if old_tokens is None:
-        # Case: Created (Post-Save where we didn't have pre-save state? No, pre-save always runs)
-        # Actually, for new objects, old_tokens should be empty set.
-        pass
+        old_tokens = getattr(instance, "old_tokens", set())
 
-    # If sets are different, invalidate
-    if old_tokens != new_tokens:
-        logger.debug("Tokens changed for %s (%s). Invalidating.", instance, cache_key)
+    # Only invalidate if tokens actually changed
+    if new_tokens != old_tokens:
         invalidate_cache(cache_key)
-    else:
-        logger.debug("No token changes for %s. Cache preserved.", instance)
+        logger.debug(
+            "Cache invalidated for %s (%s)",
+            instance.__class__.__name__,
+            cache_key,
+        )
 
 
 # --- Customer ---
@@ -69,7 +73,7 @@ def invalidate_customer_cache(sender, instance, **kwargs):
     check_and_invalidate(
         instance,
         CUSTOMER_SEARCH_FIELDS,
-        "customer_search_words",
+        CUSTOMER_WEIGHTED_CACHE_KEY,
         getattr(instance, "old_tokens", set()),
     )
 
@@ -77,7 +81,7 @@ def invalidate_customer_cache(sender, instance, **kwargs):
 @receiver(post_delete, sender=Customer)
 def delete_customer_cache(sender, instance, **kwargs):
     """Invalidate Customer cache when a Customer is deleted."""
-    invalidate_cache("customer_search_words")
+    invalidate_cache(CUSTOMER_WEIGHTED_CACHE_KEY)
 
 
 # --- Invoice ---
@@ -104,7 +108,7 @@ def invalidate_invoice_cache(sender, instance, **kwargs):
     check_and_invalidate(
         instance,
         INVOICE_SEARCH_FIELDS,
-        "invoice_search_words",
+        INVOICE_WEIGHTED_CACHE_KEY,
         getattr(instance, "old_tokens", set()),
     )
 
@@ -112,7 +116,7 @@ def invalidate_invoice_cache(sender, instance, **kwargs):
 @receiver(post_delete, sender=Invoice)
 def delete_invoice_cache(sender, instance, **kwargs):
     """Invalidate Invoice cache when an Invoice is deleted."""
-    invalidate_cache("invoice_search_words")
+    invalidate_cache(INVOICE_WEIGHTED_CACHE_KEY)
 
 
 # --- Product ---
@@ -136,18 +140,20 @@ def capture_product_tokens(sender, instance, **kwargs):
 @receiver(post_save, sender=Product)
 def invalidate_product_cache(sender, instance, **kwargs):
     """Invalidate Product cache if search tokens have changed."""
-    check_and_invalidate(
-        instance,
-        PRODUCT_SEARCH_FIELDS,
-        "product_search_words",
-        getattr(instance, "old_tokens", set()),
-    )
+    new_tokens = get_instance_tokens(instance, PRODUCT_SEARCH_FIELDS)
+    old_tokens = getattr(instance, "old_tokens", set())
+
+    if new_tokens != old_tokens:
+        invalidate_cache(PRODUCT_WEIGHTED_CACHE_KEY)
+        invalidate_cache(PRODUCT_VARIANT_WEIGHTED_CACHE_KEY)
+        logger.debug("Cache invalidated for Product (and variants)")
 
 
 @receiver(post_delete, sender=Product)
 def delete_product_cache(sender, instance, **kwargs):
     """Invalidate Product cache when a Product is deleted."""
-    invalidate_cache("product_search_words")
+    invalidate_cache(PRODUCT_WEIGHTED_CACHE_KEY)
+    invalidate_cache(PRODUCT_VARIANT_WEIGHTED_CACHE_KEY)
 
 
 # --- Product Variant ---
@@ -169,32 +175,21 @@ def capture_variant_tokens(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=ProductVariant)
-def invalidate_product_variant_cache(sender, instance, **kwargs):
-    """Invalidate ProductVariant and potentially Product cache if search tokens change."""
-    old_tokens = getattr(instance, "old_tokens", set())
-    # Variant affects its own cache AND Product cache (potentially)
-    # We check basic variant tokens
+def invalidate_variant_cache(sender, instance, **kwargs):
+    """Invalidate Variant cache if search tokens have changed."""
     check_and_invalidate(
         instance,
         PRODUCT_VARIANT_SEARCH_FIELDS,
-        "product_variant_search_words",
-        old_tokens,
+        PRODUCT_VARIANT_WEIGHTED_CACHE_KEY,
+        getattr(instance, "old_tokens", set()),
     )
-
-    # NOTE: Changing a variant might implies Product search change?
-    # Current logic: Variant has "product__name" in fields.
-    # If valid logic mandates, we invalidate product too.
-    # For now, let's keep it simple: if variant tokens change, invalidate product too safely?
-    # Or just check changes.
-    if old_tokens != get_instance_tokens(instance, PRODUCT_VARIANT_SEARCH_FIELDS):
-        invalidate_cache("product_search_words")
 
 
 @receiver(post_delete, sender=ProductVariant)
-def delete_product_variant_cache(sender, instance, **kwargs):
-    """Invalidate ProductVariant and Product caches when a variant is deleted."""
-    invalidate_cache("product_variant_search_words")
-    invalidate_cache("product_search_words")
+def delete_variant_cache(sender, instance, **kwargs):
+    """Invalidate Variant cache when a ProductVariant is deleted."""
+    invalidate_cache(PRODUCT_WEIGHTED_CACHE_KEY)
+    invalidate_cache(PRODUCT_VARIANT_WEIGHTED_CACHE_KEY)
 
 
 # --- Supplier ---
@@ -221,7 +216,7 @@ def invalidate_supplier_cache(sender, instance, **kwargs):
     check_and_invalidate(
         instance,
         SUPPLIER_SEARCH_FIELDS,
-        "supplier_search_words",
+        SUPPLIER_WEIGHTED_CACHE_KEY,
         getattr(instance, "old_tokens", set()),
     )
 
@@ -229,4 +224,4 @@ def invalidate_supplier_cache(sender, instance, **kwargs):
 @receiver(post_delete, sender=Supplier)
 def delete_supplier_cache(sender, instance, **kwargs):
     """Invalidate Supplier cache when a Supplier is deleted."""
-    invalidate_cache("supplier_search_words")
+    invalidate_cache(SUPPLIER_WEIGHTED_CACHE_KEY)

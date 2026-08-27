@@ -93,7 +93,7 @@ def get_variants_data(request):
     filters = Q()
     if search_query:
         # Split query into words so multiple terms can be matched
-        terms = search_query.split()
+        terms = [t.strip("(),[]{}") for t in search_query.split() if t.strip("(),[]{}")]
         for term in terms:
             filters &= (
                 Q(product__brand__icontains=term)

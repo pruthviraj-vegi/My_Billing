@@ -510,7 +510,7 @@ def get_data(request):
     # Apply search filter
     filters = Q()
     if search_query:
-        terms = search_query.split()
+        terms = [t.strip("(),[]{}") for t in search_query.split() if t.strip("(),[]{}")]
         for word in terms:
             filters &= (
                 Q(invoice_number__icontains=word)

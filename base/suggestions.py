@@ -1,264 +1,79 @@
 """
-Provides search and autosuggestion logic for customers, invoices, products, and suppliers.
+View layer for search suggestion endpoints.
+
+All search logic, caching, and scoring lives in ``base.weighted_search``.
+This module provides thin Django view functions that serve JSON suggestion
+responses consumed by ``wordSuggestion.js``.
 """
 
-import logging
-import re
-
-from django.core.cache import cache
 from django.http import JsonResponse
-from rapidfuzz import fuzz, process
 
-from customer.models import Customer
-from inventory.models import Product, ProductVariant
-from invoice.models import Invoice
-from supplier.models import Supplier
-
-logger = logging.getLogger(__name__)
-# Precompiled regex for speed
-TOKENIZER = re.compile(r"[a-zA-Z0-9]+")
-
-CUSTOMER_SEARCH_FIELDS = ("name", "phone_number", "email", "address")
-INVOICE_SEARCH_FIELDS = (
-    "invoice_number",
-    "customer__name",
-    "customer__phone_number",
-    "notes",
-)
-PRODUCT_SEARCH_FIELDS = ("brand", "name", "category__name")
-PRODUCT_VARIANT_SEARCH_FIELDS = (
-    "barcode",
-    "product__name",
-    "product__brand",
-    "product__category__name",
-)
-SUPPLIER_SEARCH_FIELDS = (
-    "name",
-    "phone",
-    "email",
-    "gstin",
-    "first_line",
-    "second_line",
-    "city",
-    "state",
-    "pincode",
-    "country",
+from base.weighted_search import (
+    get_category_suggestions,
+    get_customer_suggestions,
+    get_gst_hsn_suggestions,
+    get_invoice_suggestions,
+    get_supplier_suggestions,
+    get_uom_suggestions,
+    get_weighted_product_suggestions,
+    get_weighted_variant_suggestions,
 )
 
 
-def get_instance_tokens(instance, fields):
+def _suggestion_view(request, suggestion_fn):
     """
-    Helper to extract tokens from a single model instance.
-    Used by signals to check if cache invalidation is actually needed.
+    Shared view logic for all suggestion endpoints.
+
+    Reads ``q`` from the query string, calls the given ``suggestion_fn``
+    with ``rich=True``, and returns a JSON response in the standard format::
+
+        {"success": true, "data": [{"label": "...", "type": "..."}, ...]}
     """
-    tokens = set()
-    for field_path in fields:
-        # Handle related fields (e.g., 'customer__name')
-        value = instance
-        parts = field_path.split("__")
-        try:
-            for part in parts:
-                if value is None:
-                    break
-                value = getattr(value, part)
-        except AttributeError:
-            continue  # Field might not exist or be accessible
+    query = request.GET.get("q", "").strip()
 
-        if value:
-            # Tokenize
-            found = TOKENIZER.findall(str(value).lower())
-            tokens.update(t for t in found if len(t) > 2)
-    return tokens
+    if not query or len(query) < 2:
+        return JsonResponse({"success": True, "data": []})
 
+    suggestions = suggestion_fn(query=query, rich=True)
 
-def invalidate_cache(cache_key):
-    """
-    Clears the specific cache key.
-    Used by signals to invalidate cache on model changes.
-    """
-    try:
-        cache.delete(cache_key)
-        logger.debug("Cache invalidated for key: %s", cache_key)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # We catch Exception here because cache backends can raise various
-        # underlying backend-specific errors (e.g., redis.exceptions.ConnectionError,
-        # memcache.Client.MemcachedKeyError) that aren't wrapped by Django.
-        logger.error("Failed to invalidate cache for key %s: %s", cache_key, e)
-
-
-def get_related_words(query, list_of_words, limit=10, score_cutoff=60):
-    """
-    Returns top fuzzy-matched words for a query.
-    - Uses rapidfuzz for speed.
-    - Avoids redundant deduplication.
-    - Limits results early for efficiency.
-    """
-
-    if not query or len(query) < 2 or not list_of_words:
-        return []
-
-    # rapidfuzz can handle iterables directly (no need to force list)
-    matches = process.extract(
-        query.lower(),
-        list_of_words,
-        scorer=fuzz.WRatio,
-        limit=limit,
-        score_cutoff=score_cutoff,
-    )
-
-    # Extract only words (discard scores)
-    return [word for word, score, _ in matches]
-
-
-def get_search_words(
-    query,
-    model,
-    fields,
-    cache_key,
-    cache_timeout=None,
-    max_words=50000,
-):
-    """
-    Optimized helper to build/search word lists from model fields.
-    - Uses Redis/DB cache to avoid rebuilding.
-    - Minimizes memory overhead by streaming.
-    - Tokenizes with set comprehension instead of nested loops.
-    - Limits max_words to avoid huge cache payloads.
-    - Handles cache connection errors gracefully.
-    """
-
-    # 1. Try cache first (Redis-compatible)
-    try:
-        searchable_items = cache.get(cache_key)
-        if searchable_items is not None:
-            return get_related_words(query, searchable_items)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # Cache backends can raise various underlying backend-specific errors not wrapped by Django
-        # Redis might be down or misconfigured - log and continue without cache
-        logger.warning(
-            "Cache read failed for key '%s': %s. Proceeding without cache.",
-            cache_key,
-            e,
-        )
-
-    # 2. Stream from DB efficiently (iterator avoids full memory load)
-    queryset = model.objects.values_list(*fields).iterator()
-
-    all_words = set()
-    for row in queryset:
-        # Flatten row → tokenize in one go
-        tokens = {
-            token
-            for field in row
-            if field
-            for token in TOKENIZER.findall(str(field).lower())
-            if len(token) > 2
-        }
-        all_words.update(tokens)
-
-        # Optional: early cutoff if dataset is massive
-        if len(all_words) >= max_words:
-            break
-
-    # 3. Convert to list once
-    searchable_items = list(all_words)
-
-    # 4. Save in cache (Redis-compatible - Django handles serialization)
-    try:
-        cache.set(cache_key, searchable_items, cache_timeout)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # Cache backends can raise various underlying backend-specific errors not wrapped by Django
-        # Redis might be down - log but don't fail the request
-        logger.warning(
-            "Cache write failed for key '%s': %s. Results returned without caching.",
-            cache_key,
-            e,
-        )
-
-    # 5. Get suggestions
-    return get_related_words(query, searchable_items)
+    return JsonResponse({"success": True, "data": suggestions})
 
 
 def customer_all_suggestions(request):
-    """View to return JSON suggestions for customers."""
-    query = request.GET.get("q", "").strip()
-
-    if not query or len(query) < 2:
-        return JsonResponse({"success": True, "data": []})
-
-    suggestions = get_search_words(
-        query=query,
-        model=Customer,
-        fields=CUSTOMER_SEARCH_FIELDS,
-        cache_key="customer_search_words",
-    )
-
-    return JsonResponse({"success": True, "data": suggestions})
+    """View to return JSON suggestions for customers using weighted search."""
+    return _suggestion_view(request, get_customer_suggestions)
 
 
 def invoice_all_suggestions(request):
-    """View to return JSON suggestions for invoices."""
-    query = request.GET.get("q", "").strip()
-
-    if not query or len(query) < 2:
-        return JsonResponse({"success": True, "data": []})
-
-    suggestions = get_search_words(
-        query=query,
-        model=Invoice,
-        fields=INVOICE_SEARCH_FIELDS,
-        cache_key="invoice_search_words",
-    )
-
-    return JsonResponse({"success": True, "data": suggestions})
+    """View to return JSON suggestions for invoices using weighted search."""
+    return _suggestion_view(request, get_invoice_suggestions)
 
 
 def product_all_suggestions(request):
-    """View to return JSON suggestions for products."""
-    query = request.GET.get("q", "").strip()
-
-    if not query or len(query) < 2:
-        return JsonResponse({"success": True, "data": []})
-
-    suggestions = get_search_words(
-        query=query,
-        model=Product,
-        fields=PRODUCT_SEARCH_FIELDS,
-        cache_key="product_search_words",
-    )
-
-    return JsonResponse({"success": True, "data": suggestions})
+    """View to return JSON suggestions for products using weighted search."""
+    return _suggestion_view(request, get_weighted_product_suggestions)
 
 
 def product_variant_all_suggestions(request):
-    """View to return JSON suggestions for product variants."""
-    query = request.GET.get("q", "").strip()
-
-    if not query or len(query) < 2:
-        return JsonResponse({"success": True, "data": []})
-
-    suggestions = get_search_words(
-        query=query,
-        model=ProductVariant,
-        fields=PRODUCT_VARIANT_SEARCH_FIELDS,
-        cache_key="product_variant_search_words",
-    )
-
-    return JsonResponse({"success": True, "data": suggestions})
+    """View to return JSON suggestions for product variants using weighted search."""
+    return _suggestion_view(request, get_weighted_variant_suggestions)
 
 
 def supplier_all_suggestions(request):
-    """View to return JSON suggestions for suppliers."""
-    query = request.GET.get("q", "").strip()
+    """View to return JSON suggestions for suppliers using weighted search."""
+    return _suggestion_view(request, get_supplier_suggestions)
 
-    if not query or len(query) < 2:
-        return JsonResponse({"success": True, "data": []})
 
-    suggestions = get_search_words(
-        query=query,
-        model=Supplier,
-        fields=SUPPLIER_SEARCH_FIELDS,
-        cache_key="supplier_search_words",
-    )
+def category_all_suggestions(request):
+    """View to return JSON suggestions for categories using weighted search."""
+    return _suggestion_view(request, get_category_suggestions)
 
-    return JsonResponse({"success": True, "data": suggestions})
+
+def uom_all_suggestions(request):
+    """View to return JSON suggestions for UOM using weighted search."""
+    return _suggestion_view(request, get_uom_suggestions)
+
+
+def gst_hsn_all_suggestions(request):
+    """View to return JSON suggestions for GST/HSN codes using weighted search."""
+    return _suggestion_view(request, get_gst_hsn_suggestions)

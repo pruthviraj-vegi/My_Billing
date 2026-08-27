@@ -18,4 +18,7 @@ urlpatterns = [
         name="product_variant_all",
     ),
     path("suppliers/", suggestions.supplier_all_suggestions, name="supplier_all"),
+    path("categories/", suggestions.category_all_suggestions, name="category_all"),
+    path("uom/", suggestions.uom_all_suggestions, name="uom_all"),
+    path("gst-hsn/", suggestions.gst_hsn_all_suggestions, name="gst_hsn_all"),
 ]

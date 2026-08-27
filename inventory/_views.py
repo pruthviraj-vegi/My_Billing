@@ -38,15 +38,11 @@ from .models import (
     UOM,
 )
 
-try:
-    from rapidfuzz import process, fuzz
-except ImportError:
-    try:
-        from fuzzywuzzy import process, fuzz
-    except ImportError:
-        # Fallback if neither library is available
-        process = None
-        fuzz = None
+from base.weighted_search import (
+    get_category_suggestions,
+    get_gst_hsn_suggestions,
+    get_uom_suggestions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -324,54 +320,13 @@ VALID_CATEGORY_SORT_FIELDS = {
 }
 
 
+
 def search_suggestions(request):
     """AJAX endpoint for category search suggestions."""
     query = request.GET.get("q", "").strip()
-
     if not query or len(query) < 2:
-        return JsonResponse({"suggestions": []})
-
-    from django.core.cache import cache
-
-    searchable_items = cache.get("category_search_words")
-
-    if searchable_items is None:
-        # Get all unique words from category names and descriptions
-        categories = Category.objects.values_list("name", "description")
-
-        # Extract all words from category data
-        all_words = set()
-        for name, description in categories:
-            # Extract words from name
-            if name:
-                words = name.lower().split()
-                all_words.update(words)
-
-            # Extract words from description
-            if description:
-                words = description.lower().split()
-                all_words.update(words)
-
-        # Convert to list for fuzzy matching
-        searchable_items = list(all_words)
-        cache.set("category_search_words", searchable_items, 3600)
-
-    # Perform fuzzy matching on individual words
-    if process is None:
-        return JsonResponse({"suggestions": []})
-    fuzzy_matches = process.extract(query.lower(), searchable_items, limit=10)
-
-    # Filter matches with score > 60 and return only words
-    suggestions = []
-    seen_words = set()
-    for word, score in fuzzy_matches:
-        if score > 60 and word not in seen_words:
-            suggestions.append(word)
-            seen_words.add(word)
-            if len(suggestions) >= 5:
-                break
-
-    return JsonResponse({"suggestions": suggestions})
+        return JsonResponse({"success": True, "data": []})
+    return JsonResponse({"success": True, "data": get_category_suggestions(query=query, rich=True)})
 
 
 @required_permission("inventory.view_category")
@@ -584,64 +539,13 @@ VALID_UOM_SORT_FIELDS = {
 UOM_OBJECTS_PER_PAGE = 10
 
 
+
 def uom_search_suggestions(request):
     """AJAX endpoint for UOM search suggestions."""
     query = request.GET.get("q", "").strip()
-
     if not query or len(query) < 2:
-        return JsonResponse({"suggestions": []})
-
-    from django.core.cache import cache
-
-    searchable_items = cache.get("uom_search_words")
-
-    if searchable_items is None:
-        # Get all unique words from UOM names, short codes, categories and descriptions
-        uoms = UOM.objects.values_list("name", "short_code", "category", "description")
-
-        # Extract all words from UOM data
-        all_words = set()
-        for name, short_code, category, description in uoms:
-            # Extract words from name
-            if name:
-                words = name.lower().split()
-                all_words.update(words)
-
-            # Extract words from short_code
-            if short_code:
-                words = short_code.lower().split()
-                all_words.update(words)
-
-            # Extract words from category
-            if category:
-                words = category.lower().split()
-                all_words.update(words)
-
-            # Extract words from description
-            if description:
-                words = description.lower().split()
-                all_words.update(words)
-
-        # Convert to list for fuzzy matching
-        searchable_items = list(all_words)
-        cache.set("uom_search_words", searchable_items, 3600)
-
-    # Perform fuzzy matching on individual words
-    if process is None:
-        return JsonResponse({"suggestions": []})
-    fuzzy_matches = process.extract(query.lower(), searchable_items, limit=10)
-
-    # Filter matches with score > 60 and return only words
-    suggestions = []
-    seen_words = set()
-    for word, score in fuzzy_matches:
-        if score > 60 and word not in seen_words:
-            suggestions.append(word)
-            seen_words.add(word)
-            if len(suggestions) >= 5:
-                break
-
-    return JsonResponse({"suggestions": suggestions})
+        return JsonResponse({"success": True, "data": []})
+    return JsonResponse({"success": True, "data": get_uom_suggestions(query=query, rich=True)})
 
 
 @required_permission("inventory.view_uom")
@@ -688,40 +592,13 @@ VALID_GST_HSN_SORT_FIELDS = [
 ]
 
 
+
 def gst_hsn_search_suggestions(request):
-    """AJAX endpoint for GST HSN Code search suggestions"""
+    """AJAX endpoint for GST HSN Code search suggestions."""
     query = request.GET.get("q", "").strip()
-
-    if not query:
-        return JsonResponse({"suggestions": []})
-
-    # Get all GST HSN codes
-    gst_hsn_codes = GSTHsnCode.objects.filter(is_active=True).values_list(
-        "code", "description"
-    )
-
-    # Extract codes and descriptions for fuzzy matching
-    codes = [str(code[0]) for code in gst_hsn_codes]
-    descriptions = [desc[1] or "" for desc in gst_hsn_codes]
-
-    # Combine codes and descriptions for matching
-    combined_items = []
-    for code, desc in zip(codes, descriptions):
-        combined_items.append(f"{code} - {desc}" if desc else code)
-
-    # Fuzzy match against combined items
-    if process is None or fuzz is None:
-        return JsonResponse({"suggestions": []})
-    matches = process.extract(
-        query, combined_items, limit=10, scorer=fuzz.partial_ratio
-    )
-
-    suggestions = []
-    for match_text, score in matches:
-        if score >= 60:  # Minimum similarity threshold
-            suggestions.append(match_text)
-
-    return JsonResponse({"suggestions": suggestions})
+    if not query or len(query) < 2:
+        return JsonResponse({"success": True, "data": []})
+    return JsonResponse({"success": True, "data": get_gst_hsn_suggestions(query=query, rich=True)})
 
 
 @required_permission("inventory.view_gsthsncode")

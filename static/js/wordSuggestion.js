@@ -19,13 +19,13 @@ class WordSuggestion {
     constructor(inputElement, suggestionUrl, options = {}) {
         this.input = inputElement;
         this.options = {
-            debounceDelay: 300,
+            debounceDelay: 180,
             minQueryLength: 2,
             maxSuggestions: 5,
             url: suggestionUrl || "",
             onSuggestionSelected: null, // optional callback
-            allowSpaces: false, // configurable space handling
-            multiWord: true, // whether to suggest for the last word only
+            allowSpaces: true, // configurable space handling (allow spaces for full multi-word query autocomplete)
+            multiWord: false, // default false for search engine style full query replacement
             ...options
         };
 
@@ -34,6 +34,7 @@ class WordSuggestion {
         this.debounceTimer = null;
         this.dropdown = null;
         this.abortController = null;
+        this.currentQuery = "";
 
         // Bind methods to instance
         this.boundHandleInput = (e) => this.handleInput(e);
@@ -64,15 +65,13 @@ class WordSuggestion {
         this.dropdown.className = 'word-suggestion-dropdown';
         this.dropdown.setAttribute('role', 'listbox');
         this.dropdown.setAttribute('aria-live', 'polite');
-        this.dropdown.id = `dropdown-${Math.random().toString(36).substr(2, 9)
-            }`;
-        this.dropdown.style.display = 'none';
+        this.dropdown.setAttribute('aria-hidden', 'true');
+        this.dropdown.id = `dropdown-${Math.random().toString(36).substr(2, 9)}`;
 
         this.input.setAttribute('aria-autocomplete', 'list');
         this.input.setAttribute('aria-controls', this.dropdown.id);
 
         // Find the best container for the dropdown
-        // Prefer explicit containers or direct parent over modal body to keep it near the input
         const container = this.input.closest('.search-expanded') ||
             this.input.closest('.input-group') ||
             this.input.parentNode;
@@ -93,8 +92,6 @@ class WordSuggestion {
         this.input.addEventListener('keydown', this.boundHandleKeydown);
         this.input.addEventListener('focus', this.boundHandleFocus);
         this.input.addEventListener('blur', this.boundHandleBlur);
-
-        // Click handler will be attached only when dropdown is visible (optimized)
     }
 
     // ----------- HANDLERS -----------
@@ -109,8 +106,12 @@ class WordSuggestion {
 
         clearTimeout(this.debounceTimer);
 
-        // If multiWord is enabled, we only query the last word.
-        if (query.length < this.options.minQueryLength || (!this.options.allowSpaces && !this.options.multiWord && query.includes(' '))) {
+        if (query.length < this.options.minQueryLength) {
+            this.hideDropdown();
+            return;
+        }
+
+        if (!this.options.allowSpaces && !this.options.multiWord && query.includes(' ')) {
             this.hideDropdown();
             return;
         }
@@ -123,8 +124,6 @@ class WordSuggestion {
     handleKeydown(e) {
         if (!this.dropdown.classList.contains('show'))
             return;
-
-
 
         switch (e.key) {
             case 'ArrowDown':
@@ -141,8 +140,6 @@ class WordSuggestion {
                     e.preventDefault();
                     this.selectSuggestion();
                 }
-                // If it's Enter and nothing is selected, we let default behavior happen
-                // so the form can naturally be submitted.
                 break;
             case 'Escape':
                 e.preventDefault();
@@ -190,21 +187,14 @@ class WordSuggestion {
         if (this.abortController)
             this.abortController.abort();
 
-
-
         this.abortController = new AbortController();
-        this.showLoading();
+        this.currentQuery = query;
 
         try {
-            const response = await fetch(`${this.options.url
-                }?q=${encodeURIComponent(query)
-                }`, { signal: this.abortController.signal });
+            const response = await fetch(`${this.options.url}?q=${encodeURIComponent(query)}`, { signal: this.abortController.signal });
 
             if (!response.ok)
-                throw new Error(`HTTP ${response.status
-                    }`);
-
-
+                throw new Error(`HTTP ${response.status}`);
 
             const data = await response.json();
             this.suggestions = data.data || [];
@@ -214,14 +204,12 @@ class WordSuggestion {
                 this.renderSuggestions();
                 this.showDropdown();
             } else {
-                this.showEmptyState();
-                this.showDropdown();
+                this.hideDropdown();
             }
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('Error fetching suggestions:', error);
-                this.showErrorState();
-                this.showDropdown();
+                this.hideDropdown();
             }
         }
     }
@@ -229,11 +217,12 @@ class WordSuggestion {
     // ----------- RENDER -----------
 
     renderSuggestions() {
-        this.dropdown.innerHTML = '';
+        const fragment = document.createDocumentFragment();
         this.suggestions.forEach((suggestion, index) => {
             const item = this.createSuggestionItem(suggestion, index);
-            this.dropdown.appendChild(item);
+            fragment.appendChild(item);
         });
+        this.dropdown.replaceChildren(fragment);
     }
 
     createSuggestionItem(suggestion, index) {
@@ -243,11 +232,99 @@ class WordSuggestion {
         item.setAttribute('role', 'option');
         item.setAttribute('aria-selected', index === this.selectedIndex);
 
-        const wordSpan = document.createElement('span');
-        wordSpan.className = 'suggestion-word';
-        wordSpan.textContent = suggestion;
+        const isObject = typeof suggestion === 'object' && suggestion !== null;
+        const label = isObject ? (suggestion.label || '') : String(suggestion);
+        const type = isObject ? (suggestion.type || '') : '';
 
-        item.appendChild(wordSpan);
+        const contentSpan = document.createElement('span');
+        contentSpan.className = 'suggestion-content';
+
+        const query = (this.currentQuery || this.input.value).trim();
+        const queryLower = query.toLowerCase();
+        const labelLower = label.toLowerCase();
+
+        const queryWords = queryLower.split(/\s+/).filter(Boolean);
+
+        if (queryLower && labelLower.startsWith(queryLower)) {
+            // Google-style Prefix Match: typed query in matched span, completion in bold
+            const matchedText = label.slice(0, query.length);
+            const completionText = label.slice(query.length);
+
+            const matchedSpan = document.createElement('span');
+            matchedSpan.className = 'suggestion-matched';
+            matchedSpan.textContent = matchedText;
+
+            const completionSpan = document.createElement('strong');
+            completionSpan.className = 'suggestion-completion';
+            completionSpan.textContent = completionText;
+
+            contentSpan.appendChild(matchedSpan);
+            contentSpan.appendChild(completionSpan);
+        } else if (queryLower && labelLower.includes(queryLower)) {
+            // Substring Match
+            const idx = labelLower.indexOf(queryLower);
+            const beforeText = label.slice(0, idx);
+            const matchedText = label.slice(idx, idx + query.length);
+            const afterText = label.slice(idx + query.length);
+
+            if (beforeText) {
+                const beforeSpan = document.createElement('strong');
+                beforeSpan.className = 'suggestion-completion';
+                beforeSpan.textContent = beforeText;
+                contentSpan.appendChild(beforeSpan);
+            }
+
+            const matchedSpan = document.createElement('span');
+            matchedSpan.className = 'suggestion-matched';
+            matchedSpan.textContent = matchedText;
+            contentSpan.appendChild(matchedSpan);
+
+            if (afterText) {
+                const afterSpan = document.createElement('strong');
+                afterSpan.className = 'suggestion-completion';
+                afterSpan.textContent = afterText;
+                contentSpan.appendChild(afterSpan);
+            }
+        } else if (queryWords.length > 1 && queryWords.some(w => labelLower.includes(w))) {
+            // Unordered Multi-Word Token Match (e.g. "gold special" matching "special gold")
+            const labelTokens = label.split(/(\s+)/);
+            labelTokens.forEach(token => {
+                const tokenClean = token.toLowerCase();
+                const matchedQWord = queryWords.find(qw => tokenClean.startsWith(qw));
+                if (matchedQWord) {
+                    const matchedPart = token.slice(0, matchedQWord.length);
+                    const remPart = token.slice(matchedQWord.length);
+                    const mSpan = document.createElement('span');
+                    mSpan.className = 'suggestion-matched';
+                    mSpan.textContent = matchedPart;
+                    contentSpan.appendChild(mSpan);
+                    if (remPart) {
+                        const rSpan = document.createElement('strong');
+                        rSpan.className = 'suggestion-completion';
+                        rSpan.textContent = remPart;
+                        contentSpan.appendChild(rSpan);
+                    }
+                } else if (queryWords.some(qw => tokenClean.includes(qw))) {
+                    const mSpan = document.createElement('span');
+                    mSpan.className = 'suggestion-matched';
+                    mSpan.textContent = token;
+                    contentSpan.appendChild(mSpan);
+                } else {
+                    const span = document.createElement('span');
+                    span.className = 'suggestion-word';
+                    span.textContent = token;
+                    contentSpan.appendChild(span);
+                }
+            });
+        } else {
+            // Full label fallback
+            const wordSpan = document.createElement('span');
+            wordSpan.className = 'suggestion-word';
+            wordSpan.textContent = label;
+            contentSpan.appendChild(wordSpan);
+        }
+
+        item.appendChild(contentSpan);
 
         item.addEventListener('click', () => this.selectSuggestion(index));
         item.addEventListener('mouseenter', () => {
@@ -319,6 +396,9 @@ class WordSuggestion {
             const isSelected = index === this.selectedIndex;
             item.classList.toggle('selected', isSelected);
             item.setAttribute('aria-selected', isSelected);
+            if (isSelected) {
+                item.scrollIntoView({ block: 'nearest' });
+            }
         });
     }
 
@@ -329,13 +409,15 @@ class WordSuggestion {
         if (selectedIndex < 0 || selectedIndex >= this.suggestions.length)
             return;
 
-        const suggestion = this.suggestions[selectedIndex];
+        const suggestionItem = this.suggestions[selectedIndex];
+        const isObject = typeof suggestionItem === 'object' && suggestionItem !== null;
+        const label = isObject ? (suggestionItem.label || '') : String(suggestionItem);
         const currentValue = this.input.value;
 
         if (this.options.multiWord) {
-            this.input.value = this.replaceLastWord(currentValue, suggestion) + ' ';
+            this.input.value = this.replaceLastWord(currentValue, label) + ' ';
         } else {
-            this.input.value = suggestion;
+            this.input.value = label;
         }
 
         this.hideDropdown();
@@ -344,7 +426,8 @@ class WordSuggestion {
         this.input.dispatchEvent(new CustomEvent('wordSelected', {
             detail: {
                 originalWord: currentValue,
-                suggestedWord: suggestion,
+                suggestedWord: label,
+                item: suggestionItem,
                 fullText: this.input.value
             }
         }));
@@ -353,7 +436,7 @@ class WordSuggestion {
         this.input.focus();
 
         if (typeof this.options.onSuggestionSelected === 'function') {
-            this.options.onSuggestionSelected(suggestion, this.input);
+            this.options.onSuggestionSelected(label, this.input, suggestionItem);
         }
     }
 
@@ -361,14 +444,14 @@ class WordSuggestion {
 
     showDropdown() {
         this.dropdown.classList.add('show');
-        this.dropdown.style.display = 'block';
+        this.dropdown.setAttribute('aria-hidden', 'false');
         // Only attach click handler when dropdown is visible (performance optimization)
         document.addEventListener('click', this.boundHandleClickOutside);
     }
 
     hideDropdown() {
         this.dropdown.classList.remove('show');
-        this.dropdown.style.display = 'none';
+        this.dropdown.setAttribute('aria-hidden', 'true');
         // Remove click handler when dropdown is hidden (performance optimization)
         document.removeEventListener('click', this.boundHandleClickOutside);
     }
@@ -390,17 +473,11 @@ class WordSuggestion {
         if (this.dropdown)
             this.dropdown.remove();
 
-
-
         if (this.debounceTimer)
             clearTimeout(this.debounceTimer);
 
-
-
         if (this.abortController)
             this.abortController.abort();
-
-
 
         this.input.removeEventListener('input', this.boundHandleInput);
         this.input.removeEventListener('keydown', this.boundHandleKeydown);
@@ -440,6 +517,8 @@ if (typeof window.$ === 'undefined') {
                         debounceDelay: options.debounceDelay || 300,
                         maxSuggestions: options.maxSuggestions || 5,
                         onSelect: options.onSelect || null,
+                        allowSpaces: options.allowSpaces !== undefined ? options.allowSpaces : true,
+                        multiWord: options.multiWord !== undefined ? options.multiWord : false,
                         ...options
                     };
 
@@ -453,6 +532,7 @@ if (typeof window.$ === 'undefined') {
                         minQueryLength: config.minLength,
                         maxSuggestions: config.maxSuggestions,
                         onSuggestionSelected: config.onSelect,
+                        allowSpaces: config.allowSpaces,
                         multiWord: config.multiWord
                     });
                 });
@@ -473,6 +553,8 @@ if (typeof window.$ === 'undefined') {
                 debounceDelay: options.debounceDelay || 300,
                 maxSuggestions: options.maxSuggestions || 5,
                 onSelect: options.onSelect || null,
+                allowSpaces: options.allowSpaces !== undefined ? options.allowSpaces : true,
+                multiWord: options.multiWord !== undefined ? options.multiWord : false,
                 ...options
             };
 
@@ -485,7 +567,9 @@ if (typeof window.$ === 'undefined') {
                 debounceDelay: config.debounceDelay,
                 minQueryLength: config.minLength,
                 maxSuggestions: config.maxSuggestions,
-                onSuggestionSelected: config.onSelect
+                onSuggestionSelected: config.onSelect,
+                allowSpaces: config.allowSpaces,
+                multiWord: config.multiWord
             });
         });
     };

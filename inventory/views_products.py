@@ -55,8 +55,8 @@ def fetch_products(request):
     # Apply search filter
     filters = Q()
     if search_query:
-        term = search_query.strip()
-        for word in term.split():
+        words = [w.strip("(),[]{}") for w in search_query.split() if w.strip("(),[]{}")]
+        for word in words:
             filters &= (
                 Q(brand__icontains=word)
                 | Q(name__icontains=word)

@@ -446,7 +446,7 @@ def get_suppliers_data(request):
     # Build filters
     filters = Q()
     if search_query:
-        terms = search_query.split()
+        terms = [t.strip("(),[]{}") for t in search_query.split() if t.strip("(),[]{}")]
         for word in terms:
             filters &= (
                 # Contact information
