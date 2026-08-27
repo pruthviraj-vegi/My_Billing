@@ -1575,7 +1575,7 @@ class CartManager {
         input.addEventListener('input', function () {
             const val = this.value.trim();
             clearTimeout(debounceTimer);
-            if (!val || /^\d+$/.test(val) || val.length < 2) {
+            if (!val || val.length < 2) {
                 closeDropdown();
                 return;
             }
@@ -1617,10 +1617,13 @@ class CartManager {
             }
 
             if (e.key === 'Enter') {
-                if (activeRow) {
+                if (dropdown.style.display !== 'none' && rows.length > 0) {
                     e.preventDefault();
-                    const barcode = activeRow.dataset.barcode;
-                    selectSuggestion(barcode);
+                    const targetRow = activeRow || rows[0];
+                    if (targetRow && targetRow.dataset.barcode) {
+                        selectSuggestion(targetRow.dataset.barcode);
+                        return;
+                    }
                 }
                 closeDropdown();
             }
