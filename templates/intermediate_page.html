@@ -39,8 +39,18 @@
                 </div>
                 <h3 class="fw-bold mb-2" style="color: var(--text-primary);">Invoice Created Successfully</h3>
 
-                <!-- Status Area (spinner / success / error) -->
+                <!-- Status Area (countdown / spinner / success / error) -->
                 <div id="statusArea" class="my-3">
+                    <!-- 3-Second Countdown Notice for Direct Print -->
+                    <div id="statusCountdown" class="alert alert-info py-2 px-3 mb-2 d-none" role="alert" style="border-radius: var(--border-radius-md, 8px);">
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <i class="fas fa-keyboard text-primary fs-5"></i>
+                            <span style="color: var(--text-primary); font-size: 0.95rem;">
+                                Press <kbd class="px-2 py-1 bg-dark text-white rounded">Enter</kbd> to Print or auto-redirecting in <strong id="timerSeconds" class="badge bg-primary text-white fs-6">3</strong>s
+                            </span>
+                        </div>
+                    </div>
+
                     <div id="statusLoader" class="d-none">
                         <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem; border-width: 3px;">
                             <span class="visually-hidden">Loading...</span>
@@ -68,15 +78,15 @@
 
                 <!-- Action Buttons — Always visible -->
                 <div class="d-flex flex-column gap-2 mt-3" id="actionButtons">
-                    {% if shop_details.is_direct_print_enabled %}
+                    {% if is_direct_print_enabled %}
                     <button type="button" id="directPrintBtn" class="btn btn-primary w-100 justify-content-center">
-                        <i class="fas fa-print me-2"></i> Direct Print
+                        <i class="fas fa-print me-2"></i> Direct Print <span class="badge bg-light text-dark ms-2">Enter</span>
                     </button>
                     {% endif %}
-                    <a href="{% url 'report:invoice_pdf' invoice_no %}" target="_blank" class="btn {% if shop_details.is_direct_print_enabled %}btn-secondary{% else %}btn-primary{% endif %} w-100 justify-content-center" id="pdfPreviewBtn">
+                    <a href="{% url 'report:invoice_pdf' invoice_no %}" target="_blank" class="btn {% if is_direct_print_enabled %}btn-secondary{% else %}btn-primary{% endif %} w-100 justify-content-center" id="pdfPreviewBtn">
                         <i class="fas fa-file-pdf me-2"></i> View PDF / Print Preview
                     </a>
-                    <a href="{% url 'cart:auto_cart_create' %}" class="btn btn-outline-secondary w-100 justify-content-center">
+                    <a href="{% url 'cart:auto_cart_create' %}" class="btn btn-outline-secondary w-100 justify-content-center" id="newCartBtn">
                         <i class="fas fa-arrow-right me-2"></i> New Invoice / Go to Cart
                     </a>
                 </div>
@@ -90,41 +100,58 @@
 <script>
     $(function () {
         const invoiceNo = "{{ invoice_no }}";
-        const isDirectPrint = {% if shop_details.is_direct_print_enabled %}true{% else %}false{% endif %};
+        const isDirectPrint = {% if is_direct_print_enabled %}true{% else %}false{% endif %};
         const autoRedirectUrl = "{% url 'cart:auto_cart_create' %}";
-        const directPrintUrl = "{% url 'report:direct_print_invoice' 0 %}".replace("0", invoiceNo);
-        const pdfUrl = "{% url 'report:invoice_pdf' 0 %}".replace("0", invoiceNo);
+        const directPrintUrl = "{% url 'report:direct_print_invoice' invoice_no %}";
+        const pdfUrl = "{% url 'report:invoice_pdf' invoice_no %}";
 
         if (!invoiceNo || isNaN(parseInt(invoiceNo))) {
             window.location.href = autoRedirectUrl;
             return;
         }
 
+        let isPrinting = false;
+        let countdownTimer = null;
+        let timeLeft = 3;
+
         // --- UI Helpers ---
         function showLoader(msg) {
+            $('#statusCountdown').addClass('d-none');
             $('#statusLoader').removeClass('d-none');
             $('#statusSuccess, #statusError').addClass('d-none');
             $('#statusMessage').text(msg);
+            $('#directPrintBtn').prop('disabled', true);
         }
 
         function showSuccess() {
+            $('#statusCountdown').addClass('d-none');
             $('#statusSuccess').removeClass('d-none');
             $('#statusLoader, #statusError').addClass('d-none');
+            $('#directPrintBtn').prop('disabled', true);
         }
 
         function showError(msg) {
+            $('#statusCountdown').addClass('d-none');
             $('#statusError').removeClass('d-none');
             $('#statusLoader, #statusSuccess').addClass('d-none');
             $('#errorMessageText').text(msg);
+            $('#directPrintBtn').prop('disabled', false);
         }
 
-        function hideStatus() {
-            $('#statusLoader, #statusSuccess, #statusError').addClass('d-none');
+        function clearCountdown() {
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
         }
 
         // --- Direct Print ---
         function triggerDirectPrint() {
-            showLoader('Sending to printer ({{ shop_details.printer_ip }})...');
+            if (isPrinting) return;
+            isPrinting = true;
+            clearCountdown();
+
+            showLoader('Sending to printer ({{ shop_details.printer_ip|default:"thermal printer" }})...');
 
             $.ajax({
                 url: directPrintUrl,
@@ -139,10 +166,12 @@
                             window.location.href = autoRedirectUrl;
                         }, 1500);
                     } else {
+                        isPrinting = false;
                         showError(response.error || 'Failed to print.');
                     }
                 },
                 error: function (xhr) {
+                    isPrinting = false;
                     let msg = 'Failed to connect to printer.';
                     try {
                         const resp = JSON.parse(xhr.responseText);
@@ -154,21 +183,53 @@
         }
 
         // --- Bind Direct Print Button ---
-        $('#directPrintBtn').on('click', function () {
+        $('#directPrintBtn').on('click', function (e) {
+            e.preventDefault();
             triggerDirectPrint();
         });
 
-        // --- Auto-trigger based on default mode ---
+        // --- Prevent Auto-redirect if User Clicks Buttons ---
+        $('#pdfPreviewBtn').on('click', function () {
+            clearCountdown();
+        });
+
+        $('#newCartBtn').on('click', function () {
+            clearCountdown();
+        });
+
+        // --- Keyboard Handler (Enter to print, Esc to skip/go to cart) ---
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (isDirectPrint && !isPrinting) {
+                    triggerDirectPrint();
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                clearCountdown();
+                window.location.href = autoRedirectUrl;
+            }
+        });
+
+        // --- Auto-trigger / Countdown based on direct print mode ---
         if (isDirectPrint) {
-            // Auto-trigger direct print on page load
-            triggerDirectPrint();
+            $('#statusCountdown').removeClass('d-none');
+            $('#timerSeconds').text(timeLeft);
+
+            countdownTimer = setInterval(function () {
+                timeLeft -= 1;
+                if (timeLeft > 0) {
+                    $('#timerSeconds').text(timeLeft);
+                } else {
+                    clearCountdown();
+                    window.location.href = autoRedirectUrl;
+                }
+            }, 1000);
         } else {
-            // Auto-open PDF in new tab
-            window.open(pdfUrl, "_blank");
-            // Auto-redirect after a short delay
+            // Auto-redirect after a short delay since auto window.open is blocked by browsers
             setTimeout(function () {
                 window.location.href = autoRedirectUrl;
-            }, 1000);
+            }, 1500);
         }
     });
 </script>

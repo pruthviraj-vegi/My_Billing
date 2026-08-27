@@ -33,7 +33,7 @@ from inventory.services import InventoryService
 from invoice.choices import PaymentStatusChoices
 from invoice.form import InvoiceForm
 from invoice.models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceItem
-from setting.models import ShopDetails
+from setting.models import ShopDetails, ReportConfiguration
 
 
 logger = logging.getLogger(__name__)
@@ -638,12 +638,22 @@ class CreateInvoice(RequiredPermissionMixin, View):
                 cart.delete()
                 messages.success(request, "Invoice created successfully")
                 shop_details = ShopDetails.objects.filter(is_active=True).first()
+                report_config = ReportConfiguration.get_default_config(
+                    ReportConfiguration.ReportType.INVOICE
+                )
+                is_direct_print_enabled = bool(
+                    report_config and report_config.is_direct_print_enabled
+                ) or bool(
+                    shop_details and getattr(shop_details, "is_direct_print_enabled", False)
+                )
                 return render(
                     request,
                     "intermediate_page.html",
                     {
                         "invoice_no": invoice.id,
                         "shop_details": shop_details,
+                        "report_config": report_config,
+                        "is_direct_print_enabled": is_direct_print_enabled,
                     },
                 )
 
