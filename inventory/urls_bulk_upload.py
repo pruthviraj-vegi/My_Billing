@@ -18,6 +18,9 @@ urlpatterns = [
     path("<int:pk>/item/<int:item_id>/update/", views_bulk_upload.bulk_upload_item_update, name="item_update"),
     path("<int:pk>/item/<int:item_id>/commit/", views_bulk_upload.bulk_upload_item_commit, name="item_commit"),
     path("<int:pk>/item/<int:item_id>/delete/", views_bulk_upload.bulk_upload_item_delete, name="item_delete"),
+    path("<int:pk>/item/<int:item_id>/form/", views_bulk_upload.bulk_upload_item_form, name="item_form"),
+    path("<int:pk>/product-search/", views_bulk_upload.product_search, name="product_search"),
+    path("<int:pk>/variant-search/", views_bulk_upload.variant_search, name="variant_search"),
     path("<int:pk>/edit/", views_bulk_upload.UpdateBulkUpload.as_view(), name="edit"),
     path("<int:pk>/delete/", views_bulk_upload.DeleteBulkUpload.as_view(), name="delete"),
 ]

@@ -41,43 +41,16 @@
             <div class="col-md-6">
               <div class="form-group">
                 <label class="form-label">Link Existing Product</label>
-                <select class="form-input inp-product">
+                <select class="form-input inp-product" data-selected="{{ item.product_id|default:'' }}">
                   <option value="">-- Create New Product --</option>
-                  {% for prod in products %}
-                    <option value="{{ prod.id }}" {% if item.product_id == prod.id %}selected{% endif %}
-                      data-brand="{{ prod.brand }}"
-                      data-name="{{ prod.name }}"
-                      data-category="{{ prod.category_id|default:'' }}"
-                      data-cloth="{{ prod.cloth_type_id|default:'' }}"
-                      data-uom="{{ prod.uom_id|default:'' }}"
-                      data-hsn="{{ prod.hsn_code_id|default:'' }}">
-                      {{ prod.brand }} — {{ prod.name }} (ID: {{ prod.id }})
-                    </option>
-                  {% endfor %}
                 </select>
               </div>
             </div>
             <div class="col-md-6">
               <div class="form-group">
                 <label class="form-label">Link Existing Variant</label>
-                <select class="form-input inp-variant">
+                <select class="form-input inp-variant" data-selected="{{ item.variant_id|default:'' }}">
                   <option value="">-- Create New Variant --</option>
-                  {% for v in variants %}
-                    <option value="{{ v.id }}" {% if item.variant_id == v.id %}selected{% endif %}
-                      data-product="{{ v.product_id }}"
-                      data-brand="{{ v.product.brand }}"
-                      data-name="{{ v.product.name }}"
-                      data-category="{{ v.product.category_id|default:'' }}"
-                      data-cloth="{{ v.product.cloth_type_id|default:'' }}"
-                      data-uom="{{ v.product.uom_id|default:'' }}"
-                      data-hsn="{{ v.product.hsn_code_id|default:'' }}"
-                      data-size="{{ v.size_id|default:'' }}"
-                      data-color="{{ v.color_id|default:'' }}"
-                      data-purch="{{ v.purchase_price|default:'0' }}"
-                      data-mrp="{{ v.mrp|default:'0' }}">
-                      {{ v.product.brand }} — {{ v.product.name }} [{{ v.size.name|default:'No Size' }}/{{ v.color.name|default:'No Color' }}] ({{ v.barcode }})
-                    </option>
-                  {% endfor %}
                 </select>
               </div>
             </div>
