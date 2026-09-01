@@ -61,7 +61,7 @@ def generate_invoice_pdf(invoice, request):
         .prefetch_related("return_items__return_invoice")
     )
 
-    shop_details = ShopDetails.objects.filter(is_active=True).first()
+    shop_details = ShopDetails.get_active()
     report_config = ReportConfiguration.get_default_config(
         ReportConfiguration.ReportType.INVOICE
     )

@@ -74,7 +74,7 @@ def _render_pdf_html(template_name, context, report_type="INVOICE"):
     Returns:
         Rendered HTML string.
     """
-    context["shop_details"] = ShopDetails.objects.filter(is_active=True).first()
+    context["shop_details"] = ShopDetails.get_active()
     context["report_config"] = ReportConfiguration.get_default_config(report_type)
 
     html = get_template(f"report/{template_name}").render(context)
@@ -166,7 +166,7 @@ def create_invoice(request, pk):
     )
 
     # Get shop details and report configuration
-    shop_details = ShopDetails.objects.filter(is_active=True).first()
+    shop_details = ShopDetails.get_active()
     report_config = ReportConfiguration.get_default_config(
         ReportConfiguration.ReportType.INVOICE
     )
@@ -224,7 +224,7 @@ def estimate_invoice(request, pk):
     values = CartItem.objects.filter(cart__id=pk).select_related(
         "product_variant__product"
     )
-    shop_details = ShopDetails.objects.filter(is_active=True).first()
+    shop_details = ShopDetails.get_active()
     report_config = ReportConfiguration.get_default_config(
         ReportConfiguration.ReportType.ESTIMATE
     )
@@ -241,7 +241,7 @@ def generate_barcode(request, pk):
     """Generate and render a barcode page for the given product variant."""
     template = "report/barcode.html"
     variant = ProductVariant.objects.get(id=pk)
-    shop_details = ShopDetails.objects.filter(is_active=True).first()
+    shop_details = ShopDetails.get_active()
     code128 = Code128(variant.barcode, writer=SVGWriter())
     buffer = io.BytesIO()
     code128.write(buffer)
@@ -565,7 +565,7 @@ def direct_print_invoice(request, pk):
     invoice = get_object_or_404(Invoice, id=pk)
 
     # Get active shop details and configuration
-    shop_details = ShopDetails.objects.filter(is_active=True).first()
+    shop_details = ShopDetails.get_active()
     report_config = ReportConfiguration.get_default_config(
         ReportConfiguration.ReportType.INVOICE
     )
@@ -620,7 +620,7 @@ def direct_print_estimate(request, pk):
     cart = get_object_or_404(Cart, id=pk)
     
     # Get active shop details and configuration
-    shop_details = ShopDetails.objects.filter(is_active=True).first()
+    shop_details = ShopDetails.get_active()
     report_config = ReportConfiguration.get_default_config(
         ReportConfiguration.ReportType.ESTIMATE
     )

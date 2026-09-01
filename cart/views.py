@@ -65,7 +65,7 @@ class CartMainPageView(RequiredPermissionMixin, TemplateView):
             .prefetch_related("cart_items__product_variant__product")
             .order_by("-created_at")
         )
-        context["shop_details"] = ShopDetails.objects.filter(is_active=True).first()
+        context["shop_details"] = ShopDetails.get_active()
         return context
 
 
@@ -82,7 +82,7 @@ def get_cart_data(request, pk):
         carts = Cart.objects.filter(status="OPEN", created_by=request.user).order_by(
             "-created_at"
         )
-        shop_details = ShopDetails.objects.filter(is_active=True).first()
+        shop_details = ShopDetails.get_active()
 
         context = {
             "cart_list": summary["cart_items"],

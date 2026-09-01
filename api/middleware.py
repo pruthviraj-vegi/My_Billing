@@ -3,6 +3,7 @@ import time
 from django.http import JsonResponse
 from django.utils import timezone
 
+from base.decorators import get_client_ip
 from .models import APIToken, APIRequestLog
 
 
@@ -29,7 +30,7 @@ class APITokenMiddleware:
                 user=None,
                 view_name="api_bearer_auth",
                 required_roles="bearer_auth_header",
-                ip_address=self._get_client_ip(request),
+                ip_address=get_client_ip(request),
                 url_path=request.path,
             )
             return JsonResponse({"error": "Authorization header missing or invalid"}, status=403)
@@ -39,7 +40,7 @@ class APITokenMiddleware:
 
         if error:
             elapsed_ms = int((time.time() - start_time) * 1000)
-            ip = self._get_client_ip(request)
+            ip = get_client_ip(request)
             if token_instance:
                 APIRequestLog.objects.create(
                     token=token_instance,
@@ -65,7 +66,7 @@ class APITokenMiddleware:
         response = self.get_response(request)
 
         elapsed_ms = int((time.time() - start_time) * 1000)
-        ip = self._get_client_ip(request)
+        ip = get_client_ip(request)
 
         APIRequestLog.objects.create(
             token=token_instance,
@@ -102,14 +103,8 @@ class APITokenMiddleware:
         if token.expires_at < timezone.now():
             return token, "Token has expired"
 
-        ip = self._get_client_ip(request)
+        ip = get_client_ip(request)
         if token.allowed_ips and ip not in token.allowed_ips:
             return token, "IP address not allowed"
 
         return token, None
-
-    def _get_client_ip(self, request):
-        forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR")

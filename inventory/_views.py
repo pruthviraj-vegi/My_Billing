@@ -49,14 +49,6 @@ logger = logging.getLogger(__name__)
 OBJECTS_PER_PAGE = 20
 
 
-# Helper function for common operations
-def create_ajax_response(success=True, message="", data=None):
-    """Helper function to create standardized AJAX responses"""
-    response = {"success": success, "message": message}
-    if data:
-        response.update(data)
-    return JsonResponse(response)
-
 
 @required_permission("inventory.view_clothtype")
 def cloth_home(request):

@@ -5,6 +5,7 @@ Settings and configuration models for the application.
 import logging
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import models
 
 from base.manager import phone_regex
@@ -82,6 +83,17 @@ class ShopDetails(models.Model):
     def __str__(self):
         return self.shop_name
 
+    CACHE_KEY = "active_shop_details"
+
+    @classmethod
+    def get_active(cls):
+        """Return the active shop details, caching the result for 24 hours."""
+        return cache.get_or_set(
+            cls.CACHE_KEY,
+            lambda: cls.objects.filter(is_active=True).first(),
+            timeout=86400,
+        )
+
     def save(self, *args, **kwargs):
         """Override save to clean and format data."""
         self.shop_name = StringProcessor(self.shop_name).toTitle()
@@ -96,6 +108,11 @@ class ShopDetails(models.Model):
         self.gst_no = StringProcessor(self.gst_no).toUppercase()
 
         super().save(*args, **kwargs)
+        cache.delete(self.CACHE_KEY)
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        cache.delete(self.CACHE_KEY)
 
     @property
     def full_address(self):

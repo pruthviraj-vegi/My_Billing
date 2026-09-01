@@ -637,7 +637,7 @@ class CreateInvoice(RequiredPermissionMixin, View):
 
                 cart.delete()
                 messages.success(request, "Invoice created successfully")
-                shop_details = ShopDetails.objects.filter(is_active=True).first()
+                shop_details = ShopDetails.get_active()
                 report_config = ReportConfiguration.get_default_config(
                     ReportConfiguration.ReportType.INVOICE
                 )
@@ -702,7 +702,7 @@ class InvoiceDetail(RequiredPermissionMixin, View):
         adjusted_invoice_total = invoice.total_payable - total_return_amount
 
         # Get active shop details for direct printing status
-        shop_details = ShopDetails.objects.filter(is_active=True).first()
+        shop_details = ShopDetails.get_active()
 
         context = {
             "invoice": invoice,

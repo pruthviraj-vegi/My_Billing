@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.db import models
 
 User = settings.AUTH_USER_MODEL
@@ -80,8 +81,15 @@ class Notification(models.Model):
 
     @classmethod
     def unread_count(cls, user):
-        """Get the count of unread notifications for a user."""
-        return cls.objects.filter(user=user, is_read=False).count()
+        """Get the count of unread notifications for a user, cached for 5 minutes."""
+        if not user or not user.is_authenticated:
+            return 0
+        cache_key = f"user_{user.id}_unread_notifs"
+        return cache.get_or_set(
+            cache_key,
+            lambda: cls.objects.filter(user=user, is_read=False).count(),
+            timeout=300,
+        )
 
     @classmethod
     def cleanup_old(cls, days=30):

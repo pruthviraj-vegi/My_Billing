@@ -29,37 +29,6 @@ NOTIFICATION_REGISTRY = {
         "color": "var(--danger)",
         "label": "PDF",
     },
-    # ── Reserved types (no producer yet — wire up as needed) ─
-    "low_stock": {
-        "icon": "fa-box-open",
-        "color": "var(--warning)",
-        "label": "Inventory",
-    },
-    "payment_due": {
-        "icon": "fa-credit-card",
-        "color": "var(--warning)",
-        "label": "Payment",
-    },
-    "payment_received": {
-        "icon": "fa-rupee-sign",
-        "color": "var(--success)",
-        "label": "Payment",
-    },
-    "new_order": {
-        "icon": "fa-shopping-cart",
-        "color": "var(--primary)",
-        "label": "Order",
-    },
-    "invoice_created": {
-        "icon": "fa-file-invoice-dollar",
-        "color": "var(--primary)",
-        "label": "Invoice",
-    },
-    "login_alert": {
-        "icon": "fa-shield-alt",
-        "color": "var(--danger)",
-        "label": "Security",
-    },
     # ── Generic fallback ─────────────────────────────────────
     "info": {
         "icon": "fa-info-circle",
