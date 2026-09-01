@@ -93,6 +93,8 @@ class CartManager {
             body.addEventListener('click', e => this.onTableClick(e));
             body.addEventListener('keydown', e => this.onInputKey(e));
             body.addEventListener('input', e => this.onRealTimeUpdate(e));
+            body.addEventListener('focusin', e => this.onInputFocusIn(e));
+            body.addEventListener('focusout', e => this.onRowFocusOut(e));
         }
 
         if (archiveBtn) {
@@ -653,6 +655,60 @@ class CartManager {
         }
     }
 
+    onInputFocusIn(e) {
+        const el = e.target;
+        if (!el.matches('.quantity-input, .price-input')) return;
+
+        const row = el.closest('tr');
+        if (!row) return;
+
+        const qtyInput = row.querySelector('.quantity-input');
+        const priceInput = row.querySelector('.price-input');
+
+        if (row.dataset.savedQty === undefined && qtyInput) {
+            row.dataset.savedQty = qtyInput.value;
+        }
+        if (row.dataset.savedPrice === undefined && priceInput) {
+            row.dataset.savedPrice = priceInput.value;
+        }
+    }
+
+    onRowFocusOut(e) {
+        const el = e.target;
+        if (!el.matches('.quantity-input, .price-input')) return;
+
+        const row = el.closest('tr');
+        if (!row) return;
+
+        if (e.relatedTarget && e.relatedTarget.closest('tr') === row && e.relatedTarget.matches('.quantity-input, .price-input')) {
+            return;
+        }
+
+        const qtyInput = row.querySelector('.quantity-input');
+        const priceInput = row.querySelector('.price-input');
+        if (!qtyInput || !priceInput) return;
+        if (qtyInput.disabled || priceInput.disabled) return;
+
+        if (row.dataset.savedQty === undefined) {
+            row.dataset.savedQty = qtyInput.value;
+        }
+        if (row.dataset.savedPrice === undefined) {
+            row.dataset.savedPrice = priceInput.value;
+        }
+
+        const currentQty = parseFloat(qtyInput.value);
+        const currentPrice = parseFloat(priceInput.value);
+        const savedQty = parseFloat(row.dataset.savedQty);
+        const savedPrice = parseFloat(row.dataset.savedPrice);
+
+        if (isNaN(currentQty) || isNaN(currentPrice) || currentQty !== savedQty || currentPrice !== savedPrice) {
+            const itemId = qtyInput.dataset.itemId || priceInput.dataset.itemId;
+            if (itemId) {
+                this.updateItem(itemId);
+            }
+        }
+    }
+
     onTableClick(e) {
         const bubbleChip = e.target.closest('.suggestion-bubble');
         if (bubbleChip) {
@@ -769,6 +825,17 @@ class CartManager {
             return this.notify('Please enter valid quantity and price (quantity > 0, price ≥ 0)', 'error');
         }
 
+        // Skip API call if values have not changed
+        if (row.dataset.savedQty === undefined) row.dataset.savedQty = qtyInput.value;
+        if (row.dataset.savedPrice === undefined) row.dataset.savedPrice = priceInput.value;
+
+        const savedQty = parseFloat(row.dataset.savedQty);
+        const savedPrice = parseFloat(row.dataset.savedPrice);
+
+        if (!isNaN(savedQty) && !isNaN(savedPrice) && qty === savedQty && price === savedPrice) {
+            return;
+        }
+
         // Disable inputs during update to prevent race conditions
         qtyInput.disabled = true;
         priceInput.disabled = true;
@@ -807,6 +874,10 @@ class CartManager {
             }
 
             const data = await this.api(this.urls.manageItem.replace('0', id), 'PUT', { quantity: qty, price });
+
+            // Update stored saved values
+            row.dataset.savedQty = data.cart_item ? data.cart_item.quantity : qty;
+            row.dataset.savedPrice = data.cart_item ? data.cart_item.price : price;
 
             // Update with server response data
             if (data.cart_item) {
@@ -928,6 +999,9 @@ class CartManager {
         if (priceInput) priceInput.value = item.price;
         if (amountCell) amountCell.textContent = this.format(item.amount);
 
+        row.dataset.savedQty = item.quantity;
+        row.dataset.savedPrice = item.price;
+
         if (discountCell) {
             if (item.discount_percentage !== undefined) {
                 discountCell.textContent = `${item.discount_percentage}%`;
@@ -994,6 +1068,8 @@ class CartManager {
 
         const row = document.createElement('tr');
         row.id = `cart-item-${id}`;
+        row.dataset.savedQty = quantity;
+        row.dataset.savedPrice = price;
         row.innerHTML = `
             <td class="mobile-hide">
                 <span data-copy="${safeBarcode}">${safeBarcode}</span>
@@ -1030,12 +1106,8 @@ class CartManager {
             <td class="amount-cell">${this.format(amount)}</td>
             <td class="text-center">
                 <div class="action-buttons d-inline-flex flex-nowrap align-items-center justify-content-center gap-1">
-                    <button type="button" class="btn btn-primary update-item-btn" data-item-id="${id}" 
-                            title="Save changes" aria-label="Save item changes">
-                        <i class="fas fa-save" aria-hidden="true"></i>
-                    </button>
-                    <button type="button" class="btn btn-danger delete-item-btn" data-item-id="${id}" 
-                            title="Remove item" aria-label="Remove item from cart">
+                    <button type="button" class="btn btn-danger delete-item-btn" data-item-id="${id}"
+                            tabindex="-1" title="Remove item" aria-label="Remove item from cart">
                         <i class="fas fa-trash" aria-hidden="true"></i>
                     </button>
                 </div>
@@ -1233,9 +1305,11 @@ class CartManager {
 
         if (qtyInput && originalValues.quantity) {
             qtyInput.value = originalValues.quantity;
+            row.dataset.savedQty = originalValues.quantity;
         }
         if (priceInput && originalValues.price) {
             priceInput.value = originalValues.price;
+            row.dataset.savedPrice = originalValues.price;
         }
         if (amountCell && originalValues.amount) {
             amountCell.textContent = originalValues.amount;
