@@ -150,6 +150,22 @@ class BarcodeSuggestionsTests(TestCase):
         self.assertTrue(len(data) > 0)
         self.assertEqual(data[0]["barcode"], "ADI-TSHIRT-01")
 
+    def test_suggestions_exact_barcode_priority(self):
+        # Create a second variant whose name contains the search string
+        prod2 = create_test_product(brand="Brand", name="Item 10001 extra")
+        create_test_variant(product=prod2, barcode="999999", user=self.user)
+
+        # Create exact barcode variant
+        prod1 = create_test_product(brand="Brand", name="Other Item")
+        create_test_variant(product=prod1, barcode="10001", user=self.user)
+
+        response = self.client.get("/cart/barcode-suggestions/?search=10001")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(len(data) > 0)
+        # Exact barcode match "10001" must be ranked first
+        self.assertEqual(data[0]["barcode"], "10001")
+
     def test_suggestions_short_query_returns_empty(self):
         response = self.client.get("/cart/barcode-suggestions/?search=a")
         self.assertEqual(response.status_code, 200)

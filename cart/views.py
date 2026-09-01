@@ -11,7 +11,7 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
+from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -214,17 +214,36 @@ def barcode_suggestions(request):
     Return JSON list of product variants matching the query string.
     Used for live barcode suggestion dropdown in cart page.
     Supports exact/substring matching and fuzzy typo tolerance for misspelled words.
+    Prioritizes exact and prefix barcode matches at the top.
     """
     search = request.GET.get("search", "").strip()
     if len(search) < 2:
         return JsonResponse([], safe=False)
 
-    # 1. Exact/substring matches via get_variants_data
-    variants = list(get_variants_data(request)[:10])
-    seen_ids = {v.id for v in variants}
+    search_lower = search.lower()
 
-    # 2. Fuzzy weighted search fallback/supplement for spelling mistakes
-    if len(variants) < 10:
+    # 1. Query exact and prefix barcode matches first to guarantee they are included
+    barcode_matches = list(
+        ProductVariant.objects.filter(
+            Q(barcode__iexact=search) | Q(barcode__istartswith=search),
+            is_deleted=False,
+            status="ACTIVE",
+        ).select_related("product", "product__category", "size", "color")[:10]
+    )
+
+    # 2. Substring matches via get_variants_data
+    general_variants = list(get_variants_data(request)[:15])
+
+    seen_ids = set()
+    combined_variants = []
+
+    for v in barcode_matches + general_variants:
+        if v.id not in seen_ids:
+            seen_ids.add(v.id)
+            combined_variants.append(v)
+
+    # 3. Fuzzy weighted search fallback/supplement if fewer than 10
+    if len(combined_variants) < 10:
         fuzzy_results = search_variants_weighted(search, limit=10, min_score=45.0)
         fuzzy_ids = [r["id"] for r in fuzzy_results if r.get("id") not in seen_ids]
         if fuzzy_ids:
@@ -237,12 +256,35 @@ def barcode_suggestions(request):
                 ).select_related("product", "product__category", "size", "color")
             }
             for fid in fuzzy_ids:
-                if fid in fuzzy_variants_dict and len(variants) < 10:
-                    variants.append(fuzzy_variants_dict[fid])
+                if fid in fuzzy_variants_dict and len(combined_variants) < 10:
+                    combined_variants.append(fuzzy_variants_dict[fid])
                     seen_ids.add(fid)
 
-    if not variants:
+    if not combined_variants:
         return JsonResponse([], safe=False)
+
+    # 4. Sort combined variants by relevance: exact barcode match > prefix barcode > substring barcode > exact name/brand > prefix name/brand > rest
+    def relevance_key(v):
+        bc = (v.barcode or "").lower()
+        p_name = (v.product.name or "").lower() if v.product else ""
+        p_brand = (v.product.brand or "").lower() if v.product else ""
+
+        if bc == search_lower:
+            return (0, 0, bc)
+        if bc.startswith(search_lower):
+            return (1, len(bc), bc)
+        if search_lower in bc:
+            return (2, len(bc), bc)
+        if p_name == search_lower or p_brand == search_lower:
+            return (3, 0, p_name)
+        if p_name.startswith(search_lower) or p_brand.startswith(search_lower):
+            return (4, len(p_name), p_name)
+        if search_lower in p_name or search_lower in p_brand:
+            return (5, len(p_name), p_name)
+        return (6, 0, "")
+
+    combined_variants.sort(key=relevance_key)
+    variants = combined_variants[:10]
 
     data = [
         {

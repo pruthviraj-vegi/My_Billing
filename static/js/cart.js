@@ -569,6 +569,10 @@ class CartManager {
     async onBarcodeSubmit(e) {
         e.preventDefault();
 
+        if (typeof this.closeBarcodeSuggestions === 'function') {
+            this.closeBarcodeSuggestions();
+        }
+
         // Prevent rapid successive scans (race condition fix)
         if (this.isProcessingBarcode) {
             return;
@@ -1550,11 +1554,14 @@ class CartManager {
         }
 
         function closeDropdown() {
+            clearTimeout(debounceTimer);
             dropdown.style.display = 'none';
             dropdown.innerHTML = '';
             backdrop.classList.remove('active');
             if (searchSection) searchSection.classList.remove('suggestion-elevated');
         }
+
+        self.closeBarcodeSuggestions = closeDropdown;
 
         function clearActiveHighlight() {
             dropdown.querySelectorAll('.suggestion-active').forEach(el => {
@@ -1563,12 +1570,23 @@ class CartManager {
         }
 
         function fetchSuggestions(query) {
+            const currentVal = input.value.trim();
+            if (!currentVal || currentVal.length < 2 || currentVal !== query) {
+                closeDropdown();
+                return;
+            }
             const url = `${self.urls.barcodeSuggestions}?search=${encodeURIComponent(query)}`;
             fetch(url, {
                 headers: { 'X-CSRFToken': self.csrf }
             })
                 .then(r => r.json())
-                .then(renderDropdown)
+                .then(items => {
+                    if (input.value.trim() !== query) {
+                        closeDropdown();
+                        return;
+                    }
+                    renderDropdown(items);
+                })
                 .catch(() => closeDropdown());
         }
 
@@ -1580,6 +1598,12 @@ class CartManager {
                 return;
             }
             debounceTimer = setTimeout(() => fetchSuggestions(val), CartManager.DEBOUNCE_DELAY);
+        });
+
+        input.addEventListener('focus', function () {
+            if (!this.value.trim()) {
+                closeDropdown();
+            }
         });
 
         input.addEventListener('blur', function () {
@@ -1618,10 +1642,20 @@ class CartManager {
 
             if (e.key === 'Enter') {
                 if (dropdown.style.display !== 'none' && rows.length > 0) {
-                    e.preventDefault();
-                    const targetRow = activeRow || rows[0];
-                    if (targetRow && targetRow.dataset.barcode) {
-                        selectSuggestion(targetRow.dataset.barcode);
+                    const inputVal = input.value.trim().toLowerCase();
+
+                    // If user explicitly navigated to a row using Arrow keys
+                    if (activeRow && activeRow.dataset.barcode) {
+                        e.preventDefault();
+                        selectSuggestion(activeRow.dataset.barcode);
+                        return;
+                    }
+
+                    // If a row in the dropdown matches the typed/scanned barcode exactly
+                    const exactRow = rows.find(r => r.dataset.barcode && r.dataset.barcode.toLowerCase() === inputVal);
+                    if (exactRow) {
+                        e.preventDefault();
+                        selectSuggestion(exactRow.dataset.barcode);
                         return;
                     }
                 }
