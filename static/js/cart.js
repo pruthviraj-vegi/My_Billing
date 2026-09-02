@@ -92,7 +92,6 @@ class CartManager {
         if (body) {
             body.addEventListener('click', e => this.onTableClick(e));
             body.addEventListener('keydown', e => this.onInputKey(e));
-            body.addEventListener('input', e => this.onRealTimeUpdate(e));
             body.addEventListener('focusin', e => this.onInputFocusIn(e));
             body.addEventListener('focusout', e => this.onRowFocusOut(e));
         }
@@ -720,20 +719,9 @@ class CartManager {
             if (!row) return;
 
             const priceInput = row.querySelector('.price-input');
-            const qtyInput = row.querySelector('.quantity-input');
-            const amountCell = row.querySelector('.amount-cell');
-            const discountCell = row.querySelector('.discount-cell');
-            const priceToggleCell = row.querySelector('.price-toggle-cell');
-
             if (priceInput) {
                 const numericPrice = parseFloat(targetPrice) || 0;
                 priceInput.value = numericPrice;
-
-                // Update amount & discount visually
-                const qty = parseFloat(qtyInput?.value) || 0;
-                const sell = parseFloat(priceToggleCell?.dataset.sellingPrice) || 0;
-                if (amountCell) amountCell.textContent = this.format(qty * numericPrice);
-                if (discountCell) discountCell.textContent = `${this.calcDiscount(sell, numericPrice).toFixed(2)}%`;
 
                 // Hide floating wrapper if present
                 const bubble = bubbleChip.closest('.price-suggestions-wrapper');
@@ -761,43 +749,9 @@ class CartManager {
         }
     }
 
-    /**
-     * Handle real-time updates to quantity/price inputs
-     * Row amount & discount update visually while typing; side totals calculate after blur/submit.
-     * @param {Event} e - Input event
-     */
-    onRealTimeUpdate(e) {
-        const el = e.target;
-        if (!el.matches('.quantity-input, .price-input')) return;
-
-        const row = el.closest('tr');
-        if (!row) return;
-
-        const qtyInput = row.querySelector('.quantity-input');
-        const priceInput = row.querySelector('.price-input');
-        const discountCell = row.querySelector('.discount-cell');
-        const amountCell = row.querySelector('.amount-cell');
-        const priceToggleCell = row.querySelector('.price-toggle-cell');
-
-        if (!qtyInput || !priceInput || !discountCell || !amountCell) return;
-
-        const qty = parseFloat(qtyInput.value) || 0;
-        const price = parseFloat(priceInput.value) || 0;
-        const sell = parseFloat(priceToggleCell?.dataset.sellingPrice) || 0;
-
-        // Calculate and update amount for the current row
-        const newAmount = qty * price;
-        const roundedAmount = Math.round(newAmount * 100) / 100;
-        amountCell.textContent = this.format(roundedAmount);
-
-        // Calculate and update discount for the current row
-        const discount = this.calcDiscount(sell, price);
-        discountCell.textContent = `${discount.toFixed(2)}%`;
-    }
-
     /*** ───────── CRUD OPS ───────── ***/
     /**
-     * Update cart item with optimistic UI updates and rollback on failure
+     * Update cart item after successful API response
      * @param {string|number} id - Cart item ID
      */
     async updateItem(id) {
@@ -810,6 +764,7 @@ class CartManager {
         const priceInput = row.querySelector('.price-input');
         const amountCell = row.querySelector('.amount-cell');
         const discountCell = row.querySelector('.discount-cell');
+        const priceToggleCell = row.querySelector('.price-toggle-cell');
 
         if (!qtyInput || !priceInput || !amountCell) {
             return this.notify('Invalid form inputs', 'error');
@@ -819,11 +774,13 @@ class CartManager {
         const price = parseFloat(priceInput.value);
 
         // Enhanced validation
-        if (!qty || !price || qty <= 0 || price < 0) {
+        if (isNaN(qty) || isNaN(price) || qty <= 0 || price < 0) {
+            if (row.dataset.savedQty !== undefined) qtyInput.value = row.dataset.savedQty;
+            if (row.dataset.savedPrice !== undefined) priceInput.value = row.dataset.savedPrice;
             return this.notify('Please enter valid quantity and price (quantity > 0, price ≥ 0)', 'error');
         }
 
-        // Skip API call if values have not changed
+        // Skip API call if values have not changed from saved state
         if (row.dataset.savedQty === undefined) row.dataset.savedQty = qtyInput.value;
         if (row.dataset.savedPrice === undefined) row.dataset.savedPrice = priceInput.value;
 
@@ -834,18 +791,9 @@ class CartManager {
             return;
         }
 
-        // Disable inputs during update to prevent race conditions
+        // Disable inputs during update to prevent duplicate submissions
         qtyInput.disabled = true;
         priceInput.disabled = true;
-
-        // Store original values for rollback
-        const originalValues = {
-            quantity: qtyInput.value,
-            price: priceInput.value,
-            amount: amountCell.textContent,
-            discount: discountCell ? discountCell.textContent : '0%',
-            totalAmount: this.dom.totalAmount.textContent,
-        };
 
         const btn = row.querySelector('.update-item-btn');
         if (btn) {
@@ -853,45 +801,37 @@ class CartManager {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         }
 
-
         try {
-            // Optimistic UI update
-            const newAmount = qty * price;
-            const roundedAmount = Math.round(newAmount * 100) / 100;
-            qtyInput.value = qty;
-            priceInput.value = price;
-            amountCell.textContent = this.format(roundedAmount);
-
-            // Calculate and update discount optimistically
-            if (discountCell) {
-                const sellingPrice = parseFloat(row.querySelector('.price-toggle-cell')?.dataset.sellingPrice) || 0;
-                if (sellingPrice > 0) {
-                    const discount = this.calcDiscount(sellingPrice, price);
-                    discountCell.textContent = `${discount.toFixed(2)}%`;
-                }
-            }
-
             const data = await this.api(this.urls.manageItem.replace('0', id), 'PUT', { quantity: qty, price });
 
-            // Update stored saved values
-            row.dataset.savedQty = data.cart_item ? data.cart_item.quantity : qty;
-            row.dataset.savedPrice = data.cart_item ? data.cart_item.price : price;
+            // Update UI ONLY after verified successful API response
+            if (data.status === 'success' && data.cart_item) {
+                // Update inputs and dataset from response
+                qtyInput.value = data.cart_item.quantity;
+                priceInput.value = data.cart_item.price;
+                row.dataset.savedQty = data.cart_item.quantity;
+                row.dataset.savedPrice = data.cart_item.price;
 
-            // Update with server response data
-            if (data.cart_item) {
                 if (amountCell) {
                     amountCell.textContent = this.format(data.cart_item.amount);
                 }
 
-                // Update discount percentage if available
-                if (data.cart_item.discount_percentage !== undefined && discountCell) {
-                    discountCell.textContent = `${data.cart_item.discount_percentage}%`;
+                // Update discount percentage
+                if (discountCell) {
+                    if (data.cart_item.discount_percentage !== undefined) {
+                        discountCell.textContent = `${data.cart_item.discount_percentage}%`;
+                    } else {
+                        const sellingPrice = parseFloat(priceToggleCell?.dataset.sellingPrice) || 0;
+                        const discount = this.calcDiscount(sellingPrice, data.cart_item.price);
+                        discountCell.textContent = `${discount.toFixed(2)}%`;
+                    }
                 }
-                if (data.remaining_stock !== undefined) {
+
+                if (data.remaining_stock !== undefined && this.dom.remainingStock) {
                     this.dom.remainingStock.textContent = this.format(data.remaining_stock);
                 }
 
-                // Update totals
+                // Update totals and recalculate sidebar
                 this.updateTotals(data.cart_total);
 
                 // Update categories
@@ -900,18 +840,21 @@ class CartManager {
                 }
 
                 this.notify('Item updated successfully', 'success');
+            } else {
+                throw new Error(data.message || 'Failed to update item');
             }
         } catch (err) {
             if (err.message !== 'Request cancelled') {
                 console.error('[CartManager] Error updating item:', err);
                 this.notify(this.parseErrorMessage(err, 'update'), 'error');
 
-                // Rollback on failure
-                qtyInput.value = originalValues.quantity;
-                priceInput.value = originalValues.price;
-                amountCell.textContent = originalValues.amount;
-                if (discountCell) discountCell.textContent = originalValues.discount;
-                if (this.dom.totalAmount) this.dom.totalAmount.textContent = originalValues.totalAmount;
+                // Revert inputs to last saved values on failure
+                if (row.dataset.savedQty !== undefined) {
+                    qtyInput.value = row.dataset.savedQty;
+                }
+                if (row.dataset.savedPrice !== undefined) {
+                    priceInput.value = row.dataset.savedPrice;
+                }
             }
         } finally {
             qtyInput.disabled = false;
@@ -1127,28 +1070,17 @@ class CartManager {
      * @param {number} total - New total amount
      */
     updateTotals(total) {
-        if (typeof updateCount === 'function') {
-            updateCount('totalAmount', total);
-            updateCount('finalAmount', total);
-        } else {
-            if (this.dom.totalAmount) {
-                this.dom.totalAmount.textContent = this.format(total);
-            }
-            const finalAmountEl = document.getElementById('finalAmount');
-            if (finalAmountEl) {
-                finalAmountEl.textContent = this.format(total);
-            }
+        if (this.dom.totalAmount) {
+            const num = parseFloat(total) || 0;
+            this.dom.totalAmount.setAttribute('data-count', num.toFixed(2));
+            this.dom.totalAmount.textContent = this.format(num);
         }
-        const cartButtonTotal = document.getElementById(`cart-button-total-${this.cartId}`);
-        if (cartButtonTotal) {
-            cartButtonTotal.textContent = this.format(total);
-        }
-        // Recalculate derived totals (quantity, selling price)
+        // Recalculate derived totals (quantity, selling price, actual total, discount, profit, net amount)
         this.recalculateTotals();
     }
 
     /**
-     * Unified method to recalculate all totals (quantity and selling price)
+     * Unified method to recalculate all totals (quantity, selling price, actual total, and final amount)
      * More efficient than separate methods - single DOM scan
      */
     recalculateTotals() {
@@ -1157,6 +1089,10 @@ class CartManager {
         const rows = this.dom.body.querySelectorAll('tr');
 
         if (rows.length === 0) {
+            if (this.dom.totalAmount) {
+                this.dom.totalAmount.setAttribute('data-count', '0.00');
+                this.dom.totalAmount.textContent = this.format(0);
+            }
             if (typeof updateAllCounters === 'function') {
                 updateAllCounters({
                     totalItems: 0,
@@ -1169,8 +1105,6 @@ class CartManager {
                 if (this.dom.totalItems) this.dom.totalItems.textContent = '0';
                 if (this.dom.totalSelling) this.dom.totalSelling.textContent = this.format(0);
                 if (this.dom.totalAmount) this.dom.totalAmount.textContent = this.format(0);
-                const finalAmountEl = document.getElementById('finalAmount');
-                if (finalAmountEl) finalAmountEl.textContent = this.format(0);
                 const discountedAmountEl = document.getElementById('discountedAmount');
                 if (discountedAmountEl) discountedAmountEl.textContent = this.format(0);
                 const estimatedProfitEl = document.getElementById('estimatedProfit');
@@ -1180,6 +1114,8 @@ class CartManager {
             }
             const cartButtonTotal = document.getElementById(`cart-button-total-${this.cartId}`);
             if (cartButtonTotal) cartButtonTotal.textContent = this.format(0);
+            const cartListTotal = document.getElementById(`cart-list-total-${this.cartId}`);
+            if (cartListTotal) cartListTotal.textContent = this.format(0);
             return;
         }
 
@@ -1197,33 +1133,37 @@ class CartManager {
             };
         });
 
-        // Then compute
+        // Then compute from present/updated row values
         let totalQty = 0;
         let totalSelling = 0;
+        let totalActualAmount = 0;
         let totalProfit = 0;
 
         rowData.forEach(d => {
             if (!d) return;
             if (!isNaN(d.qty)) totalQty += d.qty;
             if (!isNaN(d.qty) && !isNaN(d.sell) && d.qty > 0 && d.sell > 0) totalSelling += d.qty * d.sell;
+            if (!isNaN(d.qty) && !isNaN(d.actualPrice) && d.qty > 0) totalActualAmount += d.qty * d.actualPrice;
             if (!isNaN(d.qty) && !isNaN(d.purchase) && d.qty > 0) totalProfit += d.qty * (d.actualPrice - d.purchase);
         });
 
         // Round and format
         const roundedQty = Math.round(totalQty * 100) / 100;
         const roundedSelling = Math.round(totalSelling * 100) / 100;
+        const roundedActual = Math.round(totalActualAmount * 100) / 100;
         const roundedProfit = Math.round(totalProfit * 100) / 100;
 
-        // Calculate derived values: discountedAmount and netAmount
-        const totalAmountEl = this.dom.totalAmount;
-        const totalAmountStr = totalAmountEl ? (totalAmountEl.getAttribute('data-count') || totalAmountEl.textContent.replace(/[^\d.-]/g, '')) : '0';
-        const totalAmount = parseFloat(totalAmountStr) || 0;
+        // Update hidden totalAmount element tracking
+        if (this.dom.totalAmount) {
+            this.dom.totalAmount.setAttribute('data-count', roundedActual.toFixed(2));
+            this.dom.totalAmount.textContent = this.format(roundedActual);
+        }
 
         const advancePaymentEl = document.getElementById('advancePayment');
         const advance = advancePaymentEl ? parseFloat(advancePaymentEl.dataset.advance || '0') || 0 : 0;
 
-        const discount = Math.max(0, roundedSelling - totalAmount);
-        const netAmount = Math.max(0, totalAmount - advance);
+        const discount = Math.max(0, roundedSelling - roundedActual);
+        const netAmount = Math.max(0, roundedActual - advance);
 
         if (typeof updateCount === 'function') {
             updateCount('totalItems', roundedQty);
@@ -1244,7 +1184,13 @@ class CartManager {
 
         const cartButtonTotal = document.getElementById(`cart-button-total-${this.cartId}`);
         if (cartButtonTotal) {
-            cartButtonTotal.textContent = this.format(totalAmount);
+            const advanceText = advance > 0 ? ` (${this.format(advance)})` : '';
+            cartButtonTotal.textContent = `${this.format(roundedActual)}${advanceText}`;
+        }
+        const cartListTotal = document.getElementById(`cart-list-total-${this.cartId}`);
+        if (cartListTotal) {
+            const advanceText = advance > 0 ? ` (${this.format(advance)})` : '';
+            cartListTotal.textContent = `${this.format(roundedActual)}${advanceText}`;
         }
     }
 
@@ -1597,11 +1543,16 @@ class CartManager {
                     variant = variant ? `${variant} (Qty: ${item.stock})` : `Qty: ${item.stock}`;
                 }
                 const productLabel = item.brand ? `${item.brand} - ${item.product}` : item.product;
+                const finalPriceNum = parseFloat(item.final_price);
+                const mrpNum = parseFloat(item.mrp);
+                const priceText = (!isNaN(finalPriceNum) && !isNaN(mrpNum) && finalPriceNum < mrpNum)
+                    ? `${self.format(finalPriceNum)} <small class="text-muted text-decoration-line-through">${self.format(mrpNum)}</small>`
+                    : self.format(item.final_price || item.mrp);
 
                 row.innerHTML = `
                     <div class="suggestion-header">
                         <span class="suggestion-product">${productLabel}</span>
-                        <span class="suggestion-price">${item.mrp}</span>
+                        <span class="suggestion-price">${priceText}</span>
                     </div>
                     <div class="suggestion-meta">
                         <span class="suggestion-barcode">${item.barcode}</span>

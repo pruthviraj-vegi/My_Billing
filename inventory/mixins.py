@@ -198,7 +198,7 @@ class ProductVariantPricingMixin:
     def final_price(self):
         """Calculate final price after discount"""
         if self.discount_percentage > 0:
-            return self.mrp * (1 - self.discount_percentage / 100)
+            return round(self.mrp * (1 - self.discount_percentage / 100), 2)
         return self.mrp
 
     @property
