@@ -762,7 +762,8 @@ class CartManager {
     }
 
     /**
-     * Handle real-time updates to quantity/price inputs with debouncing
+     * Handle real-time updates to quantity/price inputs
+     * Row amount & discount update visually while typing; side totals calculate after blur/submit.
      * @param {Event} e - Input event
      */
     onRealTimeUpdate(e) {
@@ -784,17 +785,14 @@ class CartManager {
         const price = parseFloat(priceInput.value) || 0;
         const sell = parseFloat(priceToggleCell?.dataset.sellingPrice) || 0;
 
-        // Calculate and update amount
+        // Calculate and update amount for the current row
         const newAmount = qty * price;
         const roundedAmount = Math.round(newAmount * 100) / 100;
         amountCell.textContent = this.format(roundedAmount);
 
-        // Calculate and update discount
+        // Calculate and update discount for the current row
         const discount = this.calcDiscount(sell, price);
         discountCell.textContent = `${discount.toFixed(2)}%`;
-
-        // Debounced total recalculation for performance
-        this.debouncedRecalculate();
     }
 
     /*** ───────── CRUD OPS ───────── ***/
@@ -1087,8 +1085,8 @@ class CartManager {
                 <span class="price-display">${priceDisplay}</span>
             </td>
             <td>
-                <input type="number" class="form-input quantity-input" value="${quantity}" 
-                       data-item-id="${id}" min="0.01" step="1" 
+                <input type="number" class="form-input quantity-input" value="${quantity}"
+                       data-item-id="${id}" min="1" step="1"
                        title="Press Enter to update" aria-label="Quantity">
             </td>
             <td>
@@ -1129,12 +1127,17 @@ class CartManager {
      * @param {number} total - New total amount
      */
     updateTotals(total) {
-        if (this.dom.totalAmount) {
-            this.dom.totalAmount.textContent = this.format(total);
-        }
-        const finalAmountEl = document.getElementById('finalAmount');
-        if (finalAmountEl) {
-            finalAmountEl.textContent = this.format(total);
+        if (typeof updateCount === 'function') {
+            updateCount('totalAmount', total);
+            updateCount('finalAmount', total);
+        } else {
+            if (this.dom.totalAmount) {
+                this.dom.totalAmount.textContent = this.format(total);
+            }
+            const finalAmountEl = document.getElementById('finalAmount');
+            if (finalAmountEl) {
+                finalAmountEl.textContent = this.format(total);
+            }
         }
         const cartButtonTotal = document.getElementById(`cart-button-total-${this.cartId}`);
         if (cartButtonTotal) {
@@ -1154,17 +1157,27 @@ class CartManager {
         const rows = this.dom.body.querySelectorAll('tr');
 
         if (rows.length === 0) {
-            if (this.dom.totalItems) this.dom.totalItems.textContent = '0';
-            if (this.dom.totalSelling) this.dom.totalSelling.textContent = this.format(0);
-            if (this.dom.totalAmount) this.dom.totalAmount.textContent = this.format(0);
-            const finalAmountEl = document.getElementById('finalAmount');
-            if (finalAmountEl) finalAmountEl.textContent = this.format(0);
-            const discountedAmountEl = document.getElementById('discountedAmount');
-            if (discountedAmountEl) discountedAmountEl.textContent = this.format(0);
-            const estimatedProfitEl = document.getElementById('estimatedProfit');
-            if (estimatedProfitEl) estimatedProfitEl.textContent = this.format(0);
-            const netAmountEl = document.getElementById('netAmount');
-            if (netAmountEl) netAmountEl.textContent = this.format(0);
+            if (typeof updateAllCounters === 'function') {
+                updateAllCounters({
+                    totalItems: 0,
+                    totalSellingPrice: 0,
+                    discountedAmount: 0,
+                    estimatedProfit: 0,
+                    netAmount: 0
+                });
+            } else {
+                if (this.dom.totalItems) this.dom.totalItems.textContent = '0';
+                if (this.dom.totalSelling) this.dom.totalSelling.textContent = this.format(0);
+                if (this.dom.totalAmount) this.dom.totalAmount.textContent = this.format(0);
+                const finalAmountEl = document.getElementById('finalAmount');
+                if (finalAmountEl) finalAmountEl.textContent = this.format(0);
+                const discountedAmountEl = document.getElementById('discountedAmount');
+                if (discountedAmountEl) discountedAmountEl.textContent = this.format(0);
+                const estimatedProfitEl = document.getElementById('estimatedProfit');
+                if (estimatedProfitEl) estimatedProfitEl.textContent = this.format(0);
+                const netAmountEl = document.getElementById('netAmount');
+                if (netAmountEl) netAmountEl.textContent = this.format(0);
+            }
             const cartButtonTotal = document.getElementById(`cart-button-total-${this.cartId}`);
             if (cartButtonTotal) cartButtonTotal.textContent = this.format(0);
             return;
@@ -1201,15 +1214,9 @@ class CartManager {
         const roundedSelling = Math.round(totalSelling * 100) / 100;
         const roundedProfit = Math.round(totalProfit * 100) / 100;
 
-        if (this.dom.totalItems) {
-            this.dom.totalItems.textContent = roundedQty.toFixed(2);
-        }
-        if (this.dom.totalSelling) {
-            this.dom.totalSelling.textContent = this.format(isNaN(roundedSelling) || !isFinite(roundedSelling) ? 0 : roundedSelling);
-        }
-
         // Calculate derived values: discountedAmount and netAmount
-        const totalAmountStr = this.dom.totalAmount ? this.dom.totalAmount.textContent.replace(/[^\d.-]/g, '') : '0';
+        const totalAmountEl = this.dom.totalAmount;
+        const totalAmountStr = totalAmountEl ? (totalAmountEl.getAttribute('data-count') || totalAmountEl.textContent.replace(/[^\d.-]/g, '')) : '0';
         const totalAmount = parseFloat(totalAmountStr) || 0;
 
         const advancePaymentEl = document.getElementById('advancePayment');
@@ -1218,19 +1225,26 @@ class CartManager {
         const discount = Math.max(0, roundedSelling - totalAmount);
         const netAmount = Math.max(0, totalAmount - advance);
 
-        const discountedAmountEl = document.getElementById('discountedAmount');
-        if (discountedAmountEl) {
-            discountedAmountEl.textContent = this.format(discount);
+        if (typeof updateCount === 'function') {
+            updateCount('totalItems', roundedQty);
+            updateCount('totalSellingPrice', roundedSelling);
+            updateCount('discountedAmount', discount);
+            updateCount('estimatedProfit', roundedProfit);
+            updateCount('netAmount', netAmount);
+        } else {
+            if (this.dom.totalItems) this.dom.totalItems.textContent = roundedQty.toFixed(2);
+            if (this.dom.totalSelling) this.dom.totalSelling.textContent = this.format(roundedSelling);
+            const discountedAmountEl = document.getElementById('discountedAmount');
+            if (discountedAmountEl) discountedAmountEl.textContent = this.format(discount);
+            const estimatedProfitEl = document.getElementById('estimatedProfit');
+            if (estimatedProfitEl) estimatedProfitEl.textContent = this.format(roundedProfit);
+            const netAmountEl = document.getElementById('netAmount') || document.getElementById('finalAmount');
+            if (netAmountEl) netAmountEl.textContent = this.format(netAmount);
         }
 
-        const estimatedProfitEl = document.getElementById('estimatedProfit');
-        if (estimatedProfitEl) {
-            estimatedProfitEl.textContent = this.format(isNaN(roundedProfit) || !isFinite(roundedProfit) ? 0 : roundedProfit);
-        }
-
-        const netAmountEl = document.getElementById('netAmount') || document.getElementById('finalAmount');
-        if (netAmountEl) {
-            netAmountEl.textContent = this.format(netAmount);
+        const cartButtonTotal = document.getElementById(`cart-button-total-${this.cartId}`);
+        if (cartButtonTotal) {
+            cartButtonTotal.textContent = this.format(totalAmount);
         }
     }
 

@@ -1,6 +1,7 @@
 /**
  * Global Frontend Utilities for My_Billing application.
- * Contains shared helpers: debounce, formatCurrency, showNotification, escapeHtml, onClickOutside, and date utilities.
+ * Contains shared helpers: debounce, formatCurrency, formatNumber, formatIndianNumber,
+ * escapeHtml, escapeAttr, onClickOutside, date utilities, counter animations, and date filter helpers.
  */
 
 /**
@@ -17,6 +18,21 @@ function debounce(func, wait = 300) {
     };
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * Standardized throttle function.
+ */
+function throttle(func, limit = 200) {
+  let inThrottle;
+  return function executedFunction(...args) {
+    const context = this;
+    if (!inThrottle) {
+      func.apply(context, args);
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+    }
   };
 }
 
@@ -46,63 +62,55 @@ function formatNumber(amount, locale = 'en-IN', decimals = 2) {
 }
 
 /**
- * Unified notification system to display toast/alert messages.
+ * Formats input or numeric string using Indian number formatting rules.
  */
-function showNotification(message, type = 'info', duration = 3000) {
-  let container = document.getElementById('toast-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'toast-container';
-    container.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-width: 350px;
-    `;
-    document.body.appendChild(container);
+function formatIndianNumber(value, maxDecimals = 2) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  value = String(value);
+
+  let isNegative = value.indexOf('-') === 0;
+  value = value.replace(/[^\d.]/g, '');
+
+  const decimalCount = (value.match(/\./g) || []).length;
+  if (decimalCount > 1) {
+    const firstDecimalIndex = value.indexOf('.');
+    value = value.slice(0, firstDecimalIndex + 1) +
+            value.slice(firstDecimalIndex + 1).replace(/\./g, '');
   }
 
-  const toast = document.createElement('div');
-  const bgColors = {
-    success: '#10b981',
-    error: '#ef4444',
-    warning: '#f59e0b',
-    info: '#3b82f6',
-  };
+  let [intPart, decPart] = value.split('.');
 
-  toast.style.cssText = `
-    background-color: ${bgColors[type] || bgColors.info};
-    color: #ffffff;
-    padding: 12px 16px;
-    border-radius: 6px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    opacity: 0;
-    transform: translateY(-10px);
-  `;
-  toast.textContent = message;
-  container.appendChild(toast);
+  if (intPart && intPart.length > 0) {
+    intPart = intPart.replace(/^0+/, '');
+    if (!intPart) {
+      intPart = '0';
+    }
 
-  requestAnimationFrame(() => {
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateY(0)';
-  });
+    if (intPart.length > 3) {
+      let last3 = intPart.slice(-3);
+      let others = intPart.slice(0, -3);
+      intPart = others.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
+    }
+  }
 
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(-10px)';
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 300);
-  }, duration);
+  let result = intPart;
+
+  if (decPart !== undefined) {
+    decPart = decPart.slice(0, maxDecimals);
+    result = intPart + '.' + decPart;
+  } else if (value.endsWith('.')) {
+    result = intPart + '.';
+  }
+
+  if (isNegative && result && result !== '0') {
+    return '-' + result;
+  } else if (isNegative) {
+    return '-';
+  }
+
+  return result || '';
 }
 
 /**
@@ -113,6 +121,13 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+/**
+ * Sanitizes and escapes HTML attributes.
+ */
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, '&quot;');
 }
 
 /**
@@ -167,21 +182,6 @@ function formatDate(date) {
 }
 
 /**
- * Standardized throttle function.
- */
-function throttle(func, limit = 200) {
-  let inThrottle;
-  return function executedFunction(...args) {
-    const context = this;
-    if (!inThrottle) {
-      func.apply(context, args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  };
-}
-
-/**
  * Copy text to clipboard with fallback and toast notification.
  */
 function copyToClipboard(text) {
@@ -213,20 +213,343 @@ function copyToClipboard(text) {
   }
 }
 
+/* ============================================================================
+ * ANIMATED COUNTER UTILITIES
+ * ============================================================================ */
+function animateCounter(element, startValue, endValue, duration = 800) {
+  const safeStart = Math.max(0, startValue || 0);
+  const safeEnd = Math.max(0, endValue || 0);
+  const startTime = performance.now();
+  const difference = safeEnd - safeStart;
+  const prefix = element.getAttribute("data-prefix") || "";
+  const suffix = element.getAttribute("data-suffix") || "";
+  const forceDecimals = element.getAttribute("data-decimals");
+
+  const localeOptsWithDecimals = { maximumFractionDigits: 2, minimumFractionDigits: 2 };
+  const localeOptsNoDecimals = { maximumFractionDigits: 0, minimumFractionDigits: 0 };
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easeOutQuad = 1 - (1 - progress) * (1 - progress);
+
+    let currentValue = safeStart + difference * easeOutQuad;
+    if (Math.abs(currentValue) < 0.001 || currentValue < 0) {
+      currentValue = 0;
+    }
+
+    const hasDecimal = forceDecimals !== null ? forceDecimals === "2" : (currentValue % 1 !== 0 || safeEnd % 1 !== 0);
+    const formattedValue = currentValue.toLocaleString("en-IN",
+      hasDecimal ? localeOptsWithDecimals : localeOptsNoDecimals
+    );
+
+    element.textContent = prefix + formattedValue + suffix;
+    element.setAttribute("data-count", currentValue.toFixed(2));
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      const finalHasDecimal = forceDecimals !== null ? forceDecimals === "2" : (safeEnd % 1 !== 0);
+      element.textContent = prefix + safeEnd.toLocaleString("en-IN",
+        finalHasDecimal ? localeOptsWithDecimals : localeOptsNoDecimals
+      ) + suffix;
+      element.setAttribute("data-count", safeEnd.toFixed(2));
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+function initializeCounters() {
+  const countingElements = document.getElementsByClassName("counting-number");
+  for (const element of countingElements) {
+    const rawDataCount = element.getAttribute("data-count");
+    const initialValue = rawDataCount !== null && !isNaN(parseFloat(rawDataCount))
+      ? Math.max(0, parseFloat(rawDataCount))
+      : Math.max(0, parseFloat(element.textContent.replace(/[^0-9.-]+/g, "")) || 0);
+    element.setAttribute("data-count", initialValue.toFixed(2));
+    animateCounter(element, 0, initialValue);
+  }
+}
+
+function updateCount(elementId, newValue) {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    return;
+  }
+
+  const numericValue = typeof newValue === "string"
+    ? Math.max(0, parseFloat(newValue.replace(/[^0-9.-]+/g, "")) || 0)
+    : Math.max(0, Number(newValue) || 0);
+
+  if (isNaN(numericValue)) {
+    return;
+  }
+
+  const rawDataCount = element.getAttribute("data-count");
+  const currentValue = rawDataCount !== null && !isNaN(parseFloat(rawDataCount))
+    ? Math.max(0, parseFloat(rawDataCount))
+    : Math.max(0, parseFloat(element.textContent.replace(/[^0-9.-]+/g, "")) || 0);
+
+  animateCounter(element, currentValue, numericValue);
+}
+
+function updateAllCounters(valuesObject) {
+  for (const [elementId, newValue] of Object.entries(valuesObject)) {
+    updateCount(elementId, newValue);
+  }
+}
+
+/* ============================================================================
+ * DATE FILTER & API UTILITIES
+ * ============================================================================ */
+function getDateFilterData(filterId = 'dateFilter') {
+    const styledRef = window[filterId + '_styled'] || window.dateFilter_styled || window.reportDateFilter_styled;
+    const hiddenSelect = styledRef?.hiddenSelect ||
+        document.getElementById(filterId) ||
+        document.getElementById(filterId + '_hidden') ||
+        document.getElementById('reportDateFilter') ||
+        document.getElementById('dateFilter');
+
+    if (!hiddenSelect) {
+        return {
+            isValid: false,
+            error: 'Date filter not found. Please refresh the page.',
+            data: null
+        };
+    }
+
+    const selectedValue = hiddenSelect.value;
+    const requestData = { date_filter: selectedValue };
+
+    if (selectedValue === 'custom') {
+        const customFromDate = document.getElementById(filterId + '_fromDate') || document.getElementById('customFromDate') || document.getElementById('standaloneFrom');
+        const customToDate = document.getElementById(filterId + '_toDate') || document.getElementById('customToDate') || document.getElementById('standaloneTo');
+
+        let fromDate = null;
+        let toDate = null;
+
+        if (hiddenSelect && hiddenSelect.hasAttribute('data-from-date')) {
+            fromDate = hiddenSelect.getAttribute('data-from-date');
+            toDate = hiddenSelect.getAttribute('data-to-date');
+        }
+
+        if (!fromDate || !toDate) {
+            if (styledRef?.fromDateInput && styledRef?.toDateInput) {
+                fromDate = styledRef.fromDateInput.getAttribute('data-iso-date') || styledRef.fromDateInput.value;
+                toDate = styledRef.toDateInput.getAttribute('data-iso-date') || styledRef.toDateInput.value;
+            } else if (customFromDate && customToDate) {
+                fromDate = customFromDate.getAttribute('data-iso-date') || customFromDate.value;
+                toDate = customToDate.getAttribute('data-iso-date') || customToDate.value;
+            }
+        }
+
+        if (!fromDate || !toDate) {
+            return {
+                isValid: false,
+                error: 'Please select both From and To dates for custom date range.',
+                data: null
+            };
+        }
+
+        if (new Date(fromDate) > new Date(toDate)) {
+            return {
+                isValid: false,
+                error: 'From date must be before or equal to To date.',
+                data: null
+            };
+        }
+
+        requestData.from_date = fromDate;
+        requestData.to_date = toDate;
+    }
+
+    return {
+        isValid: true,
+        error: null,
+        data: requestData
+    };
+}
+
+function getDateFilterValue(filterId = 'dateFilter') {
+    const res = getDateFilterData(filterId);
+    if (res && res.isValid && res.data) {
+        return res.data;
+    }
+    return 'today';
+}
+
+window.getDateFilterValue = getDateFilterValue;
+
+function initDateFilter(selectId = 'dateFilter', options = {}) {
+    const selectEl = document.getElementById(selectId);
+    if (!selectEl) return null;
+
+    const datasetShowCustom = selectEl.getAttribute('data-show-custom');
+    const showCustom = options.showCustomDates !== undefined
+        ? options.showCustomDates
+        : (datasetShowCustom !== null ? datasetShowCustom === 'true' : true);
+
+    if (typeof convertSelectToStyledDropdown !== 'undefined') {
+        const instance = convertSelectToStyledDropdown(selectId, {
+            showCustomDates: showCustom,
+            onChange: function(data) {
+                if (typeof options.onChange === 'function') {
+                    options.onChange(data);
+                }
+            },
+            onError: function(err) {
+                if (typeof options.onError === 'function') {
+                    options.onError(err);
+                } else {
+                    console.error('Date filter error:', err);
+                }
+            }
+        });
+        window[selectId + '_styled'] = instance;
+        return instance;
+    } else {
+        selectEl.addEventListener('change', function(e) {
+            if (typeof options.onChange === 'function') {
+                options.onChange({
+                    value: e.target.value,
+                    text: e.target.options[e.target.selectedIndex]?.text || e.target.value
+                });
+            }
+        });
+        return null;
+    }
+}
+
+function setButtonLoading(button, isLoading, loadingText = 'Loading...') {
+    if (!button) {
+        console.error('Button element not provided to setButtonLoading');
+        return;
+    }
+
+    if (!button.hasAttribute('data-original-text')) {
+        button.setAttribute('data-original-text', button.innerHTML);
+        button.setAttribute('data-original-disabled', button.disabled);
+    }
+
+    if (isLoading) {
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${loadingText}`;
+        button.disabled = true;
+        button.classList.add('disabled');
+    } else {
+        const originalText = button.getAttribute('data-original-text');
+        const originalDisabled = button.getAttribute('data-original-disabled') === 'true';
+
+        button.innerHTML = originalText;
+        button.disabled = originalDisabled;
+        button.classList.remove('disabled');
+
+        button.removeAttribute('data-original-text');
+        button.removeAttribute('data-original-disabled');
+    }
+}
+
+function buildDateFilterUrl(baseUrl, filterData) {
+    if (!baseUrl || !filterData) {
+        console.error('Invalid parameters for buildDateFilterUrl');
+        return baseUrl;
+    }
+
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    let url = `${baseUrl}${separator}date_filter=${encodeURIComponent(filterData.date_filter)}`;
+
+    if (filterData.from_date) {
+        url += `&from_date=${encodeURIComponent(filterData.from_date)}`;
+    }
+
+    if (filterData.to_date) {
+        url += `&to_date=${encodeURIComponent(filterData.to_date)}`;
+    }
+
+    return url;
+}
+
+async function handleFetchResponse(response) {
+    if (!response.ok) {
+        try {
+            const data = await response.json();
+            throw new Error(data.error || data.message || `Server error: ${response.status}`);
+        } catch (jsonError) {
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        }
+    }
+    return await response.json();
+}
+
+function getCsrfToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, 10) === 'csrftoken=') {
+                cookieValue = decodeURIComponent(cookie.substring(10));
+                break;
+            }
+        }
+    }
+
+    if (!cookieValue) {
+        const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfInput) {
+            cookieValue = csrfInput.value;
+        }
+    }
+
+    return cookieValue;
+}
+
+function showErrorAlert(action, error) {
+    console.error(`Error ${action}:`, error);
+
+    let errorMessage = `❌ Failed to ${action}.\n\n`;
+
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        errorMessage += 'Network error: Please check your internet connection and try again.';
+    } else if (error.message.includes('403')) {
+        errorMessage += 'Permission denied: You may not have access to this feature.';
+    } else if (error.message.includes('404')) {
+        errorMessage += 'Service not found: Please contact support.';
+    } else if (error.message.includes('500')) {
+        errorMessage += 'Server error: Please try again later or contact support.';
+    } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+    }
+
+    alert(errorMessage);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     debounce,
     throttle,
     formatCurrency,
     formatNumber,
+    formatIndianNumber,
     formatDate,
-    showNotification,
     escapeHtml,
+    escapeAttr,
     onClickOutside,
     copyToClipboard,
     daysInMonth,
     firstDayOfWeek,
     dateKey,
+    animateCounter,
+    initializeCounters,
+    updateCount,
+    updateAllCounters,
+    getDateFilterData,
+    getDateFilterValue,
+    initDateFilter,
+    setButtonLoading,
+    buildDateFilterUrl,
+    handleFetchResponse,
+    getCsrfToken,
+    showErrorAlert,
   };
 }
-

@@ -77,11 +77,11 @@
 
             <div class="details-info-compact">
                 <!-- Hidden element for JavaScript total_amount tracking -->
-                <span id="totalAmount" style="display: none;">{{ cart.total_amount|currency }}</span>
+                <span id="totalAmount" style="display: none;" data-count="{{ cart.total_amount }}">{{ cart.total_amount|currency }}</span>
 
                 <div class="summary-row">
                     <span class="summary-label">Items</span>
-                    <span class="summary-value" id="totalItems">{{ cart_list|length }}</span>
+                    <span class="summary-value counting-number" id="totalItems" data-count="{{ cart_list|length }}">{{ cart_list|length }}</span>
                 </div>
 
                 <div class="summary-row">
@@ -91,7 +91,7 @@
 
                 <div class="summary-row">
                     <span class="summary-label">Amount</span>
-                    <span class="summary-value" id="totalSellingPrice">{{ total_selling_price|currency }}</span>
+                    <span class="summary-value counting-number" id="totalSellingPrice" data-decimals="2" data-count="{{ total_selling_price }}">{{ total_selling_price|currency }}</span>
                 </div>
                 {% if cart.advance_payment > 0 %}
                 <div class="summary-row">
@@ -102,18 +102,18 @@
 
                 <div class="summary-row">
                     <span class="summary-label">Discounted Amount</span>
-                    <span class="summary-value text-danger" id="discountedAmount">{{ total_selling_price|sub:cart.total_amount|currency }}</span>
+                    <span class="summary-value text-danger counting-number" id="discountedAmount" data-decimals="2" data-count="{{ total_selling_price|sub:cart.total_amount }}">{{ total_selling_price|sub:cart.total_amount|currency }}</span>
                 </div>
 
                 <div class="summary-row" id="profitRow" style="display: none; cursor: pointer;">
                     <span class="summary-label">Estimated Profit</span>
-                    <span class="summary-value text-success" id="estimatedProfit">{{ cart.total_profit|currency }}</span>
+                    <span class="summary-value text-success counting-number" id="estimatedProfit" data-decimals="2" data-count="{{ cart.total_profit }}">{{ cart.total_profit|currency }}</span>
                 </div>
 
                 <!-- Total placed at the bottom with a divider -->
                 <div class="summary-row total-row">
                     <span class="summary-label">Final Amount</span>
-                    <span class="summary-value" id="netAmount">{{ cart.net_amount|currency }}</span>
+                    <span class="summary-value counting-number" id="netAmount" data-decimals="2" data-count="{{ cart.net_amount }}">{{ cart.net_amount|currency }}</span>
                 </div>
             </div>
 
@@ -234,6 +234,5 @@
     };
     </script>
     <!-- External Cart JavaScript -->
-    <script src="{% static 'js/counting.js' %}"></script>
     <script src="{% static 'js/html5-qrcode.min.js' %}"></script>
     <script src="{% static 'js/cart.js' %}"></script>

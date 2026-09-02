@@ -2,9 +2,10 @@
 // BILLING SYSTEM - MAIN JAVASCRIPT
 // ========================================
 
-document.addEventListener('DOMContentLoaded', function () {
+function initMain() {
     // Theme Toggle Functionality
     const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
     const body = document.body;
 
     // Disable autocomplete on all forms
@@ -13,42 +14,97 @@ document.addEventListener('DOMContentLoaded', function () {
         form.setAttribute('autocomplete', 'off');
     });
 
-    // Check for saved theme preference or default to 'light'
-    const currentTheme = localStorage.getItem('theme') || 'light';
-    body.setAttribute('data-theme', currentTheme);
-    updateThemeIcon(currentTheme);
-
-    themeToggle.addEventListener('click', () => {
-        const currentTheme = body.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-        body.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateThemeIcon(newTheme);
-
-        // Notify other components (e.g. charts) that the theme changed
-        document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
-    });
-
     function updateThemeIcon(theme) {
+        if (!themeToggle) return;
         const icon = themeToggle.querySelector('i');
-        if (theme === 'dark') {
-            icon.className = 'fas fa-sun';
-        } else {
-            icon.className = 'fas fa-moon';
+        if (icon) {
+            if (theme === 'dark') {
+                icon.className = 'fas fa-sun';
+            } else {
+                icon.className = 'fas fa-moon';
+            }
         }
     }
 
-    // Legacy mobile menu toggle removed — sidebar.js handles this on mobile.
-    // Legacy mobile dropdown toggle removed — sidebar.js handles accordion on mobile.
+    function setTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        body.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        updateThemeIcon(theme);
+    }
 
-    // Auto-detect system theme preference
+    // Check for saved theme preference or default to 'light'
+    const currentTheme = localStorage.getItem('theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(currentTheme);
+
+    if (themeToggle && !themeToggle.dataset.themeInitialized) {
+        themeToggle.dataset.themeInitialized = 'true';
+        themeToggle.addEventListener('click', () => {
+            const activeTheme = html.getAttribute('data-theme') || body.getAttribute('data-theme') || 'light';
+            const newTheme = activeTheme === 'dark' ? 'light' : 'dark';
+
+            setTheme(newTheme);
+
+            // Notify other components (e.g. charts) that the theme changed
+            document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
+        });
+    }
+
+    // Auto-detect system theme preference if not set
     if (localStorage.getItem('theme') === null) {
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const theme = prefersDark ? 'dark' : 'light';
         body.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
         updateThemeIcon(theme);
+    }
+
+    // Initialize Animated Counters
+    if (typeof initializeCounters === 'function') {
+        initializeCounters();
+    }
+
+    // Initialize Indian Number Formatting on Inputs
+    if (typeof formatIndianNumber === 'function') {
+        document.querySelectorAll('.indian-number').forEach(input => {
+            const maxDecimals = parseInt(input.dataset.decimals) || 2;
+
+            if (input.value) {
+                input.value = formatIndianNumber(input.value, maxDecimals);
+            }
+
+            input.addEventListener('input', function(e) {
+                const cursorPos = e.target.selectionStart;
+                const oldLength = e.target.value.length;
+
+                const formatted = formatIndianNumber(e.target.value, maxDecimals);
+                e.target.value = formatted;
+
+                const newLength = formatted.length;
+                const diff = newLength - oldLength;
+                e.target.setSelectionRange(cursorPos + diff, cursorPos + diff);
+            });
+
+            input.addEventListener('blur', function(e) {
+                let value = e.target.value;
+                if (value.endsWith('.')) {
+                    value = value.slice(0, -1);
+                }
+                if (maxDecimals > 0 && !value.includes('.') && value !== '') {
+                    value += '.00';
+                }
+                e.target.value = value;
+            });
+        });
+
+        // Remove commas before form submission
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                form.querySelectorAll('.indian-number').forEach(input => {
+                    input.value = input.value.replace(/,/g, '');
+                });
+            });
+        });
     }
 
     // Navigation enhancements
@@ -117,10 +173,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     window.addEventListener('scroll', requestTick, { passive: true });
-});
+}
 
-// Note: Shared utility functions (formatDate, debounce, throttle, copyToClipboard, etc.)
-// are consolidated in static/js/utils.js and loaded globally.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMain);
+} else {
+    initMain();
+}
 
 // Auto-bind click-to-copy on elements with data-copy attribute
 document.addEventListener('click', function (e) {

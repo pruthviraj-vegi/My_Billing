@@ -67,6 +67,13 @@
         font-weight: 900;
       }
     </style>
+    <script>
+      // Prevent FOUC for theme
+      (function() {
+        var theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
     {% block extra_css %}
     {% endblock extra_css %}
   </head>
@@ -141,292 +148,23 @@
     <script src="{% static 'assets/plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <!-- Critical UI functionality (load early) -->
     <script>
-      // Notification sound using Web Audio API (no external files)
-      const NotificationSound = (function() {
-        let audioCtx = null;
-        let activeOscCount = 0;
-
-        async function getContext() {
-          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          if (audioCtx.state === 'suspended') await audioCtx.resume();
-          return audioCtx;
-        }
-
-        async function playTone(freq, duration, type, volume, delay) {
-          const ctx = await getContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = type || 'sine';
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(volume || 0.15, ctx.currentTime + (delay || 0));
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (delay || 0) + duration);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          activeOscCount++;
-          osc.addEventListener('ended', () => {
-            activeOscCount--;
-            if (activeOscCount <= 0 && audioCtx && audioCtx.state === 'running') {
-              audioCtx.suspend();
-            }
-          });
-          osc.start(ctx.currentTime + (delay || 0));
-          osc.stop(ctx.currentTime + (delay || 0) + duration);
-        }
-
-        return {
-          success: function() {
-            playTone(523, 0.15, 'sine', 0.12, 0);     // C5
-            playTone(659, 0.2, 'sine', 0.12, 0.12);    // E5
-            playTone(784, 0.25, 'sine', 0.10, 0.22);   // G5
-          },
-          error: function() {
-            playTone(330, 0.2, 'square', 0.08, 0);     // E4
-            playTone(262, 0.3, 'square', 0.06, 0.15);   // C4
-          },
-          info: function() {
-            playTone(587, 0.2, 'sine', 0.10, 0);       // D5
-          },
-          warning: function() {
-            playTone(440, 0.15, 'triangle', 0.10, 0);  // A4
-            playTone(440, 0.15, 'triangle', 0.10, 0.2); // A4 repeat
-          }
-        };
-      })();
-
-      function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `toast toast-${type}`;
-        notification.textContent = message;
-        notification.setAttribute('role', 'alert');
-
-        document.body.appendChild(notification);
-
-        // Play sound based on type
-        try {
-          if (NotificationSound[type]) {
-            NotificationSound[type]();
-          } else {
-            NotificationSound.info();
-          }
-        } catch(e) { /* Audio not supported or blocked */ }
-
-        setTimeout(() => {
-          notification.classList.add('show');
-        }, 100);
-
-        setTimeout(() => {
-          notification.classList.remove('show');
-          setTimeout(() => {
-            notification.remove();
-          }, 300);
-        }, 3000);
-      }
-
-      // Theme toggle functionality
-      document.addEventListener('DOMContentLoaded', function() {
-        const themeToggle = document.getElementById('themeToggle');
-        const body = document.body;
-
-        if (themeToggle) {
-          // Check for saved theme preference or default to 'light'
-          const currentTheme = localStorage.getItem('theme') || 'light';
-          body.setAttribute('data-theme', currentTheme);
-          updateThemeIcon(currentTheme);
-
-          themeToggle.addEventListener('click', () => {
-            const currentTheme = body.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-            body.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon(newTheme);
-
-            // Notify other components (e.g. charts) that the theme changed
-            document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
-          });
-
-          function updateThemeIcon(theme) {
-            const icon = themeToggle.querySelector('i');
-            if (icon) {
-              if (theme === 'dark') {
-                icon.className = 'fas fa-sun';
-              } else {
-                icon.className = 'fas fa-moon';
-              }
-            }
-          }
-        }
-
-        // ── Notification Panel Logic ──────────────────────────
-        function escapeHtml(str) {
-          if (!str) return '';
-          var div = document.createElement('div');
-          div.appendChild(document.createTextNode(str));
-          return div.innerHTML;
-        }
-        function escapeAttr(str) {
-          return escapeHtml(str).replace(/"/g, '&quot;');
-        }
-        const NOTIF_URLS = {
-          count: "{% url 'notification:count' %}",
-          list:  "{% url 'notification:list' %}",
-          markAllRead: "{% url 'notification:mark_all_read' %}",
-          markRead: "{% url 'notification:mark_read' notification_id=0 %}".replace('/0/', '/{id}/')
-        };
-        const csrfToken = '{{ csrf_token }}';
-        window.csrfToken = csrfToken;
-
-        const notifBtn      = document.getElementById('notificationBtn');
-        const notifPanel     = document.getElementById('notificationPanel');
-        const notifBadge     = document.getElementById('notificationBadge');
-        const notifBody      = document.getElementById('notificationPanelBody');
-        const markAllBtn     = document.getElementById('markAllReadBtn');
-        const notifWrapper   = document.getElementById('notificationWrapper');
-
-        // Update badge count (called after user actions like mark-read)
-        function updateNotifBadge() {
-          fetch(NOTIF_URLS.count)
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-              var count = data.unread_count || 0;
-              if (count > 0) {
-                notifBadge.textContent = count > 99 ? '99+' : count;
-                notifBadge.classList.remove('d-none');
-                notifBadge.style.display = 'flex';
-              } else {
-                notifBadge.classList.add('d-none');
-                notifBadge.style.display = 'none';
-              }
-            }).catch(console.error);
-        }
-
-        // Render notification items
-        function renderNotifications(notifications) {
-          if (!notifications.length) {
-            notifBody.innerHTML =
-              '<div class="notification-panel-empty">' +
-              '<i class="fas fa-bell-slash"></i>' +
-              '<p>No notifications</p>' +
-              '</div>';
-            return;
-          }
-          let html = '';
-          notifications.forEach(function(n) {
-            const readClass = n.is_read ? 'is-read' : '';
-            const actionBtn = n.action_url && n.action_label
-              ? '<a href="' + escapeAttr(n.action_url) + '" class="notif-action-btn">' + escapeHtml(n.action_label) + '</a>'
-              : '';
-            html +=
-              '<div class="notif-item ' + readClass + '" data-id="' + n.id + '">' +
-              '  <div class="notif-icon" style="color:' + escapeAttr(n.color) + '">' +
-              '    <i class="fas ' + escapeAttr(n.icon) + '"></i>' +
-              '  </div>' +
-              '  <div class="notif-content">' +
-              '    <div class="notif-header-row">' +
-              '      <div class="notif-title">' + escapeHtml(n.title) + '</div>' +
-              '      <span class="notif-time">' + escapeHtml(n.created_at) + '</span>' +
-              '    </div>' +
-              '    <div class="notif-message">' + escapeHtml(n.message) + '</div>' +
-              '    <div class="notif-meta">' +
-              '      <span class="notif-badge-label">' + escapeHtml(n.badge_label) + '</span>' +
-              '    </div>' +
-              '    ' + actionBtn +
-              '  </div>' +
-              '</div>';
-          });
-          notifBody.innerHTML = html;
-
-          // Click to mark as read
-          notifBody.querySelectorAll('.notif-item:not(.is-read)').forEach(function(el) {
-            el.addEventListener('click', function() {
-              const id = el.dataset.id;
-              fetch(NOTIF_URLS.markRead.replace('{id}', id), {
-                method: 'POST',
-                headers: {'X-CSRFToken': csrfToken}
-              }).then(() => {
-                  el.classList.add('is-read');
-                  updateNotifBadge();
-              }).catch(console.error);
-            });
-          });
-        }
-
-        // Fetch and show notifications
-        function loadNotifications() {
-          notifBody.innerHTML =
-            '<div class="notification-panel-loading">' +
-            '<i class="fas fa-spinner fa-spin"></i> Loading...' +
-            '</div>';
-          fetch(NOTIF_URLS.list)
-            .then(res => {
-              if (!res.ok) throw new Error('Network failure');
-              return res.json();
-            })
-            .then(data => {
-              renderNotifications(data.notifications || []);
-            })
-            .catch(() => {
-              notifBody.innerHTML =
-                '<div class="notification-panel-empty">' +
-                '<i class="fas fa-exclamation-triangle"></i>' +
-                '<p>Failed to load</p>' +
-                '</div>';
-            });
-        }
-
-        // Toggle panel
-        if (notifBtn) {
-          notifBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const isOpen = notifPanel.classList.toggle('open');
-            if (isOpen) loadNotifications();
-          });
-        }
-
-        // Mark all read
-        if (markAllBtn) {
-          markAllBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            fetch(NOTIF_URLS.markAllRead, {
-              method: 'POST',
-              headers: {'X-CSRFToken': csrfToken}
-            }).then(() => {
-                notifBody.querySelectorAll('.notif-item').forEach(function(el) {
-                  el.classList.add('is-read');
-                });
-                updateNotifBadge();
-                showNotification('All notifications marked as read', 'success');
-            }).catch(console.error);
-          });
-        }
-
-        // Close panel on outside click
-        document.addEventListener('click', function(e) {
-          if (notifWrapper && !notifWrapper.contains(e.target)) {
-            notifPanel.classList.remove('open');
-          }
-        });
-
-        // Badge count is rendered server-side by middleware.
-        // updateNotifBadge() is only called after user actions (mark-read).
-
-        // Performance toggle functionality
-        const perfToggle = document.getElementById('performanceToggle');
-        if (perfToggle) {
-          perfToggle.addEventListener('click', function() {
-            if (window.togglePerformanceDashboard) {
-              window.togglePerformanceDashboard();
-            }
-          });
-        }
-      });
+      // Global Notification URLs
+      window.NOTIF_URLS = {
+        count: "{% url 'notification:count' %}",
+        list:  "{% url 'notification:list' %}",
+        markAllRead: "{% url 'notification:mark_all_read' %}",
+        markRead: "{% url 'notification:mark_read' notification_id=0 %}".replace('/0/', '/{id}/')
+      };
+      window.csrfToken = '{{ csrf_token }}';
     </script>
+    <!-- Global Utility JS Module -->
+    <script src="{% static 'js/utils.js' %}"></script>
+    <script src="{% static 'js/main.js' %}" defer></script>
     <!-- Form Submit Guard - Prevents duplicate form submissions -->
     <script src="{% static 'js/form-submit-guard.js' %}"></script>
     <!-- Select2 - Load early for forms -->
     <script src="{% static 'assets/plugins/select2/js/select2.min.js' %}" defer></script>
     <script src="{% static 'js/select2-init.js' %}" defer></script>
-    <script src="{% static 'js/counting.js' %}"></script>
     <!-- Shortcuts Configuration - URLs resolved by Django -->
     <script>
       // Global configuration for shortcuts.js
@@ -441,157 +179,19 @@
     <script src="{% static 'js/shortcuts.js' %}"></script>
     <!-- Datelite DatePicker JS -->
     <script src="{% static 'assets/plugins/DatePicker.js' %}" defer></script>
+    {% if redirect_url %}
     <script>
-      // Load non-critical JavaScript after page load
-      window.addEventListener('load', function() {
-        // Load remaining main.js functionality
-        const mainScript = document.createElement('script');
-        mainScript.src = '{% static "js/main.js" %}';
-        document.head.appendChild(mainScript);
-
-          
-      });
-
-      {% if redirect_url %}
       // Open barcode in new tab
-          window.open("{{ redirect_url }}", '_blank');
-      {% endif %}
+      window.open("{{ redirect_url }}", '_blank');
     </script>
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-          function formatIndianNumber(value, maxDecimals = 2) {
-              if (value === undefined || value === null) {
-                  return '';
-              }
-              value = String(value);
-
-              // Check if negative
-              let isNegative = value.indexOf('-') === 0;
-
-              // Remove all non-numeric except decimal point
-              value = value.replace(/[^\d.]/g, '');
-              
-              // Allow only one decimal point
-              const decimalCount = (value.match(/\./g) || []).length;
-              if (decimalCount > 1) {
-                  const firstDecimalIndex = value.indexOf('.');
-                  value = value.slice(0, firstDecimalIndex + 1) + 
-                          value.slice(firstDecimalIndex + 1).replace(/\./g, '');
-              }
-              
-              // Split integer and decimal
-              let [intPart, decPart] = value.split('.');
-              
-              // Format integer part (Indian style)
-              if (intPart && intPart.length > 0) {
-                  // Remove leading zeros
-                  intPart = intPart.replace(/^0+/, '');
-                  if (!intPart && decPart === undefined) {
-                      // Only allow empty intPart if no decimal part, meaning the user just typed "0" and it got removed, or it's genuinely empty
-                      intPart = '0';
-                  } else if (!intPart) {
-                      intPart = '0';
-                  }
-                  
-                  if (intPart.length > 3) {
-                      let last3 = intPart.slice(-3);
-                      let others = intPart.slice(0, -3);
-                      intPart = others.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
-                  }
-              }
-              
-              let result = intPart;
-
-              // Limit decimal places
-              if (decPart !== undefined) {
-                  decPart = decPart.slice(0, maxDecimals);
-                  result = intPart + '.' + decPart;
-              } else if (value.endsWith('.')) {
-                  // If user is typing decimal point
-                  result = intPart + '.';
-              }
-
-              if (isNegative && result && result !== '0') {
-                  return '-' + result;
-              } else if (isNegative) {
-                  return '-'; // In case they just type "-"
-              }
-              
-              return result || '';
-          }
-          
-          // Apply to all .indian-number inputs
-          document.querySelectorAll('.indian-number').forEach(input => {
-              const maxDecimals = parseInt(input.dataset.decimals) || 2;
-              
-              // Format initial value if present
-              if (input.value) {
-                  input.value = formatIndianNumber(input.value, maxDecimals);
-              }
-              
-              input.addEventListener('input', function(e) {
-                  const cursorPos = e.target.selectionStart;
-                  const oldLength = e.target.value.length;
-                  
-                  const formatted = formatIndianNumber(e.target.value, maxDecimals);
-                  e.target.value = formatted;
-                  
-                  // Adjust cursor position
-                  const newLength = formatted.length;
-                  const diff = newLength - oldLength;
-                  e.target.setSelectionRange(cursorPos + diff, cursorPos + diff);
-              });
-              
-              // Clean up on blur
-              input.addEventListener('blur', function(e) {
-                  let value = e.target.value;
-                  
-                  // Remove trailing decimal point
-                  if (value.endsWith('.')) {
-                      value = value.slice(0, -1);
-                  }
-                  
-                  // Add .00 if no decimal for money fields
-                  if (maxDecimals > 0 && !value.includes('.') && value !== '') {
-                      value += '.00';
-                  }
-                  
-                  e.target.value = value;
-              });
-          });
-          
-          // Remove commas before form submission
-          document.querySelectorAll('form').forEach(form => {
-              form.addEventListener('submit', function(e) {
-                  form.querySelectorAll('.indian-number').forEach(input => {
-                      // Remove commas but keep decimal point
-                      input.value = input.value.replace(/,/g, '');
-                  });
-              });
-          });
-      });
-      function formatCurrency(amount) {
-        try {
-            return new Intl.NumberFormat('en-IN', {
-                style: 'decimal',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(parseFloat(amount) || 0);
-        } catch (error) {
-            console.error('Error formatting currency:', error);
-            return amount;
-        }
-    }
-    </script>
-    <!-- Global Utility JS Module -->
-    <script src="{% static 'js/utils.js' %}"></script>
+    {% endif %}
+    <script src="{% static 'js/notifications-panel.js' %}" defer></script>
     <!-- Sidebar Navigation JS -->
     <script src="{% static 'js/sidebar.js' %}"></script>
     <!-- Animated Date & Time Picker JS (auto-inits all .form-date-input) -->
     <script src="{% static 'js/animated-datepicker.js' %}"></script>
     <!-- Styled Date Filter Dropdown & Date Utilities -->
     <script src="{% static 'js/dropdown_style.js' %}"></script>
-    <script src="{% static 'js/dateFilterUtils.js' %}"></script>
     <!-- Segmented Select Toggle JS (auto-inits all select.select-toggle) -->
     <script src="{% static 'js/selectToggle.js' %}"></script>
     {% block extra_js %}

@@ -407,39 +407,75 @@ h6,
   outline-offset: 2px;
 }
 
-/* Notification Badge */
+/* Notification Bell & Badge */
+.notification-btn {
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.notification-btn:hover {
+  transform: scale(1.08);
+}
+
+.notification-btn:hover i,
+.notification-btn.has-unread i {
+  animation: bellRingSwing 1.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+  transform-origin: top center;
+}
+
+@keyframes bellRingSwing {
+  0% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-14deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-8deg); }
+  75% { transform: rotate(4deg); }
+  85% { transform: rotate(-2deg); }
+  100% { transform: rotate(0); }
+}
+
 .notification-badge {
   position: absolute;
   top: -2px;
   right: -2px;
   background: var(--danger);
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.1rem 0.3rem;
+  color: var(--text-on-primary);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
   border-radius: 9999px;
-  min-width: 16px;
-  height: 16px;
+  min-width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid var(--bg-surface);
-  animation: pulse 2s infinite;
+  box-shadow: 0 0 0 0 var(--danger-bg);
+  animation: badgeGlowPulse 2s infinite;
   z-index: 10;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes pulse {
+.notification-badge.badge-pop {
+  animation: badgePopBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes badgeGlowPulse {
   0% {
-    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--danger);
   }
-
-  50% {
-    transform: scale(1.1);
+  70% {
+    box-shadow: 0 0 0 8px transparent;
   }
-
   100% {
-    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
   }
+}
+
+@keyframes badgePopBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
 }
 
 /* Theme Toggle Specific */
@@ -488,57 +524,332 @@ h6,
 /* Responsive adjustments */
 
 /* ========================================
-   TOAST NOTIFICATIONS
+   TOAST NOTIFICATIONS (Modern Animated)
    ======================================== */
-.toast {
+.toast-container {
   position: fixed;
-  top: calc(var(--topbar-height));
-  right: 1rem;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  padding: 0.85rem 1.25rem;
-  border-radius: 0.5rem;
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-color);
+  top: calc(var(--topbar-height, 60px) + 12px);
+  right: 1.25rem;
   z-index: 10000;
-  transform: translateX(100%);
-  transition: transform 0.3s ease;
-  max-width: 280px;
-  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 380px;
+  width: calc(100vw - 2.5rem);
+  pointer-events: none;
+  transition: gap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.toast.show {
-  transform: translateX(0);
+/* Card Stacking & Layering System (Layered Card Deck) */
+.toast-container.toast-stacked,
+.toast-container:has(.toast-card:nth-child(2)) {
+  gap: 0;
 }
 
-.toast-info {
-  background: var(--primary);
-  border-left: 4px solid var(--bg-surface);
-  color: var(--text-on-primary);
+.toast-container.toast-stacked .toast-card,
+.toast-container:has(.toast-card:nth-child(2)) .toast-card {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.35s ease,
+              box-shadow 0.35s ease,
+              margin 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.toast-success {
-  background: var(--success);
-  border-left: 4px solid var(--bg-surface);
+.toast-container.toast-stacked .toast-card:not(:first-child),
+.toast-container:has(.toast-card:nth-child(2)) .toast-card:not(:first-child) {
+  margin-top: -3.6rem;
 }
 
-.toast-warning {
-  background: var(--warning);
-  border-left: 4px solid var(--bg-surface);
+/* Base stack transforms for 3D card deck depth */
+.toast-container.toast-stacked .toast-card,
+.toast-container:has(.toast-card:nth-child(2)) .toast-card {
+  z-index: calc(50 - var(--stack-rev-index, 0) * 10);
+  transform: translateY(calc(var(--stack-rev-index, 0) * -6px)) scale(calc(1 - var(--stack-rev-index, 0) * 0.05));
+  opacity: calc(1 - var(--stack-rev-index, 0) * 0.18);
+  box-shadow: 0 calc(16px - var(--stack-rev-index, 0) * 4px) 30px -6px rgba(0, 0, 0, calc(0.14 - var(--stack-rev-index, 0) * 0.03));
 }
 
-.toast-error {
-  background: var(--danger);
-  border-left: 4px solid var(--bg-surface);
+/* CSS pseudo-selector layered stack fallback */
+.toast-container:has(.toast-card:nth-child(2)) .toast-card:nth-last-child(1) {
+  z-index: 50;
+  transform: translateY(0) scale(1);
+  opacity: 1;
 }
 
-/* Dark theme toasts */
-[data-theme="dark"] .toast {
-  box-shadow: var(--shadow-md);
+.toast-container:has(.toast-card:nth-child(2)) .toast-card:nth-last-child(2) {
+  z-index: 40;
+  transform: translateY(-6px) scale(0.95);
+  opacity: 0.86;
 }
 
-[data-theme="dark"] .toast-warning {
+.toast-container:has(.toast-card:nth-child(2)) .toast-card:nth-last-child(3) {
+  z-index: 30;
+  transform: translateY(-12px) scale(0.90);
+  opacity: 0.70;
+}
+
+.toast-container:has(.toast-card:nth-child(2)) .toast-card:nth-last-child(n+4) {
+  z-index: 10;
+  transform: translateY(-18px) scale(0.85);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Fan out on Hover into expanded vertical rows */
+.toast-container.toast-stacked:hover,
+.toast-container:has(.toast-card:nth-child(2)):hover {
+  gap: 0.75rem;
+}
+
+.toast-container.toast-stacked:hover .toast-card,
+.toast-container:has(.toast-card:nth-child(2)):hover .toast-card {
+  margin-top: 0 !important;
+  transform: translateY(0) scale(1) !important;
+  opacity: 1 !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+  box-shadow: 0 16px 32px -6px rgba(0, 0, 0, 0.12), 0 6px 16px -4px rgba(0, 0, 0, 0.08) !important;
+}
+
+.toast-card {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   color: var(--text-primary);
+  border-radius: 0.85rem;
+  border: 1px solid var(--border-color);
+  box-shadow:
+    0 16px 32px -6px rgba(0, 0, 0, 0.12),
+    0 6px 16px -4px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  animation: toastSpringIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, max-height 0.35s ease, margin 0.35s ease, padding 0.35s ease, opacity 0.35s ease;
+}
+
+.toast-card:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    0 20px 40px -8px rgba(0, 0, 0, 0.16),
+    0 8px 20px -4px rgba(0, 0, 0, 0.1);
+}
+
+.toast-card.toast-leaving {
+  animation: toastSpringOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+/* Toast type accent colors & left glowing indicator */
+.toast-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 0.85rem 0 0 0.85rem;
+}
+
+.toast-success::before {
+  background: var(--success);
+  box-shadow: 0 0 10px var(--success-bg);
+}
+
+.toast-error::before {
+  background: var(--danger);
+  box-shadow: 0 0 10px var(--danger-bg);
+}
+
+.toast-warning::before {
+  background: var(--warning);
+  box-shadow: 0 0 10px var(--warning-bg);
+}
+
+.toast-info::before {
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary-bg);
+}
+
+/* Toast Icon Pill */
+.toast-icon-wrapper {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  animation: toastIconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+.toast-success .toast-icon-wrapper {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.toast-error .toast-icon-wrapper {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.toast-warning .toast-icon-wrapper {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.toast-info .toast-icon-wrapper {
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
+/* Toast Content */
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-message {
+  font-size: 0.85rem;
+  font-weight: 550;
+  line-height: 1.4;
+  color: var(--text-primary);
+  display: block;
+  word-break: break-word;
+}
+
+/* Close Button */
+.toast-close,
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  opacity: 0.7;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0;
+}
+
+.toast-close:hover,
+.toast-close-btn:hover {
+  opacity: 1;
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+  transform: scale(1.15) rotate(90deg);
+}
+
+/* Toast Progress Bar */
+.toast-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left;
+  animation: toastProgressBarLinear linear forwards;
+}
+
+.toast-card:hover .toast-progress-bar {
+  animation-play-state: paused;
+}
+
+.toast-success .toast-progress-bar { background: var(--success); }
+.toast-error .toast-progress-bar { background: var(--danger); }
+.toast-warning .toast-progress-bar { background: var(--warning); }
+.toast-info .toast-progress-bar { background: var(--primary); }
+
+/* Dark Theme Toasts */
+[data-theme="dark"] .toast-card {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  box-shadow:
+    0 16px 32px -6px rgba(0, 0, 0, 0.4),
+    0 6px 16px -4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .toast-close,
+[data-theme="dark"] .toast-close-btn {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .toast-close:hover,
+[data-theme="dark"] .toast-close-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+/* Keyframes for Toast Animations */
+@keyframes toastSpringIn {
+  0% {
+    opacity: 0;
+    transform: translateX(110%) scale(0.85);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-8px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toastSpringOut {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    max-height: 100px;
+    margin-bottom: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(120%) scale(0.9);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: -0.75rem;
+    border-width: 0;
+  }
+}
+
+@keyframes toastIconPop {
+  0% {
+    transform: scale(0) rotate(-45deg);
+  }
+  70% {
+    transform: scale(1.25) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes toastProgressBarLinear {
+  0% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+/* Backward Compatibility for legacy .toast class */
+.toast {
+  display: none;
 }
 
 /* ========================================
@@ -550,24 +861,38 @@ h6,
 
 .notification-panel {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   right: -8px;
   width: 380px;
   max-height: 480px;
   background: var(--bg-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border-radius: 1rem;
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.15),
+    0 10px 20px -5px rgba(0, 0, 0, 0.08);
   z-index: 1100;
   display: flex;
   flex-direction: column;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-8px) scale(0.97);
+  transform: translateY(-12px) scale(0.94);
+  transform-origin: top right;
   transition:
-    opacity 0.2s ease,
-    transform 0.2s ease,
-    visibility 0.2s;
+    opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    visibility 0.25s;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .notification-panel {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.5),
+    0 10px 20px -5px rgba(0, 0, 0, 0.3);
 }
 
 .notification-panel.open {
@@ -581,7 +906,7 @@ h6,
   content: "";
   position: absolute;
   top: -6px;
-  right: 18px;
+  right: 20px;
   width: 12px;
   height: 12px;
   background: var(--bg-surface);
@@ -591,43 +916,62 @@ h6,
   z-index: 1;
 }
 
+[data-theme="dark"] .notification-panel::before {
+  border-color: var(--border-color);
+}
+
 /* Panel Header */
 .notification-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.15rem;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
 .notification-panel-title {
-  font-weight: 600;
-  font-size: 0.85rem;
+  font-weight: 700;
+  font-size: 0.9rem;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .notification-panel-mark-all {
-  background: none;
+  background: var(--primary-bg);
   border: none;
   color: var(--primary);
-  font-size: 0.7rem;
-  font-weight: 500;
+  font-size: 0.725rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0.2rem 0.5rem;
-  border-radius: 0.375rem;
-  transition: background 0.15s ease;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.notification-panel-mark-all i {
+  transition: transform 0.2s ease;
 }
 
 .notification-panel-mark-all:hover {
-  background: var(--bg-surface-hover);
+  background: var(--primary);
+  color: var(--text-on-primary);
+}
+
+.notification-panel-mark-all:hover i {
+  transform: scale(1.15);
 }
 
 /* Panel Body */
 .notification-panel-body {
   overflow-y: auto;
   flex: 1;
-  min-height: 80px;
+  min-height: 100px;
   max-height: 400px;
 }
 
@@ -652,32 +996,51 @@ h6,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
+  padding: 2.5rem 1rem;
   color: var(--text-secondary);
   gap: 0.75rem;
 }
 
-.notification-panel-loading i,
+.notification-panel-loading i {
+  font-size: 1.75rem;
+  color: var(--primary);
+  animation: spinRing 1s linear infinite;
+}
+
+@keyframes spinRing {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .notification-panel-empty i {
-  font-size: 1.5rem;
+  font-size: 2.2rem;
+  color: var(--text-secondary);
   opacity: 0.4;
+  animation: floatBell 3s ease-in-out infinite;
+}
+
+@keyframes floatBell {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(6deg); }
 }
 
 .notification-panel-empty p {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 500;
   margin: 0;
 }
 
-/* Notification Item */
+/* Notification Item Staggered Animation */
 .notif-item {
   display: flex;
-  gap: 0.625rem;
-  padding: 0.625rem 0.875rem;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
   position: relative;
   align-items: flex-start;
+  animation: notifItemEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .notif-item:last-child {
@@ -686,12 +1049,25 @@ h6,
 
 .notif-item:hover {
   background: var(--bg-surface-hover);
+  transform: translateX(4px);
 }
 
-/* Unread indicator — subtle left border */
+/* Unread indicator */
 .notif-item:not(.is-read) {
   background: var(--primary-bg);
   border-left: 3px solid var(--primary);
+}
+
+.notif-item:not(.is-read)::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 14px;
+  width: 7px;
+  height: 7px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--primary);
 }
 
 .notif-item.is-read {
@@ -705,15 +1081,20 @@ h6,
 /* Icon — compact circle */
 .notif-icon {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-surface-hover);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   margin-top: 2px;
+  transition: transform 0.2s ease;
+}
+
+.notif-item:hover .notif-icon {
+  transform: scale(1.1);
 }
 
 /* Content */
@@ -727,12 +1108,12 @@ h6,
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .notif-title {
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.825rem;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -742,7 +1123,7 @@ h6,
 }
 
 .notif-time {
-  font-size: 0.65rem;
+  font-size: 0.675rem;
   color: var(--text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
@@ -750,7 +1131,7 @@ h6,
 }
 
 .notif-message {
-  font-size: 0.73rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
   line-height: 1.4;
   display: -webkit-box;
@@ -758,7 +1139,7 @@ h6,
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .notif-meta {
@@ -770,9 +1151,9 @@ h6,
 .notif-badge-label {
   background: var(--secondary-bg);
   color: var(--text-secondary);
-  padding: 0.1rem 0.375rem;
-  border-radius: 0.25rem;
-  font-size: 0.6rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 0.35rem;
+  font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -781,28 +1162,31 @@ h6,
 .notif-action-btn {
   display: inline-block;
   margin-top: 0.375rem;
-  font-size: 0.7rem;
+  font-size: 0.725rem;
   font-weight: 600;
   color: var(--primary);
   text-decoration: none;
-  padding: 0.25rem 0.625rem;
+  padding: 0.25rem 0.65rem;
   border: 1px solid var(--primary);
-  border-radius: 0.25rem;
-  transition: all 0.15s ease;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
 }
 
 .notif-action-btn:hover {
   background: var(--primary);
   color: var(--text-on-primary);
+  transform: translateY(-1px);
 }
 
-/* Dark theme adjustments */
-[data-theme="dark"] .notification-panel {
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-}
-
-[data-theme="dark"] .notification-panel::before {
-  background: var(--bg-surface);
+@keyframes notifItemEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Mobile responsive */
@@ -3873,73 +4257,6 @@ form.submitting * {
 }
 
 /* Responsive adjustments for cart */
-
-/* ========================================
-   TOAST NOTIFICATIONS
-   ======================================== */
-.toast {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  padding: 12px 20px;
-  border-radius: 8px;
-  color: white;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  animation: slideInRight 0.3s ease-out;
-  max-width: 350px;
-  word-wrap: break-word;
-}
-
-.toast-success {
-  background: var(--success);
-  border-left: 4px solid #0f5132;
-}
-
-.toast-error {
-  background: var(--danger);
-  border-left: 4px solid #842029;
-}
-
-.toast-warning {
-  background: var(--warning);
-  color: #000;
-  border-left: 4px solid #997404;
-}
-
-.toast-info {
-  background: var(--primary);
-  border-left: 4px solid #1e40af;
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideOutRight {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-.toast.fade-out {
-  animation: slideOutRight 0.3s ease-in forwards;
-}
 
 /* ========================================
    CART DROPDOWN STYLES
