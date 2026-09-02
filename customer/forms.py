@@ -209,13 +209,19 @@ class PaymentForm(ThemedFormMixin, forms.ModelForm):
         # Apply theme classes via mixin
         self.apply_theme_classes()
 
+        self.fields["customer"].widget.attrs["class"] = "form-select"
         self.fields["amount"].widget.attrs["class"] = "form-input indian-number"
+        self.fields["payment_type"].widget.attrs["class"] = "select-toggle"
+        self.fields["method"].widget.attrs["class"] = "select-toggle"
 
-        # Handle customer field if provided
-        if self.customer:
-            self.fields["customer"].initial = self.customer
-            # Disable the field to prevent selection (readonly doesn't work on select elements)
-            self.fields["customer"].widget.attrs["readonly"] = True
+        # Handle customer field if provided or if editing an existing payment instance
+        customer = self.customer or (
+            self.instance.customer if self.instance and self.instance.pk else None
+        )
+        if customer:
+            self.customer = customer
+            self.fields["customer"].initial = customer
+            self.fields["customer"].disabled = True
 
     def clean_amount(self):
         """

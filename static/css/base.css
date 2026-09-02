@@ -4623,11 +4623,19 @@ form.submitting * {
 .field-disabled textarea,
 .field-disabled input[readonly],
 .field-disabled select[readonly],
-.field-disabled textarea[readonly] {
+.field-disabled textarea[readonly],
+.form-input:disabled,
+.form-select:disabled,
+.form-textarea:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
   background-color: var(--bg-body);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   border-color: var(--border-color);
   cursor: not-allowed;
+  opacity: 0.75;
+  pointer-events: none;
 }
 
 .field-disabled .form-help {

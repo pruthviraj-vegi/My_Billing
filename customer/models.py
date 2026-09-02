@@ -160,10 +160,10 @@ class Payment(SoftDeleteModel):
         CASH = "CASH", "Cash"
         BANK_TRANSFER = "BANK_TRANSFER", "Bank Transfer"
         UPI = "UPI", "UPI"
-        CHEQUE = "CHEQUE", "Cheque"
-        CREDIT_CARD = "CREDIT_CARD", "Credit Card"
-        DEBIT_CARD = "DEBIT_CARD", "Debit Card"
-        ONLINE_PAYMENT = "ONLINE_PAYMENT", "Online Payment"
+        # CHEQUE = "CHEQUE", "Cheque"
+        # CREDIT_CARD = "CREDIT_CARD", "Credit Card"
+        # DEBIT_CARD = "DEBIT_CARD", "Debit Card"
+        # ONLINE_PAYMENT = "ONLINE_PAYMENT", "Online Payment"
 
     customer = models.ForeignKey(
         Customer, on_delete=models.PROTECT, related_name="credit_payments"

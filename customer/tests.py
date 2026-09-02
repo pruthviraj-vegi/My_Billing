@@ -586,3 +586,43 @@ class GetCustomerBalanceViewTests(TestCase):
 
         response = self.client.get(reverse("customer:balance", kwargs={"pk": self.customer.pk}))
         self.assertEqual(response.status_code, 404)
+
+
+class PaymentFormCustomerSelectionTests(TestCase):
+    """Tests for PaymentForm customer field lock vs select behavior."""
+
+    def setUp(self):
+        self.user = create_test_user()
+        self.customer1 = create_test_customer(name="Customer One", phone="9876543210", created_by=self.user)
+        self.customer2 = create_test_customer(name="Customer Two", phone="9876543211", created_by=self.user)
+
+    def test_payment_form_with_customer_disables_customer_field(self):
+        from customer.forms import PaymentForm
+        form = PaymentForm(customer=self.customer1)
+        self.assertTrue(form.fields["customer"].disabled)
+        self.assertEqual(form.fields["customer"].initial, self.customer1)
+
+    def test_payment_form_with_customer_ignores_overridden_post_data(self):
+        from customer.forms import PaymentForm
+        from django.utils import timezone
+        data = {
+            "customer": self.customer2.id,
+            "payment_type": "PAID",
+            "amount": "500.00",
+            "method": "CASH",
+            "payment_date": timezone.now().strftime("%Y-%m-%dT%H:%M"),
+        }
+        form = PaymentForm(data=data, customer=self.customer1)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["customer"], self.customer1)
+
+    def test_payment_form_existing_instance_disables_customer_field(self):
+        from customer.forms import PaymentForm
+        payment = create_test_payment(customer=self.customer1, amount=Decimal("100.00"), created_by=self.user)
+        form = PaymentForm(instance=payment)
+        self.assertTrue(form.fields["customer"].disabled)
+
+    def test_payment_form_without_customer_keeps_customer_field_enabled(self):
+        from customer.forms import PaymentForm
+        form = PaymentForm()
+        self.assertFalse(form.fields["customer"].disabled)

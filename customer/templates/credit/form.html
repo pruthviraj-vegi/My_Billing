@@ -52,7 +52,7 @@
         {% endif %}
         <!-- Payment Details Section -->
         <div class="form-section">
-          <h5 class="section-title">Payment Details : {{ customer.credit_summary.balance_amount|currency }}</h5>
+          <h5 class="section-title">Payment Details{% if customer %} : {{ customer.credit_summary.balance_amount|currency }}{% endif %}</h5>
           <!-- Customer Field -->
           <div class="form-group {% if form.customer.errors %}has-error{% endif %}">
             <label for="{{ form.customer.id_for_label }}" class="form-label">{{ form.customer.label }}</label>
@@ -185,3 +185,10 @@
     </div>
   </div>
 {% endblock content %}
+{% block extra_js %}
+  <script>
+    $(document).ready(function () {
+      $('#id_customer').select2({ width: '100%' });
+    });
+  </script>
+{% endblock extra_js %}
