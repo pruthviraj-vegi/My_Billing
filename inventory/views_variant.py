@@ -6,7 +6,6 @@ from typing import Optional, Union
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import F, Q, Sum, DecimalField
 from django.db.utils import IntegrityError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,7 +14,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, FormView, UpdateView
 
 from base.decorators import RequiredPermissionMixin, required_permission
-from base.utility import build_search_filter, render_paginated_response, table_sorting
+from base.utility import render_paginated_response
 
 from inventory.forms import (
     AdjustmentInForm,
@@ -38,25 +37,15 @@ from inventory.models import (
     Size,
     VariantMedia,
 )
-from inventory.services import DamageResolutionService, InventoryService
+from inventory.services import (
+    DamageResolutionService,
+    InventoryService,
+    VALID_SORT_FIELDS,
+    get_variants_data,
+    total_inventory_value,
+)
 
 logger = logging.getLogger(__name__)
-
-VALID_SORT_FIELDS = {
-    "id",
-    "barcode",
-    "product__brand",
-    "product__name",
-    "product__category__name",
-    "size__name",
-    "color__name",
-    "quantity",
-    "mrp",
-    "commission_percentage",
-    "discount_percentage",
-    "status",
-    "created_at",
-}
 
 VARIANTS_PER_PAGE = 20
 
@@ -76,100 +65,6 @@ def variant_home(request):
         "status_choices": ProductVariant.VariantStatus.choices,
     }
     return render(request, "inventory/product_variant/home.html", context)
-
-
-def get_variants_data(request):
-    """Retrieve and filter variants based on request parameters."""
-
-    # Get search and filter parameters
-    search_query = request.GET.get("search", "")
-    category_filter = request.GET.get("category", "")
-    color_filter = request.GET.get("color", "")
-    size_filter = request.GET.get("size", "")
-    status_filter = request.GET.get("status", "")
-    stock_filter = request.GET.get("stock", "")
-
-    # Apply search filter
-    filters = build_search_filter(
-        search_query,
-        [
-            "product__brand",
-            "product__name",
-            "barcode",
-            "product__description",
-            "product__category__name",
-            "size__name",
-            "color__name",
-            "mrp",
-            "purchase_price",
-        ],
-    )
-
-    # Apply category filter (supports both ID and name search)
-    if category_filter:
-        try:
-            # Try as ID first
-            category_id = int(category_filter)
-            filters &= Q(product__category_id=category_id)
-        except ValueError:
-            # If not a number, search by name
-            filters &= Q(product__category__name__icontains=category_filter)
-
-    # Apply color filter (supports both ID and name search)
-    if color_filter:
-        try:
-            # Try as ID first
-            color_id = int(color_filter)
-            filters &= Q(color_id=color_id)
-        except ValueError:
-            # If not a number, search by name
-            filters &= Q(color__name__icontains=color_filter)
-
-    # Apply size filter (supports both ID and name search)
-    if size_filter:
-        try:
-            # Try as ID first
-            size_id = int(size_filter)
-            filters &= Q(size_id=size_id)
-        except ValueError:
-            # If not a number, search by name
-            filters &= Q(size__name__icontains=size_filter)
-
-    # Apply status filter
-    if status_filter:
-        filters &= Q(status=status_filter)
-
-    # Apply stock filter
-    if stock_filter == "in_stock":
-        filters &= Q(quantity__gt=0)
-    elif stock_filter == "out_of_stock":
-        filters &= Q(quantity=0)
-    elif stock_filter == "low_stock":
-        filters &= Q(quantity__lte=F("minimum_quantity"), quantity__gt=0)
-
-    variants = (
-        ProductVariant.objects.select_related(
-            "product", "product__category", "size", "color"
-        )
-        .filter(filters)
-    )
-
-    # Apply sorting
-    valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
-    variants = variants.order_by(*valid_sorts)
-
-    return variants
-
-
-def total_inventory_value(request) -> float:
-    """Calculate total inventory value."""
-    total_value = ProductVariant.objects.aggregate(
-        total_value=Sum(
-            F("quantity") * F("purchase_price"),
-            output_field=DecimalField(max_digits=16, decimal_places=2),
-        )
-    )
-    return total_value["total_value"]
 
 
 def fetch_variants(request):

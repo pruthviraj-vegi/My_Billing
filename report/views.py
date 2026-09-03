@@ -22,7 +22,6 @@ from barcode.base import Barcode
 from barcode.writer import SVGWriter
 
 from base.getDates import getDates
-from base.utility import build_search_filter
 
 from cart.models import Cart, CartItem
 from customer.models import Customer
@@ -35,7 +34,7 @@ from customer.views_credit import (
 )
 
 from inventory.models import ProductVariant
-from inventory.views_variant import get_variants_data, total_inventory_value
+from inventory.services import get_variants_data, total_inventory_value
 
 from invoice.models import Invoice, InvoiceItem
 from setting.models import (
@@ -358,7 +357,7 @@ def generate_suppliers_pdf(request):
 def generate_variants_pdf(request):
     """Generate PDF for variants list with search and sort parameters."""
     variants = get_variants_data(request)
-    total_outstanding = total_inventory_value(request)
+    total_outstanding = total_inventory_value()
     total_count = variants.count()
 
     # Prepare context
@@ -385,96 +384,10 @@ def build_variants_context(params):
         params: dict with optional keys: search, category, color,
                 size, status, stock, sort.
     """
-
-    search_query = params.get("search", "")
-    filters = build_search_filter(
-        search_query,
-        [
-            "product__brand",
-            "product__name",
-            "barcode",
-            "product__description",
-            "product__category__name",
-            "size__name",
-            "color__name",
-            "mrp",
-            "purchase_price",
-        ],
-    )
-
-    category_filter = params.get("category", "")
-    if category_filter:
-        try:
-            filters &= Q(product__category_id=int(category_filter))
-        except ValueError:
-            filters &= Q(product__category__name__icontains=category_filter)
-
-    color_filter = params.get("color", "")
-    if color_filter:
-        try:
-            filters &= Q(color_id=int(color_filter))
-        except ValueError:
-            filters &= Q(color__name__icontains=color_filter)
-
-    size_filter = params.get("size", "")
-    if size_filter:
-        try:
-            filters &= Q(size_id=int(size_filter))
-        except ValueError:
-            filters &= Q(size__name__icontains=size_filter)
-
-    status_filter = params.get("status", "")
-    if status_filter:
-        filters &= Q(status=status_filter)
-
-    stock_filter = params.get("stock", "")
-    if stock_filter == "in_stock":
-        filters &= Q(quantity__gt=0)
-    elif stock_filter == "out_of_stock":
-        filters &= Q(quantity=0)
-    elif stock_filter == "low_stock":
-        filters &= Q(quantity__lte=F("minimum_quantity"), quantity__gt=0)
-
-    variants = ProductVariant.objects.select_related(
-        "product", "product__category", "size", "color"
-    ).filter(filters)
-
-    # Sorting — replicate table_sorting logic without request
-    sort_param = params.get("sort", "")
-    valid_sorts = {
-        "id": "id",
-        "product__name": "product__name",
-        "product__brand": "product__brand",
-        "size__name": "size__name",
-        "color__name": "color__name",
-        "mrp": "mrp",
-        "purchase_price": "purchase_price",
-        "quantity": "quantity",
-        "created_at": "created_at",
-        "status": "status",
-    }
-    if sort_param:
-
-        sort_fields = [f.strip() for f in sort_param.split(",") if f.strip()]
-        final_sorts = []
-        for field in sort_fields:
-            clean = field.lstrip("-")
-            if clean in valid_sorts:
-                final_sorts.append(field)
-        variants = variants.order_by(*(final_sorts or ["-created_at"]))
-    else:
-        variants = variants.order_by("-created_at")
-
-    total_value = ProductVariant.objects.aggregate(
-        total_value=Sum(
-            F("quantity") * F("purchase_price"),
-            output_field=DecimalField(max_digits=16, decimal_places=2),
-        )
-    )["total_value"]
-
+    variants = get_variants_data(params=params)
     return {
         "variants": variants,
-        "total_outstanding": total_value,
+        "total_outstanding": total_inventory_value(),
         "total_count": variants.count(),
     }
 

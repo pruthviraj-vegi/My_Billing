@@ -2,10 +2,15 @@
 
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
-from inventory.services import InventoryService, DamageResolutionService
+from inventory.services import (
+    DamageResolutionService,
+    InventoryService,
+    get_variants_data,
+    total_inventory_value,
+)
 from inventory.models import InventoryLog, DamagedItemRecord
 from Billing.tests.helpers import (
     create_test_user,
@@ -631,3 +636,45 @@ class LinkSupplierInvoiceTests(TestCase):
             initial_log, self.supplier_invoice, user=self.user
         )
         self.assertGreater(result["child_logs_updated"], 0)
+
+
+class VariantQueryServicesTests(TestCase):
+    """Tests for get_variants_data and total_inventory_value service functions."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = create_test_user()
+        self.product = create_test_product(brand="Nike", name="Air Max")
+        self.v1 = create_test_variant(
+            product=self.product,
+            purchase_price=Decimal("100.00"),
+            mrp=Decimal("200.00"),
+            quantity=Decimal("10"),
+            user=self.user,
+        )
+        self.v2 = create_test_variant(
+            product=self.product,
+            purchase_price=Decimal("150.00"),
+            mrp=Decimal("250.00"),
+            quantity=Decimal("4"),
+            user=self.user,
+        )
+
+    def test_total_inventory_value(self):
+        # 10 * 100 + 4 * 150 = 1000 + 600 = 1600.00
+        val = total_inventory_value()
+        self.assertEqual(val, Decimal("1600.00"))
+
+    def test_get_variants_data_with_params(self):
+        # Test params dict filtering
+        results = get_variants_data(params={"search": "Nike"})
+        self.assertEqual(results.count(), 2)
+
+        results_empty = get_variants_data(params={"search": "NonExistentBrand"})
+        self.assertEqual(results_empty.count(), 0)
+
+    def test_get_variants_data_with_request(self):
+        request = self.factory.get("/inventory/variants/", {"search": "Air Max", "stock": "in_stock"})
+        results = get_variants_data(request)
+        self.assertEqual(results.count(), 2)
+

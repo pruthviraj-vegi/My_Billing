@@ -4,9 +4,11 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import DecimalField, F, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
+
+from base.utility import build_search_filter, table_sorting
 
 from .models import (
     BulkUpload,
@@ -1556,4 +1558,128 @@ class BulkUploadService:
             "batch_completed": all_committed,
             "batch_status": batch.get_status_display(),
         }
+
+
+VALID_SORT_FIELDS = {
+    "id",
+    "barcode",
+    "product__brand",
+    "product__name",
+    "product__category__name",
+    "size__name",
+    "color__name",
+    "quantity",
+    "mrp",
+    "purchase_price",
+    "commission_percentage",
+    "discount_percentage",
+    "status",
+    "created_at",
+}
+
+
+def total_inventory_value(request=None) -> Decimal:
+    """Calculate total inventory value across all active variants."""
+    total_value = ProductVariant.objects.aggregate(
+        total_value=Sum(
+            F("quantity") * F("purchase_price"),
+            output_field=DecimalField(max_digits=16, decimal_places=2),
+        )
+    )
+    return total_value["total_value"]
+
+
+def get_variants_data(request=None, params=None):
+    """Retrieve and filter variants based on request or parameter dictionary."""
+    if params is None:
+        if hasattr(request, "GET"):
+            params = request.GET
+        elif isinstance(request, dict):
+            params = request
+            request = None
+        else:
+            params = {}
+
+    # Get search and filter parameters
+    search_query = params.get("search", "")
+    category_filter = params.get("category", "")
+    color_filter = params.get("color", "")
+    size_filter = params.get("size", "")
+    status_filter = params.get("status", "")
+    stock_filter = params.get("stock", "")
+
+    # Apply search filter
+    filters = build_search_filter(
+        search_query,
+        [
+            "product__brand",
+            "product__name",
+            "barcode",
+            "product__description",
+            "product__category__name",
+            "size__name",
+            "color__name",
+            "mrp",
+            "purchase_price",
+        ],
+    )
+
+    # Apply category filter (supports both ID and name search)
+    if category_filter:
+        try:
+            category_id = int(category_filter)
+            filters &= Q(product__category_id=category_id)
+        except ValueError:
+            filters &= Q(product__category__name__icontains=category_filter)
+
+    # Apply color filter (supports both ID and name search)
+    if color_filter:
+        try:
+            color_id = int(color_filter)
+            filters &= Q(color_id=color_id)
+        except ValueError:
+            filters &= Q(color__name__icontains=color_filter)
+
+    # Apply size filter (supports both ID and name search)
+    if size_filter:
+        try:
+            size_id = int(size_filter)
+            filters &= Q(size_id=size_id)
+        except ValueError:
+            filters &= Q(size__name__icontains=size_filter)
+
+    # Apply status filter
+    if status_filter:
+        filters &= Q(status=status_filter)
+
+    # Apply stock filter
+    if stock_filter == "in_stock":
+        filters &= Q(quantity__gt=0)
+    elif stock_filter == "out_of_stock":
+        filters &= Q(quantity=0)
+    elif stock_filter == "low_stock":
+        filters &= Q(quantity__lte=F("minimum_quantity"), quantity__gt=0)
+
+    variants = (
+        ProductVariant.objects.select_related(
+            "product", "product__category", "size", "color"
+        )
+        .filter(filters)
+    )
+
+    # Apply sorting
+    if request is not None and hasattr(request, "GET"):
+        valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
+        variants = variants.order_by(*valid_sorts)
+    else:
+        sort_param = params.get("sort", "")
+        if sort_param:
+            sort_fields = [f.strip() for f in sort_param.split(",") if f.strip()]
+            final_sorts = [f for f in sort_fields if f.lstrip("-") in VALID_SORT_FIELDS]
+            variants = variants.order_by(*(final_sorts or ["-created_at"]))
+        else:
+            variants = variants.order_by("-created_at")
+
+    return variants
+
 

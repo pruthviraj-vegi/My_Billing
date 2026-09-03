@@ -23,7 +23,7 @@ from base.decorators import required_permission, RequiredPermissionMixin
 from base.weighted_search import search_variants_weighted
 
 from inventory.models import BarcodeMapping, ProductVariant
-from inventory.views_variant import get_variants_data
+from inventory.services import get_variants_data
 
 from .forms import CartForm
 from .models import Cart, CartItem
