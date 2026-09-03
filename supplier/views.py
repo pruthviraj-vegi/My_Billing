@@ -20,7 +20,7 @@ from django.db.models import (
     Sum,
     Value,
 )
-from django.db.models.functions import Coalesce, TruncDate, TruncMonth, TruncWeek
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -28,10 +28,9 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 from base.decorators import required_permission, RequiredPermissionMixin
 from base.getDates import getDates
+from base.comparison import get_comparison_data
 from base.utility import (
     build_search_filter,
-    get_period_label,
-    get_periodic_data,
     render_paginated_response,
     table_sorting,
 )
@@ -83,138 +82,6 @@ def dashboard(request):
     return render(request, "supplier/dashboard.html", context)
 
 
-def get_comparison_data(date_filter, current_start, current_end):
-    """Generate comparison data for line chart based on date filter"""
-    # Calculate previous period dates
-    previous_start, previous_end, period_type = get_periodic_data(
-        date_filter, current_start, current_end
-    )
-
-    current_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False, invoice_date__date__range=[current_start, current_end]
-    )
-    current_data = get_period_data(
-        current_invoices, current_start, current_end, period_type
-    )
-
-    previous_invoices = SupplierInvoice.objects.filter(
-        is_deleted=False, invoice_date__date__range=[previous_start, previous_end]
-    )
-    previous_data = get_period_data(
-        previous_invoices, previous_start, previous_end, period_type
-    )
-
-    return {
-        "current_period": {
-            "label": get_period_label(current_start, current_end, period_type),
-            "data": current_data,
-        },
-        "previous_period": {
-            "label": get_period_label(previous_start, previous_end, period_type),
-            "data": previous_data,
-        },
-        "period_type": period_type,
-    }
-
-
-def get_period_data(
-    invoices, start_date, end_date, period_type
-):  # pylint: disable=unused-argument
-    """
-    Get aggregated data for a specific period using database-level grouping
-
-    OPTIMIZED: Uses Django's date truncation functions instead of Python loops
-    to perform grouping at the database level, dramatically reducing queries.
-
-    Args:
-        invoices: QuerySet of SupplierInvoice objects
-        start_date: Period start date
-        end_date: Period end date
-        period_type: One of 'daily', 'monthly', 'quarterly', 'yearly'
-
-    Returns:
-        List of dictionaries containing date, amount, and invoice count
-    """
-
-    if period_type == "daily":
-        # For daily, return single aggregated data point
-        aggregated = invoices.aggregate(
-            total_amount=Coalesce(Sum("total_amount"), Decimal("0")),
-            total_invoices=Count("id"),
-        )
-
-        return [
-            {
-                "date": start_date.strftime("%Y-%m-%d"),
-                "amount": float(aggregated["total_amount"]),
-                "invoices": aggregated["total_invoices"],
-            }
-        ]
-
-    elif period_type == "monthly":
-        # Group by day using database truncation
-        daily_data = (
-            invoices.annotate(day=TruncDate("invoice_date"))
-            .values("day")
-            .annotate(
-                amount=Coalesce(Sum("total_amount"), Decimal("0")),
-                invoices=Count("id"),
-            )
-            .order_by("day")
-        )
-
-        return [
-            {
-                "date": item["day"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in daily_data
-        ]
-
-    elif period_type == "quarterly":
-        # Group by week using database truncation
-        weekly_data = (
-            invoices.annotate(week=TruncWeek("invoice_date"))
-            .values("week")
-            .annotate(
-                amount=Coalesce(Sum("total_amount"), Decimal("0")),
-                invoices=Count("id"),
-            )
-            .order_by("week")
-        )
-
-        return [
-            {
-                "date": item["week"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in weekly_data
-        ]
-
-    else:  # yearly
-        # Group by month using database truncation
-        monthly_data = (
-            invoices.annotate(month=TruncMonth("invoice_date"))
-            .values("month")
-            .annotate(
-                amount=Coalesce(Sum("total_amount"), Decimal("0")),
-                invoices=Count("id"),
-            )
-            .order_by("month")
-        )
-
-        return [
-            {
-                "date": item["month"].strftime("%Y-%m-%d"),
-                "amount": float(item["amount"]),
-                "invoices": item["invoices"],
-            }
-            for item in monthly_data
-        ]
-
-
 @required_permission("supplier.view_dashboard")
 def dashboard_fetch(request):
     """
@@ -264,7 +131,13 @@ def dashboard_fetch(request):
     outstanding_balance = total_invoiced - total_paid
 
     # Calculate comparison data for line chart
-    comparison_data = get_comparison_data(date_filter, start_date, end_date)
+    comparison_data = get_comparison_data(
+        SupplierInvoice.objects.filter(is_deleted=False),
+        date_filter,
+        start_date,
+        end_date,
+        amount_field="total_amount",
+    )
 
     # Invoice status breakdown (period-based)
     invoice_status_breakdown = (
@@ -278,21 +151,6 @@ def dashboard_fetch(request):
             ),
         )
         .order_by("status")
-    )
-
-    # Payment method breakdown (period-based)
-    # payment_method_breakdown is not currently used in the JSON response, but kept for future use if needed
-    _ = (
-        payments.values("method")
-        .annotate(
-            count=Count("id"),
-            amount=Coalesce(
-                Sum("amount"),
-                Decimal("0"),
-                output_field=DecimalField(max_digits=16, decimal_places=2),
-            ),
-        )
-        .order_by("method")
     )
 
     # Invoice type breakdown (period-based)
