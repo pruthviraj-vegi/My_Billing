@@ -1,5 +1,5 @@
 """
-Services for invoice cancellation and return invoice operations.
+Services for invoice operations, reporting queries, cancellation, and returns.
 """
 
 import logging
@@ -7,6 +7,8 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
+
+from invoice.models import Invoice, ReturnInvoice
 
 logger = logging.getLogger(__name__)
 
@@ -172,3 +174,31 @@ class ReturnInvoiceService:
         return_invoice.processed_by = user
         return_invoice.processed_date = timezone.now()
         return_invoice.save()
+
+
+def get_invoice_report_data(date_range):
+    """Get GST invoices within the given date range."""
+    return Invoice.objects.select_related("customer").filter(
+        invoice_type=Invoice.Invoice_type.GST,
+        invoice_date__date__range=date_range,
+    )
+
+
+def get_invoice_cancled_data(date_range):
+    """Get cancelled GST invoices within the given date range."""
+    return Invoice.objects.select_related("customer").filter(
+        invoice_type=Invoice.Invoice_type.GST,
+        cancelled_at__date__range=date_range,
+        is_cancelled=True,
+    )
+
+
+def get_invoice_return_data(date_range):
+    """Get approved GST return invoices within the given date range."""
+    return ReturnInvoice.objects.select_related("invoice__customer").filter(
+        invoice__invoice_type=Invoice.Invoice_type.GST,
+        updated_at__date__range=date_range,
+        invoice__is_cancelled=False,
+        status=ReturnInvoice.RefundStatus.APPROVED,
+    )
+

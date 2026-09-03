@@ -1,7 +1,7 @@
 """Helper functions for report views."""
 
 from decimal import Decimal
-from invoice.views_report import (
+from invoice.services import (
     get_invoice_report_data,
     get_invoice_cancled_data,
     get_invoice_return_data,
