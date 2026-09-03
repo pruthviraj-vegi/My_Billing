@@ -4,7 +4,7 @@ quarter_start_end, DatesManipulation, DatesRange.
 """
 
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from django.test import TestCase
 
@@ -202,3 +202,11 @@ class DatesRangeTests(TestCase):
         dr = DatesRange("full_date")
         self.assertEqual(dr.from_date, datetime(2023, 1, 1, 0, 0, 0))
         self.assertEqual(dr.to_date, datetime(2024, 6, 15, 23, 59, 59, 999999))
+
+    def test_lazy_evaluation(self):
+        with patch.object(
+            DatesManipulation, "this_finance", new_callable=PropertyMock
+        ) as mock_finance:
+            dr = DatesRange("today")
+            self.assertEqual(dr.from_date, datetime(2024, 6, 15, 0, 0, 0))
+            mock_finance.assert_not_called()

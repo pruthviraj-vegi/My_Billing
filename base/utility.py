@@ -100,70 +100,34 @@ def get_financial_year(value):
     return f"{str(start_year)[2:]}-{str(end_year)[2:]}"
 
 
+def _clean_str(s):
+    """Normalize whitespace, strip /?, then uppercase."""
+    if not s:
+        return ""
+    cleaned = " ".join(str(s).split())
+    return cleaned.replace("/", "").replace("?", "").replace(",", "").upper()
+
+
 class StringProcessor:
-    """
-    This class processes strings by cleaning them (removing spaces, slashes, question marks, and commas)
-    and converting them to different cases. It also handles the case where None or an empty string is passed.
-    """
+    """Processes strings by cleaning and converting cases."""
 
-    def __init__(self, input_string=None):
-        """
-        Initializes the StringProcessor object.
-
-        Args:
-            input_string (str, optional): The input string to be processed. Defaults to None.
-        """
-        if input_string is None:
-            self.input_string = ""
-            self.cleaned_string = ""
-        else:
-            self.input_string = input_string
-            self.clean()
+    def __init__(self, s=None):
+        self.input_string = s or ""
+        self.cleaned_string = _clean_str(self.input_string)
 
     def clean(self):
-        """
-        Cleans the input string by removing spaces, slashes, question marks, and commas.
-        """
-        cleaned_string = " ".join(self.input_string.split())
-        cleaned_string = (
-            cleaned_string.replace("/", "").replace("?", "").replace(",", "")
-        )
-        self.cleaned_string = cleaned_string.upper()
+        self.cleaned_string = _clean_str(self.input_string)
 
     def toUppercase(self):  # pylint: disable=invalid-name
-        """
-        Returns the cleaned string in uppercase.
-
-        Returns:
-            str: The cleaned string in uppercase.
-        """
-        return self.cleaned_string
+        return self.cleaned_string.upper()
 
     def toLowercase(self):  # pylint: disable=invalid-name
-        """
-        Returns the cleaned string in lowercase.
-
-        Returns:
-            str: The cleaned string in lowercase.
-        """
         return self.cleaned_string.lower()
 
     def toTitle(self):  # pylint: disable=invalid-name
-        """
-        Returns the cleaned string in title case (first letter of each word capitalized).
-
-        Returns:
-            str: The cleaned string in title case.
-        """
         return self.cleaned_string.title()
 
     def toCapitalize(self):  # pylint: disable=invalid-name
-        """
-        Returns the cleaned string with only the first letter capitalized.
-
-        Returns:
-            str: The cleaned string with the first letter capitalized.
-        """
         return self.cleaned_string.capitalize()
 
 

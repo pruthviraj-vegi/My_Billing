@@ -114,23 +114,25 @@ class DatesManipulation:
 class DatesRange:
     """Wrapper class to map date preset strings to actual datetime ranges."""
 
+    PROPERTY_MAP = {
+        "today": "today_date",
+        "yesterday": "yesterday_date",
+        "this_month": "this_month",
+        "last_month": "last_month",
+        "this_finance": "this_finance",
+        "last_finance": "last_finance",
+        "this_quarter": "this_quarter",
+        "last_quarter": "last_quarter",
+    }
+
     def __init__(self, value):
         self.dates = DatesManipulation()
-        ranges = {
-            "today": self.dates.today_date,
-            "yesterday": self.dates.yesterday_date,
-            "this_month": self.dates.this_month,
-            "last_month": self.dates.last_month,
-            "this_finance": self.dates.this_finance,
-            "last_finance": self.dates.last_finance,
-            "this_quarter": self.dates.this_quarter,
-            "last_quarter": self.dates.last_quarter,
-            "full_date": (
-                start_of_day(datetime(2023, 1, 1)),
-                end_of_day(self.dates.today),
-            ),
-        }
-        self.from_date, self.to_date = ranges.get(value, self.dates.last_month)
+        if value == "full_date":
+            self.from_date = start_of_day(datetime(2023, 1, 1))
+            self.to_date = end_of_day(self.dates.today)
+        else:
+            prop = self.PROPERTY_MAP.get(value, "last_month")
+            self.from_date, self.to_date = getattr(self.dates, prop)
 
 
 # ---------- Public Function ----------

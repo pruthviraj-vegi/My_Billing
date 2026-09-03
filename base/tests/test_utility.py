@@ -11,6 +11,7 @@ from django.db.models import Q
 from django.test import TestCase, RequestFactory
 
 from base.utility import (
+    _clean_str,
     build_search_filter,
     get_financial_year,
     get_period_label,
@@ -104,6 +105,11 @@ class StringProcessorTests(TestCase):
     def test_to_capitalize(self):
         sp = StringProcessor("hello world")
         self.assertEqual(sp.toCapitalize(), "Hello world")
+
+    def test_clean_str_helper(self):
+        self.assertEqual(_clean_str(None), "")
+        self.assertEqual(_clean_str(""), "")
+        self.assertEqual(_clean_str("  hello/world?  foo,bar  "), "HELLOWORLD FOOBAR")
 
 
 class BuildSearchFilterTests(TestCase):
