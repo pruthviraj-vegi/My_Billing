@@ -39,9 +39,6 @@
     window.addEventListener('resize', function () {
       if (window.innerWidth > 768) {
         resetSidebar();
-        destroyPageActionsDropdowns();
-      } else {
-        initPageActionsDropdowns();
       }
     });
 
@@ -132,19 +129,88 @@
   }
 
   // ========================================
-  // MOBILE: Page actions 3-dots dropdown
-  // Collapses extra buttons into a "⋯" menu
+  // Page actions 3-dots dropdown
+  // Shows 1 primary action button outside, moves rest into a "⋯" menu
   // ========================================
-  function initPageActionsDropdowns() {
-    if (window.innerWidth > 768) return;
+  function isBackButton(el) {
+    if (!el) return false;
+    var btn = el.matches('a.btn, button.btn') ? el : el.querySelector('.btn');
+    if (!btn) return false;
+    var text = btn.textContent.trim().toLowerCase();
+    return text === 'back' || btn.querySelector('.fa-arrow-left') !== null;
+  }
 
+  function getButtonElement(item) {
+    return item.matches('a.btn, button.btn') ? item : (item.querySelector('.btn') || item);
+  }
+
+  function findMainActionButton(items) {
+    var list = Array.from(items);
+    if (list.length === 0) return null;
+
+    // 1. Explicit data-main-action or data-primary-action marker
+    var explicit = list.find(function (el) {
+      var btn = getButtonElement(el);
+      return el.dataset.mainAction === 'true' ||
+        btn.dataset.mainAction === 'true' ||
+        el.dataset.primaryAction === 'true' ||
+        btn.dataset.primaryAction === 'true' ||
+        el.classList.contains('main-action') ||
+        btn.classList.contains('main-action');
+    });
+    if (explicit) return explicit;
+
+    // 2. High priority action: Print (essential in invoices / detail views)
+    var printItem = list.find(function (el) {
+      var btn = getButtonElement(el);
+      return btn.id === 'directPrintBtn' ||
+        btn.querySelector('.fa-print') !== null ||
+        btn.textContent.toLowerCase().includes('print');
+    });
+    if (printItem) return printItem;
+
+    // 3. High priority action: Add / Create (e.g. Add Payment, Create Invoice)
+    var addItem = list.find(function (el) {
+      if (isBackButton(el)) return false;
+      var btn = getButtonElement(el);
+      var t = btn.textContent.toLowerCase();
+      return btn.classList.contains('btn-primary') && (
+        btn.querySelector('.fa-plus') !== null ||
+        t.includes('add') ||
+        t.includes('create') ||
+        t.includes('new')
+      );
+    });
+    if (addItem) return addItem;
+
+    // 4. Any .btn-primary or .btn-success (that is not a back button)
+    var primaryItem = list.find(function (el) {
+      if (isBackButton(el)) return false;
+      var btn = getButtonElement(el);
+      return btn.classList.contains('btn-primary') || btn.classList.contains('btn-success');
+    });
+    if (primaryItem) return primaryItem;
+
+    // 5. Any non-back button
+    var nonBackItem = list.find(function (el) {
+      return !isBackButton(el);
+    });
+    if (nonBackItem) return nonBackItem;
+
+    // 6. Fallback to first item
+    return list[0];
+  }
+
+  function initPageActionsDropdowns() {
     document.querySelectorAll('.page-actions').forEach(function (actions) {
       if (actions.dataset.collapsed) return;
 
-      var buttons = actions.querySelectorAll(':scope > a.btn, :scope > button.btn');
-      if (buttons.length < 1) return;
+      var items = actions.querySelectorAll(':scope > a.btn, :scope > button.btn, :scope > form');
+      if (items.length <= 1) return;
 
-      // Move ALL buttons into the dots dropdown
+      var mainItem = findMainActionButton(items);
+      if (!mainItem) return;
+
       actions.dataset.collapsed = 'true';
       actions.classList.add('has-more');
 
@@ -152,16 +218,23 @@
       toggle.type = 'button';
       toggle.className = 'page-actions-toggle';
       toggle.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
+      toggle.title = 'More actions';
+      toggle.setAttribute('aria-label', 'More actions');
 
       var dropdown = document.createElement('div');
       dropdown.className = 'page-actions-dropdown';
 
-      buttons.forEach(function (btn) {
-        dropdown.appendChild(btn);
+      // Move all other items into the dropdown
+      items.forEach(function (item) {
+        if (item !== mainItem) {
+          dropdown.appendChild(item);
+        }
       });
 
-      actions.appendChild(dropdown);
+      // Keep mainItem visible outside as first element, followed by toggle and dropdown
+      actions.insertBefore(mainItem, actions.firstChild);
       actions.appendChild(toggle);
+      actions.appendChild(dropdown);
 
       toggle.addEventListener('click', function (e) {
         e.preventDefault();
@@ -179,11 +252,18 @@
 
   function destroyPageActionsDropdowns() {
     document.querySelectorAll('.page-actions[data-collapsed]').forEach(function (actions) {
+      var dropdown = actions.querySelector('.page-actions-dropdown');
+      var toggle = actions.querySelector('.page-actions-toggle');
+      if (dropdown) {
+        var movedItems = Array.from(dropdown.children);
+        movedItems.forEach(function (item) {
+          actions.insertBefore(item, toggle || dropdown);
+        });
+        dropdown.remove();
+      }
+      if (toggle) toggle.remove();
       actions.classList.remove('has-more');
       delete actions.dataset.collapsed;
-      actions.querySelectorAll('.page-actions-toggle, .page-actions-dropdown').forEach(function (el) {
-        el.remove();
-      });
     });
   }
   // ========================================

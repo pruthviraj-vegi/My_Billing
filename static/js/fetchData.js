@@ -222,7 +222,7 @@ async function loadTableData(formId, tableId, fetchUrl, options = {}, page = 1) 
             firstFocusable.focus();
         }
 
-        table.dispatchEvent(new CustomEvent("tableDataLoaded", { detail: { data } }));
+        table.dispatchEvent(new CustomEvent("tableDataLoaded", { bubbles: true, detail: { data } }));
         options.onSuccess?.(data, table);
         return true;
     } catch (err) {

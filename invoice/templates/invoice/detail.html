@@ -9,10 +9,6 @@
     <div class="page-header">
         <h2 class="heading page-title">{{ title }}</h2>
         <div class="page-actions">
-            <a href="{% url 'invoice:home' %}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i>
-                Back
-            </a>
             {% if not invoice.is_cancelled %}
                 {% if invoice.customer.get_default_customer.pk != invoice.customer.pk %}
                     <a href="javascript:void(0);"
@@ -40,6 +36,7 @@
                 <button type="button"
                         class="btn btn-primary"
                         id="directPrintBtn"
+                        data-main-action="true"
                         data-url="{% url 'report:direct_print_invoice' invoice.id %}">
                     <i class="fas fa-print"></i>
                     Print Invoice
@@ -53,6 +50,7 @@
             {% else %}
                 <a href="{% url 'report:invoice_pdf' invoice.id %}"
                    class="btn btn-primary"
+                   data-main-action="true"
                    target="_blank">
                     <i class="fas fa-print"></i>
                     Print Invoice

@@ -53,6 +53,7 @@
         {% endif %}
       </td>
       <td class="text-center">
+        <div class="action-buttons">
         {% if row.type == "Invoice" %}
           <a href="{% url 'invoice:detail' row.id %}"
              class="btn-action btn-view"
@@ -79,6 +80,7 @@
             <i class="fas fa-trash"></i>
           </a>
         {% endif %}
+        </div>
       </td>
     </tr>
   {% endfor %}

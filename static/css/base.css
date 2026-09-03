@@ -1419,19 +1419,103 @@ h6,
 }
 
 .page-actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
-/* Three-dots toggle & dropdown panel: hidden on desktop */
+/* Three-dots toggle & dropdown for page-actions */
 .page-actions-toggle {
   display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.page-actions-toggle:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.page-actions.has-more > .page-actions-toggle {
+  display: flex;
 }
 
 .page-actions-dropdown {
   display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  z-index: 200;
+  padding: 0.375rem;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.page-actions-dropdown.open {
+  display: flex;
+}
+
+.page-actions-dropdown form {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.page-actions-dropdown .btn {
+  width: 100%;
+  justify-content: flex-start;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  transform: none !important;
+  box-shadow: none !important;
+  white-space: nowrap;
+}
+
+.page-actions-dropdown .btn i {
+  width: 1.25rem;
+  text-align: center;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.page-actions-dropdown .btn:hover {
+  background: var(--primary);
+  color: var(--text-on-primary);
+  border: none;
+  transform: none !important;
+}
+
+.page-actions-dropdown .btn-danger {
+  color: var(--danger, #dc3545) !important;
+  font-weight: 600;
+}
+
+.page-actions-dropdown .btn-danger:hover {
+  background: var(--danger, #dc3545) !important;
+  color: var(--text-on-primary, #ffffff) !important;
 }
 
 /* Scoped form-select inside page-actions */
@@ -7024,14 +7108,14 @@ WORD SUGGESTION SYSTEM STYLES
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 0.5rem;
   box-shadow: var(--shadow-md);
   z-index: 1000;
-  min-width: 300px;
-  padding: 1rem;
+  min-width: 180px;
+  padding: 0.5rem;
 }
 
 .checkbox-title {
@@ -7053,9 +7137,12 @@ WORD SUGGESTION SYSTEM STYLES
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+.quick-select-section ul {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .date-list li {
@@ -7063,22 +7150,87 @@ WORD SUGGESTION SYSTEM STYLES
 }
 
 .date-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: 1px solid var(--border-color);
   background: var(--bg-surface);
   color: var(--text-primary);
   text-decoration: none;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  display: inline-block;
+  border-radius: 0.375rem;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.date-btn:hover,
+.date-btn:hover {
+  background: var(--bg-hover, rgba(37, 99, 235, 0.06));
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .date-btn.active {
   background: var(--primary);
   color: var(--text-on-primary, #ffffff);
   border-color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+}
+
+/* ── Custom date section ── */
+.custom-date-section {
+  width: 100%;
+}
+
+.custom-date-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.625rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.back-to-presets-btn {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--primary, #2563eb);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.back-to-presets-btn:hover {
+  color: var(--primary-hover, #1d4ed8);
+}
+
+.custom-date-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.custom-date-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.custom-date-inputs {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
 }
 
 .date-picker {
@@ -7092,49 +7244,30 @@ WORD SUGGESTION SYSTEM STYLES
   font-size: 0.875rem;
 }
 
-.date-list li .date-picker {
-  display: inline-block;
-}
-
-.date-list li:first-child {
-  display: flex;
-  gap: 0.5rem;
-  width: 100%;
-}
-
 .student-submit {
   width: 100%;
-  margin-top: 0.5rem;
 }
 
-.student-submit .btn,
-.date-dropdown-panel .custom-date-submit-btn,
-.custom-date-section .custom-date-submit-btn {
-  width: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: var(--primary) !important;
-  color: var(--text-on-primary, #ffffff) !important;
-  border: 1px solid var(--primary) !important;
-  font-size: 0.875rem !important;
-  font-weight: 600 !important;
-  padding: 0.5rem 1rem !important;
-  border-radius: 6px !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  height: auto !important;
-  box-shadow: none !important;
+.custom-date-submit-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: var(--text-on-primary, #ffffff);
+  border: 1px solid var(--primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.student-submit .btn:hover,
-.date-dropdown-panel .custom-date-submit-btn:hover,
-.custom-date-section .custom-date-submit-btn:hover {
-  background: var(--primary-hover) !important;
-  border-color: var(--primary-hover) !important;
-  color: var(--text-on-primary, #ffffff) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1)) !important;
+.custom-date-submit-btn:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
 }
 
 /* ========================================

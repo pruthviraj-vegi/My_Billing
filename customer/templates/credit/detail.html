@@ -9,17 +9,6 @@
   <div class="page-header">
     <h2 class="page-title">{{ customer.name }} - Credit Ledger</h2>
     <div class="page-actions">
-      <a href="{% url 'customer:credit_home' %}" class="btn btn-secondary">
-        <i class="fas fa-arrow-left"></i>
-        Back
-      </a>
-      {% if perms.customer.add_payment %}
-        <a href="{% url 'customer:credit_create' customer.id %}"
-           class="btn btn-primary">
-          <i class="fas fa-plus"></i>
-          Add Payment
-        </a>
-      {% endif %}
       {% if perms.customer.view_customercreditsummary %}
         <a href="{% url 'customer:credit_auto_reallocate' customer.id %}"
            class="btn btn-warning"
@@ -212,13 +201,13 @@
           </div>
         </form>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" id="send_pdf_statement">
+      <div class="modal-footer flex-nowrap gap-2">
+        <button type="button" class="btn btn-primary btn-sm text-nowrap" id="send_pdf_statement">
           <i class="fas fa-paper-plane"></i>
           Send PDF Statement
         </button>
-        <button type="button" class="btn btn-secondary" id="cancelDownloadBtn">Cancel</button>
-        <button type="button" class="btn btn-primary" id="submitDownloadBtn">
+        <button type="button" class="btn btn-secondary btn-sm text-nowrap" id="cancelDownloadBtn">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm text-nowrap" id="submitDownloadBtn">
           <i class="fas fa-download"></i>
           Download
         </button>

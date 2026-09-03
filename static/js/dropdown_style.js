@@ -142,14 +142,11 @@
         // Build quick select options
         const quickSelectList = document.createElement('div');
         quickSelectList.className = 'date-list quick-select-section';
-        quickSelectList.style.width = '100%';
 
         const ul = document.createElement('ul');
-        ul.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
 
         selectOptions.forEach(opt => {
             const li = document.createElement('li');
-            li.style.cssText = 'width: 100%; margin: 0;';
 
             const btn = document.createElement('a');
             btn.href = '#';
@@ -157,7 +154,6 @@
             btn.setAttribute('data-value', opt.value);
             btn.setAttribute('role', 'option');
             btn.textContent = opt.text;
-            btn.style.cssText = 'width: 100%; display: block; text-align: center; padding: 0.5rem 0.5rem; font-size: 0.875rem; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-surface, #ffffff); color: var(--text-primary, #1e293b); text-decoration: none; border-radius: 6px; transition: all 0.2s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
 
             li.appendChild(btn);
             ul.appendChild(li);
@@ -170,29 +166,27 @@
         if (options.showCustomDates !== false) {
             const customDateList = document.createElement('div');
             customDateList.className = 'date-list custom-date-section';
-            customDateList.style.cssText = 'width: 100%; display: none;';
+            customDateList.style.display = 'none';
 
             // Header row with back button to return to presets
             const headerRow = document.createElement('div');
-            headerRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;';
-            headerRow.innerHTML = `<button type="button" class="btn btn-sm back-to-presets-btn" id="${ids.backBtn}" style="background: none; border: none; font-size: 0.8rem; color: var(--primary, #2563eb); cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-arrow-left"></i> Presets</button><span style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">Custom Dates</span>`;
+            headerRow.className = 'custom-date-header';
+            headerRow.innerHTML = `<button type="button" class="btn btn-sm back-to-presets-btn" id="${ids.backBtn}"><i class="fas fa-arrow-left"></i> Presets</button><span class="custom-date-title">Custom Dates</span>`;
             customDateList.appendChild(headerRow);
 
             const customUl = document.createElement('ul');
-            customUl.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; width: 100%; padding: 0; margin: 0; list-style: none;';
+            customUl.className = 'custom-date-fields';
 
             // Date inputs row
             const dateRow = document.createElement('li');
-            dateRow.style.cssText = 'display: flex; gap: 0.5rem; width: 100%; margin: 0;';
+            dateRow.className = 'custom-date-inputs';
 
             const fromPicker = document.createElement('div');
             fromPicker.className = 'date-picker';
-            fromPicker.style.cssText = 'flex: 1; min-width: 120px;';
             fromPicker.innerHTML = `<div class="form-custom cal-icon"><input class="form-input form-date-input" type="text" id="${ids.fromDate}" placeholder="From Date" readonly aria-label="From date" data-datepicker-time="false"></div>`;
 
             const toPicker = document.createElement('div');
             toPicker.className = 'date-picker pe-0';
-            toPicker.style.cssText = 'flex: 1; min-width: 120px;';
             toPicker.innerHTML = `<div class="form-custom cal-icon"><input class="form-input form-date-input" type="text" id="${ids.toDate}" placeholder="To Date" readonly aria-label="To date" data-datepicker-time="false"></div>`;
 
             dateRow.appendChild(fromPicker);
@@ -201,25 +195,12 @@
             // Submit button row
             const submitRow = document.createElement('li');
             submitRow.className = 'student-submit';
-            submitRow.style.cssText = 'width: 100%; margin: 0;';
 
             const submitBtn = document.createElement('button');
             submitBtn.id = ids.submit;
             submitBtn.type = 'button';
             submitBtn.className = 'btn btn-primary custom-date-submit-btn';
-            submitBtn.style.cssText = 'width: 100%; display: flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; border-radius: 6px; background: var(--primary, #2563eb); color: var(--text-on-primary, #ffffff); border: 1px solid var(--primary, #2563eb); cursor: pointer; transition: all 0.2s ease;';
             submitBtn.textContent = 'Submit';
-
-            submitBtn.addEventListener('mouseenter', () => {
-                submitBtn.style.background = 'var(--primary-hover, #1d4ed8)';
-                submitBtn.style.borderColor = 'var(--primary-hover, #1d4ed8)';
-                submitBtn.style.color = 'var(--text-on-primary, #ffffff)';
-            });
-            submitBtn.addEventListener('mouseleave', () => {
-                submitBtn.style.background = 'var(--primary, #2563eb)';
-                submitBtn.style.borderColor = 'var(--primary, #2563eb)';
-                submitBtn.style.color = 'var(--text-on-primary, #ffffff)';
-            });
 
             submitRow.appendChild(submitBtn);
 
