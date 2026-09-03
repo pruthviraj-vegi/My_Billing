@@ -113,7 +113,6 @@ A comprehensive Django 5.1-based billing, inventory, and point-of-sale (POS) sys
 - `python-decouple`: Environment variable management
 - `django-redis`: Redis cache backend
 - `brotli`: Brotli compression for static files
-- `django-cors-headers`: CORS support
 
 ---
 

@@ -9,8 +9,17 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import OuterRef, Subquery, Sum
-from django.db.models.fields import DecimalField
+from django.db.models import (
+    Case,
+    DecimalField,
+    F,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce
 from django.db.models.signals import post_delete
 from django.dispatch import Signal
@@ -321,3 +330,227 @@ class CustomerPaymentService:
 
         old_cust = old_customer if customer_changed else None
         return needs_reallocation, old_cust
+
+
+def get_opening_balance(customer, start_date=None):
+    """Calculate opening balance without loops using ORM aggregation."""
+
+    invoice_qs = Invoice.objects.filter(
+        customer=customer,
+        payment_type=Invoice.PaymentType.CREDIT,
+        is_cancelled=False,
+    )
+    if start_date is not None:
+        invoice_qs = invoice_qs.filter(invoice_date__lt=start_date)
+
+    # 1️⃣ CREDIT INVOICES NET AMOUNT
+    invoice_net = (
+        invoice_qs
+        .annotate(
+            net_amount=Coalesce(F("amount"), Decimal(0))
+            - Coalesce(F("discount_amount"), Decimal(0))
+            - Coalesce(F("advance_amount"), Decimal(0))
+        )
+        .aggregate(total=Coalesce(Sum("net_amount"), Decimal(0)))["total"]
+    )
+
+    payment_qs = Payment.objects.filter(customer=customer)
+    if start_date is not None:
+        payment_qs = payment_qs.filter(payment_date__lt=start_date)
+
+    # 2️⃣ PAYMENT BALANCE (credit - debit)
+    payment_balance = (
+        payment_qs
+        .annotate(
+            credit=Case(
+                When(
+                    payment_type=Payment.PaymentType.Purchased,
+                    then=Coalesce(F("amount"), Decimal(0)),
+                ),
+                default=Decimal(0),
+            ),
+            debit=Case(
+                When(
+                    payment_type=Payment.PaymentType.Paid,
+                    then=Coalesce(F("amount"), Decimal(0)),
+                ),
+                default=Decimal(0),
+            ),
+        )
+        .aggregate(total=Coalesce(Sum(F("credit") - F("debit")), Decimal(0)))["total"]
+    )
+
+    return invoice_net + payment_balance
+
+
+def _build_ledger_rows(customer, start_date=None, end_date=None):
+    """Helper function to build unified ledger rows from invoices and payments."""
+
+    # -----------------------------------
+    # 1️⃣ Build filters dynamically
+    # -----------------------------------
+    invoice_filters = Q(
+        customer=customer, payment_type=Invoice.PaymentType.CREDIT, is_cancelled=False
+    )
+    payment_filters = Q(customer=customer)
+
+    if start_date and end_date:
+        invoice_filters &= Q(invoice_date__range=(start_date, end_date))
+        payment_filters &= Q(payment_date__range=(start_date, end_date))
+
+    # -----------------------------------
+    # 2️⃣ Fetch Invoices (annotated)
+    # -----------------------------------
+    credit_invoices = (
+        Invoice.objects.filter(invoice_filters)
+        .annotate(
+            gross=Coalesce(F("amount"), Decimal("0"), output_field=DecimalField()),
+            discount=Coalesce(
+                F("discount_amount"), Decimal("0"), output_field=DecimalField()
+            ),
+            advance=Coalesce(
+                F("advance_amount"), Decimal("0"), output_field=DecimalField()
+            ),
+            # Calculate return amount from related ReturnInvoice records
+            return_amt=Coalesce(
+                Subquery(
+                    ReturnInvoice.objects.filter(invoice=OuterRef("pk"))
+                    .values("invoice")
+                    .annotate(total=Sum("refund_amount"))
+                    .values("total")[:1],
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+                output_field=DecimalField(),
+            ),
+            net_amount=Coalesce(F("amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(F("discount_amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(F("advance_amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(
+                Subquery(
+                    ReturnInvoice.objects.filter(invoice=OuterRef("pk"))
+                    .values("invoice")
+                    .annotate(total=Sum("refund_amount"))
+                    .values("total")[:1],
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+                output_field=DecimalField(),
+            ),
+            paid_amt=Coalesce(
+                F("paid_amount"), Decimal("0"), output_field=DecimalField()
+            ),
+            # Outstanding = Gross - Discount - Advance - Paid - Return
+            outstanding=Coalesce(F("amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(F("discount_amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(F("advance_amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(F("paid_amount"), Decimal("0"), output_field=DecimalField())
+            - Coalesce(
+                Subquery(
+                    ReturnInvoice.objects.filter(invoice=OuterRef("pk"))
+                    .values("invoice")
+                    .annotate(total=Sum("refund_amount"))
+                    .values("total")[:1],
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+                output_field=DecimalField(),
+            ),
+        )
+        .values(
+            "id",
+            "invoice_number",
+            "invoice_date",
+            "gross",
+            "discount",
+            "advance",
+            "return_amt",
+            "net_amount",
+            "paid_amt",
+            "outstanding",
+            "payment_status",
+            "notes",
+        )
+        .order_by("invoice_date")
+    )
+
+    # -----------------------------------
+    # 3️⃣ Fetch Payments (annotated)
+    # -----------------------------------
+    payments = (
+        Payment.objects.filter(payment_filters)
+        .annotate(
+            credit=Case(
+                When(
+                    payment_type=Payment.PaymentType.Purchased,
+                    then=Coalesce(
+                        F("amount"), Decimal("0"), output_field=DecimalField()
+                    ),
+                ),
+                default=Value(Decimal("0")),
+                output_field=DecimalField(),
+            ),
+            debit=Case(
+                When(
+                    payment_type=Payment.PaymentType.Paid,
+                    then=Coalesce(
+                        F("amount"), Decimal("0"), output_field=DecimalField()
+                    ),
+                ),
+                default=Value(Decimal("0")),
+                output_field=DecimalField(),
+            ),
+        )
+        .values(
+            "id",
+            "payment_date",
+            "payment_type",
+            "credit",
+            "debit",
+            "method",
+            "notes",
+        )
+        .order_by("payment_date")
+    )
+
+    # -----------------------------------
+    # 4️⃣ Build Unified Ledger Rows
+    # -----------------------------------
+    rows = []
+
+    for inv in credit_invoices:
+        rows.append(
+            {
+                "id": inv["id"],
+                "date": inv["invoice_date"],
+                "type": "Invoice",
+                "ref": inv["invoice_number"],
+                "notes": inv["notes"],
+                "credit": inv["net_amount"],
+                "debit": Decimal("0"),
+                "paid_amount": inv["paid_amt"],
+                "payment_status": inv["payment_status"],
+                "outstanding": inv["outstanding"],
+                "gross_amount": inv["gross"],
+                "discount_amount": inv["discount"],
+                "advance_amount": inv["advance"],
+            }
+        )
+
+    for pay in payments:
+        rows.append(
+            {
+                "id": pay["id"],
+                "date": pay["payment_date"],
+                "type": pay["payment_type"].title(),
+                "ref": pay["id"],
+                "method": pay["method"],
+                "notes": pay["notes"],
+                "credit": pay["credit"],
+                "debit": pay["debit"],
+            }
+        )
+
+    return rows
+
+

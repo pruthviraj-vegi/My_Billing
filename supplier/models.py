@@ -14,8 +14,6 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.utils.text import slugify
 
-from model_utils import FieldTracker
-
 from base.manager import SoftDeleteModel, phone_regex
 from base.utility import StringProcessor
 
@@ -204,8 +202,6 @@ class SupplierInvoice(SoftDeleteModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    tracker = FieldTracker(fields=["total_amount"])
-
     class Meta:
         unique_together = ("supplier", "invoice_number", "invoice_date")
         ordering = ["-invoice_date"]
@@ -283,8 +279,6 @@ class SupplierPayment(SoftDeleteModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    tracker = FieldTracker(fields=["amount"])
 
     def save(self, *args, **kwargs):
         if not self.pk:

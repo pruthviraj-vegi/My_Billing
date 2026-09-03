@@ -362,6 +362,11 @@ class GetOpeningBalanceTests(TestCase):
         self.user = create_test_user()
         self.customer = create_test_customer(created_by=self.user)
 
+    def test_import_from_services(self):
+        from customer.services import get_opening_balance
+        balance = get_opening_balance(self.customer)
+        self.assertEqual(balance, Decimal("0"))
+
     def test_no_transactions_returns_zero(self):
         from customer.views_credit import get_opening_balance
         balance = get_opening_balance(self.customer)
@@ -442,6 +447,11 @@ class BuildLedgerRowsTests(TestCase):
     def setUp(self):
         self.user = create_test_user()
         self.customer = create_test_customer(created_by=self.user)
+
+    def test_import_from_services(self):
+        from customer.services import _build_ledger_rows
+        rows = _build_ledger_rows(self.customer)
+        self.assertEqual(rows, [])
 
     def test_no_transactions_returns_empty(self):
         from customer.views_credit import _build_ledger_rows

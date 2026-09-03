@@ -26,10 +26,12 @@ from base.getDates import getDates
 from cart.models import Cart, CartItem
 from customer.models import Customer
 from customer.views import get_data as get_customers_data
-from customer.views_credit import (
+from customer.services import (
     _build_ledger_rows as build_ledger_rows,
-    credit_customers_data as get_credit_customers_data,
     get_opening_balance,
+)
+from customer.views_credit import (
+    credit_customers_data as get_credit_customers_data,
     total_credit_customers_data as get_total_credit_outstanding,
 )
 

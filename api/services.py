@@ -10,7 +10,7 @@ from django.contrib.auth.views import login_not_required
 
 from api.cloudflare import check_file_exists, BucketType
 from base.utility import resolve_user
-from customer.views_credit import _build_ledger_rows, get_opening_balance
+from customer.services import _build_ledger_rows, get_opening_balance
 from invoice.models import InvoiceItem
 from report.models import InvoicePDF, CustomerStatementPDF
 from report.views import generate_pdf
