@@ -457,12 +457,20 @@
     opacity: 0.5;
   }
 
-  /* Multi-column: force single column */
+  /* Multi-column: force single column on mobile */
   #sidebar .dropdown-multicolumn,
   #sidebar .dropdown-multicolumn.col-2,
   #sidebar .dropdown-multicolumn.col-3 {
+    display: none !important;
+    grid-template-columns: none !important;
     column-count: 1 !important;
     min-width: auto !important;
+  }
+
+  #sidebar .nav-item.dropdown-open > .dropdown-multicolumn,
+  #sidebar .nav-item.dropdown-open > .dropdown-multicolumn.col-2,
+  #sidebar .nav-item.dropdown-open > .dropdown-multicolumn.col-3 {
+    display: block !important;
   }
 
   /* Sidebar footer: user info */

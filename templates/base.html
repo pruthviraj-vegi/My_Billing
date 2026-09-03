@@ -165,18 +165,6 @@
     <!-- Select2 - Load early for forms -->
     <script src="{% static 'assets/plugins/select2/js/select2.min.js' %}" defer></script>
     <script src="{% static 'js/select2-init.js' %}" defer></script>
-    <!-- Shortcuts Configuration - URLs resolved by Django -->
-    <script>
-      // Global configuration for shortcuts.js
-      window.SHORTCUTS_CONFIG = {
-        urls: {
-          createCart: "{% url 'cart:auto_cart_create' %}",
-          createCustomer: "{% url 'customer:create' %}",
-          createSupplier: "{% url 'supplier:create' %}"
-        }
-      };
-    </script>
-    <script src="{% static 'js/shortcuts.js' %}"></script>
     <!-- Datelite DatePicker JS -->
     <script src="{% static 'assets/plugins/DatePicker.js' %}" defer></script>
     {% if redirect_url %}

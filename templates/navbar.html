@@ -40,7 +40,7 @@
             <i class="fas fa-file-invoice-dollar"></i>
             <span>Invoices</span>
          </a>
-         <div class="dropdown-menu dropdown-multicolumn col-2">
+         <div class="dropdown-menu">
             {% if perms.invoice.view_dashboard %}
             <a href="{% url 'invoice:dashboard' %}"
                class="dropdown-item {% if request.resolver_match.namespace == 'invoice' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
@@ -85,10 +85,10 @@
             {% endif %}
             {% if perms.inventory.view_product %}
             <a href="{% url 'inventory_products:home' %}"
-               class="dropdown-item {% if request.resolver_match.url_name == 'product_home' %}active{% endif %}">All
+               class="dropdown-item {% if request.resolver_match.namespace == 'inventory_products' %}active{% endif %}">All
                Products</a>
             <a href="{% url 'inventory_variant:home' %}"
-               class="dropdown-item {% if request.resolver_match.url_name == 'variant_home' %}active{% endif %}">All
+               class="dropdown-item {% if request.resolver_match.namespace == 'inventory_variant' %}active{% endif %}">All
                Variants</a>
             {% endif %}
             <div class="dropdown-divider"></div>
@@ -270,7 +270,7 @@
             <i class="fas fa-cog"></i>
             <span>Settings</span>
          </a>
-         <div class="dropdown-menu dropdown-multicolumn col-2">
+         <div class="dropdown-menu">
             {% if perms.setting.view_shopdetails %}
             <a href="{% url 'setting:shop_settings_dashboard' %}"
                class="dropdown-item {% if request.resolver_match.url_name == 'shop_settings_dashboard' %}active{% endif %}">
