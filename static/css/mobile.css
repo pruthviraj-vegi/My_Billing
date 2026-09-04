@@ -282,6 +282,10 @@
   }
 
   /* Search bar: single row on mobile — input + icon-only button */
+  .search-filter-section {
+    padding: 0.35rem 0.4rem;
+  }
+
   .search-filter-form {
     flex-direction: row;
     flex-wrap: nowrap;
@@ -313,7 +317,8 @@
 
   /* Search button: icon-only on mobile */
   .search-filter-form>.btn {
-    padding: 0.5rem 0.65rem;
+    height: 32px;
+    padding: 0 0.75rem;
     font-size: 0;
     /* hide text */
     gap: 0;

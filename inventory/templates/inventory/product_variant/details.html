@@ -36,18 +36,18 @@
         <span class="breadcrumb-active">{{ variant.full_name }}</span>
     </nav>
     <!-- Main Layout -->
-    <div class="col d-flex flex-row">
-        <!-- Left Column - Variant Details -->
-        <div class="col-md-2 d-flex flex-column gap-2">
+    <div class="col d-flex flex-row detail-layout two-column-layout">
+        <!-- Left Column - Variant Details and Summary -->
+        <div class="col-md-3 d-flex flex-column gap-2 details-sidebar-column layout-sidebar-column">
             <!-- Variant Details Column -->
-            <div class="column details-column">
-                <div class="column-header">
-                    <h3>
+            <div class="sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
                         <i class="fas fa-box"></i>
                         Variant Details
                     </h3>
                 </div>
-                <div class="details-info-compact">
+                <div class="sidebar-card-body">
                     <div class="detail-name-compact">
                         <h4>{{ variant.full_name }}</h4>
                         <span class="detail-status status-badge status-{{ variant.status|lower }}">{{ variant.get_status_display }}</span>
@@ -98,81 +98,85 @@
                 </div>
             </div>
             <!-- Stock Summary Cards -->
-            <div class="summary-card-compact" id="stockSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-boxes"></i>
+            <div class="sidebar-card" id="stockSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-boxes"></i> Stock Summary
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Stock Summary</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ stock_stats.available_quantity|floatformat:0 }}</span>
-                            <span class="stat-label-compact">Available</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ stock_stats.available_quantity|floatformat:0 }}</span>
+                            <span class="stat-label">Available</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ stock_stats.damaged_quantity|floatformat:0 }}</span>
-                            <span class="stat-label-compact">Damaged</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ stock_stats.damaged_quantity|floatformat:0 }}</span>
+                            <span class="stat-label">Damaged</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ stock_stats.total_quantity|floatformat:0 }}</span>
-                            <span class="stat-label-compact">Total</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ stock_stats.total_quantity|floatformat:0 }}</span>
+                            <span class="stat-label">Total</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="summary-card-compact" id="valueSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-chart-line"></i>
+            <div class="sidebar-card" id="valueSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-chart-line"></i> Value Summary
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Value Summary</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact"
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number"
                                   id="purchasePriceSummary"
                                   data-price="{{ variant.purchase_price|currency_abbreviation }}">XXXX</span>
-                            <span class="stat-label-compact">Purchase</span>
+                            <span class="stat-label">Purchase</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ variant.mrp|currency_abbreviation }}</span>
-                            <span class="stat-label-compact">Selling</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ variant.mrp|currency_abbreviation }}</span>
+                            <span class="stat-label">Selling</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ variant.final_price|currency_abbreviation }}</span>
-                            <span class="stat-label-compact">Final</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ variant.final_price|currency_abbreviation }}</span>
+                            <span class="stat-label">Final</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="summary-card-compact" id="healthSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-heartbeat"></i>
+            <div class="sidebar-card" id="healthSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-heartbeat"></i> Stock Health
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Stock Health</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ stock_stats.profit_margin|floatformat:1 }}%</span>
-                            <span class="stat-label-compact">Margin</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ stock_stats.profit_margin|floatformat:1 }}%</span>
+                            <span class="stat-label">Margin</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ stock_stats.damage_percentage|floatformat:1 }}%</span>
-                            <span class="stat-label-compact">Damage</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ stock_stats.damage_percentage|floatformat:1 }}%</span>
+                            <span class="stat-label">Damage</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ variant.stock_status }}</span>
-                            <span class="stat-label-compact">Status</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ variant.stock_status }}</span>
+                            <span class="stat-label">Status</span>
                         </div>
                     </div>
                 </div>
             </div>
             <!-- Quick Actions Section -->
-            <div class="summary-card-compact">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-rocket"></i>
+            <div class="sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-rocket"></i> Quick Actions
+                    </h3>
                 </div>
-                <div class="summary-content-compact" style="flex: 1; min-width: 0;">
-                    <h4>Quick Actions</h4>
+                <div class="sidebar-card-body">
                     <div class="quick-actions-inline">
                         {% if perms.inventory.add_inventorylog %}
                             <a href="{% url 'inventory_variant:stock_in' variant.id %}"
@@ -200,8 +204,9 @@
                 </div>
             </div>
         </div>
+
         <!-- Right Column - Tables -->
-        <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+        <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
             <!-- Stock and Price Information Side by Side -->
             <div class="info-tables-container gap-2">
                 <!-- Stock Information Table -->
@@ -376,6 +381,7 @@
                 </div>
             {% endif %}
         </div>
+    </div>
     </div>
 {% endblock content %}
 {% block extra_js %}

@@ -56,17 +56,17 @@
     <span class="breadcrumb-active">{{ user.full_name }}</span>
   </nav>
   <!-- Main Layout -->
-  <div class="col d-flex flex-row">
+  <div class="col d-flex flex-row detail-layout two-column-layout">
     <!-- Left Column - User Details and Summary -->
-    <div class="col-md-2 d-flex flex-column gap-2">
+    <div class="col-md-3 d-flex flex-column gap-2 details-sidebar-column layout-sidebar-column">
       <!-- User Details Column -->
-      <div class="column details-column">
-        <div class="column-header">
-          <h3>
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
             <i class="fas fa-user"></i> User Details
           </h3>
         </div>
-        <div class="details-info-compact">
+        <div class="details-info-compact summary-card-body">
           <div class="detail-name-compact">
             <h4>{{ user.full_name }}</h4>
             <span class="detail-status {% if user.is_active %}status-active{% else %}status-inactive{% endif %}">
@@ -118,85 +118,89 @@
         </div>
       </div>
       <!-- Salary Summary Card -->
-      <div class="summary-card-compact" id="salarySummaryCard">
-        <div class="summary-icon-compact">
-          <i class="fas fa-money-bill-wave"></i>
+      <div class="sidebar-card" id="salarySummaryCard">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
+            <i class="fas fa-money-bill-wave"></i> Salary Summary
+          </h3>
         </div>
-        <div class="summary-content-compact">
-          <h4>Salary Summary</h4>
-          <div class="summary-stats-compact">
-            <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number"
+        <div class="sidebar-card-body">
+          <div class="summary-stats-grid">
+            <div class="stat-item">
+              <span class="stat-number counting-number"
                     data-count="{{ total_salaries|default:0 }}">0</span>
-              <span class="stat-label-compact">Total Records</span>
+              <span class="stat-label">Total Records</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact">
+            <div class="stat-item">
+              <span class="stat-number">
                 {% if current_salary %}
                   {{ current_salary.amount|currency }}
                 {% else %}
                   0
                 {% endif %}
               </span>
-              <span class="stat-label-compact">Current</span>
+              <span class="stat-label">Current</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact">
+            <div class="stat-item">
+              <span class="stat-number">
                 {% if current_salary and current_salary.commission %}
                   <i class="fas fa-check text-success"></i>
                 {% else %}
                   <i class="fas fa-times text-secondary"></i>
                 {% endif %}
               </span>
-              <span class="stat-label-compact">Commission</span>
+              <span class="stat-label">Commission</span>
             </div>
           </div>
         </div>
       </div>
       <!-- Transaction Summary Card -->
-      <div class="summary-card-compact" id="transactionSummaryCard">
-        <div class="summary-icon-compact">
-          <i class="fas fa-exchange-alt"></i>
+      <div class="sidebar-card" id="transactionSummaryCard">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
+            <i class="fas fa-exchange-alt"></i> Transaction Summary
+          </h3>
         </div>
-        <div class="summary-content-compact">
-          <h4>Transaction Summary</h4>
-          <div class="summary-stats-compact">
-            <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number"
+        <div class="sidebar-card-body">
+          <div class="summary-stats-grid">
+            <div class="stat-item">
+              <span class="stat-number counting-number"
                     data-count="{{ total_transactions|default:0 }}">0</span>
-              <span class="stat-label-compact">Total</span>
+              <span class="stat-label">Total</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact">{{ credit_transactions|currency|default:0 }}</span>
-              <span class="stat-label-compact">Credit</span>
+            <div class="stat-item">
+              <span class="stat-number">{{ credit_transactions|currency|default:0 }}</span>
+              <span class="stat-label">Credit</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact">{{ debit_transactions|currency|default:0 }}</span>
-              <span class="stat-label-compact">Debit</span>
+            <div class="stat-item">
+              <span class="stat-number">{{ debit_transactions|currency|default:0 }}</span>
+              <span class="stat-label">Debit</span>
             </div>
           </div>
         </div>
       </div>
       <!-- Net Amount Card -->
-      <div class="summary-card-compact" id="netAmountCard">
-        <div class="summary-icon-compact">
-          <i class="fas fa-calculator"></i>
+      <div class="sidebar-card" id="netAmountCard">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
+            <i class="fas fa-calculator"></i> Net Amount
+          </h3>
         </div>
-        <div class="summary-content-compact">
-          <h4>Net Amount</h4>
-          <div class="summary-stats-compact">
-            <div class="stat-item-compact w-100">
-              <span class="stat-number-compact {% if net_amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+        <div class="sidebar-card-body">
+          <div class="summary-stats-grid">
+            <div class="stat-item w-100">
+              <span class="stat-number {% if net_amount >= 0 %}text-success{% else %}text-danger{% endif %}">
                 {{ net_amount|currency|default:0 }}
               </span>
-              <span class="stat-label-compact">Balance</span>
+              <span class="stat-label">Balance</span>
             </div>
           </div>
         </div>
       </div>
     </div>
+
     <!-- Right Column - Tables -->
-    <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+    <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
       <!-- Salary Table Section -->
       <div class="table-section" id="salarySection">
         <div class="table-header">

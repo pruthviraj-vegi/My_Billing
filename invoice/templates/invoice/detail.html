@@ -89,17 +89,17 @@
         <span class="breadcrumb-active">{{ invoice.invoice_number }}</span>
     </nav>
     <!-- Main Layout -->
-    <div class="col d-flex flex-row">
-        <!-- Left Column - Invoice Details -->
-        <div class="col-md-2 d-flex flex-column gap-2">
+    <div class="col d-flex flex-row detail-layout two-column-layout">
+        <!-- Left Column - Invoice Details & Sticky Summary Sidebar -->
+        <div class="col-md-3 d-flex flex-column gap-2 details-sidebar-column layout-sidebar-column">
             <!-- Invoice Details Column -->
-            <div class="column details-column">
-                <div class="column-header">
-                    <h3>
+            <div class="sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
                         <i class="fas fa-file-invoice"></i> Invoice Details
                     </h3>
                 </div>
-                <div class="details-info-compact">
+                <div class="sidebar-card-body">
                     <div class="detail-name-compact">
                         <h4>{{ invoice.invoice_number }}</h4>
                         <span class="detail-status status-badge status-{{ invoice.payment_status|lower }}">{{ invoice.get_payment_status_display }}</span>
@@ -155,78 +155,82 @@
                 </div>
             </div>
             <!-- Summary Cards -->
-            <div class="summary-card-compact" id="amountSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-calculator"></i>
+            <div class="sidebar-card" id="amountSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-calculator"></i> Amount Summary
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Amount Summary</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ invoice.amount|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Subtotal</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ invoice.amount|currency_nonDecimal }}</span>
+                            <span class="stat-label">Subtotal</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ invoice.total_payable|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Total</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ invoice.total_payable|currency_nonDecimal }}</span>
+                            <span class="stat-label">Total</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ invoice.remaining_amount|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Due</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ invoice.remaining_amount|currency_nonDecimal }}</span>
+                            <span class="stat-label">Due</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="summary-card-compact" id="paymentSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-credit-card"></i>
+            <div class="sidebar-card" id="paymentSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-credit-card"></i> Payment Summary
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Payment Summary</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ invoice.advance_amount|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Advance</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ invoice.advance_amount|currency_nonDecimal }}</span>
+                            <span class="stat-label">Advance</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ invoice.paid_amount|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Paid</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ invoice.paid_amount|currency_nonDecimal }}</span>
+                            <span class="stat-label">Paid</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ invoice.remaining_amount|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Balance</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ invoice.remaining_amount|currency_nonDecimal }}</span>
+                            <span class="stat-label">Balance</span>
                         </div>
                     </div>
                 </div>
             </div>
             <!-- Return Summary Card -->
             {% if return_invoices.exists %}
-                <div class="summary-card-compact" id="returnSummaryCard">
-                    <div class="summary-icon-compact">
-                        <i class="fas fa-undo"></i>
+                <div class="sidebar-card" id="returnSummaryCard">
+                    <div class="sidebar-card-header">
+                        <h3 class="sidebar-card-title">
+                            <i class="fas fa-undo"></i> Return Summary
+                        </h3>
                     </div>
-                    <div class="summary-content-compact">
-                        <h4>Return Summary</h4>
-                        <div class="summary-stats-compact">
-                            <div class="stat-item-compact">
-                                <span class="stat-number-compact">{{ total_return_amount|currency_nonDecimal }}</span>
-                                <span class="stat-label-compact">Refunded</span>
+                    <div class="sidebar-card-body">
+                        <div class="summary-stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-number">{{ total_return_amount|currency_nonDecimal }}</span>
+                                <span class="stat-label">Refunded</span>
                             </div>
-                            <div class="stat-item-compact">
-                                <span class="stat-number-compact">{{ total_return_items }}</span>
-                                <span class="stat-label-compact">Items</span>
+                            <div class="stat-item">
+                                <span class="stat-number">{{ total_return_items }}</span>
+                                <span class="stat-label">Items</span>
                             </div>
-                            <div class="stat-item-compact">
-                                <span class="stat-number-compact">{{ return_invoices.count }}</span>
-                                <span class="stat-label-compact">Returns</span>
+                            <div class="stat-item">
+                                <span class="stat-number">{{ return_invoices.count }}</span>
+                                <span class="stat-label">Returns</span>
                             </div>
                         </div>
                     </div>
                 </div>
             {% endif %}
         </div>
+
         <!-- Right Column - Tables -->
-        <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+        <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
             <!-- Invoice Items Table -->
             <div class="table-section" id="itemsSection">
                 <div class="table-header">
@@ -355,7 +359,7 @@
             {% endif %}
             <!-- Return Items Details -->
             {% if return_items_with_details %}
-                <div class="table-section" id="returnItemsSection">
+                <div class="table-section" id="returnsSection">
                     <div class="table-header">
                         <h3>
                             <i class="fas fa-boxes"></i> Return Items Details

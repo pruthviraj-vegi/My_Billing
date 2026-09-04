@@ -2,9 +2,9 @@
 {% load static %}
 <!-- Data Table -->
 <!-- Search and Filter Section -->
-<div class="col d-flex flex-row cart-detail-layout">
+<div class="col d-flex flex-row cart-detail-layout two-column-layout">
     <!-- LEFT: Search Bar + Cart Items Table -->
-    <div class="col-md-9 d-flex flex-column gap-2">
+    <div class="col-md-9 d-flex flex-column gap-2 layout-main-column">
         <div class="search-filter-section">
             <form href=""
                   class="search-filter-form"
@@ -62,11 +62,11 @@
     </div>
 
     <!-- RIGHT: Sticky Summary Sidebar -->
-    <div class="col-md-3 d-flex flex-column gap-2 ps-1 cart-sidebar-column">
+    <div class="col-md-3 d-flex flex-column gap-2 ps-1 cart-sidebar-column layout-sidebar-column">
         <!-- Card 1: Cart Summary Card -->
-        <div class="column details-column cart-summary-card">
-            <div class="column-header">
-                <h3>
+        <div class="sidebar-card cart-summary-card">
+            <div class="sidebar-card-header">
+                <h3 class="sidebar-card-title">
                     <!-- Receipt Icon -->
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="header-icon">
                         <path d="M18 17H6V15H18V17ZM18 13H6V11H18V13ZM18 9H6V7H18V9ZM3 22L4.5 20.5L6 22L7.5 20.5L9 22L10.5 20.5L12 22L13.5 20.5L15 22L16.5 20.5L18 22L19.5 20.5L21 22V2L19.5 3.5L18 2L16.5 3.5L15 2L13.5 3.5L12 2L10.5 3.5L9 2L7.5 3.5L6 2L4.5 3.5L3 2V22Z"/>
@@ -75,7 +75,7 @@
                 </h3>
             </div>
 
-            <div class="details-info-compact">
+            <div class="sidebar-card-body">
                 <!-- Hidden element for JavaScript total_amount tracking -->
                 <span id="totalAmount" style="display: none;" data-count="{{ cart.total_amount }}">{{ cart.total_amount|currency }}</span>
 
@@ -165,14 +165,14 @@
         </div>
 
         <!-- Card 2: Categories Summary Card -->
-        <div class="column details-column categories-card" id="categoriesCard">
-            <div class="column-header">
-                <h3>
+        <div class="sidebar-card categories-card" id="categoriesCard">
+            <div class="sidebar-card-header">
+                <h3 class="sidebar-card-title">
                     <i class="fas fa-tags"></i>
                     Categories Summary
                 </h3>
             </div>
-            <div class="details-info-compact categories-info-body" id="categoriesBody">
+            <div class="sidebar-card-body categories-info-body" id="categoriesBody">
                 {% for cat in category_counts %}
                 <div class="summary-row category-summary-row" data-category="{{ cat.category_name }}">
                     <span class="summary-label">{{ cat.category_name }}</span>

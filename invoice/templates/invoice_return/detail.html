@@ -36,17 +36,17 @@
         <span class="breadcrumb-active">{{ return_invoice.return_number }}</span>
     </nav>
     <!-- Main Layout -->
-    <div class="col d-flex flex-row gap-2">
-        <!-- Left Column - Return Details -->
-        <div class="col-md-2 d-flex flex-column gap-2">
+    <div class="col d-flex flex-row detail-layout two-column-layout">
+        <!-- Left Column - Return Details & Summary Sidebar -->
+        <div class="col-md-3 d-flex flex-column gap-2 details-sidebar-column layout-sidebar-column">
             <!-- Return Details Column -->
-            <div class="column details-column">
-                <div class="column-header">
-                    <h3>
+            <div class="sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
                         <i class="fas fa-undo"></i> Return Details
                     </h3>
                 </div>
-                <div class="details-info-compact">
+                <div class="sidebar-card-body">
                     <div class="detail-name-compact">
                         <h4>{{ return_invoice.return_number }}</h4>
                         <span class="detail-status status-badge status-{{ return_invoice.status|lower }}">
@@ -109,55 +109,58 @@
                 </div>
             </div>
             <!-- Summary Cards -->
-            <div class="summary-card-compact" id="returnSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-boxes"></i>
+            <div class="sidebar-card" id="returnSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-boxes"></i> Return Summary
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Return Summary</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ total_items_returned }}</span>
-                            <span class="stat-label-compact">Items Returned</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ total_items_returned }}</span>
+                            <span class="stat-label">Items Returned</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ total_quantity_returned|floatformat:0 }}</span>
-                            <span class="stat-label-compact">Total Quantity</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ total_quantity_returned|floatformat:0 }}</span>
+                            <span class="stat-label">Total Quantity</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ total_return_amount|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Return Amount</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ total_return_amount|currency_nonDecimal }}</span>
+                            <span class="stat-label">Return Amount</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="summary-card-compact" id="amountSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-calculator"></i>
+            <div class="sidebar-card" id="amountSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-calculator"></i> Amount Summary
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Amount Summary</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ return_invoice.total_amount|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Original Amount</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ return_invoice.total_amount|currency_nonDecimal }}</span>
+                            <span class="stat-label">Original Amount</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ return_invoice.refund_amount|currency_nonDecimal }}</span>
-                            <span class="stat-label-compact">Refund Amount</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ return_invoice.refund_amount|currency_nonDecimal }}</span>
+                            <span class="stat-label">Refund Amount</span>
                         </div>
                         {% if return_invoice.restocking_fee > 0 %}
-                            <div class="stat-item-compact">
-                                <span class="stat-number-compact">{{ return_invoice.restocking_fee|currency_nonDecimal }}</span>
-                                <span class="stat-label-compact">Restocking Fee</span>
+                            <div class="stat-item">
+                                <span class="stat-number">{{ return_invoice.restocking_fee|currency_nonDecimal }}</span>
+                                <span class="stat-label">Restocking Fee</span>
                             </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
         </div>
+
         <!-- Right Column - Tables -->
-        <div class="col-md-10">
+        <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
             <!-- Return Items Table -->
             <div class="table-section" id="itemsSection">
                 <div class="table-header">

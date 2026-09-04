@@ -31,17 +31,17 @@
         <span class="breadcrumb-active">{{ product.display_name }}</span>
     </nav>
     <!-- Main Layout -->
-    <div class="col d-flex flex-row">
-        <!-- Left Column - Product Details -->
-        <div class="col-md-2 d-flex flex-column gap-2">
+    <div class="col d-flex flex-row detail-layout two-column-layout">
+        <!-- Left Column - Product Details and Summary -->
+        <div class="col-md-3 d-flex flex-column gap-2 details-sidebar-column layout-sidebar-column">
             <!-- Product Details Column -->
-            <div class="column details-column">
-                <div class="column-header">
-                    <h3>
+            <div class="sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
                         <i class="fas fa-box"></i> Product Details
                     </h3>
                 </div>
-                <div class="details-info-compact">
+                <div class="sidebar-card-body">
                     <div class="detail-name-compact">
                         <h4>{{ product.display_name }}</h4>
                         <span class="detail-status status-badge status-{{ product.status|lower }}">{{ product.get_status_display }}</span>
@@ -81,53 +81,56 @@
                 </div>
             </div>
             <!-- Summary Cards -->
-            <div class="summary-card-compact" id="inventorySummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-cubes"></i>
+            <div class="sidebar-card" id="inventorySummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-cubes"></i> Inventory Summary
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Inventory Summary</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ total_variants }}</span>
-                            <span class="stat-label-compact">Variants</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ total_variants }}</span>
+                            <span class="stat-label">Variants</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ total_quantity|floatformat:0 }}</span>
-                            <span class="stat-label-compact">Quantity</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ total_quantity|floatformat:0 }}</span>
+                            <span class="stat-label">Quantity</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ total_inventory_value|floatformat:0 }}</span>
-                            <span class="stat-label-compact">Value</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ total_inventory_value|floatformat:0 }}</span>
+                            <span class="stat-label">Value</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="summary-card-compact" id="stockSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-exclamation-triangle"></i>
+            <div class="sidebar-card" id="stockSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-exclamation-triangle"></i> Stock Alerts
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Stock Alerts</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ out_of_stock }}</span>
-                            <span class="stat-label-compact">Out of Stock</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ out_of_stock }}</span>
+                            <span class="stat-label">Out of Stock</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ low_stock }}</span>
-                            <span class="stat-label-compact">Low Stock</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ low_stock }}</span>
+                            <span class="stat-label">Low Stock</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ total_damaged|floatformat:0 }}</span>
-                            <span class="stat-label-compact">Damaged</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ total_damaged|floatformat:0 }}</span>
+                            <span class="stat-label">Damaged</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
         <!-- Right Column - Tables -->
-        <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+        <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
             <!-- Product Variants Table -->
             <div class="table-section" id="variantsSection">
                 <div class="table-header">
@@ -266,6 +269,7 @@
                 {% endif %}
             </div>
         </div>
+    </div>
     </div>
 {% endblock content %}
 {% block extra_js %}

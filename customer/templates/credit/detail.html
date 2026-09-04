@@ -41,17 +41,17 @@
     <span class="breadcrumb-active">{{ customer.name }}</span>
   </nav>
   <!-- Main Layout -->
-  <div class="col d-flex flex-row">
+  <div class="col d-flex flex-row detail-layout two-column-layout">
     <!-- Left Column - Customer Details and Summary -->
-    <div class="col-md-2 d-flex flex-column gap-2">
+    <div class="col-md-3 d-flex flex-column gap-2 details-sidebar-column layout-sidebar-column">
       <!-- Customer Details Column -->
-      <div class="column details-column">
-        <div class="column-header">
-          <h3>
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
             <i class="fas fa-user"></i> Customer Details
           </h3>
         </div>
-        <div class="details-info-compact">
+        <div class="sidebar-card-body">
           <div class="detail-name-compact">
             <h4>{{ customer.name }}</h4>
             <span class="detail-status {% if not customer.is_deleted %}status-active{% else %}status-inactive{% endif %}">
@@ -86,58 +86,63 @@
           </div>
         </div>
       </div>
-      <!-- Summary Cards -->
-      <div class="summary-card-compact" id="creditSummaryCard">
-        <div class="summary-icon-compact">
-          <i class="fas fa-money-bill"></i>
+      <!-- Summary Card 1: Amounts -->
+      <div class="sidebar-card" id="creditSummaryCard">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
+            <i class="fas fa-money-bill"></i>
+            Amounts
+          </h3>
         </div>
-        <div class="summary-content-compact">
-          <h4>Amounts</h4>
-          <div class="summary-stats-compact">
-            <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number"
+        <div class="sidebar-card-body">
+          <div class="summary-stats-grid">
+            <div class="stat-item">
+              <span class="stat-number counting-number"
                     data-count="{{ customer.credit_summary.credit_amount }}">0</span>
-              <span class="stat-label-compact">Total Credit</span>
+              <span class="stat-label">Total Credit</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number"
+            <div class="stat-item">
+              <span class="stat-number counting-number"
                     data-count="{{ customer.credit_summary.debit_amount }}">0</span>
-              <span class="stat-label-compact">Total Debit</span>
+              <span class="stat-label">Total Debit</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number"
+            <div class="stat-item">
+              <span class="stat-number counting-number"
                     data-count="{{ customer.credit_summary.balance_amount }}">0</span>
-              <span class="stat-label-compact">Outstanding</span>
+              <span class="stat-label">Outstanding</span>
             </div>
           </div>
         </div>
       </div>
-      <!-- Payment Summary Card (FIFO Auto-Allocation) -->
-      <div class="summary-card-compact" id="paymentSummaryCard">
-        <div class="summary-icon-compact">
-          <i class="fas fa-credit-card"></i>
+      <!-- Summary Card 2: Payments (FIFO Auto-Allocation) -->
+      <div class="sidebar-card" id="paymentSummaryCard">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
+            <i class="fas fa-credit-card"></i>
+            Payments (FIFO)
+          </h3>
         </div>
-        <div class="summary-content-compact">
-          <h4>Payments (FIFO)</h4>
-          <div class="summary-stats-compact">
-            <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number"
+        <div class="sidebar-card-body">
+          <div class="summary-stats-grid grid-2-col">
+            <div class="stat-item">
+              <span class="stat-number counting-number"
                     id="total_paid"
                     data-count="{{ customer.credit_summary.debit_amount }}">0</span>
-              <span class="stat-label-compact">Total Paid</span>
+              <span class="stat-label">Total Paid</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact counting-number"
+            <div class="stat-item">
+              <span class="stat-number counting-number"
                     id="unallocated_amount"
                     data-count="{{ unallocated_amount|default:0 }}">0</span>
-              <span class="stat-label-compact">Unallocated</span>
+              <span class="stat-label">Unallocated</span>
             </div>
           </div>
         </div>
       </div>
     </div>
+
     <!-- Right Column - Ledger Table -->
-    <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+    <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
       <!-- Ledger Table -->
       <div class="table-section" id="ledgerSection">
         <div class="table-header">
@@ -182,6 +187,7 @@
         </div>
       </div>
     </div>
+  </div>
   <!-- Download Report Modal -->
   <div class="modal-overlay" id="downloadReportModal">
     <div class="modal-content">

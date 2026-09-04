@@ -28,17 +28,17 @@
         <span class="breadcrumb-active">{{ audit_table.title }}</span>
     </nav>
     <!-- Main Layout -->
-    <div class="col d-flex flex-row">
-        <!-- Left Column - Audit Details -->
-        <div class="col-md-2 d-flex flex-column gap-2">
+    <div class="col d-flex flex-row detail-layout two-column-layout">
+        <!-- Left Column - Audit Details & Summary Sidebar -->
+        <div class="col-md-3 d-flex flex-column gap-2 details-sidebar-column layout-sidebar-column">
             <!-- Audit Details Column -->
-            <div class="column details-column">
-                <div class="column-header">
-                    <h3>
+            <div class="sidebar-card">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
                         <i class="fas fa-clipboard-check"></i> Audit Details
                     </h3>
                 </div>
-                <div class="details-info-compact">
+                <div class="details-info-compact summary-card-body">
                     <div class="detail-name-compact">
                         <h4>{{ audit_table.title }}</h4>
                         <span class="detail-status status-badge status-{{ audit_table.status|lower }}">{{ audit_table.status }}</span>
@@ -74,54 +74,56 @@
                 </div>
             </div>
             <!-- Summary Cards -->
-            <div class="summary-card-compact" id="changesSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-history"></i>
+            <div class="sidebar-card" id="changesSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-history"></i> Changes Summary
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Changes Summary</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ audit_table.total_changes }}</span>
-                            <span class="stat-label-compact">Total Changes</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ audit_table.total_changes }}</span>
+                            <span class="stat-label">Total Changes</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ invoice_audits|length }}</span>
-                            <span class="stat-label-compact">Records</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ invoice_audits|length }}</span>
+                            <span class="stat-label">Records</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ audit_table.created_at|timesince }}</span>
-                            <span class="stat-label-compact">Age</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ audit_table.created_at|timesince }}</span>
+                            <span class="stat-label">Age</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="summary-card-compact" id="statusSummaryCard">
-                <div class="summary-icon-compact">
-                    <i class="fas fa-flag"></i>
+            <div class="sidebar-card" id="statusSummaryCard">
+                <div class="sidebar-card-header">
+                    <h3 class="sidebar-card-title">
+                        <i class="fas fa-flag"></i> Status
+                    </h3>
                 </div>
-                <div class="summary-content-compact">
-                    <h4>Status</h4>
-                    <div class="summary-stats-compact">
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ audit_table.status }}</span>
-                            <span class="stat-label-compact">Current Status</span>
+                <div class="sidebar-card-body">
+                    <div class="summary-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">{{ audit_table.status }}</span>
+                            <span class="stat-label">Current Status</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ audit_table.get_audit_type_display }}</span>
-                            <span class="stat-label-compact">Type</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ audit_table.get_audit_type_display }}</span>
+                            <span class="stat-label">Type</span>
                         </div>
-                        <div class="stat-item-compact">
-                            <span class="stat-number-compact">{{ audit_table.financial_year|default:"N/A" }}</span>
-                            <span class="stat-label-compact">FY</span>
+                        <div class="stat-item">
+                            <span class="stat-number">{{ audit_table.financial_year|default:"N/A" }}</span>
+                            <span class="stat-label">FY</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Right Column - Tables -->
-        <div class="col-md-10 d-flex flex-column gap-2 ps-1">
 
+        <!-- Right Column - Tables -->
+        <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
             <!-- Invoice Audits Table -->
             <div class="table-section" id="auditsSection">
                 <div class="table-header">
@@ -161,6 +163,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 {% endblock content %}
 {% block extra_js %}
