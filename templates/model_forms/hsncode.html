@@ -23,9 +23,9 @@
             
             <!-- HSN Code Field -->
             <div class="form-group {% if gst_hsn_form.code.errors %}has-error{% endif %}">
-              <label for="{{ gst_hsn_form.code.id_for_label }}">HSN Code</label>
+              <label for="{{ gst_hsn_form.code.id_for_label }}" class="form-label">HSN Code</label>
               {{ gst_hsn_form.code }}
-              <small class="form-help">e.g., 61091000 (6-8 digits)</small>
+              <small class="form-help"><span class="form-help-text">e.g., 61091000 (6-8 digits)</span></small>
               {% if gst_hsn_form.code.errors %}
                 <div class="field-errors">
                   {% for error in gst_hsn_form.code.errors %}
@@ -37,12 +37,12 @@
                 </div>
               {% endif %}
             </div>
-            
+
             <!-- GST Percentage Field -->
             <div class="form-group {% if gst_hsn_form.gst_percentage.errors %}has-error{% endif %}">
-              <label for="{{ gst_hsn_form.gst_percentage.id_for_label }}">GST Percentage</label>
+              <label for="{{ gst_hsn_form.gst_percentage.id_for_label }}" class="form-label">GST Percentage</label>
               {{ gst_hsn_form.gst_percentage }}
-              <small class="form-help">e.g., 12.00 (0.00 - 40.00)</small>
+              <small class="form-help"><span class="form-help-text">e.g., 12.00 (0.00 - 40.00)</span></small>
               {% if gst_hsn_form.gst_percentage.errors %}
                 <div class="field-errors">
                   {% for error in gst_hsn_form.gst_percentage.errors %}
@@ -54,12 +54,12 @@
                 </div>
               {% endif %}
             </div>
-            
+
             <!-- Cess Rate Field -->
             <div class="form-group {% if gst_hsn_form.cess_rate.errors %}has-error{% endif %}">
-              <label for="{{ gst_hsn_form.cess_rate.id_for_label }}">Cess Rate</label>
+              <label for="{{ gst_hsn_form.cess_rate.id_for_label }}" class="form-label">Cess Rate</label>
               {{ gst_hsn_form.cess_rate }}
-              <small class="form-help">e.g., 0.00 (0.00 - 25.00)</small>
+              <small class="form-help"><span class="form-help-text">e.g., 0.00 (0.00 - 25.00)</span></small>
               {% if gst_hsn_form.cess_rate.errors %}
                 <div class="field-errors">
                   {% for error in gst_hsn_form.cess_rate.errors %}
@@ -71,12 +71,12 @@
                 </div>
               {% endif %}
             </div>
-            
+
             <!-- Effective From Field -->
             <div class="form-group {% if gst_hsn_form.effective_from.errors %}has-error{% endif %}">
-              <label for="{{ gst_hsn_form.effective_from.id_for_label }}">Effective From</label>
+              <label for="{{ gst_hsn_form.effective_from.id_for_label }}" class="form-label">Effective From</label>
               {{ gst_hsn_form.effective_from }}
-              <small class="form-help">Date from which this HSN code is effective</small>
+              <small class="form-help"><span class="form-help-text">Date from which this HSN code is effective</span></small>
               {% if gst_hsn_form.effective_from.errors %}
                 <div class="field-errors">
                   {% for error in gst_hsn_form.effective_from.errors %}
@@ -95,7 +95,7 @@
                 {{ gst_hsn_form.is_active }}
                 Is Active
               </label>
-              <small class="form-help">Whether this HSN code is active or not</small>
+              <small class="form-help"><span class="form-help-text">Whether this HSN code is active or not</span></small>
               {% if gst_hsn_form.is_active.errors %}
                 <div class="field-errors">
                   {% for error in gst_hsn_form.is_active.errors %}
@@ -112,7 +112,7 @@
             <div class="form-group {% if gst_hsn_form.description.errors %}has-error{% endif %}">
               <label for="{{ gst_hsn_form.description.id_for_label }}">Description (Optional)</label>
               {{ gst_hsn_form.description }}
-              <small class="form-help">Optional description of the HSN code</small>
+              <small class="form-help"><span class="form-help-text">Optional description of the HSN code</span></small>
               {% if gst_hsn_form.description.errors %}
                 <div class="field-errors">
                   {% for error in gst_hsn_form.description.errors %}

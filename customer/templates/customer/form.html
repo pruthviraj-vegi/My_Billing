@@ -40,8 +40,8 @@
       <form method="post" class="details-form" novalidate autocomplete="off">
         {% csrf_token %}
         <!-- Customer Details Section -->
-        <div class="form-section ">
-          <h5 class="section-title">Customer Details</h5>
+        <div class="form-section">
+          <h5 class="section-title"><i class="fas fa-user"></i> Customer Details</h5>
           <!-- Name Field -->
           <div class="form-group {% if form.name.errors %}has-error{% endif %}">
             <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
@@ -54,7 +54,7 @@
                 </small>
               {% endfor %}
             {% elif form.name.help_text %}
-              <small class="form-help">{{ form.name.help_text }}</small>
+              <small class="form-help"><span class="form-help-text">{{ form.name.help_text }}</span></small>
             {% endif %}
           </div>
           <!-- Phone Number Field -->
@@ -85,7 +85,7 @@
                 </small>
               {% endfor %}
             {% elif form.email.help_text %}
-              <small class="form-help">{{ form.email.help_text }}</small>
+              <small class="form-help"><span class="form-help-text">{{ form.email.help_text }}</span></small>
             {% endif %}
           </div>
           <!-- Address Field -->
@@ -100,7 +100,7 @@
                 </small>
               {% endfor %}
             {% elif form.address.help_text %}
-              <small class="form-help">{{ form.address.help_text }}</small>
+              <small class="form-help"><span class="form-help-text">{{ form.address.help_text }}</span></small>
             {% endif %}
           </div>
           <!-- Referred By Field -->

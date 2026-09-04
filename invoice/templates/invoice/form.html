@@ -58,7 +58,7 @@
 
     <div class="row">
       <!-- LEFT COLUMN: Invoice Details -->
-      <div class="col-lg-9 col-md-8 col-12 invoice-details-column mb-3">
+      <div class="col-lg-9 col-md-8 col-12 form-main-column mb-3">
         <div class="form-card">
           <!-- Customer Balance Display -->
           <div id="customer-balance-container" class="alert alert-info alert-flex-hidden">
@@ -72,7 +72,7 @@
 
           <!-- Invoice Details Section -->
           <div class="form-section mb-2">
-            <h5 class="section-title">Invoice Details:</h5>
+            <h5 class="section-title"><i class="fas fa-file-invoice"></i> Invoice Details</h5>
             <!-- Customer Field -->
             <div class="row">
               <div class="col-md-12 mb-2">
@@ -144,7 +144,7 @@
                   </small>
                   {% endfor %}
                   {% elif form.advance_amount.help_text %}
-                  <small class="form-help">{{ form.advance_amount.help_text }}</small>
+                  <small class="form-help"><span class="form-help-text">{{ form.advance_amount.help_text }}</span></small>
                   {% endif %}
                 </div>
               </div>
@@ -161,7 +161,7 @@
                   </small>
                   {% endfor %}
                   {% elif form.discount_amount.help_text %}
-                  <small class="form-help">{{ form.discount_amount.help_text }}</small>
+                  <small class="form-help"><span class="form-help-text">{{ form.discount_amount.help_text }}</span></small>
                   {% endif %}
                 </div>
               </div>
@@ -178,7 +178,7 @@
                   </small>
                   {% endfor %}
                   {% elif form.amount.help_text %}
-                  <small class="form-help">{{ form.amount.help_text }}</small>
+                  <small class="form-help"><span class="form-help-text">{{ form.amount.help_text }}</span></small>
                   {% endif %}
                 </div>
               </div>
@@ -253,7 +253,7 @@
                 </small>
                 {% endfor %}
                 {% elif form.notes.help_text %}
-                <small class="form-help">{{ form.notes.help_text }}</small>
+                <small class="form-help"><span class="form-help-text">{{ form.notes.help_text }}</span></small>
                 {% endif %}
               </div>
             </div>
@@ -262,11 +262,11 @@
       </div>
 
       <!-- RIGHT COLUMN: Amount Summary & Actions -->
-      <div class="col-lg-3 col-md-4 col-12 invoice-summary-column">
+      <div class="col-lg-3 col-md-4 col-12 form-sidebar-column">
         <div class="form-card sticky-summary-card">
           <!-- Amount Summary Section -->
           <div class="form-section mb-0">
-            <h5 class="section-title">Amount Summary :</h5>
+            <h5 class="section-title"><i class="fas fa-calculator"></i> Amount Summary</h5>
             <div class="total-amount-display">
               <div class="total-row">
                 <span class="total-label">Sub Total:</span>

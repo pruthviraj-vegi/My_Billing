@@ -251,7 +251,7 @@
       
       <div class="row">
         <!-- LEFT COLUMN: Invoice Details, Notes & Attachments -->
-        <div class="col-lg-9 col-md-8 col-12 mb-3">
+        <div class="col-lg-9 col-md-8 col-12 form-main-column mb-3">
           <div class="form-card">
             <div class="info-summary mb-4">
               <h4>Supplier: {{ supplier.name }}</h4>
@@ -263,7 +263,7 @@
 
             <!-- Invoice Details Section -->
             <div class="form-section">
-              <h5 class="section-title">Invoice Details</h5>
+              <h5 class="section-title"><i class="fas fa-file-invoice"></i> Invoice Details</h5>
               <div class="row">
                 <div class="col-md-6">
                   <div class="form-group {% if form.invoice_number.errors %}has-error{% endif %}">
@@ -340,7 +340,7 @@
 
             <!-- Amount Details Section -->
             <div class="form-section">
-              <h5 class="section-title">Amount Details</h5>
+              <h5 class="section-title"><i class="fas fa-rupee-sign"></i> Amount Details</h5>
               <div class="row">
                 <div class="col-md-4" id="subTotalGroup">
                   <div class="form-group {% if form.sub_total.errors %}has-error{% endif %}">
@@ -412,7 +412,7 @@
               </div>
             </div>            <!-- Notes & Attachments Section -->
             <div class="form-section mb-0">
-              <h5 class="section-title">Notes & Attachments</h5>
+              <h5 class="section-title"><i class="fas fa-paperclip"></i> Notes & Attachments</h5>
               <div class="row mt-2">
                 <!-- Notes Section -->
                 <div class="col-md-6 col-12 mb-3">
@@ -499,11 +499,11 @@
         </div>
 
         <!-- RIGHT COLUMN: Amount Summary & Actions -->
-        <div class="col-lg-3 col-md-4 col-12">
+        <div class="col-lg-3 col-md-4 col-12 form-sidebar-column">
           <div class="form-card sticky-summary-card">
             <!-- Amount Summary Section -->
             <div class="form-section mb-0">
-              <h5 class="section-title">Amount Summary</h5>
+              <h5 class="section-title"><i class="fas fa-calculator"></i> Amount Summary</h5>
               <div class="total-amount-display">
                 <div class="total-row">
                   <span class="total-label">Sub Total:</span>

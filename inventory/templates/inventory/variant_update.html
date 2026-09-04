@@ -74,7 +74,7 @@
             <div class="form-group">
               <label for="{{ form.purchase_price.id_for_label }}">{{ form.purchase_price.label }}</label>
               {{ form.purchase_price }}
-              {% if form.purchase_price.help_text %}<small class="form-help">{{ form.purchase_price.help_text }}</small>{% endif %}
+              {% if form.purchase_price.help_text %}<small class="form-help"><span class="form-help-text">{{ form.purchase_price.help_text }}</span></small>{% endif %}
               {% if form.purchase_price.errors %}
                 <div class="field-errors">
                   {% for error in form.purchase_price.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
@@ -84,7 +84,7 @@
             <div class="form-group">
               <label for="{{ form.mrp.id_for_label }}">{{ form.mrp.label }}</label>
               {{ form.mrp }}
-              {% if form.mrp.help_text %}<small class="form-help">{{ form.mrp.help_text }}</small>{% endif %}
+              {% if form.mrp.help_text %}<small class="form-help"><span class="form-help-text">{{ form.mrp.help_text }}</span></small>{% endif %}
               {% if form.mrp.errors %}
                 <div class="field-errors">
                   {% for error in form.mrp.errors %}<div class="error-message">{{ error }}</div>{% endfor %}
@@ -117,7 +117,7 @@
               <label for="{{ form.minimum_quantity.id_for_label }}">{{ form.minimum_quantity.label }}</label>
               {{ form.minimum_quantity }}
               {% if form.minimum_quantity.help_text %}
-                <small class="form-help">{{ form.minimum_quantity.help_text }}</small>
+                <small class="form-help"><span class="form-help-text">{{ form.minimum_quantity.help_text }}</span></small>
               {% endif %}
               {% if form.minimum_quantity.errors %}
                 <div class="field-errors">
@@ -129,7 +129,7 @@
               <label for="{{ form.discount_percentage.id_for_label }}">{{ form.discount_percentage.label }}</label>
               {{ form.discount_percentage }}
               {% if form.discount_percentage.help_text %}
-                <small class="form-help">{{ form.discount_percentage.help_text }}</small>
+                <small class="form-help"><span class="form-help-text">{{ form.discount_percentage.help_text }}</span></small>
               {% endif %}
               {% if form.discount_percentage.errors %}
                 <div class="field-errors">

@@ -108,11 +108,10 @@
       {% csrf_token %}
       <div class="row">
         <!-- LEFT COLUMN: Variant Details -->
-        <div class="col-lg-9 col-md-8 col-12 mb-3">
+        <div class="col-lg-9 col-md-8 col-12 form-main-column mb-3">
           <div class="form-card">
             <!-- Supplier Invoice Section -->
-            <div class="form-section">
-              <h5 class="section-title">Supplier Invoice</h5>
+              <h5 class="section-title"><i class="fas fa-file-invoice"></i> Supplier Invoice</h5>
               <div class="row">
                 <div class="col-md-6">
                   <div class="form-group {% if form.supplier_invoice.errors %}has-error{% endif %}">
@@ -137,7 +136,7 @@
 
             <!-- Variant Details Section -->
             <div class="form-section">
-              <h5 class="section-title">Variant Details</h5>
+              <h5 class="section-title"><i class="fas fa-tags"></i> Variant Details</h5>
               <div class="row">
                 <div class="col-md-3">
                   <div class="form-group {% if form.quantity.errors %}has-error{% endif %}">
@@ -295,11 +294,11 @@
         </div>
 
         <!-- RIGHT COLUMN: Calculations & Actions -->
-        <div class="col-lg-3 col-md-4 col-12">
+        <div class="col-lg-3 col-md-4 col-12 form-sidebar-column">
           <div class="form-card sticky-summary-card">
             <!-- Calculations Section -->
             <div class="form-section mb-0">
-              <h5 class="section-title">Calculations</h5>
+              <h5 class="section-title"><i class="fas fa-calculator"></i> Calculations</h5>
               <div class="total-amount-display">
                 <div class="total-row">
                   <span class="total-label">GST Amount:</span>

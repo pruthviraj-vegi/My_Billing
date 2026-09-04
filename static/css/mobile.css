@@ -415,7 +415,7 @@
   .form-label,
   label {
     font-size: 0.75rem !important;
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.15rem;
   }
 
   .select2-container {

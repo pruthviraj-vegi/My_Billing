@@ -29,12 +29,12 @@
           {% endif %}
           <!-- Cloth Type Details Section -->
           <div class="form-section">
-            <h5 class="form-section-title">Cloth Type Details</h5>
+            <h5 class="form-section-title"><i class="fas fa-layer-group"></i> Cloth Type Details</h5>
             <!-- Name Field -->
             <div class="form-group {% if cloth_type_form.name.errors %}has-error{% endif %}">
               <label for="{{ cloth_type_form.name.id_for_label }}" class="form-label">{{ cloth_type_form.name.label }}</label>
               {{ cloth_type_form.name }}
-              <small class="form-help">e.g., Cotton, Silk, Polyester, Wool, Denim</small>
+              <small class="form-help"><span class="form-help-text">e.g., Cotton, Silk, Polyester, Wool, Denim</span></small>
               {% if cloth_type_form.name.errors %}
                 <div class="field-errors">
                   {% for error in cloth_type_form.name.errors %}
@@ -51,7 +51,7 @@
               <label for="{{ cloth_type_form.description.id_for_label }}"
                      class="form-label">{{ cloth_type_form.description.label }}</label>
               {{ cloth_type_form.description }}
-              <small class="form-help">e.g., Natural cotton fabric, breathable and comfortable</small>
+              <small class="form-help"><span class="form-help-text">e.g., Natural cotton fabric, breathable and comfortable</span></small>
               {% if cloth_type_form.description.errors %}
                 <div class="field-errors">
                   {% for error in cloth_type_form.description.errors %}

@@ -936,12 +936,12 @@
 
   /* Form layout & text spacing consistency on mobile */
   .form-group {
-    margin-bottom: 1.25rem !important;
+    margin-bottom: 0.5rem !important;
   }
 
   .form-label {
     font-size: 0.85rem !important;
-    margin-bottom: 0.2rem !important;
+    margin-bottom: 0.15rem !important;
   }
 
   .form-help {

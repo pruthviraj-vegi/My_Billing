@@ -38,14 +38,14 @@
         {% endif %}
         <!-- Return Invoice Details Section -->
         <div class="form-section mb-2">
-          <h5 class="section-title">Return Invoice Details</h5>
+          <h5 class="section-title"><i class="fas fa-undo"></i> Return Invoice Details</h5>
           <!-- Invoice Selection Row -->
           <div class="row">
             <div class="col-md-6 mb-2">
               <div class="form-group {% if form.invoice.errors %}has-error{% endif %}">
                 <label for="{{ form.invoice.id_for_label }}" class="form-label">{{ form.invoice.label }}</label>
                 {{ form.invoice }}
-                <small class="form-help">Select the original invoice being returned</small>
+                <small class="form-help"><span class="form-help-text">Select the original invoice being returned</span></small>
                 {% if form.invoice.errors %}
                   <div class="field-errors">
                     {% for error in form.invoice.errors %}
@@ -64,7 +64,7 @@
                 <div class="form-group {% if form.refund_type.errors %}has-error{% endif %}">
                   <label for="{{ form.refund_type.id_for_label }}" class="form-label">{{ form.refund_type.label }}</label>
                   {{ form.refund_type }}
-                  <small class="form-help">Select the type of refund</small>
+                  <small class="form-help"><span class="form-help-text">Select the type of refund</span></small>
                   {% if form.refund_type.errors %}
                     <div class="field-errors">
                       {% for error in form.refund_type.errors %}
@@ -81,7 +81,7 @@
                 <div class="form-group {% if form.status.errors %}has-error{% endif %}">
                   <label for="{{ form.status.id_for_label }}" class="form-label">{{ form.status.label }}</label>
                   {{ form.status }}
-                  <small class="form-help">Select the return status</small>
+                  <small class="form-help"><span class="form-help-text">Select the return status</span></small>
                   {% if form.status.errors %}
                     <div class="field-errors">
                       {% for error in form.status.errors %}
@@ -98,7 +98,7 @@
                 <div class="form-group {% if form.reason.errors %}has-error{% endif %}">
                   <label for="{{ form.reason.id_for_label }}" class="form-label">{{ form.reason.label }}</label>
                   {{ form.reason }}
-                  <small class="form-help">Select the reason for return</small>
+                  <small class="form-help"><span class="form-help-text">Select the reason for return</span></small>
                   {% if form.reason.errors %}
                     <div class="field-errors">
                       {% for error in form.reason.errors %}
@@ -118,7 +118,7 @@
                 <div class="form-group {% if form.total_amount.errors %}has-error{% endif %}">
                   <label for="{{ form.total_amount.id_for_label }}" class="form-label">{{ form.total_amount.label }}</label>
                   {{ form.total_amount }}
-                  {% if form.total_amount.help_text %}<small class="form-help">{{ form.total_amount.help_text }}</small>{% endif %}
+                  {% if form.total_amount.help_text %}<small class="form-help"><span class="form-help-text">{{ form.total_amount.help_text }}</span></small>{% endif %}
                   {% if form.total_amount.errors %}
                     <div class="field-errors">
                       {% for error in form.total_amount.errors %}
@@ -135,7 +135,7 @@
                 <div class="form-group {% if form.refund_amount.errors %}has-error{% endif %}">
                   <label for="{{ form.refund_amount.id_for_label }}" class="form-label">{{ form.refund_amount.label }}</label>
                   {{ form.refund_amount }}
-                  {% if form.refund_amount.help_text %}<small class="form-help">{{ form.refund_amount.help_text }}</small>{% endif %}
+                  {% if form.refund_amount.help_text %}<small class="form-help"><span class="form-help-text">{{ form.refund_amount.help_text }}</span></small>{% endif %}
                   {% if form.refund_amount.errors %}
                     <div class="field-errors">
                       {% for error in form.refund_amount.errors %}
@@ -152,7 +152,7 @@
                 <div class="form-group {% if form.restocking_fee.errors %}has-error{% endif %}">
                   <label for="{{ form.restocking_fee.id_for_label }}" class="form-label">{{ form.restocking_fee.label }}</label>
                   {{ form.restocking_fee }}
-                  {% if form.restocking_fee.help_text %}<small class="form-help">{{ form.restocking_fee.help_text }}</small>{% endif %}
+                  {% if form.restocking_fee.help_text %}<small class="form-help"><span class="form-help-text">{{ form.restocking_fee.help_text }}</span></small>{% endif %}
                   {% if form.restocking_fee.errors %}
                     <div class="field-errors">
                       {% for error in form.restocking_fee.errors %}
@@ -171,7 +171,7 @@
               <div class="col-md-6 mb-2 {% if form.return_date.errors %}has-error{% endif %}">
                 <label for="{{ form.return_date.id_for_label }}" class="form-label">{{ form.return_date.label }}</label>
                 {{ form.return_date }}
-                <small class="form-help">Select the date when return was initiated</small>
+                <small class="form-help"><span class="form-help-text">Select the date when return was initiated</span></small>
                 {% if form.return_date.errors %}
                   <div class="field-errors">
                     {% for error in form.return_date.errors %}
@@ -190,7 +190,7 @@
                 <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
                   <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
                   {{ form.notes }}
-                  {% if form.notes.help_text %}<small class="form-help">{{ form.notes.help_text }}</small>{% endif %}
+                  {% if form.notes.help_text %}<small class="form-help"><span class="form-help-text">{{ form.notes.help_text }}</span></small>{% endif %}
                   {% if form.notes.errors %}
                     <div class="field-errors">
                       {% for error in form.notes.errors %}
@@ -207,7 +207,7 @@
                 <div class="form-group {% if form.internal_notes.errors %}has-error{% endif %}">
                   <label for="{{ form.internal_notes.id_for_label }}" class="form-label">{{ form.internal_notes.label }}</label>
                   {{ form.internal_notes }}
-                  {% if form.internal_notes.help_text %}<small class="form-help">{{ form.internal_notes.help_text }}</small>{% endif %}
+                  {% if form.internal_notes.help_text %}<small class="form-help"><span class="form-help-text">{{ form.internal_notes.help_text }}</span></small>{% endif %}
                   {% if form.internal_notes.errors %}
                     <div class="field-errors">
                       {% for error in form.internal_notes.errors %}
@@ -224,7 +224,7 @@
           </div>
           <!-- Amount Summary Section -->
           <div class="form-section">
-            <div class="section-title">Amount Summary</div>
+            <div class="section-title"><i class="fas fa-calculator"></i> Amount Summary</div>
             <div class="total-amount-display">
               <div class="total-row">
                 <span class="total-label">Total Amount:</span>

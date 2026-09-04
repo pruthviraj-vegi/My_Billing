@@ -50,7 +50,7 @@
 
                 <!-- Basic Configuration Section -->
                 <div class="form-section">
-                    <h5 class="section-title">Basic Configuration</h5>
+                    <h5 class="section-title"><i class="fas fa-sliders-h"></i> Basic Configuration</h5>
                     
                     <!-- Report Type, Paper Size, Currency Row -->
                     <div class="row">
@@ -58,7 +58,7 @@
                             <div class="form-group {% if form.report_type.errors %}has-error{% endif %}">
                                 <label for="{{ form.report_type.id_for_label }}" class="form-label">{{ form.report_type.label }}</label>
                                 {{ form.report_type }}
-                                <small class="form-help">{{ form.report_type.help_text }}</small>
+                                <small class="form-help"><span class="form-help-text">{{ form.report_type.help_text }}</span></small>
                                 {% if form.report_type.errors %}
                                     <div class="field-errors">
                                         {% for error in form.report_type.errors %}
@@ -76,7 +76,7 @@
                             <div class="form-group {% if form.paper_size.errors %}has-error{% endif %}">
                                 <label for="{{ form.paper_size.id_for_label }}" class="form-label">{{ form.paper_size.label }}</label>
                                 {{ form.paper_size }}
-                                <small class="form-help">{{ form.paper_size.help_text }}</small>
+                                <small class="form-help"><span class="form-help-text">{{ form.paper_size.help_text }}</span></small>
                                 {% if form.paper_size.errors %}
                                     <div class="field-errors">
                                         {% for error in form.paper_size.errors %}
@@ -94,7 +94,7 @@
                             <div class="form-group {% if form.currency.errors %}has-error{% endif %}">
                                 <label for="{{ form.currency.id_for_label }}" class="form-label">{{ form.currency.label }}</label>
                                 {{ form.currency }}
-                                <small class="form-help">{{ form.currency.help_text }}</small>
+                                <small class="form-help"><span class="form-help-text">{{ form.currency.help_text }}</span></small>
                                 {% if form.currency.errors %}
                                     <div class="field-errors">
                                         {% for error in form.currency.errors %}
@@ -125,14 +125,14 @@
                             <div class="form-group {% if form.printer_ip.errors %}has-error{% endif %}">
                                 <label for="{{ form.printer_ip.id_for_label }}" class="form-label">Printer IP Address</label>
                                 {{ form.printer_ip }}
-                                <small class="form-help">e.g. 192.168.1.192</small>
+                                <small class="form-help"><span class="form-help-text">e.g. 192.168.1.192</span></small>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group {% if form.printer_port.errors %}has-error{% endif %}">
                                 <label for="{{ form.printer_port.id_for_label }}" class="form-label">Printer Port</label>
                                 {{ form.printer_port }}
-                                <small class="form-help">Default: 9100</small>
+                                <small class="form-help"><span class="form-help-text">Default: 9100</span></small>
                             </div>
                         </div>
                     </div>
@@ -145,7 +145,7 @@
                                     {{ form.is_default }}
                                     <label for="{{ form.is_default.id_for_label }}" class="checkbox-label">{{ form.is_default.label }}</label>
                                 </div>
-                                <small class="form-help">{{ form.is_default.help_text }}</small>
+                                <small class="form-help"><span class="form-help-text">{{ form.is_default.help_text }}</span></small>
                                 {% if form.is_default.errors %}
                                     <div class="field-errors">
                                         {% for error in form.is_default.errors %}
@@ -165,7 +165,7 @@
                                     {{ form.is_active }}
                                     <label for="{{ form.is_active.id_for_label }}" class="checkbox-label">{{ form.is_active.label }}</label>
                                 </div>
-                                <small class="form-help">Enable or disable this configuration</small>
+                                <small class="form-help"><span class="form-help-text">Enable or disable this configuration</span></small>
                                 {% if form.is_active.errors %}
                                     <div class="field-errors">
                                         {% for error in form.is_active.errors %}
@@ -183,8 +183,8 @@
 
                 <!-- Header Settings Section -->
                 <div class="form-section">
-                    <h5 class="section-title">Header Settings</h5>
-                    
+                    <h5 class="section-title"><i class="fas fa-heading"></i> Header Settings</h5>
+
                     <div class="checkbox-grid">
                         <div class="checkbox-item">
                             {{ form.show_logo }}
@@ -211,8 +211,8 @@
 
                 <!-- Invoice Content Settings Section -->
                 <div class="form-section">
-                    <h5 class="section-title">Invoice Content Settings</h5>
-                    
+                    <h5 class="section-title"><i class="fas fa-file-alt"></i> Invoice Content Settings</h5>
+
                     <div class="checkbox-grid">
                         <div class="checkbox-item">
                             {{ form.show_invoice_number }}
@@ -239,8 +239,8 @@
 
                 <!-- Item Details Settings Section -->
                 <div class="form-section">
-                    <h5 class="section-title">Item Details Settings</h5>
-                    
+                    <h5 class="section-title"><i class="fas fa-list-ul"></i> Item Details Settings</h5>
+
                     <div class="checkbox-grid">
                         <div class="checkbox-item">
                             {{ form.show_item_description }}
@@ -271,8 +271,8 @@
 
                 <!-- Footer Settings Section -->
                 <div class="form-section">
-                    <h5 class="section-title">Footer Settings</h5>
-                    
+                    <h5 class="section-title"><i class="fas fa-shoe-prints"></i> Footer Settings</h5>
+
                     <div class="checkbox-grid">
                         <div class="checkbox-item">
                             {{ form.show_terms_conditions }}
@@ -295,13 +295,13 @@
 
                 <!-- Custom Text Section -->
                 <div class="form-section">
-                    <h5 class="section-title">Custom Text</h5>
+                    <h5 class="section-title"><i class="fas fa-quote-right"></i> Custom Text</h5>
                     
                     <!-- Terms & Conditions Field -->
                     <div class="form-group {% if form.terms_conditions.errors %}has-error{% endif %}">
                         <label for="{{ form.terms_conditions.id_for_label }}" class="form-label">{{ form.terms_conditions.label }}</label>
                         {{ form.terms_conditions }}
-                        <small class="form-help">{{ form.terms_conditions.help_text }}</small>
+                        <small class="form-help"><span class="form-help-text">{{ form.terms_conditions.help_text }}</span></small>
                         {% if form.terms_conditions.errors %}
                             <div class="field-errors">
                                 {% for error in form.terms_conditions.errors %}
@@ -318,7 +318,7 @@
                     <div class="form-group {% if form.thank_you_message.errors %}has-error{% endif %}">
                         <label for="{{ form.thank_you_message.id_for_label }}" class="form-label">{{ form.thank_you_message.label }}</label>
                         {{ form.thank_you_message }}
-                        <small class="form-help">{{ form.thank_you_message.help_text }}</small>
+                        <small class="form-help"><span class="form-help-text">{{ form.thank_you_message.help_text }}</span></small>
                         {% if form.thank_you_message.errors %}
                             <div class="field-errors">
                                 {% for error in form.thank_you_message.errors %}
@@ -335,7 +335,7 @@
                     <div class="form-group {% if form.footer_note.errors %}has-error{% endif %}">
                         <label for="{{ form.footer_note.id_for_label }}" class="form-label">{{ form.footer_note.label }}</label>
                         {{ form.footer_note }}
-                        {% if form.footer_note.help_text %}<small class="form-help">{{ form.footer_note.help_text }}</small>{% endif %}
+                        {% if form.footer_note.help_text %}<small class="form-help"><span class="form-help-text">{{ form.footer_note.help_text }}</span></small>{% endif %}
                         {% if form.footer_note.errors %}
                             <div class="field-errors">
                                 {% for error in form.footer_note.errors %}

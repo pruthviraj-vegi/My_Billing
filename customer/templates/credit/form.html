@@ -52,7 +52,7 @@
         {% endif %}
         <!-- Payment Details Section -->
         <div class="form-section">
-          <h5 class="section-title">Payment Details{% if customer %} : {{ customer.credit_summary.balance_amount|currency }}{% endif %}</h5>
+          <h5 class="section-title"><i class="fas fa-credit-card"></i> Payment Details{% if customer %} : {{ customer.credit_summary.balance_amount|currency }}{% endif %}</h5>
           <!-- Customer Field -->
           <div class="form-group {% if form.customer.errors %}has-error{% endif %}">
             <label for="{{ form.customer.id_for_label }}" class="form-label">{{ form.customer.label }}</label>
