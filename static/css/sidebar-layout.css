@@ -211,72 +211,6 @@
   .page-actions > .btn:not(.btn-primary) {
     display: none;
   }
-  /* 3-dots toggle (injected by JS): Sleek Rounded Square */
-  .page-actions-toggle {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    color: var(--text-primary);
-    font-size: 0.95rem;
-    cursor: pointer;
-    flex-shrink: 0;
-    letter-spacing: 1px;
-    line-height: 1;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
-  }
-  .page-actions-toggle:hover {
-    background: var(--bg-surface-hover);
-    border-color: var(--primary);
-    color: var(--primary);
-  }
-  .page-actions.has-more .page-actions-toggle {
-    display: flex;
-  }
-  /* Dropdown menu for extra buttons */
-  .page-actions-dropdown {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 0.25rem;
-    min-width: 180px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    box-shadow: var(--shadow-md);
-    z-index: 1005;
-    padding: 0.3rem;
-    flex-direction: column;
-    gap: 0;
-  }
-  .page-actions-dropdown.open {
-    display: flex;
-  }
-  .page-actions-dropdown .btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    justify-content: flex-start;
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    background: transparent;
-    border: none;
-    border-radius: 0.3rem;
-    white-space: nowrap;
-    text-decoration: none;
-  }
-  .page-actions-dropdown .btn:hover {
-    background: var(--bg-surface-hover);
-    color: var(--primary);
-  }
 
   .toast {
     top: calc(var(--topbar-height) + 8px);
@@ -1103,6 +1037,20 @@
     font-size: 0.7rem !important;
     line-height: 1.2 !important;
   }
+
+  /* Dark Theme Mobile Sidebar Overrides */
+  [data-theme="dark"] #sidebar {
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+  }
+
+  [data-theme="dark"] .mobile-sidebar-footer {
+    border-color: var(--border-color);
+  }
+
+  [data-theme="dark"] #sidebar .dropdown-menu {
+    background: var(--bg-surface-hover);
+  }
 }
 
 /* ========================================
@@ -1130,24 +1078,6 @@
 @media (min-width: 769px) {
   .mobile-sidebar-footer {
     display: none !important;
-  }
-}
-
-/* ========================================
-   DARK THEME SUPPORT
-   ======================================== */
-@media (max-width: 768px) {
-  [data-theme="dark"] #sidebar {
-    background: var(--bg-surface);
-    border-color: var(--border-color);
-  }
-
-  [data-theme="dark"] .mobile-sidebar-footer {
-    border-color: var(--border-color);
-  }
-
-  [data-theme="dark"] #sidebar .dropdown-menu {
-    background: var(--bg-surface-hover);
   }
 }
 

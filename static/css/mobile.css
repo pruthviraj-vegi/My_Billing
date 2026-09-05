@@ -953,35 +953,6 @@
     z-index: 2 !important;
   }
 
-  .cal-range-bar {
-    padding: 6px 10px !important;
-  }
-
-  .cal-range-bar-title {
-    display: none !important;
-    /* Hide label on mobile to save vertical space */
-  }
-
-  .cal-date-input-wrap {
-    flex: 1 !important;
-    padding: 2px 6px !important;
-  }
-
-  .cal-date-label {
-    font-size: 0.65rem !important;
-  }
-
-  .cal-date-input {
-    font-size: 0.72rem !important;
-    width: 100% !important;
-  }
-
-  .cal-range-go-btn,
-  .cal-range-analytics-btn {
-    font-size: 0.68rem !important;
-    padding: 3px 8px !important;
-  }
-
   .day-labels {
     display: grid !important;
     grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
@@ -1043,9 +1014,6 @@
 
   .cell-dot-count,
   .cell-count-pill,
-  .cal-bills-badge,
-  .cal-cell-revenue,
-  .cal-status-pill,
   .cell-sales,
   .cell-sales-chip {
     display: none !important;
@@ -1079,23 +1047,6 @@
     grid-template-columns: 1fr !important;
   }
 
-  /* Calendar Details Page Mobile Alignment */
-  .cal-details-container {
-    padding: 0.75rem !important;
-    gap: 12px;
-    max-width: 100%;
-  }
-
-  .cal-details-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .cal-details-kpis {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
 
 
   .metric-card-body {
