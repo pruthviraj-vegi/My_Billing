@@ -35,13 +35,14 @@ class WordSuggestion {
         this.dropdown = null;
         this.abortController = null;
         this.currentQuery = "";
+        this.isSelecting = false;
 
         // Bind methods to instance
         this.boundHandleInput = (e) => this.handleInput(e);
         this.boundHandleKeydown = (e) => this.handleKeydown(e);
         this.boundHandleFocus = () => this.handleFocus();
         this.boundHandleBlur = (e) => this.handleBlur(e);
-        this.boundHandleClickOutside = (e) => this.handleClickOutside(e);
+        this.boundHandleOutsideAction = (e) => this.handleOutsideAction(e);
 
         this.init();
     }
@@ -71,20 +72,37 @@ class WordSuggestion {
         this.input.setAttribute('aria-autocomplete', 'list');
         this.input.setAttribute('aria-controls', this.dropdown.id);
 
-        // Find the best container for the dropdown
-        const container = this.input.closest('.search-expanded') ||
-            this.input.closest('.input-group') ||
-            this.input.parentNode;
+        // Prevent input from losing focus when clicking inside dropdown
+        this.dropdown.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+        });
 
-        // Set position relative on container to ensure dropdown is positioned correctly
-        if (container) {
-            const computedStyle = window.getComputedStyle(container);
-            if (computedStyle.position === 'static') {
-                container.style.position = 'relative';
-            }
+        // Find the best container for the dropdown
+        const searchExpanded = this.input.closest('.search-expanded');
+        if (searchExpanded) {
+            this.container = searchExpanded;
+            searchExpanded.appendChild(this.dropdown);
+        } else if (this.input.parentElement && this.input.parentElement.classList.contains('word-suggestion-container')) {
+            this.container = this.input.parentElement;
+            this.container.appendChild(this.dropdown);
+        } else {
+            // Wrap input in .word-suggestion-container so dropdown anchors directly below the input
+            const wrapper = document.createElement('div');
+            wrapper.className = 'word-suggestion-container';
+            this.input.parentNode.insertBefore(wrapper, this.input);
+            wrapper.appendChild(this.input);
+            wrapper.appendChild(this.dropdown);
+            this.wrapper = wrapper;
+            this.container = wrapper;
         }
 
-        container.appendChild(this.dropdown);
+        // Set position relative on container to ensure dropdown is positioned correctly
+        if (this.container) {
+            const computedStyle = window.getComputedStyle(this.container);
+            if (computedStyle.position === 'static') {
+                this.container.style.position = 'relative';
+            }
+        }
     }
 
     bindEvents() {
@@ -97,6 +115,10 @@ class WordSuggestion {
     // ----------- HANDLERS -----------
 
     handleInput(e) {
+        if (this.isSelecting) {
+            return;
+        }
+
         const rawValue = e.target.value;
         let query = rawValue.trim();
 
@@ -107,17 +129,23 @@ class WordSuggestion {
         clearTimeout(this.debounceTimer);
 
         if (query.length < this.options.minQueryLength) {
+            this.suggestions = [];
+            this.selectedIndex = -1;
             this.hideDropdown();
             return;
         }
 
         if (!this.options.allowSpaces && !this.options.multiWord && query.includes(' ')) {
+            this.suggestions = [];
+            this.selectedIndex = -1;
             this.hideDropdown();
             return;
         }
 
         this.debounceTimer = setTimeout(() => {
-            this.searchSuggestions(query);
+            if (document.activeElement === this.input) {
+                this.searchSuggestions(query);
+            }
         }, this.options.debounceDelay);
     }
 
@@ -135,10 +163,19 @@ class WordSuggestion {
                 this.navigateUp();
                 break;
             case 'Enter':
-            case 'Tab': // Tab also accepts suggestion
                 if (this.selectedIndex >= 0) {
                     e.preventDefault();
                     this.selectSuggestion();
+                } else {
+                    this.hideDropdown();
+                }
+                break;
+            case 'Tab': // Tab also accepts suggestion if highlighted, otherwise closes dropdown
+                if (this.selectedIndex >= 0) {
+                    e.preventDefault();
+                    this.selectSuggestion();
+                } else {
+                    this.hideDropdown();
                 }
                 break;
             case 'Escape':
@@ -149,20 +186,25 @@ class WordSuggestion {
     }
 
     handleFocus() {
-        if (this.suggestions.length > 0) {
+        if (this.isSelecting) {
+            return;
+        }
+        const query = this.input.value.trim();
+        if (query.length >= this.options.minQueryLength && this.suggestions.length > 0) {
             this.showDropdown();
         }
     }
 
-    handleBlur(e) { // Close only if clicked outside both input and dropdown
+    handleBlur(e) {
+        clearTimeout(this.debounceTimer);
         setTimeout(() => {
-            if (!this.dropdown.contains(document.activeElement) && document.activeElement !== this.input) {
+            if (document.activeElement !== this.input && !this.dropdown.contains(document.activeElement)) {
                 this.hideDropdown();
             }
         }, 150);
     }
 
-    handleClickOutside(e) {
+    handleOutsideAction(e) {
         if (!this.input.contains(e.target) && !this.dropdown.contains(e.target)) {
             this.hideDropdown();
         }
@@ -184,6 +226,10 @@ class WordSuggestion {
     // ----------- DATA FETCHING -----------
 
     async searchSuggestions(query) {
+        if (document.activeElement !== this.input) {
+            return;
+        }
+
         if (this.abortController)
             this.abortController.abort();
 
@@ -197,6 +243,13 @@ class WordSuggestion {
                 throw new Error(`HTTP ${response.status}`);
 
             const data = await response.json();
+
+            // Verify input is still focused before showing dropdown
+            if (document.activeElement !== this.input) {
+                this.suggestions = data.data || [];
+                return;
+            }
+
             this.suggestions = data.data || [];
             this.selectedIndex = -1;
 
@@ -326,7 +379,10 @@ class WordSuggestion {
 
         item.appendChild(contentSpan);
 
-        item.addEventListener('click', () => this.selectSuggestion(index));
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.selectSuggestion(index);
+        });
         item.addEventListener('mouseenter', () => {
             this.selectedIndex = index;
             this.updateSelection();
@@ -414,12 +470,24 @@ class WordSuggestion {
         const label = isObject ? (suggestionItem.label || '') : String(suggestionItem);
         const currentValue = this.input.value;
 
+        // Cancel pending debounce and abort in-flight fetch
+        clearTimeout(this.debounceTimer);
+        if (this.abortController) {
+            this.abortController.abort();
+        }
+
+        this.isSelecting = true;
+
         if (this.options.multiWord) {
             this.input.value = this.replaceLastWord(currentValue, label) + ' ';
         } else {
             this.input.value = label;
         }
 
+        // Clear suggestions list and close dropdown immediately
+        this.suggestions = [];
+        this.selectedIndex = -1;
+        this.dropdown.innerHTML = '';
         this.hideDropdown();
 
         // Fire input-specific event
@@ -433,27 +501,84 @@ class WordSuggestion {
         }));
 
         this.input.dispatchEvent(new Event('input', { bubbles: true }));
-        this.input.focus();
 
         if (typeof this.options.onSuggestionSelected === 'function') {
             this.options.onSuggestionSelected(label, this.input, suggestionItem);
+        }
+
+        setTimeout(() => {
+            this.isSelecting = false;
+        }, 100);
+    }
+
+    // ----------- OVERLAY HELPERS -----------
+
+    getFocusBlurOverlay() {
+        let overlay = document.getElementById('focus-blur-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'focus-blur-overlay';
+            overlay.className = 'focus-blur-overlay';
+            overlay.style.display = 'none';
+            document.body.appendChild(overlay);
+        }
+        return overlay;
+    }
+
+    showBlurOverlay() {
+        const overlay = this.getFocusBlurOverlay();
+        overlay.style.display = 'block';
+    }
+
+    hideBlurOverlay() {
+        const overlay = document.getElementById('focus-blur-overlay');
+        if (!overlay) return;
+        // Keep overlay visible only if another WordSuggestion, Select2, or Date dropdown is open
+        const anyWordSuggestionOpen = document.querySelector('.word-suggestion-dropdown.show');
+        const anySelect2Open = document.querySelector('.select2-container--open');
+        const anyDateDropdownOpen = document.querySelector('.multipleSelection.dropdown-elevated');
+        if (!anyWordSuggestionOpen && !anySelect2Open && !anyDateDropdownOpen) {
+            overlay.style.display = 'none';
         }
     }
 
     // ----------- UTILS -----------
 
     showDropdown() {
+        // Never open dropdown if the related input is not focused
+        if (document.activeElement !== this.input) {
+            return;
+        }
+
         this.dropdown.classList.add('show');
         this.dropdown.setAttribute('aria-hidden', 'false');
-        // Only attach click handler when dropdown is visible (performance optimization)
-        document.addEventListener('click', this.boundHandleClickOutside);
+        if (this.container) {
+            this.container.classList.add('dropdown-open');
+        }
+
+        // Show background blur overlay
+        this.showBlurOverlay();
+
+        // Attach listeners to capture clicks/mousedown, touches, and focus changes outside
+        document.addEventListener('mousedown', this.boundHandleOutsideAction, true);
+        document.addEventListener('touchstart', this.boundHandleOutsideAction, true);
+        document.addEventListener('focusin', this.boundHandleOutsideAction, true);
     }
 
     hideDropdown() {
         this.dropdown.classList.remove('show');
         this.dropdown.setAttribute('aria-hidden', 'true');
-        // Remove click handler when dropdown is hidden (performance optimization)
-        document.removeEventListener('click', this.boundHandleClickOutside);
+        if (this.container) {
+            this.container.classList.remove('dropdown-open');
+        }
+
+        // Hide background blur overlay
+        this.hideBlurOverlay();
+
+        // Remove outside action listeners
+        document.removeEventListener('mousedown', this.boundHandleOutsideAction, true);
+        document.removeEventListener('touchstart', this.boundHandleOutsideAction, true);
+        document.removeEventListener('focusin', this.boundHandleOutsideAction, true);
     }
 
     // ----------- PUBLIC METHODS -----------
@@ -466,12 +591,25 @@ class WordSuggestion {
         this.input.value = '';
         this.suggestions = [];
         this.selectedIndex = -1;
+        this.dropdown.innerHTML = '';
         this.hideDropdown();
     }
 
     destroy() {
+        this.hideDropdown();
+
         if (this.dropdown)
             this.dropdown.remove();
+
+        if (this.wrapper && this.wrapper.parentNode) {
+            this.wrapper.parentNode.insertBefore(this.input, this.wrapper);
+            this.wrapper.remove();
+            this.wrapper = null;
+        }
+
+        if (this.container) {
+            this.container.classList.remove('dropdown-open');
+        }
 
         if (this.debounceTimer)
             clearTimeout(this.debounceTimer);
@@ -483,7 +621,9 @@ class WordSuggestion {
         this.input.removeEventListener('keydown', this.boundHandleKeydown);
         this.input.removeEventListener('focus', this.boundHandleFocus);
         this.input.removeEventListener('blur', this.boundHandleBlur);
-        document.removeEventListener('click', this.boundHandleClickOutside);
+        document.removeEventListener('mousedown', this.boundHandleOutsideAction, true);
+        document.removeEventListener('touchstart', this.boundHandleOutsideAction, true);
+        document.removeEventListener('focusin', this.boundHandleOutsideAction, true);
     }
 }
 

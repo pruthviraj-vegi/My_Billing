@@ -191,6 +191,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
+            // Suppress browser native tooltip on placeholder
+            $(document).on('mouseenter', '.select2-selection__rendered[title]', function () {
+                var $this = $(this);
+                if ($this.find('.select2-selection__placeholder').length || $this.attr('title') === 'Type to search...') {
+                    $this.removeAttr('title');
+                }
+            });
+
             $(document)
                 .on('select2:open', function (e) {
                     showOverlay();

@@ -219,6 +219,46 @@
         return { fragment, wrapper, selectBox, panel };
     };
 
+    // Shared focus-blur overlay helper for dropdowns
+    function getFocusBlurOverlay() {
+        let overlay = document.getElementById('focus-blur-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'focus-blur-overlay';
+            overlay.className = 'focus-blur-overlay';
+            overlay.style.display = 'none';
+            document.body.appendChild(overlay);
+        }
+        return overlay;
+    }
+
+    function showDropdownBlurOverlay(onDismiss) {
+        const overlay = getFocusBlurOverlay();
+        overlay.style.display = 'block';
+
+        const handleDismiss = function (e) {
+            e.stopPropagation();
+            if (typeof onDismiss === 'function') {
+                onDismiss();
+            }
+        };
+        overlay._dropdownDismiss = handleDismiss;
+        overlay.addEventListener('mousedown', handleDismiss, { once: true });
+    }
+
+    function hideDropdownBlurOverlay() {
+        const overlay = document.getElementById('focus-blur-overlay');
+        if (!overlay) return;
+        // Keep overlay if a Select2 dropdown is currently open
+        if (!document.querySelector('.select2-container--open')) {
+            overlay.style.display = 'none';
+        }
+        if (overlay._dropdownDismiss) {
+            overlay.removeEventListener('mousedown', overlay._dropdownDismiss);
+            overlay._dropdownDismiss = null;
+        }
+    }
+
     // Main converter function
     function convertSelectToStyledDropdown(selectId, options = {}) {
         const { onChange, onError } = options;
@@ -452,13 +492,22 @@
                 panel.style.display = shouldOpen ? 'block' : 'none';
                 selectBox.classList.toggle('active', shouldOpen);
                 selectBox.setAttribute('aria-expanded', String(shouldOpen));
+                wrapper.classList.toggle('dropdown-elevated', shouldOpen);
+
+                const header = wrapper.closest('.page-header');
+                if (header) {
+                    header.classList.toggle('dropdown-elevated', shouldOpen);
+                }
 
                 if (shouldOpen) {
+                    showDropdownBlurOverlay(() => toggleDropdown(true));
                     showView((state.currentValue === 'custom' || hiddenSelect.value === 'custom') ? 'custom' : 'presets');
                     scheduleUpdate(panel, () => {
                         adjustPosition();
                         initDatePickers();
                     });
+                } else {
+                    hideDropdownBlurOverlay();
                 }
             };
 
@@ -730,6 +779,11 @@
 
             // Destroy method
             const destroy = () => {
+                // Clean up blur overlay if open
+                if (state.isOpen) {
+                    hideDropdownBlurOverlay();
+                }
+
                 // Clean up listeners
                 listeners.forEach(cleanup => {
                     try {

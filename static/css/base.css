@@ -6494,6 +6494,37 @@ WORD SUGGESTION SYSTEM STYLES
 .word-suggestion-container {
   position: relative;
   width: 100%;
+  display: block;
+}
+
+/* Only the suggestion container (wrapping input & dropdown) is elevated above blur overlay */
+.word-suggestion-container.dropdown-open,
+.search-expanded.dropdown-open,
+.word-suggestion-container:has(.word-suggestion-dropdown.show),
+.search-expanded:has(.word-suggestion-dropdown.show) {
+  z-index: 1065 !important;
+  position: relative !important;
+}
+
+/* Ensure parent form-group doesn't trap container in a lower stacking context */
+.form-container .form-group:has(.word-suggestion-container.dropdown-open) {
+  animation: none !important;
+  transform: none !important;
+}
+
+.word-suggestion-container.dropdown-open input,
+.word-suggestion-container.dropdown-open .form-control,
+.search-expanded.dropdown-open input,
+.search-expanded.dropdown-open .search-input {
+  position: relative !important;
+  z-index: 1066 !important;
+  background-color: var(--bg-surface) !important;
+  transform: none !important;
+}
+
+.form-container .word-suggestion-container.dropdown-open input:focus,
+.form-container .word-suggestion-container.dropdown-open .form-control:focus {
+  transform: none !important;
 }
 
 /* Word suggestion input field - inherit original search input styles */
@@ -6509,13 +6540,13 @@ WORD SUGGESTION SYSTEM STYLES
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: var(--bg-surface);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  width: 100%;
+  background: var(--bg-surface) !important;
+  background-color: var(--bg-surface) !important;
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
-  z-index: 1000;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+  z-index: 1070 !important;
   max-height: 240px;
   overflow-y: auto;
   opacity: 0;
@@ -6701,9 +6732,20 @@ WORD SUGGESTION SYSTEM STYLES
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
+[data-theme="dark"] .word-suggestion-container.dropdown-open input,
+[data-theme="dark"] .word-suggestion-container.dropdown-open .form-control,
+[data-theme="dark"] .search-expanded.dropdown-open input,
+[data-theme="dark"] .search-expanded.dropdown-open .search-input {
+  background: var(--bg-surface) !important;
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+}
+
 [data-theme="dark"] .word-suggestion-dropdown {
   background: var(--bg-surface);
+  background-color: var(--bg-surface) !important;
   border-color: var(--border-color);
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.6), 0 8px 12px -6px rgba(0, 0, 0, 0.5);
 }
 
 [data-theme="dark"] .word-suggestion-item:hover {
@@ -8511,6 +8553,21 @@ a:hover {
   /* above container */
 }
 
+/* Elevate styled dropdown & parent header above overlay */
+.page-header.dropdown-elevated,
+.page-header:has(.multipleSelection.dropdown-elevated) {
+  z-index: 1055 !important;
+}
+
+.multipleSelection.dropdown-elevated {
+  z-index: 1055 !important;
+  position: relative;
+}
+
+.multipleSelection.dropdown-elevated .date-dropdown-panel {
+  z-index: 1056 !important;
+}
+
 /* ========================================
    DATELITE DATEPICKER THEME COMPATIBILITY
    ======================================== */
@@ -9095,12 +9152,12 @@ a:hover {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
 .form-container .form-group {
-  animation: formFieldIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: formFieldIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .form-container .row > [class*="col-"]:nth-child(1) .form-group { animation-delay: 0.04s; }

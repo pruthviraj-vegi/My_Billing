@@ -20,16 +20,7 @@
   </div>
   <div class="page-actions dash-actions-group">
     <!-- Dashboard Date Filter Dropdown -->
-    {% include "common/_date_filter.html" with hide_this_finance=True hide_last_finance=True %}
-
-    <a href="{% url 'base:calendar' %}" class="btn btn-dash-action" title="Back to Calendar">
-      <i class="fa-solid fa-calendar-day"></i>
-      <span>Calendar</span>
-    </a>
-    <a href="{% url 'invoice:dashboard' %}" class="btn btn-dash-action" title="Invoice Analytics">
-      <i class="fa-solid fa-chart-line"></i>
-      <span>Invoice Dashboard</span>
-    </a>
+    {% include "common/_date_filter.html" with hide_this_finance=True hide_last_finance=True hide_full_date=True %}
   </div>
 </div>
 
@@ -106,8 +97,8 @@
         </div>
       </div>
 
-      <!-- Health Highlights Boxes -->
-      <div class="health-highlights-row">
+      <!-- Health Highlights Boxes: Single Row -->
+      <div class="health-highlights-row three-boxes">
         <div class="health-box">
           <span class="health-box-label">
             <i class="fa-solid fa-receipt text-primary"></i>

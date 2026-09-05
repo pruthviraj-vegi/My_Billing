@@ -1075,7 +1075,9 @@
     border-radius: 50% !important;
   }
 
-
+  .health-highlights-row.three-boxes {
+    grid-template-columns: 1fr !important;
+  }
 
   /* Calendar Details Page Mobile Alignment */
   .cal-details-container {
