@@ -10,6 +10,7 @@ from django.db.models import Q, Sum, Count, F, DecimalField, OuterRef, Subquery
 from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, Coalesce
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 
@@ -153,6 +154,24 @@ def invoice_dashboard_fetch(request):
         else Decimal("0")
     )
 
+    # Calculate Average Order Value (AOV)
+    aov = (
+        (net_amount / gross_metrics["total_invoices"]).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        if gross_metrics["total_invoices"] > 0
+        else Decimal("0")
+    )
+
+    # Calculate Recovery Rate (% of Net Revenue collected as Paid)
+    recovery_rate = (
+        (total_paid / net_amount * 100).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        )
+        if net_amount > 0
+        else Decimal("0")
+    )
+
     # Get comparison data for line chart
     base_qs = Invoice.objects.filter(is_cancelled=False).exclude(
         payment_status__in=[PaymentStatusChoices.VOID, PaymentStatusChoices.CANCELLED]
@@ -171,6 +190,32 @@ def invoice_dashboard_fetch(request):
         invoices.values("payment_type")
         .annotate(count=Count("id"), amount=Coalesce(Sum("amount"), Decimal("0")))
         .order_by("payment_type")
+    )
+
+    # Cash vs Credit split computation
+    cash_amount = Decimal("0")
+    credit_amount = Decimal("0")
+    for pt in payment_type_breakdown:
+        p_type = str(pt.get("payment_type", "")).upper()
+        if p_type == "CASH":
+            cash_amount = pt.get("amount", Decimal("0"))
+        elif p_type == "CREDIT":
+            credit_amount = pt.get("amount", Decimal("0"))
+
+    active_type_total = cash_amount + credit_amount
+    cash_percentage = (
+        (cash_amount / active_type_total * 100).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        )
+        if active_type_total > 0
+        else Decimal("0")
+    )
+    credit_percentage = (
+        (credit_amount / active_type_total * 100).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        )
+        if active_type_total > 0
+        else Decimal("0")
     )
 
     # Category breakdown from invoice items
@@ -204,6 +249,12 @@ def invoice_dashboard_fetch(request):
         "total_return_amount": float(total_return_amount),
         "total_cancelled_amount": float(total_cancelled_amount),
         "total_cancelled_invoices": cancelled_metrics["total_cancelled_invoices"],
+        "aov": float(aov),
+        "recovery_rate": float(recovery_rate),
+        "cash_amount": float(cash_amount),
+        "credit_amount": float(credit_amount),
+        "cash_percentage": float(cash_percentage),
+        "credit_percentage": float(credit_percentage),
     }
 
     # Process payment status breakdown

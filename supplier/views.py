@@ -182,11 +182,13 @@ def dashboard_fetch(request):
     )
 
     # Prepare response data
+    all_time_outstanding = get_total_outstanding_balance()
     stats = {
         "total_invoices": total_invoices,
         "total_invoiced": float(total_invoiced),
         "total_paid": float(total_paid),
         "outstanding_balance": float(outstanding_balance),
+        "total_outstanding": float(all_time_outstanding),
         "net_amount": float(total_paid),
         "total_profit": float(outstanding_balance),
         "total_discount": float(Decimal("0")),
@@ -232,6 +234,8 @@ def dashboard_fetch(request):
     invoice_type_data = [
         {
             "category_name": inv_type["invoice_type"].replace("_", " ").title(),
+            "invoice_type": inv_type["invoice_type"].replace("_", " ").title(),
+            "label": inv_type["invoice_type"].replace("_", " ").title(),
             "count": inv_type["count"],
             "amount": float(inv_type["amount"]),
             "percentage": (
@@ -250,6 +254,7 @@ def dashboard_fetch(request):
             "payment_status_breakdown": invoice_status_data,
             "supplier_breakdown": supplier_data,
             "category_breakdown": invoice_type_data,
+            "invoice_type_breakdown": invoice_type_data,
             "comparison_data": comparison_data,
             "date_range": {
                 "start_date": start_date.isoformat(),

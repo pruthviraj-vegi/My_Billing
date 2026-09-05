@@ -217,8 +217,8 @@ function copyToClipboard(text) {
  * ANIMATED COUNTER UTILITIES
  * ============================================================================ */
 function animateCounter(element, startValue, endValue, duration = 800) {
-  const safeStart = Math.max(0, startValue || 0);
-  const safeEnd = Math.max(0, endValue || 0);
+  const safeStart = Number(startValue) || 0;
+  const safeEnd = Number(endValue) || 0;
   const startTime = performance.now();
   const difference = safeEnd - safeStart;
   const prefix = element.getAttribute("data-prefix") || "";
@@ -234,7 +234,7 @@ function animateCounter(element, startValue, endValue, duration = 800) {
     const easeOutQuad = 1 - (1 - progress) * (1 - progress);
 
     let currentValue = safeStart + difference * easeOutQuad;
-    if (Math.abs(currentValue) < 0.001 || currentValue < 0) {
+    if (Math.abs(currentValue) < 0.001) {
       currentValue = 0;
     }
 
@@ -265,8 +265,8 @@ function initializeCounters() {
   for (const element of countingElements) {
     const rawDataCount = element.getAttribute("data-count");
     const initialValue = rawDataCount !== null && !isNaN(parseFloat(rawDataCount))
-      ? Math.max(0, parseFloat(rawDataCount))
-      : Math.max(0, parseFloat(element.textContent.replace(/[^0-9.-]+/g, "")) || 0);
+      ? parseFloat(rawDataCount)
+      : (parseFloat(element.textContent.replace(/[^0-9.-]+/g, "")) || 0);
     element.setAttribute("data-count", initialValue.toFixed(2));
     animateCounter(element, 0, initialValue);
   }
@@ -279,8 +279,8 @@ function updateCount(elementId, newValue) {
   }
 
   const numericValue = typeof newValue === "string"
-    ? Math.max(0, parseFloat(newValue.replace(/[^0-9.-]+/g, "")) || 0)
-    : Math.max(0, Number(newValue) || 0);
+    ? (parseFloat(newValue.replace(/[^0-9.-]+/g, "")) || 0)
+    : (Number(newValue) || 0);
 
   if (isNaN(numericValue)) {
     return;
@@ -288,8 +288,8 @@ function updateCount(elementId, newValue) {
 
   const rawDataCount = element.getAttribute("data-count");
   const currentValue = rawDataCount !== null && !isNaN(parseFloat(rawDataCount))
-    ? Math.max(0, parseFloat(rawDataCount))
-    : Math.max(0, parseFloat(element.textContent.replace(/[^0-9.-]+/g, "")) || 0);
+    ? parseFloat(rawDataCount)
+    : (parseFloat(element.textContent.replace(/[^0-9.-]+/g, "")) || 0);
 
   animateCounter(element, currentValue, numericValue);
 }

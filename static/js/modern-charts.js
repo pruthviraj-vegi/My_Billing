@@ -34,32 +34,23 @@
                 tooltipBg: bgSurface,
             };
 
-            // Lighter shades matching stat-card icon colors (used for strokes and fill base)
-            // Reference: bg-blue = bg rgba(59,130,246,0.15) + color #60a5fa
-            var lightShades = [
-                '#60a5fa', // blue light
-                '#a78bfa', // purple light
-                '#34d399', // green light
-                '#f87171', // red light
-                '#22d3ee', // cyan light
-                '#f472b6', // pink light
-                '#fbbf24', // yellow light
-                '#818cf8', // indigo light
-                '#2dd4bf', // teal light
-                '#fb923c', // orange light
-                '#a3e635', // lime light
-                '#94a3b8', // slate
+            // Distinct, vibrant, high-contrast palette (no washed-out/milky opacity)
+            var vibrantPalette = [
+                '#2563eb', // royal blue
+                '#10b981', // emerald
+                '#8b5cf6', // purple
+                '#f59e0b', // amber
+                '#06b6d4', // cyan
+                '#ec4899', // pink
+                '#6366f1', // indigo
+                '#14b8a6', // teal
+                '#f97316', // orange
+                '#84cc16', // lime
+                '#64748b', // slate
             ];
 
-            function fade(hex) {
-                var r = parseInt(hex.slice(1, 3), 16);
-                var g = parseInt(hex.slice(3, 5), 16);
-                var b = parseInt(hex.slice(5, 7), 16);
-                return 'rgba(' + r + ',' + g + ',' + b + ',0.45)';
-            }
-
-            palette.doughnutStrokes = lightShades;
-            palette.doughnutFills = lightShades.map(function (h) { return fade(h); });
+            palette.doughnutStrokes = vibrantPalette;
+            palette.doughnutFills = vibrantPalette;
 
             return palette;
         },
@@ -86,41 +77,6 @@
             }
         },
 
-        // Custom Plugin to draw text inside doughnut segments
-        doughnutLabelPlugin: {
-            id: 'doughnutLabel',
-            afterDatasetsDraw(chart, args, options) {
-                const { ctx, data } = chart;
-                chart.data.datasets.forEach((dataset, i) => {
-                    chart.getDatasetMeta(i).data.forEach((datapoint, index) => {
-                        const { x, y } = datapoint.tooltipPosition();
-
-                        const value = dataset.data[index];
-                        const total = dataset.data.reduce((a, b) => a + b, 0);
-                        const pctNum = total > 0 ? (value / total) * 100 : 0;
-
-                        if (pctNum >= 3) {
-                            const percentage = pctNum.toFixed(1) + '%';
-                            const theme = document.body.getAttribute('data-theme');
-                            const isDark = theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-                            ctx.save();
-                            ctx.font = 'bold 10px Inter, sans-serif';
-                            ctx.fillStyle = isDark ? '#ffffff' : '#1e293b';
-                            ctx.shadowColor = isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.4)';
-                            ctx.shadowBlur = isDark ? 3 : 0;
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(percentage, x, y);
-                            ctx.shadowBlur = 0;
-                            ctx.shadowColor = 'transparent';
-                            ctx.restore();
-                        }
-                    });
-                });
-            }
-        },
-
-
         // Initialize a Doughnut Chart
         initDoughnut: function (ctx) {
             const colors = this.getColors();
@@ -131,33 +87,64 @@
                     datasets: [{
                         data: [],
                         backgroundColor: [],
-                        borderColor: [],
+                        borderColor: colors.tooltipBg || '#ffffff',
                         borderWidth: 2,
                         borderRadius: 6,
+                        spacing: 3,
                         hoverOffset: 10,
                         hoverBorderWidth: 2,
                     }]
                 },
                 options: {
                     responsive: false,
-                    cutout: '64%',
-                    animation: { animateRotate: true, duration: 900, easing: 'easeInOutQuart' },
+                    cutout: '73%',
+                    animation: {
+                        animateRotate: true,
+                        animateScale: true,
+                        duration: 850,
+                        easing: 'easeOutQuart'
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: { enabled: false }
                     }
-                },
-                plugins: [this.doughnutLabelPlugin]
+                }
             });
         },
 
         // Update Doughnut Chart Data and Legend
         updateDoughnut: function (chart, legendId, items, keys, colorMap = null) {
             // keys: { label, count, amount, percentage (optional) }
-            if (!items || !chart) return;
+            if (!chart) return;
+
+            const canvasEl = chart.canvas;
+            const donutWrap = canvasEl ? canvasEl.closest('.donut-wrap') : null;
+            const cLabelEl = donutWrap ? donutWrap.querySelector('.center-label') : null;
+            const cPctEl = donutWrap ? donutWrap.querySelector('.center-pct') : null;
+            const cValEl = donutWrap ? donutWrap.querySelector('.center-val') : null;
+            const legendContainer = document.getElementById(legendId);
+
+            if (!items || items.length === 0) {
+                chart.data.labels = [];
+                chart.data.datasets[0].data = [];
+                chart.update();
+                if (cLabelEl) cLabelEl.textContent = 'NO DATA';
+                if (cPctEl) cPctEl.style.display = 'none';
+                if (cValEl) cValEl.textContent = '0.00';
+                if (legendContainer) {
+                    legendContainer.innerHTML = '<div class="text-center py-3 text-muted" style="font-size: 0.73rem; opacity: 0.7;">No records for selected period</div>';
+                }
+                return;
+            }
+
+            // Safe label getter to prevent 'undefined' in any legend or center display
+            function getItemLabel(item) {
+                if (!item) return 'Unknown';
+                return item[keys.label] || item.customer_name || item.customer__name || item.supplier_name || item.payment_status || item.payment_type || item.payment_method || item.category_name || item.invoice_type || item.label || item.name || 'Unknown';
+            }
 
             const colors = this.getColors();
-            const labels = items.map(d => d[keys.label]);
+            const labels = items.map(getItemLabel);
             const counts = items.map(d => d[keys.count]);
             const amounts = items.map(d => d[keys.amount] || 0);
             const totalAmount = amounts.reduce((a, b) => a + b, 0);
@@ -166,6 +153,7 @@
             chart.data.datasets[0].data = amounts;
             chart.data.datasets[0].borderWidth = 2;
             chart.data.datasets[0].borderRadius = 6;
+            chart.data.datasets[0].spacing = 3;
             chart.data.datasets[0].hoverOffset = 10;
             chart.data.datasets[0].hoverBorderWidth = 2;
 
@@ -191,31 +179,29 @@
             chart.data.datasets[0].backgroundColor = bgColors;
             chart.data.datasets[0].borderColor = borderColors;
 
-            // Hover callback: highlight legend items and update center-info
-            const canvasEl = chart.canvas;
-            const chartId = canvasEl.id;
-            // Derive center-info element IDs from the legend container ID pattern
-            const prefix = legendId.replace('Legend', '').replace('legend', '');
-            // Look for center-info elements (pmCenterLabel, pmCenterPct, pmCenterVal)
-            // We'll search for them near the canvas container
-            const donutWrap = canvasEl.closest('.donut-wrap');
-            const cLabelEl = donutWrap ? donutWrap.querySelector('.center-label') : null;
-            const cPctEl = donutWrap ? donutWrap.querySelector('.center-pct') : null;
-            const cValEl = donutWrap ? donutWrap.querySelector('.center-val') : null;
-
             const formattedTotal = totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             // Update center with total initially
-            if (cLabelEl) cLabelEl.textContent = 'total value';
-            if (cPctEl) cPctEl.textContent = '';
+            if (cLabelEl) cLabelEl.textContent = 'TOTAL';
+            if (cPctEl) {
+                cPctEl.textContent = '100%';
+                cPctEl.style.display = totalAmount > 0 ? 'inline-block' : 'none';
+            }
             if (cValEl) cValEl.textContent = formattedTotal;
+
             // setActive helper for hover interaction
             function setActive(idx) {
-                const legendContainer = document.getElementById(legendId);
-                if (!legendContainer) return;
-                legendContainer.querySelectorAll('.leg-item').forEach(function (el, i) {
-                    el.style.opacity = idx === null ? '1' : (i === idx ? '1' : '0.3');
-                });
+                if (legendContainer) {
+                    legendContainer.querySelectorAll('.leg-bar-row').forEach(function (el, i) {
+                        if (idx !== null && i === idx) {
+                            el.classList.add('active');
+                            el.style.opacity = '1';
+                        } else {
+                            el.classList.remove('active');
+                            el.style.opacity = idx === null ? '1' : '0.35';
+                        }
+                    });
+                }
 
                 // Dim non-active segments
                 function dimColor(c, alpha) {
@@ -236,7 +222,7 @@
                 } else {
                     chart.setActiveElements([{ datasetIndex: 0, index: idx }]);
                     chart.data.datasets[0].backgroundColor = bgColors.map(function (c, i) {
-                        return i === idx ? c : dimColor(c, 0.06);
+                        return i === idx ? c : dimColor(c, 0.15);
                     });
                     chart.data.datasets[0].borderColor = borderColors.map(function (c, i) {
                         return i === idx ? c : dimColor(c, 0.25);
@@ -245,8 +231,11 @@
                 chart.update('none');
 
                 if (idx === null) {
-                    if (cLabelEl) cLabelEl.textContent = 'total value';
-                    if (cPctEl) cPctEl.textContent = '';
+                    if (cLabelEl) cLabelEl.textContent = 'TOTAL';
+                    if (cPctEl) {
+                        cPctEl.textContent = '100%';
+                        cPctEl.style.display = totalAmount > 0 ? 'inline-block' : 'none';
+                    }
                     if (cValEl) cValEl.textContent = formattedTotal;
                 } else {
                     const item = items[idx];
@@ -256,9 +245,12 @@
                     } else {
                         pct = totalAmount > 0 ? ((item[keys.amount] || 0) / totalAmount * 100).toFixed(1) : '0';
                     }
-                    if (cLabelEl) cLabelEl.textContent = item[keys.label];
-                    if (cPctEl) cPctEl.textContent = pct + '%';
-                    if (cValEl) cValEl.textContent = (item[keys.amount] || 0).toLocaleString('en-IN');
+                    if (cLabelEl) cLabelEl.textContent = getItemLabel(item).toUpperCase();
+                    if (cPctEl) {
+                        cPctEl.textContent = pct + '%';
+                        cPctEl.style.display = 'inline-block';
+                    }
+                    if (cValEl) cValEl.textContent = (item[keys.amount] || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
             }
 
@@ -269,7 +261,7 @@
             };
 
             // Mouse leave on canvas resets
-            canvasEl.onmouseleave = function () { setActive(null); };
+            if (canvasEl) canvasEl.onmouseleave = function () { setActive(null); };
 
             chart.update();
 
@@ -282,41 +274,44 @@
             });
             const maxPct = Math.max.apply(null, percentages) || 1;
 
-            // Generate Legend with bar-track style
-            const legendContainer = document.getElementById(legendId);
+            // Generate Legend with inline text-in-bar style
             if (legendContainer) {
                 legendContainer.innerHTML = '';
 
                 items.forEach(function (item, index) {
                     var pct = percentages[index];
                     var pctStr = pct.toFixed(1) + '%';
-                    var fillColor = bgColors[index];
                     var strokeColor = borderColors[index];
                     var amount = item[keys.amount] || 0;
                     var formattedAmount = amount.toLocaleString('en-IN');
+                    var labelText = getItemLabel(item);
 
                     var div = document.createElement('div');
-                    div.className = 'leg-item';
+                    div.className = 'leg-bar-row';
                     div.dataset.idx = index;
-                    div.innerHTML = '<span class="leg-dot" style="background:' + strokeColor + '"></span>' +
-                        '<span class="leg-name">' + item[keys.label] + '</span>' +
-                        '<span class="leg-pct">' + pctStr + '</span>' +
-                        '<span class="leg-val">&nbsp;' + formattedAmount + '</span>';
 
-                    var track = document.createElement('div');
-                    track.className = 'bar-track';
-                    var fill = document.createElement('div');
-                    fill.className = 'bar-fill';
-                    fill.style.background = strokeColor;
-                    fill.style.width = '0';
-                    track.appendChild(fill);
-                    div.appendChild(track);
+                    div.innerHTML =
+                        '<div class="leg-bar-fill" style="background:' + strokeColor + '; width: 0%;"></div>' +
+                        '<div class="leg-bar-text">' +
+                            '<span class="leg-bar-title">' +
+                                '<span class="leg-color-dot" style="background:' + strokeColor + '"></span>' +
+                                labelText +
+                            '</span>' +
+                            '<span class="leg-bar-values">' +
+                                '<span class="leg-bar-amt">' + formattedAmount + '</span>' +
+                                '<span class="leg-bar-pct">' + pctStr + '</span>' +
+                            '</span>' +
+                        '</div>';
+
                     legendContainer.appendChild(div);
 
                     // Animate bar fill
                     setTimeout(function () {
-                        fill.style.width = (pct / maxPct * 100) + '%';
-                    }, 300 + index * 40);
+                        var fillEl = div.querySelector('.leg-bar-fill');
+                        if (fillEl) {
+                            fillEl.style.width = (pct / maxPct * 100) + '%';
+                        }
+                    }, 250 + index * 40);
 
                     // Hover events on legend items
                     div.addEventListener('mouseenter', function () { setActive(index); });

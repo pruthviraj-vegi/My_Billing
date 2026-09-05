@@ -10,182 +10,287 @@
 {% block content %}
     <!-- Page Header -->
     <div class="page-header page-header-sticky">
-        <h2 class="page-title">Invoice Dashboard</h2>
-        <div class="page-actions">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h2 class="page-title mb-0">Invoice Dashboard</h2>
+            <span class="live-store-badge">
+                <span class="live-pulse-dot"></span>
+                Live Operations
+            </span>
+        </div>
+        <div class="page-actions dash-actions-group">
             <!-- Date Filter Dropdown -->
             {% include "common/_date_filter.html" with hide_custom=True %}
-            <a href="{% url 'invoice:home' %}" class="btn">
+
+            {% if perms.cart.view_cart %}
+                <a href="{% url 'cart:main_page' %}" class="btn btn-dash-action primary">
+                    <i class="fas fa-plus"></i>
+                    New Bill
+                </a>
+            {% endif %}
+            <a href="{% url 'invoice:home' %}" class="btn btn-dash-action">
                 <i class="fas fa-list"></i>
-                View All Invoices
+                All Invoices
+            </a>
+            <a href="{% url 'invoice:search_invoices_home' %}" class="btn btn-dash-action">
+                <i class="fas fa-search"></i>
+                Search
             </a>
         </div>
     </div>
+
     <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb breadcrumb-right">
-        <span class="breadcrumb-active">Invoice Dashboard</span>
+        <a href="{% url 'invoice:home' %}" class="breadcrumb-item">Invoices</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Dashboard</span>
     </nav>
-    <!-- Loading State - Hidden for seamless updates -->
+
+    <!-- Loading State -->
     <div id="dashboardLoading" class="loading-container hidden">
         <div class="loading">
             <i class="fas fa-spinner fa-spin"></i>
             Loading dashboard data...
         </div>
     </div>
-    <!-- Dashboard Content -->
+
+    <!-- Dashboard Content Container -->
     <div id="dashboardContent" class="dashboardContent">
-        <!-- Quick Stats -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-icon bg-purple">
-                    <i class="fa-solid fa-file-invoice"></i>
+
+        <!-- ── HERO FINANCIAL & CASHFLOW TIER ── -->
+        <div class="dash-hero-grid">
+            <!-- Hero Card: Net Revenue Command Center -->
+            <div class="dash-hero-card dash-stagger-item" style="--delay: 1;">
+                <div>
+                    <div class="hero-card-header">
+                        <span class="hero-card-title">
+                            <i class="fa-solid fa-chart-line"></i>
+                            Net Realized Revenue
+                        </span>
+                        <span class="hero-tag" id="heroPeriodTag">Selected Period</span>
+                    </div>
+                    <div class="hero-val-display">
+                        <span class="hero-number-lg counting-number" id="heroNetAmount" data-count="0">0</span>
+                        <span class="hero-delta-badge neutral" id="heroDeltaBadge">
+                            <i class="fa-solid fa-arrows-left-right"></i>
+                            <span id="heroDeltaText">--</span>
+                        </span>
+                    </div>
+                    <div class="stat-label-small" style="margin-top: 0.15rem;">
+                        Net of discounts, returns &amp; cancellations
+                    </div>
                 </div>
-                <div class="stat-content">
-                    <span class="stat-label">Total Invoices</span>
-                    <h4 class="stat-number counting-number" id="totalInvoices" data-count="0">0</h4>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon bg-green">
-                    <i class="fa-solid fa-indian-rupee-sign"></i>
-                </div>
-                <div class="stat-content">
-                    <span class="stat-label">Total Amount</span>
-                    <h4 class="stat-number counting-number" id="totalAmount" data-count="0">0</h4>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon bg-blue">
-                    <i class="fa-solid fa-calculator"></i>
-                </div>
-                <div class="stat-content">
-                    <span class="stat-label">Net Amount</span>
-                    <h4 class="stat-number counting-number" id="netAmount" data-count="0">0</h4>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon bg-orange">
-                    <i class="fa-solid fa-rotate-left"></i>
-                </div>
-                <div class="stat-content">
-                    <span class="stat-label">Returned Amount</span>
-                    <h4 class="stat-number counting-number" id="totalReturnAmount" data-count="0">0</h4>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon bg-red">
-                    <i class="fa-solid fa-ban"></i>
-                </div>
-                <div class="stat-content">
-                    <span class="stat-label">Cancelled Amount</span>
-                    <h4 class="stat-number counting-number" id="totalCancelledAmount" data-count="0">0</h4>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon bg-green">
-                    <i class="fa-solid fa-chart-line"></i>
-                </div>
-                <div class="stat-content">
-                    <span class="stat-label">Profit</span>
-                    <h4 class="stat-number">
-                        <span class="counting-number" id="totalProfit" data-count="0">0</span> <span id="marginPercentage" class="margin-badge"></span>
-                    </h4>
+
+                <div class="hero-submetrics">
+                    <div class="hero-submetric-item">
+                        <span class="hero-submetric-label">Estimated Profit</span>
+                        <div class="hero-submetric-val profit-val">
+                            <span class="counting-number" id="heroProfit" data-count="0">0</span>
+                            <span class="margin-pill" id="heroMarginPct">(0%)</span>
+                        </div>
+                    </div>
+                    <div class="hero-submetric-item">
+                        <span class="hero-submetric-label">Gross Billed</span>
+                        <div class="hero-submetric-val">
+                            <span class="counting-number" id="heroGrossAmount" data-count="0">0</span>
+                        </div>
+                    </div>
+                    <div class="hero-submetric-item">
+                        <span class="hero-submetric-label">Total Invoices</span>
+                        <div class="hero-submetric-val">
+                            <span class="counting-number" id="heroTotalBills" data-count="0">0</span> bills
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon bg-purple">
+
+            <!-- Health Card: Cash Flow & Retail Efficiency -->
+            <div class="dash-hero-card dash-stagger-item" style="--delay: 2;">
+                <div>
+                    <div class="hero-card-header">
+                        <span class="hero-card-title">
+                            <i class="fa-solid fa-money-bill-transfer"></i>
+                            Cashflow &amp; Retail Pulse
+                        </span>
+                        <span class="hero-tag">Inflow Mix</span>
+                    </div>
+
+                    <!-- Split Progress Meter -->
+                    <div class="cashflow-bar-wrapper">
+                        <div class="cashflow-bar-header">
+                            <span>
+                                Cash: <strong id="cashPctText">0%</strong> (<span id="cashAmtText">0</span>)
+                            </span>
+                            <span>
+                                Credit: <strong id="creditPctText">0%</strong> (<span id="creditAmtText">0</span>)
+                            </span>
+                        </div>
+                        <div class="cashflow-bar-track">
+                            <div class="cashflow-fill-cash" id="cashflowCashBar" style="width: 50%;"></div>
+                            <div class="cashflow-fill-credit" id="cashflowCreditBar" style="width: 50%;"></div>
+                        </div>
+                        <div class="cashflow-legend-row">
+                            <div class="cashflow-legend-col">
+                                <span class="cashflow-dot cash"></span>
+                                <span>Immediate Inflow</span>
+                            </div>
+                            <div class="cashflow-legend-col">
+                                <span class="cashflow-dot credit"></span>
+                                <span>Ledger / Receivable</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Highlight Gauges -->
+                <div class="health-highlights-row">
+                    <div class="health-box">
+                        <span class="health-box-label">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                            Avg Bill Size (AOV)
+                        </span>
+                        <div class="health-box-val">
+                            <span class="counting-number" id="metricAOV" data-count="0">0</span>
+                        </div>
+                        <span class="health-box-sub">Average ticket value</span>
+                    </div>
+                    <div class="health-box">
+                        <span class="health-box-label">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            Collection Rate
+                        </span>
+                        <div class="health-box-val">
+                            <span class="counting-number" id="metricRecoveryRate" data-count="0">0</span>%
+                        </div>
+                        <span class="health-box-sub">Due: <span id="metricOutstanding">0</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SECONDARY METRICS STRIP ── -->
+        <div class="kpi-strip dash-stagger-item" style="--delay: 3;">
+            <div class="kpi-strip-card">
+                <div class="kpi-icon-wrap">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div class="kpi-body">
+                    <span class="kpi-label">Paid Received</span>
+                    <span class="kpi-value"><span class="counting-number" id="totalPaid" data-count="0">0</span></span>
+                </div>
+            </div>
+
+            <div class="kpi-strip-card">
+                <div class="kpi-icon-wrap">
                     <i class="fa-solid fa-percent"></i>
                 </div>
-                <div class="stat-content">
-                    <span class="stat-label">Total Discount</span>
-                    <h4 class="stat-number counting-number" id="totalDiscount" data-count="0">0</h4>
+                <div class="kpi-body">
+                    <span class="kpi-label">Total Discounts</span>
+                    <span class="kpi-value"><span class="counting-number" id="totalDiscount" data-count="0">0</span></span>
+                </div>
+            </div>
+
+            <div class="kpi-strip-card">
+                <div class="kpi-icon-wrap">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </div>
+                <div class="kpi-body">
+                    <span class="kpi-label">Returns Refunded</span>
+                    <span class="kpi-value"><span class="counting-number" id="totalReturnAmount" data-count="0">0</span></span>
+                </div>
+            </div>
+
+            <div class="kpi-strip-card">
+                <div class="kpi-icon-wrap">
+                    <i class="fa-solid fa-ban"></i>
+                </div>
+                <div class="kpi-body">
+                    <span class="kpi-label">Cancelled Billed</span>
+                    <span class="kpi-value"><span class="counting-number" id="totalCancelledAmount" data-count="0">0</span></span>
                 </div>
             </div>
         </div>
-        <!-- Payment Analytics -->
-        <div class="activity-section">
-            <h2 class="section-title">Payment Analytics</h2>
-            <!-- Payment Status Breakdown -->
-            <div class="breakdown-grid">
-                <!-- Payment Status -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3 class="chart-title">Payment Status</h3>
+
+        <!-- ── ANALYTICS SECTION ── -->
+        <!-- Revenue Comparison Chart (Controlled compact height) -->
+        <div class="chart-card revenue-chart-card dash-stagger-item" style="--delay: 4;">
+            <div class="chart-header">
+                <h3 class="chart-title">
+                    <i class="fa-solid fa-chart-area me-1"></i>
+                    Revenue Trajectory
+                </h3>
+                <div class="chart-summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-label-small">
+                            <span class="legend-dot text-primary"></span>
+                            Present
+                        </span>
+                        <span class="stat-value-small" id="revCurrentTotal">0</span>
                     </div>
-                    <div class="chart-row">
-                        <div class="donut-wrap">
-                            <canvas id="paymentStatusChart" width="260" height="260"></canvas>
-                            <div class="center-info">
-                                <div class="center-label">total value</div>
-                                <div class="center-pct"></div>
-                                <div class="center-val">0</div>
-                            </div>
-                        </div>
-                        <div class="legend" id="paymentLegend"></div>
+                    <div class="stat-item">
+                        <span class="stat-label-small">
+                            <span class="legend-dot text-secondary"></span>
+                            Past
+                        </span>
+                        <span class="stat-value-small" id="revPreviousTotal">0</span>
                     </div>
-                </div>
-                <!-- Payment Type -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3 class="chart-title">Payment Type</h3>
-                    </div>
-                    <div class="chart-row">
-                        <div class="donut-wrap">
-                            <canvas id="paymentTypeChart" width="260" height="260"></canvas>
-                            <div class="center-info">
-                                <div class="center-label">total value</div>
-                                <div class="center-pct"></div>
-                                <div class="center-val">0</div>
-                            </div>
-                        </div>
-                        <div class="legend" id="paymentTypeLegend"></div>
-                    </div>
-                </div>
-                <!-- Product Categories -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3 class="chart-title">Top Categories</h3>
-                    </div>
-                    <div class="chart-row">
-                        <div class="donut-wrap">
-                            <canvas id="categoryChart" width="260" height="260"></canvas>
-                            <div class="center-info">
-                                <div class="center-label">total value</div>
-                                <div class="center-pct"></div>
-                                <div class="center-val">0</div>
-                            </div>
-                        </div>
-                        <div class="legend" id="categoryLegend"></div>
+                    <div class="stat-item">
+                        <span class="stat-label-small">Delta</span>
+                        <span class="stat-change" id="revChange">--</span>
                     </div>
                 </div>
             </div>
+            <div class="chart-container-compact">
+                <canvas id="revenueChart"></canvas>
+            </div>
         </div>
-        <!-- Revenue Comparison Chart -->
-        <div class="activity-section">
-            <h2 class="section-title">Revenue Comparison</h2>
-            <div class="chart-card revenue-chart-card">
+
+        <!-- Two Pie/Donut Charts Side by Side (Balanced 50% / 50%) -->
+        <div class="charts-two-col-grid dash-stagger-item" style="--delay: 5;">
+            <!-- Payment Status Donut -->
+            <div class="chart-card">
                 <div class="chart-header">
-                    <h3 class="chart-title">Revenue Analytics</h3>
-                    <div class="chart-summary-stats">
-                        <div class="stat-item">
-                            <span class="stat-label-small"><span class="legend-dot text-primary"></span>Present</span>
-                            <span class="stat-value-small" id="revCurrentTotal">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label-small"><span class="legend-dot text-secondary"></span>Past</span>
-                            <span class="stat-value-small" id="revPreviousTotal">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label-small">Change</span>
-                            <span class="stat-change" id="revChange">--</span>
+                    <h3 class="chart-title">
+                        <i class="fa-solid fa-receipt me-1"></i>
+                        Payment Status
+                    </h3>
+                </div>
+                <div class="chart-row">
+                    <div class="donut-wrap">
+                        <canvas id="paymentStatusChart" width="220" height="220"></canvas>
+                        <div class="center-info">
+                            <div class="center-label">total value</div>
+                            <div class="center-pct"></div>
+                            <div class="center-val">0</div>
                         </div>
                     </div>
+                    <div class="legend" id="paymentLegend"></div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="revenueChart"></canvas>
+            </div>
+
+            <!-- Product Categories Donut -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="fa-solid fa-layer-group me-1"></i>
+                        Top Categories
+                    </h3>
+                </div>
+                <div class="chart-row">
+                    <div class="donut-wrap">
+                        <canvas id="categoryChart" width="220" height="220"></canvas>
+                        <div class="center-info">
+                            <div class="center-label">total value</div>
+                            <div class="center-pct"></div>
+                            <div class="center-val">0</div>
+                        </div>
+                    </div>
+                    <div class="legend" id="categoryLegend"></div>
                 </div>
             </div>
         </div>
+
     </div>
+
     <!-- Error State -->
     <div id="dashboardError" class="error-container hidden">
         <div class="error-message">
@@ -199,43 +304,67 @@
         </div>
     </div>
 {% endblock content %}
+
 {% block extra_js %}
     {% load static %}
     <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
     <script src="{% static 'js/modern-charts.js' %}"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Cache the latest loaded dataset to avoid redundant network calls on theme toggle
+        let lastDashboardData = null;
+
         // Initialize Charts
         const revenueCtx = document.getElementById('revenueChart').getContext('2d');
         const paymentCtx = document.getElementById('paymentStatusChart').getContext('2d');
-        const paymentTypeCtx = document.getElementById('paymentTypeChart').getContext('2d');
         const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-        
+
         let revenueChart = ModernCharts.initRevenueChart(revenueCtx);
         let paymentChart = ModernCharts.initDoughnut(paymentCtx);
-        let paymentTypeChart = ModernCharts.initDoughnut(paymentTypeCtx);
         let categoryChart = ModernCharts.initDoughnut(categoryCtx);
 
-        // Fetch Data Function
+        // Helper: Format Indian Currency (Numbers only)
+        function formatINR(val) {
+            const num = parseFloat(val) || 0;
+            return num.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Fetch Dashboard Data Function
         async function fetchDashboardData(filter) {
             try {
                 document.getElementById('dashboardError').style.display = 'none';
-                
-                // Subtle loading indication
-                document.getElementById('dashboardContent').style.opacity = '0.6';
 
-                let filterVal = typeof filter === 'object' && filter ? filter.value : (filter || 'this_month');
+                // Subtle loading transition
+                const dashContent = document.getElementById('dashboardContent');
+                dashContent.style.opacity = '0.7';
+
+                let filterVal = 'today';
+                let fromDate = null;
+                let toDate = null;
+
+                if (typeof filter === 'string' && filter) {
+                    filterVal = filter;
+                } else if (filter && typeof filter === 'object') {
+                    filterVal = filter.date_filter || filter.value || filter.data?.date_filter || 'today';
+                    fromDate = filter.from_date || filter.fromDate || filter.data?.from_date;
+                    toDate = filter.to_date || filter.toDate || filter.data?.to_date;
+                }
+
                 let url = `{% url "invoice:dashboard_fetch" %}?date_filter=${encodeURIComponent(filterVal)}`;
-                if (typeof filter === 'object' && filter && filter.fromDate && filter.toDate) {
-                    url += `&from_date=${encodeURIComponent(filter.fromDate)}&to_date=${encodeURIComponent(filter.toDate)}`;
+                if (fromDate && toDate) {
+                    url += `&from_date=${encodeURIComponent(fromDate)}&to_date=${encodeURIComponent(toDate)}`;
                 }
 
                 const response = await fetch(url);
                 const data = await response.json();
-            
+
                 if (data.success) {
+                    lastDashboardData = data;
                     updateDashboard(data);
-                    document.getElementById('dashboardContent').style.opacity = '1';
+                    dashContent.style.opacity = '1';
                 } else {
                     throw new Error(data.message || 'Failed to fetch data');
                 }
@@ -246,100 +375,136 @@
             }
         }
 
-    function updateDashboard(data) {
-        // Update Stats with counting animation
-        updateAllCounters({
-            totalInvoices: data.stats.total_invoices,
-            totalAmount: data.stats.total_amount,
-            netAmount: data.stats.net_amount,
-            totalProfit: data.stats.total_profit,
-            totalDiscount: data.stats.total_discount,
-            totalReturnAmount: data.stats.total_return_amount,
-            totalCancelledAmount: data.stats.total_cancelled_amount
-        });
+        function updateDashboard(data) {
+            if (!data) return;
+            const stats = data.stats || {};
 
-        // Update margin percentage beside profit
-        const marginEl = document.getElementById('marginPercentage');
-        if (marginEl && data.stats.margin_percentage !== undefined) {
-            marginEl.textContent = `(${data.stats.margin_percentage}%)`;
+            // 1. Rollup Animated Counters
+            if (typeof updateAllCounters === 'function') {
+                updateAllCounters({
+                    heroNetAmount: stats.net_amount || 0,
+                    heroGrossAmount: stats.total_amount || 0,
+                    heroProfit: stats.total_profit || 0,
+                    heroTotalBills: stats.total_invoices || 0,
+                    totalPaid: stats.total_paid || 0,
+                    totalDiscount: stats.total_discount || 0,
+                    totalReturnAmount: stats.total_return_amount || 0,
+                    totalCancelledAmount: stats.total_cancelled_amount || 0,
+                    metricAOV: stats.aov || 0,
+                    metricRecoveryRate: stats.recovery_rate || 0
+                });
+            }
+
+            // 2. Margin Percentage Badge
+            const marginEl = document.getElementById('heroMarginPct');
+            if (marginEl) {
+                marginEl.textContent = `(${stats.margin_percentage || 0}%)`;
+            }
+
+            // 3. Outstanding Credit
+            const outEl = document.getElementById('metricOutstanding');
+            if (outEl) {
+                outEl.textContent = formatINR(stats.outstanding_amount || 0);
+            }
+
+            // 4. Cash vs Credit Inflow Meter
+            const cashPct = stats.cash_percentage || 0;
+            const creditPct = stats.credit_percentage || 0;
+            const cashAmt = stats.cash_amount || 0;
+            const creditAmt = stats.credit_amount || 0;
+
+            const cashBar = document.getElementById('cashflowCashBar');
+            const creditBar = document.getElementById('cashflowCreditBar');
+            const cashPctText = document.getElementById('cashPctText');
+            const creditPctText = document.getElementById('creditPctText');
+            const cashAmtText = document.getElementById('cashAmtText');
+            const creditAmtText = document.getElementById('creditAmtText');
+
+            if (cashBar) cashBar.style.width = `${cashPct}%`;
+            if (creditBar) creditBar.style.width = `${creditPct}%`;
+            if (cashPctText) cashPctText.textContent = `${cashPct}%`;
+            if (creditPctText) creditPctText.textContent = `${creditPct}%`;
+            if (cashAmtText) cashAmtText.textContent = formatINR(cashAmt);
+            if (creditAmtText) creditAmtText.textContent = formatINR(creditAmt);
+
+            // 5. Update Revenue Line Chart & Summary
+            if (data.comparison_data) {
+                const { currentData, previousData } = ModernCharts.updateRevenueChart(revenueChart, data.comparison_data);
+
+                ModernCharts.updateSummaryStats(currentData, previousData, {
+                    current: 'revCurrentTotal',
+                    previous: 'revPreviousTotal',
+                    change: 'revChange'
+                });
+
+                // Sync Delta Badge in Hero Card
+                const revChangeEl = document.getElementById('revChange');
+                const heroDeltaBadge = document.getElementById('heroDeltaBadge');
+                const heroDeltaText = document.getElementById('heroDeltaText');
+                if (revChangeEl && heroDeltaBadge && heroDeltaText) {
+                    const changeStr = revChangeEl.textContent || '--';
+                    heroDeltaText.textContent = changeStr;
+                    heroDeltaBadge.className = 'hero-delta-badge ' + (
+                        changeStr.includes('+') ? 'positive' :
+                        changeStr.includes('-') ? 'negative' : 'neutral'
+                    );
+                }
+            }
+
+            // 6. Update Payment Status Donut
+            ModernCharts.updateDoughnut(
+                paymentChart,
+                'paymentLegend',
+                data.payment_status_breakdown,
+                { label: 'payment_status', count: 'count', amount: 'amount', percentage: 'percentage' }
+            );
+
+            // 7. Update Category Donut
+            ModernCharts.updateDoughnut(
+                categoryChart,
+                'categoryLegend',
+                data.category_breakdown,
+                { label: 'category_name', count: 'count', amount: 'amount', percentage: 'percentage' }
+            );
         }
 
-        // Update Revenue Chart
-        if (data.comparison_data) {
-            const { currentData, previousData } = ModernCharts.updateRevenueChart(revenueChart, data.comparison_data);
-            
-            // Update Summary Totals
-            ModernCharts.updateSummaryStats(currentData, previousData, {
-                current: 'revCurrentTotal',
-                previous: 'revPreviousTotal',
-                change: 'revChange'
+        // Initialize styled date filter dropdown
+        initDateFilter('dateFilter', {
+            onChange: function(data) {
+                fetchDashboardData(data);
+            }
+        });
+
+        // Retry button click
+        const retryBtn = document.getElementById('retryDashboardBtn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => {
+                document.getElementById('dashboardError').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+                const curData = getDateFilterData('dateFilter');
+                fetchDashboardData(curData.isValid ? curData.data : 'today');
             });
         }
 
-        // Update Payment Status Chart - Using backend-calculated percentages
-        ModernCharts.updateDoughnut(
-            paymentChart, 
-            'paymentLegend', 
-            data.payment_status_breakdown, 
-            { label: 'payment_status', count: 'count', amount: 'amount', percentage: 'percentage' }
-        );
+        // Seamless chart re-render when theme changes (instant, 0ms, zero network requests)
+        document.addEventListener('themeChanged', function() {
+            requestAnimationFrame(function() {
+                revenueChart.destroy();
+                paymentChart.destroy();
+                categoryChart.destroy();
 
-        // Update Payment Type Chart - Using backend-calculated percentages
-        ModernCharts.updateDoughnut(
-            paymentTypeChart, 
-            'paymentTypeLegend', 
-            data.payment_type_breakdown, 
-            { label: 'payment_type', count: 'count', amount: 'amount', percentage: 'percentage' }
-        );
+                revenueChart = ModernCharts.initRevenueChart(revenueCtx);
+                paymentChart = ModernCharts.initDoughnut(paymentCtx);
+                categoryChart = ModernCharts.initDoughnut(categoryCtx);
 
-        // Update Category Chart - Using backend-calculated percentages
-        ModernCharts.updateDoughnut(
-            categoryChart, 
-            'categoryLegend', 
-            data.category_breakdown, 
-            { label: 'category_name', count: 'count', amount: 'amount', percentage: 'percentage' }
-        );
-    }
-
-    // Initialize styled date filter dropdown
-    initDateFilter('dateFilter', {
-        onChange: function(data) {
-            fetchDashboardData(data);
-        }
-    });
-
-    const retryBtn = document.getElementById('retryDashboardBtn');
-    if (retryBtn) {
-        retryBtn.addEventListener('click', () => {
-            document.getElementById('dashboardError').style.display = 'none';
-            document.getElementById('dashboardContent').style.display = 'block';
-            const curData = getDateFilterData('dateFilter');
-            fetchDashboardData(curData.isValid ? curData.data : 'this_month');
+                if (lastDashboardData) {
+                    updateDashboard(lastDashboardData);
+                }
+            });
         });
-    }
 
-    // Re-render charts when theme changes
-    document.addEventListener('themeChanged', function() {
-        requestAnimationFrame(function() {
-            // Destroy existing chart instances
-            revenueChart.destroy();
-            paymentChart.destroy();
-            paymentTypeChart.destroy();
-            categoryChart.destroy();
-
-            // Re-initialize with fresh theme colors
-            revenueChart = ModernCharts.initRevenueChart(revenueCtx);
-            paymentChart = ModernCharts.initDoughnut(paymentCtx);
-            paymentTypeChart = ModernCharts.initDoughnut(paymentTypeCtx);
-            categoryChart = ModernCharts.initDoughnut(categoryCtx);
-
-            // Re-fetch data to populate the new chart instances
-            fetchDashboardData(getDateFilterValue());
-        });
+        // Initial Load
+        fetchDashboardData('today');
     });
-
-    // Initial Load
-    fetchDashboardData('today');
-});
     </script>
 {% endblock extra_js %}

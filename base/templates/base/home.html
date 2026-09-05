@@ -9,131 +9,180 @@
 {% block content %}
   <!-- Page Header -->
   <div class="page-header page-header-sticky">
-    <h2 class="page-title">Dashboard</h2>
-    <div class="page-actions">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <h2 class="page-title mb-0">System Overview</h2>
+      <span class="live-store-badge">
+        <span class="live-pulse-dot"></span>
+        Store Status
+      </span>
+    </div>
+    <div class="page-actions dash-actions-group">
       <!-- Date Filter Dropdown -->
       {% include "common/_date_filter.html" with hide_custom=True %}
       {% if perms.cart.add_cart %}
-        <a href="{% url 'cart:auto_cart_create' %}" class="btn">
+        <a href="{% url 'cart:main_page' %}" class="btn btn-dash-action primary">
           <i class="fas fa-plus"></i>
-          New Cart
+          New Bill
         </a>
       {% endif %}
+      <a href="{% url 'invoice:dashboard' %}" class="btn btn-dash-action">
+        <i class="fas fa-chart-line"></i>
+        Invoice Analytics
+      </a>
     </div>
   </div>
+
   <!-- Breadcrumb Navigation -->
   <nav class="breadcrumb breadcrumb-right">
-    <a href="#" class="breadcrumb-item">Dashboard</a>
+    <a href="{% url 'base:home' %}" class="breadcrumb-item">Dashboard</a>
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">Overview</span>
   </nav>
-  <!-- Loading State - Hidden for seamless updates -->
+
+  <!-- Loading State -->
   <div id="dashboardLoading" class="loading-container hidden">
     <div class="loading">
       <i class="fas fa-spinner fa-spin"></i>
       Loading dashboard data...
     </div>
   </div>
+
   <!-- Dashboard Content -->
   <div id="dashboardContent" class="dashboardContent">
-    <!-- Quick Stats -->
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card">
-        <div class="stat-icon bg-green">
-          <i class="fa-solid fa-indian-rupee-sign"></i>
-        </div>
-        <div class="stat-content">
-          <span class="stat-label">Total Received</span>
-          <h4 class="stat-number counting-number" id="totalReceived" data-count="0">0</h4>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-blue">
-          <i class="fa-solid fa-users"></i>
-        </div>
-        <div class="stat-content">
-          <span class="stat-label">Customer Receivable</span>
-          <h4 class="stat-number counting-number" id="customerReceivable" data-count="{{ customer_receivable|default:0 }}">0</h4>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-purple">
-          <i class="fa-solid fa-user-plus"></i>
-        </div>
-        <div class="stat-content">
-          <span class="stat-label">Total Customers</span>
-          <h4 class="stat-number counting-number" id="totalCustomers" data-count="{{ total_customers|default:0 }}">0</h4>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-red">
-          <i class="fa-solid fa-truck"></i>
-        </div>
-        <div class="stat-content">
-          <span class="stat-label">Supplier Balance</span>
-          <h4 class="stat-number counting-number" id="supplierBalance" data-count="{{ supplier_balance|default:0 }}">0</h4>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-blue">
-          <i class="fa-solid fa-boxes-stacked"></i>
-        </div>
-        <div class="stat-content">
-          <span class="stat-label">Total Products</span>
-          <h4 class="stat-number counting-number" id="totalProducts" data-count="{{ total_products|default:0 }}">0</h4>
-        </div>
-      </div>
-    </div>
-    <!-- Payment Analytics -->
-    <div class="activity-section">
-      <h2 class="section-title">Payment Analytics</h2>
-      <div class="breakdown-grid">
-        <!-- Combined Payment Method (Invoices + Payments) -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3 class="chart-title">Payment Method</h3>
+    <!-- ── HERO OVERVIEW TIER ── -->
+    <div class="dash-hero-grid">
+      <!-- Inflow Command Card -->
+      <div class="dash-hero-card dash-stagger-item" style="--delay: 1;">
+        <div>
+          <div class="hero-card-header">
+            <span class="hero-card-title">
+              <i class="fa-solid fa-wallet"></i>
+              Total Cash Inflow
+            </span>
+            <span class="hero-tag">Cash &amp; Payments</span>
           </div>
-          <div class="chart-row">
-            <div class="donut-wrap">
-              <canvas id="paymentMethodChart" width="260" height="260"></canvas>
-              <div class="center-info">
-                <div class="center-label" id="pmCenterLabel">total value</div>
-                <div class="center-pct" id="pmCenterPct"></div>
-                <div class="center-val" id="pmCenterVal">0</div>
+          <div class="hero-val-display">
+            <span class="hero-number-lg counting-number" id="heroTotalReceived" data-count="0">0</span>
+          </div>
+          <div class="stat-label-small" style="margin-top: 0.15rem;">
+            Combined cash billing &amp; credit settlements
+          </div>
+        </div>
+
+        <div class="hero-submetrics">
+          <div class="hero-submetric-item">
+            <span class="hero-submetric-label">Cash Invoices</span>
+            <div class="hero-submetric-val">
+              <span class="counting-number" id="heroTotalInvoices" data-count="0">0</span> bills
+            </div>
+          </div>
+          <div class="hero-submetric-item">
+            <span class="hero-submetric-label">Registered Customers</span>
+            <div class="hero-submetric-val">
+              <span>{{ total_customers|default:0 }}</span>
+            </div>
+          </div>
+          <div class="hero-submetric-item">
+            <span class="hero-submetric-label">Active Catalog</span>
+            <div class="hero-submetric-val">
+              <span>{{ total_products|default:0 }}</span> items
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Balance & Working Capital Health -->
+      <div class="dash-hero-card dash-stagger-item" style="--delay: 2;">
+        <div>
+          <div class="hero-card-header">
+            <span class="hero-card-title">
+              <i class="fa-solid fa-scale-balanced"></i>
+              Receivables &amp; Payables Balance
+            </span>
+            <span class="hero-tag">Working Capital</span>
+          </div>
+          <div class="health-highlights-row mt-2">
+            <div class="health-box">
+              <span class="health-box-label">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+                Customer Receivables
+              </span>
+              <div class="health-box-val">
+                <span class="counting-number" id="customerReceivable" data-count="{{ customer_receivable|default:0 }}">0</span>
               </div>
+              <span class="health-box-sub">Pending credit due from customers</span>
             </div>
-            <div class="legend" id="paymentMethodLegend"></div>
+            <div class="health-box">
+              <span class="health-box-label">
+                <i class="fa-solid fa-truck-ramp-box"></i>
+                Supplier Payables
+              </span>
+              <div class="health-box-val">
+                <span class="counting-number" id="supplierBalance" data-count="{{ supplier_balance|default:0 }}">0</span>
+              </div>
+              <span class="health-box-sub">Outstanding balance owed to suppliers</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    <!-- Stock Comparison Chart -->
-    <div class="activity-section">
-      <h2 class="section-title">Stock Comparison</h2>
-      <div class="chart-card revenue-chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">Stock In vs Stock Out</h3>
-          <div class="chart-summary-stats">
-            <div class="stat-item">
-              <span class="stat-label-small"><span class="legend-dot bg-success"></span>Stock In</span>
-              <span class="stat-value-small" id="revCurrentTotal">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label-small"><span class="legend-dot bg-danger"></span>Stock Out</span>
-              <span class="stat-value-small" id="revPreviousTotal">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label-small">Change</span>
-              <span class="stat-change" id="revChange">--</span>
-            </div>
+
+    <!-- ── ANALYTICS SECTION ── -->
+    <!-- Stock Comparison Chart (Controlled Compact Height) -->
+    <div class="chart-card revenue-chart-card dash-stagger-item" style="--delay: 3;">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="fa-solid fa-arrow-right-arrow-left me-1"></i>
+          Stock In vs Stock Out
+        </h3>
+        <div class="chart-summary-stats">
+          <div class="stat-item">
+            <span class="stat-label-small">
+              <span class="legend-dot text-success"></span>
+              Stock In
+            </span>
+            <span class="stat-value-small" id="revCurrentTotal">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label-small">
+              <span class="legend-dot text-danger"></span>
+              Stock Out
+            </span>
+            <span class="stat-value-small" id="revPreviousTotal">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label-small">Delta</span>
+            <span class="stat-change" id="revChange">--</span>
           </div>
         </div>
-        <div class="chart-container">
-          <canvas id="comparisonChart"></canvas>
+      </div>
+      <div class="chart-container-compact">
+        <canvas id="comparisonChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Payment Method Donut (Balanced Card) -->
+    <div class="chart-card dash-stagger-item" style="--delay: 5;">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="fa-solid fa-receipt me-1"></i>
+          Payment Method Mix (Cash &amp; Settled Collections)
+        </h3>
+      </div>
+      <div class="chart-row">
+        <div class="donut-wrap">
+          <canvas id="paymentMethodChart" width="220" height="220"></canvas>
+          <div class="center-info">
+            <div class="center-label">TOTAL</div>
+            <div class="center-val" id="pmCenterVal">0</div>
+            <div class="center-pct" id="pmCenterPct">100%</div>
+          </div>
         </div>
+        <div class="legend" id="paymentMethodLegend"></div>
       </div>
     </div>
   </div>
+
   <!-- Error State -->
   <div id="dashboardError" class="error-container hidden">
     <div class="error-message">
@@ -147,12 +196,16 @@
     </div>
   </div>
 {% endblock content %}
+
 {% block extra_js %}
   <!-- Chart.js Library -->
   <script src="{% static 'assets/plugins/chart/chart-4.5.js' %}"></script>
   <script src="{% static 'js/modern-charts.js' %}"></script>
   <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Cache dataset for theme changes
+    let lastDashboardData = null;
+
     // Initialize Charts
     const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
     const paymentMethodCtx = document.getElementById('paymentMethodChart').getContext('2d');
@@ -166,18 +219,30 @@
         document.getElementById('dashboardError').style.display = 'none';
 
         // Subtle loading indication
-        document.getElementById('dashboardContent').style.opacity = '0.6';
+        document.getElementById('dashboardContent').style.opacity = '0.7';
 
-        let filterVal = typeof filter === 'object' && filter ? filter.value : (filter || 'this_month');
+        let filterVal = 'today';
+        let fromDate = null;
+        let toDate = null;
+
+        if (typeof filter === 'string' && filter) {
+          filterVal = filter;
+        } else if (filter && typeof filter === 'object') {
+          filterVal = filter.date_filter || filter.value || filter.data?.date_filter || 'today';
+          fromDate = filter.from_date || filter.fromDate || filter.data?.from_date;
+          toDate = filter.to_date || filter.toDate || filter.data?.to_date;
+        }
+
         let url = `{% url "base:dashboard_stats" %}?date_filter=${encodeURIComponent(filterVal)}`;
-        if (typeof filter === 'object' && filter && filter.fromDate && filter.toDate) {
-          url += `&from_date=${encodeURIComponent(filter.fromDate)}&to_date=${encodeURIComponent(filter.toDate)}`;
+        if (fromDate && toDate) {
+          url += `&from_date=${encodeURIComponent(fromDate)}&to_date=${encodeURIComponent(toDate)}`;
         }
 
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.success) {
+          lastDashboardData = data;
           updateDashboard(data);
           document.getElementById('dashboardContent').style.opacity = '1';
         } else {
@@ -191,12 +256,18 @@
     }
 
     function updateDashboard(data) {
-      // Update Stats
-      updateAllCounters({
-        totalReceived: data.stats.total_received
-      });
+      if (!data) return;
+      const stats = data.stats || {};
 
-      // Update Payment Method Chart (combined invoices + payments)
+      // Update Animated Counters
+      if (typeof updateAllCounters === 'function') {
+        updateAllCounters({
+          heroTotalReceived: stats.total_received || 0,
+          heroTotalInvoices: stats.total_invoices || 0,
+        });
+      }
+
+      // Update Payment Method Donut Chart
       ModernCharts.updateDoughnut(
         paymentMethodChart,
         'paymentMethodLegend',
@@ -204,11 +275,10 @@
         { label: 'payment_method', count: 'count', amount: 'amount', percentage: 'percentage' }
       );
 
-      // Update Revenue Comparison Chart
+      // Update Stock Comparison Chart
       if (data.comparison_data) {
         const { currentData, previousData } = ModernCharts.updateRevenueChart(comparisonChart, data.comparison_data);
 
-        // Update Summary Totals
         ModernCharts.updateSummaryStats(currentData, previousData, {
           current: 'revCurrentTotal',
           previous: 'revPreviousTotal',
@@ -234,19 +304,18 @@
       });
     }
 
-    // Re-render charts when theme changes
+    // Seamless chart re-render when theme changes (instant, 0ms, no network calls)
     document.addEventListener('themeChanged', function() {
       requestAnimationFrame(function() {
-        // Destroy existing chart instances
         comparisonChart.destroy();
         paymentMethodChart.destroy();
 
-        // Re-initialize with fresh theme colors
         comparisonChart = ModernCharts.initRevenueChart(comparisonCtx);
         paymentMethodChart = ModernCharts.initDoughnut(paymentMethodCtx);
 
-        // Re-fetch data to populate the new chart instances
-        fetchDashboardData(getDateFilterValue());
+        if (lastDashboardData) {
+          updateDashboard(lastDashboardData);
+        }
       });
     });
 
