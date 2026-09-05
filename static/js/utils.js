@@ -213,6 +213,14 @@ function copyToClipboard(text) {
   }
 }
 
+// Global safe fallback for showNotification to prevent ReferenceErrors
+if (typeof window.showNotification !== 'function') {
+  window._pendingNotifications = window._pendingNotifications || [];
+  window.showNotification = function (message, type = 'info', duration = 3500) {
+    window._pendingNotifications.push({ message, type, duration });
+  };
+}
+
 /* ============================================================================
  * ANIMATED COUNTER UTILITIES
  * ============================================================================ */

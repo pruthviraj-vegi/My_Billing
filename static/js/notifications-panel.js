@@ -137,6 +137,17 @@ function showNotification(message, type = 'info', duration = 3500) {
 window.showNotification = showNotification;
 window.NotificationSound = NotificationSound;
 
+// Flush any pending notifications queued before this script finished loading
+if (Array.isArray(window._pendingNotifications) && window._pendingNotifications.length > 0) {
+  const pendingQueue = window._pendingNotifications.slice();
+  window._pendingNotifications = [];
+  pendingQueue.forEach(function(item) {
+    if (item && item.message) {
+      showNotification(item.message, item.type, item.duration);
+    }
+  });
+}
+
 // ── Topbar Notification Panel Dropdown ──────────────────
 document.addEventListener('DOMContentLoaded', function() {
   if (typeof window.NOTIF_URLS === 'undefined') {

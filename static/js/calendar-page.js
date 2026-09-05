@@ -1,14 +1,13 @@
 /**
  * Interactive Calendar Page Logic
- * Renders calendar grid, computes KPI metrics, handles dropdown month/year jumping,
- * filtering by status, in-month text search, and detailed sidebar inspection.
+ * Modern, clean, spacious full-width calendar grid with direct day inspection modal.
  */
 
 (function () {
   const ssrEl = document.getElementById('calendar-data');
   if (!ssrEl) return;
 
-  /** @type {Record<string, {amount: number, completed: number, events: Array<{invoice_number: string, customer_name: string, amount: number, status: string, status_display: string, url: string}>}>} */
+  /** @type {Record<string, {amount: number, completed: number, events: Array<{invoice_number: string, customer_name: string, gross_amount: number, discount_amount: number, amount: number, paid_amount: number, status: string, status_display: string, url: string}>}>} */
   let calendarData;
   try {
     calendarData = JSON.parse(ssrEl.textContent);
@@ -46,7 +45,6 @@
   // ── DOM References ──
   const grid = document.getElementById('calGrid');
   const pageHeaderAnalyticsBtn = document.getElementById('pageHeaderAnalyticsBtn');
-  const analyticsBtnLabel = document.getElementById('analyticsBtnLabel');
 
   // Modal elements
   const dateInvoicesModalEl = document.getElementById('dateInvoicesModal');
@@ -62,17 +60,22 @@
   // KPI elements
   const kpiTotalBilling = document.getElementById('kpiTotalBilling');
   const kpiTotalInvoices = document.getElementById('kpiTotalInvoices');
+  const kpiBillCountSubtitle = document.getElementById('kpiBillCountSubtitle');
   const kpiPaidAmount = document.getElementById('kpiPaidAmount');
   const kpiPendingAmount = document.getElementById('kpiPendingAmount');
+  const kpiCollectionRatePill = document.getElementById('kpiCollectionRatePill');
+  const kpiDailyAvg = document.getElementById('kpiDailyAvg');
+  const paidPctText = document.getElementById('paidPctText');
+  const paidAmtText = document.getElementById('paidAmtText');
+  const pendingPctText = document.getElementById('pendingPctText');
+  const pendingAmtText = document.getElementById('pendingAmtText');
+  const kpiPaidBar = document.getElementById('kpiPaidBar');
+  const kpiPendingBar = document.getElementById('kpiPendingBar');
 
-  // Active Filter State
+  // Active State
   let activeFilter = 'ALL';
   let activeSearchQuery = '';
   let selectedKey = null;
-
-  // Range Selection State
-  let rangeStart = null;
-  let rangeEnd = null;
 
   // ── Helpers ──
   const dateKey = (y, m1, d) =>
@@ -84,6 +87,25 @@
 
   function firstDayOfWeek(y, m1) {
     return new Date(y, m1 - 1, 1).getDay();
+  }
+
+  function formatNumberSafe(amount) {
+    if (typeof formatNumber === 'function') {
+      return formatNumber(amount);
+    }
+    return Number(amount || 0).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function formatCompactAmount(amount) {
+    const num = Number(amount || 0);
+    const hasDecimals = (num % 1 !== 0);
+    return num.toLocaleString('en-IN', {
+      minimumFractionDigits: hasDecimals ? 2 : 0,
+      maximumFractionDigits: 2,
+    });
   }
 
   function statusBadgeClass(status) {
@@ -100,7 +122,15 @@
     return '';
   }
 
-  // ── Month & Year Dropdown Listeners ──
+  function formatDisplayDate(key) {
+    const parts = key.split('-');
+    const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return dateObj.toLocaleDateString('en-IN', {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+    });
+  }
+
+  // ── Month & Year Navigation ──
   if (monthSelect) {
     monthSelect.addEventListener('change', function () {
       navigateTo(yearSelect ? yearSelect.value : yearNum, this.value);
@@ -149,28 +179,6 @@
 
   // ── Calculate Top KPI Bar Metrics ──
   function calculateKpis() {
-    if (activeFilter === 'ALL' && !activeSearchQuery && monthKpi) {
-      const grandGrossBilling = Math.max(0, monthKpi.total_billing || 0);
-      const grandTotalInvoices = Math.max(0, monthKpi.total_invoices || 0);
-      const grandPaidAmount = Math.max(0, monthKpi.paid_amount || 0);
-      const grandPendingAmount = Math.max(0, monthKpi.pending_amount || 0);
-
-      if (typeof updateAllCounters === "function") {
-        updateAllCounters({
-          kpiTotalBilling: grandGrossBilling,
-          kpiTotalInvoices: grandTotalInvoices,
-          kpiPaidAmount: grandPaidAmount,
-          kpiPendingAmount: grandPendingAmount
-        });
-      } else {
-        if (kpiTotalBilling) kpiTotalBilling.textContent = formatNumber(grandGrossBilling);
-        if (kpiTotalInvoices) kpiTotalInvoices.textContent = grandTotalInvoices;
-        if (kpiPaidAmount) kpiPaidAmount.textContent = formatNumber(grandPaidAmount);
-        if (kpiPendingAmount) kpiPendingAmount.textContent = formatNumber(grandPendingAmount);
-      }
-      return;
-    }
-
     let grandGrossBilling = 0;
     let grandTotalInvoices = 0;
     let grandPaidAmount = 0;
@@ -181,19 +189,21 @@
     Object.entries(calendarData).forEach(function ([dateStr, dayData]) {
       if (!dateStr.startsWith(monthPrefix)) return;
       if (!dayData || !dayData.events) return;
-      dayData.events.forEach(function (ev) {
-        let statusMatch = true;
-        if (activeFilter === 'PAID') statusMatch = (ev.status === 'PAID');
-        if (activeFilter === 'PENDING') statusMatch = (ev.status !== 'PAID');
 
+      dayData.events.forEach(function (ev) {
         let searchMatch = true;
         if (activeSearchQuery !== '') {
           const invNum = (ev.invoice_number || '').toLowerCase();
           const custName = (ev.customer_name || '').toLowerCase();
           searchMatch = invNum.includes(activeSearchQuery) || custName.includes(activeSearchQuery);
         }
+        if (!searchMatch) return;
 
-        if (!statusMatch || !searchMatch) return;
+        let statusMatch = true;
+        if (activeFilter === 'PAID') statusMatch = (ev.status === 'PAID');
+        if (activeFilter === 'PENDING') statusMatch = (ev.status !== 'PAID');
+
+        if (!statusMatch) return;
 
         const net = ev.amount || 0;
         const paid = ev.paid_amount !== undefined ? ev.paid_amount : (ev.status === 'PAID' ? net : 0);
@@ -206,27 +216,61 @@
       });
     });
 
-    grandGrossBilling = Math.max(0, grandGrossBilling);
-    grandTotalInvoices = Math.max(0, grandTotalInvoices);
-    grandPaidAmount = Math.max(0, grandPaidAmount);
-    grandPendingAmount = Math.max(0, grandPendingAmount);
+    // If default view with monthKpi available
+    if (activeFilter === 'ALL' && !activeSearchQuery && monthKpi) {
+      grandGrossBilling = Math.max(0, monthKpi.total_billing || 0);
+      grandTotalInvoices = Math.max(0, monthKpi.total_invoices || 0);
+      grandPaidAmount = Math.max(0, monthKpi.paid_amount || 0);
+      grandPendingAmount = Math.max(0, monthKpi.pending_amount || 0);
+    } else {
+      grandGrossBilling = Math.max(0, grandGrossBilling);
+      grandTotalInvoices = Math.max(0, grandTotalInvoices);
+      grandPaidAmount = Math.max(0, grandPaidAmount);
+      grandPendingAmount = Math.max(0, grandPendingAmount);
+    }
 
     if (typeof updateAllCounters === "function") {
       updateAllCounters({
         kpiTotalBilling: grandGrossBilling,
-        kpiTotalInvoices: grandTotalInvoices,
         kpiPaidAmount: grandPaidAmount,
         kpiPendingAmount: grandPendingAmount
       });
     } else {
-      if (kpiTotalBilling) kpiTotalBilling.textContent = formatNumber(grandGrossBilling);
-      if (kpiTotalInvoices) kpiTotalInvoices.textContent = grandTotalInvoices;
-      if (kpiPaidAmount) kpiPaidAmount.textContent = formatNumber(grandPaidAmount);
-      if (kpiPendingAmount) kpiPendingAmount.textContent = formatNumber(grandPendingAmount);
+      if (kpiTotalBilling) kpiTotalBilling.textContent = formatNumberSafe(grandGrossBilling);
+      if (kpiPaidAmount) kpiPaidAmount.textContent = formatNumberSafe(grandPaidAmount);
+      if (kpiPendingAmount) kpiPendingAmount.textContent = formatNumberSafe(grandPendingAmount);
+    }
+
+    if (kpiTotalInvoices) {
+      kpiTotalInvoices.textContent = grandTotalInvoices;
+    }
+    if (kpiBillCountSubtitle) {
+      kpiBillCountSubtitle.textContent = grandTotalInvoices;
+    }
+
+    // Collection Rate & Progress
+    const rate = grandGrossBilling > 0 ? Math.round((grandPaidAmount / grandGrossBilling) * 100) : 0;
+    const pendingRate = Math.max(0, 100 - rate);
+
+    if (kpiCollectionRatePill) {
+      kpiCollectionRatePill.textContent = rate + '% Collected';
+    }
+    if (paidPctText) paidPctText.textContent = rate + '%';
+    if (paidAmtText) paidAmtText.textContent = formatNumberSafe(grandPaidAmount);
+    if (pendingPctText) pendingPctText.textContent = pendingRate + '%';
+    if (pendingAmtText) pendingAmtText.textContent = formatNumberSafe(grandPendingAmount);
+    if (kpiPaidBar) kpiPaidBar.style.width = rate + '%';
+    if (kpiPendingBar) kpiPendingBar.style.width = pendingRate + '%';
+
+    // Daily Average
+    const numDays = daysInMonth(yearNum, month1);
+    const avgSales = numDays > 0 ? (grandGrossBilling / numDays) : 0;
+    if (kpiDailyAvg) {
+      kpiDailyAvg.textContent = formatNumberSafe(avgSales);
     }
   }
 
-  // ── Build Calendar Grid ──
+  // ── Build Full-Width Calendar Grid ──
   function buildGrid() {
     grid.innerHTML = '';
     const fragment = document.createDocumentFragment();
@@ -236,17 +280,20 @@
     const prevYear = month1 === 1 ? yearNum - 1 : yearNum;
     const prevTotal = daysInMonth(prevYear, prevMonth1);
 
+    // Filler from previous month
     for (let i = startDay - 1; i >= 0; i--) {
       const dayNum = prevTotal - i;
       const key = dateKey(prevYear, prevMonth1, dayNum);
       fragment.appendChild(makeCell(dayNum, true, key));
     }
 
+    // Current month days
     for (let d = 1; d <= totalDays; d++) {
       const key = dateKey(yearNum, month1, d);
       fragment.appendChild(makeCell(d, false, key));
     }
 
+    // Filler from next month
     const filled = startDay + totalDays;
     const rem = filled <= 35 ? 35 - filled : 42 - filled;
     const nextMonth1 = month1 === 12 ? 1 : month1 + 1;
@@ -267,43 +314,129 @@
 
     if (key) {
       cell.dataset.date = key;
-      if (key === todayStr) cell.classList.add('today');
+      const isToday = (key === todayStr);
+      if (isToday) cell.classList.add('today');
 
       const dayData = calendarData[key];
-      if (dayData && dayData.events.length > 0) {
-        const totalCount = dayData.events.length;
-        const paidEvents = dayData.events.filter(e => e.status === 'PAID');
-        const pendingEvents = dayData.events.filter(e => e.status !== 'PAID');
+      const hasEvents = dayData && dayData.events && dayData.events.length > 0;
+
+      let topRowHtml = '<div class="cell-top-row"><span class="cell-date">' + day + '</span>';
+      if (isToday) {
+        topRowHtml += '<span class="today-tag">TODAY</span>';
+      } else if (hasEvents) {
+        const count = dayData.events.length;
         const totalAmount = dayData.amount || 0;
+        const completedAmount = dayData.completed || 0;
+        const isPaidFull = completedAmount >= totalAmount && totalAmount > 0;
+        const isPaidPartial = completedAmount > 0 && completedAmount < totalAmount;
+        const dotClass = isPaidFull ? 'dot-paid' : (isPaidPartial ? 'dot-pending' : 'dot-unpaid');
 
-        let dotsHtml = '';
-        if (paidEvents.length > 0) {
-          dotsHtml += '<span class="status-dot dot-paid" title="' + paidEvents.length + ' Paid"></span>';
-        }
-        if (pendingEvents.length > 0) {
-          dotsHtml += '<span class="status-dot dot-pending" title="' + pendingEvents.length + ' Pending"></span>';
-        }
-
-        cell.innerHTML =
-          '<div class="cell-top-row">' +
-            '<span class="cell-date">' + day + '</span>' +
-            '<span class="cell-dot-count">' + paidEvents.length + '/' + totalCount + '</span>' +
-          '</div>' +
-          '<div class="cell-status-indicators">' + dotsHtml + '</div>' +
-          '<span class="cell-sales">' + formatNumber(totalAmount) + '</span>';
-
-        cell.addEventListener('click', function () { selectSingleDate(cell, key); });
-      } else {
-        cell.innerHTML =
-          '<div class="cell-top-row">' +
-            '<span class="cell-date">' + day + '</span>' +
-          '</div>';
-        cell.addEventListener('click', function () { selectSingleDate(cell, key); });
+        topRowHtml += '<span class="cell-meta"><span class="status-dot ' + dotClass + '"></span>' + count + ' ' + (count === 1 ? 'bill' : 'bills') + '</span>';
       }
+      topRowHtml += '</div>';
+
+      let bodyHtml = '';
+      if (hasEvents) {
+        cell.classList.add('has-sales');
+        const totalAmount = dayData.amount || 0;
+        bodyHtml = '<div class="cal-amount">' + formatCompactAmount(totalAmount) + '</div>';
+      }
+
+      cell.innerHTML = topRowHtml + bodyHtml;
+
+      cell.addEventListener('click', function () {
+        selectCell(cell, key);
+      });
     } else {
       cell.innerHTML = '<span class="cell-date">' + day + '</span>';
     }
     return cell;
+  }
+
+  // ── Date Cell Selection & Modal Inspection ──
+  function selectCell(cell, key) {
+    selectedKey = key;
+    grid.querySelectorAll('.cal-cell.selected').forEach(function (c) { c.classList.remove('selected'); });
+    cell.classList.add('selected');
+
+    openDateInvoicesModal(key);
+  }
+
+  // ── Open Day Invoices Modal ──
+  function openDateInvoicesModal(key) {
+    const formattedDate = formatDisplayDate(key);
+
+    if (modalLabel) modalLabel.textContent = formattedDate;
+    if (modalSubTitle) modalSubTitle.textContent = 'Day Revenue & Invoices List';
+
+    if (modalAnalyticsLink) {
+      modalAnalyticsLink.href = '/calendar/details/?start=' + key + '&end=' + key;
+    }
+
+    const dayData = calendarData[key];
+    const events = (dayData && dayData.events) ? dayData.events : [];
+    let dayTotalAmount = dayData ? (dayData.amount || 0) : 0;
+    let dayCompleted = dayData ? (dayData.completed || 0) : 0;
+
+    let filtered = events.filter(function (ev) {
+      let statusMatch = true;
+      if (activeFilter === 'PAID') statusMatch = (ev.status === 'PAID');
+      if (activeFilter === 'PENDING') statusMatch = (ev.status !== 'PAID');
+      let searchMatch = true;
+      if (activeSearchQuery !== '') {
+        searchMatch = (ev.invoice_number || '').toLowerCase().includes(activeSearchQuery) ||
+                      (ev.customer_name || '').toLowerCase().includes(activeSearchQuery);
+      }
+      return statusMatch && searchMatch;
+    });
+
+    if (modalSalesAmount) {
+      modalSalesAmount.textContent = formatNumberSafe(dayCompleted) + ' / ' + formatNumberSafe(dayTotalAmount);
+    }
+    const pct = dayTotalAmount > 0 ? (dayCompleted / dayTotalAmount) * 100 : 0;
+    if (modalMetricBar) modalMetricBar.style.width = pct.toFixed(1) + '%';
+    if (modalMetricPercentage) modalMetricPercentage.textContent = Math.round(pct) + '% Paid';
+    if (modalEventsCountBadge) modalEventsCountBadge.textContent = filtered.length;
+
+    renderModalEvents(filtered);
+
+    if (dateInvoicesModalEl && typeof bootstrap !== 'undefined') {
+      const bsModal = bootstrap.Modal.getOrCreateInstance(dateInvoicesModalEl);
+      bsModal.show();
+    }
+  }
+
+  function renderModalEvents(events) {
+    if (!modalEventsList) return;
+
+    if (!events.length) {
+      modalEventsList.innerHTML =
+        '<div class="events-placeholder p-4 text-center text-muted">' +
+          '<i class="fa-solid fa-folder-open fs-3 mb-2 opacity-50"></i>' +
+          '<p class="small mb-0">No invoices recorded for this date or matching current filter.</p>' +
+        '</div>';
+      return;
+    }
+
+    let html = '';
+    events.forEach(function (ev) {
+      const borderCls = statusBorderClass(ev.status);
+      const badgeCls = statusBadgeClass(ev.status);
+
+      html +=
+        '<a href="' + (ev.url || '#') + '" class="cal-modal-event-item ' + borderCls + '">' +
+          '<div class="d-flex justify-content-between align-items-center mb-1">' +
+            '<span class="cal-modal-event-inv"><i class="fa-solid fa-file-invoice me-1 text-primary"></i>' + escapeHtml(ev.invoice_number) + '</span>' +
+            '<span class="badge ' + badgeCls + ' px-2 py-1" style="font-size: 0.68rem;">' + escapeHtml(ev.status_display || ev.status) + '</span>' +
+          '</div>' +
+          '<div class="d-flex justify-content-between align-items-center mt-1">' +
+            '<span class="cal-modal-event-cust"><i class="fa-solid fa-user me-1"></i>' + escapeHtml(ev.customer_name) + '</span>' +
+            '<span class="cal-modal-event-amt">' + formatNumberSafe(ev.amount) + '</span>' +
+          '</div>' +
+        '</a>';
+    });
+
+    modalEventsList.innerHTML = html;
   }
 
   // ── Apply Filters (Status & Search) ──
@@ -344,97 +477,11 @@
       }
     });
 
+    calculateKpis();
+
     if (selectedKey && dateInvoicesModalEl && dateInvoicesModalEl.classList.contains('show')) {
       openDateInvoicesModal(selectedKey);
     }
-  }
-
-  // ── Date Invoices Modal Handling ──
-  function selectSingleDate(cell, key) {
-    selectedKey = key;
-    grid.querySelectorAll('.cal-cell.selected').forEach(function (c) { c.classList.remove('selected'); });
-    cell.classList.add('selected');
-    openDateInvoicesModal(key);
-  }
-
-  function openDateInvoicesModal(key) {
-    const parts = key.split('-');
-    const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    const formattedDate = dateObj.toLocaleDateString('en-IN', {
-      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-    });
-
-    if (modalLabel) modalLabel.textContent = formattedDate;
-    if (modalSubTitle) modalSubTitle.textContent = 'Date Breakdown & Invoices';
-
-    if (modalAnalyticsLink) {
-      modalAnalyticsLink.href = '/calendar/details/?start=' + key + '&end=' + key;
-    }
-
-    const dayData = calendarData[key];
-    const events = (dayData && dayData.events) ? dayData.events : [];
-    let dayTotalAmount = dayData ? (dayData.amount || 0) : 0;
-    let dayCompleted = dayData ? (dayData.completed || 0) : 0;
-
-    let filtered = events.filter(function (ev) {
-      let statusMatch = true;
-      if (activeFilter === 'PAID') statusMatch = (ev.status === 'PAID');
-      if (activeFilter === 'PENDING') statusMatch = (ev.status !== 'PAID');
-      let searchMatch = true;
-      if (activeSearchQuery !== '') {
-        searchMatch = (ev.invoice_number || '').toLowerCase().includes(activeSearchQuery) ||
-                      (ev.customer_name || '').toLowerCase().includes(activeSearchQuery);
-      }
-      return statusMatch && searchMatch;
-    });
-
-    if (modalSalesAmount) {
-      modalSalesAmount.textContent = formatNumber(dayCompleted) + ' / ' + formatNumber(dayTotalAmount);
-    }
-    const pct = dayTotalAmount > 0 ? (dayCompleted / dayTotalAmount) * 100 : 0;
-    if (modalMetricBar) modalMetricBar.style.width = pct.toFixed(1) + '%';
-    if (modalMetricPercentage) modalMetricPercentage.textContent = Math.round(pct) + '% Paid';
-    if (modalEventsCountBadge) modalEventsCountBadge.textContent = filtered.length;
-
-    renderModalEvents(filtered);
-
-    if (dateInvoicesModalEl && typeof bootstrap !== 'undefined') {
-      const bsModal = bootstrap.Modal.getOrCreateInstance(dateInvoicesModalEl);
-      bsModal.show();
-    }
-  }
-
-  function renderModalEvents(events) {
-    if (!modalEventsList) return;
-
-    if (!events.length) {
-      modalEventsList.innerHTML =
-        '<div class="events-placeholder p-4 text-center text-muted">' +
-          '<i class="fa-solid fa-folder-open fs-3 mb-2 opacity-50"></i>' +
-          '<p class="small mb-0">No invoices generated for this date or matching active filter.</p>' +
-        '</div>';
-      return;
-    }
-
-    let html = '';
-    events.forEach(function (ev) {
-      const borderCls = statusBorderClass(ev.status);
-      const badgeCls = statusBadgeClass(ev.status);
-
-      html +=
-        '<a href="' + (ev.url || '#') + '" class="cal-modal-event-item ' + borderCls + '">' +
-          '<div class="d-flex justify-content-between align-items-center mb-1">' +
-            '<span class="cal-modal-event-inv"><i class="fa-solid fa-file-lines me-1 text-primary"></i>' + escapeHtml(ev.invoice_number) + '</span>' +
-            '<span class="badge ' + badgeCls + ' px-2 py-1" style="font-size: 0.68rem;">' + escapeHtml(ev.status_display || ev.status) + '</span>' +
-          '</div>' +
-          '<div class="d-flex justify-content-between align-items-center mt-1">' +
-            '<span class="cal-modal-event-cust"><i class="fa-solid fa-user me-1"></i>' + escapeHtml(ev.customer_name) + '</span>' +
-            '<span class="cal-modal-event-amt">' + formatNumber(ev.amount) + '</span>' +
-          '</div>' +
-        '</a>';
-    });
-
-    modalEventsList.innerHTML = html;
   }
 
   function escapeHtml(str) {
@@ -449,7 +496,7 @@
     const endStr = dateKey(yearNum, month1, daysInMonth(yearNum, month1));
     pageHeaderAnalyticsBtn.href = '/calendar/details/?start=' + startStr + '&end=' + endStr;
   }
-  calculateKpis();
+
   buildGrid();
 
 })();

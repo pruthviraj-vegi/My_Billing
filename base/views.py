@@ -487,6 +487,9 @@ class CalendarView(RequiredPermissionMixin, TemplateView):
         net_billing = float(total_amt - total_disc - total_return)
         paid_amt = float(total_paid)
         pending_amt = max(0.0, net_billing - paid_amt)
+        collection_rate = round((paid_amt / net_billing * 100), 1) if net_billing > 0 else 0.0
+        pending_rate = round(100.0 - collection_rate, 1) if net_billing > 0 else 0.0
+        avg_daily_billing = round(net_billing / num_days, 2) if num_days > 0 else 0.0
 
         prev_month = month - 1 if month > 1 else 12
         prev_year = year if month > 1 else year - 1
@@ -515,6 +518,10 @@ class CalendarView(RequiredPermissionMixin, TemplateView):
             "total_invoices": month_stats["total_invoices"],
             "paid_amount": round(paid_amt, 2),
             "pending_amount": round(pending_amt, 2),
+            "collection_rate": collection_rate,
+            "pending_rate": pending_rate,
+            "avg_daily_billing": avg_daily_billing,
+            "days_in_month": num_days,
         }
         return context
 
@@ -567,10 +574,18 @@ def calendar_details_api(request):
 
     start_str = request.GET.get("start", "")
     end_str = request.GET.get("end", "")
+    date_filter = request.GET.get("date_filter", "")
 
     today = timezone.now().date()
     start_date = parse_flexible_date(start_str, default=None)
     end_date = parse_flexible_date(end_str, default=None)
+
+    if date_filter and (start_date is None or end_date is None):
+        from base.getDates import getDates
+        dt_start, dt_end = getDates(request)
+        if dt_start and dt_end:
+            start_date = dt_start.date() if hasattr(dt_start, "date") else dt_start
+            end_date = dt_end.date() if hasattr(dt_end, "date") else dt_end
 
     if start_date is None and end_date is None:
         start_date = today.replace(day=1)
@@ -717,11 +732,15 @@ def calendar_details_api(request):
     trend_data = []
     for d in daily_trend:
         date_iso = d["date"].isoformat()
+        day_amt = float(d["day_amount"])
+        day_prof = profit_by_date.get(date_iso, 0)
+        day_prof_pct = round((day_prof / day_amt * 100), 1) if day_amt > 0 else 0.0
         trend_data.append({
             "date": date_iso,
-            "amount": float(d["day_amount"]),
+            "amount": day_amt,
             "count": d["day_count"],
-            "profit": profit_by_date.get(date_iso, 0),
+            "profit": day_prof,
+            "profit_percentage": day_prof_pct,
         })
 
     # ── Top customers (for pie chart) ──

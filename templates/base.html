@@ -173,7 +173,7 @@
       window.open("{{ redirect_url }}", '_blank');
     </script>
     {% endif %}
-    <script src="{% static 'js/notifications-panel.js' %}" defer></script>
+    <script src="{% static 'js/notifications-panel.js' %}"></script>
     <!-- Sidebar Navigation JS -->
     <script src="{% static 'js/sidebar.js' %}"></script>
     <!-- Animated Date & Time Picker JS (auto-inits all .form-date-input) -->
@@ -186,7 +186,15 @@
     {% endblock extra_js %}
     {% comment %} <script src="{% static 'js/performance-analyzer.js' %}"></script> {% endcomment %}
     {% if messages %}
-      {% for message in messages %}<script>showNotification('{{message}}', '{{message.tags}}')</script>{% endfor %}
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          {% for message in messages %}
+          if (typeof showNotification === 'function') {
+            showNotification('{{ message|escapejs }}', '{{ message.tags|default:"info" }}');
+          }
+          {% endfor %}
+        });
+      </script>
     {% endif %}
   </body>
 </html>
