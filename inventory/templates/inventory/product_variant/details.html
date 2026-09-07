@@ -5,6 +5,9 @@
     {{ variant.full_name }}
     - Variant Details
 {% endblock title %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/variant-media.css' %}">
+{% endblock extra_css %}
 {% block content %}
     <!-- Page Header -->
     <div class="page-header">

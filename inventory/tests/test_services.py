@@ -8,10 +8,12 @@ from django.utils import timezone
 from inventory.services import (
     DamageResolutionService,
     InventoryService,
+    get_media_gallery_data,
+    get_media_gallery_stats,
     get_variants_data,
     total_inventory_value,
 )
-from inventory.models import InventoryLog, DamagedItemRecord
+from inventory.models import Category, InventoryLog, DamagedItemRecord, VariantMedia
 from Billing.tests.helpers import (
     create_test_user,
     create_test_product,
@@ -677,4 +679,105 @@ class VariantQueryServicesTests(TestCase):
         request = self.factory.get("/inventory/variants/", {"search": "Air Max", "stock": "in_stock"})
         results = get_variants_data(request)
         self.assertEqual(results.count(), 2)
+
+
+class MediaGalleryServicesTests(TestCase):
+    """Tests for get_media_gallery_stats and get_media_gallery_data service functions."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = create_test_user()
+        self.category = Category.objects.create(name="Shoes")
+        self.category2 = Category.objects.create(name="Apparel")
+        self.product1 = create_test_product(brand="Nike", name="Air Max", category=self.category)
+        self.product2 = create_test_product(brand="Adidas", name="Ultraboost", category=self.category2)
+
+        # v1: In stock (qty=10), on sale (discount=10%)
+        self.v1 = create_test_variant(
+            product=self.product1,
+            mrp=Decimal("200.00"),
+            quantity=Decimal("10"),
+            user=self.user,
+        )
+        self.v1.discount_percentage = Decimal("10.00")
+        self.v1.save(update_fields=["discount_percentage"])
+
+        # v2: Low stock (qty=3), no discount
+        self.v2 = create_test_variant(
+            product=self.product2,
+            mrp=Decimal("150.00"),
+            quantity=Decimal("3"),
+            user=self.user,
+        )
+
+        # Media files
+        self.m1 = VariantMedia.objects.create(
+            variant=self.v1,
+            file="variant_media/test1.jpg",
+            media_type=VariantMedia.MediaType.IMAGE,
+        )
+        self.m2 = VariantMedia.objects.create(
+            variant=self.v1,
+            file="variant_media/test1.mp4",
+            media_type=VariantMedia.MediaType.VIDEO,
+        )
+        self.m3 = VariantMedia.objects.create(
+            variant=self.v2,
+            file="variant_media/test2.jpg",
+            media_type=VariantMedia.MediaType.IMAGE,
+        )
+
+    def test_get_media_gallery_stats(self):
+        result = get_media_gallery_stats()
+        stats = result["stats"]
+        categories = result["categories"]
+
+        self.assertEqual(stats["total_media"], 3)
+        self.assertEqual(stats["images_count"], 2)
+        self.assertEqual(stats["videos_count"], 1)
+        self.assertEqual(stats["variants_count"], 2)
+        self.assertEqual(stats["in_stock_count"], 1)  # v1 qty > 5
+        self.assertEqual(stats["low_stock_count"], 1)  # v2 qty <= 5 and > 0
+        self.assertEqual(stats["on_sale_count"], 1)  # v1 discount > 0
+        self.assertEqual(len(categories), 2)
+        self.assertEqual(categories[0]["cat_name"], "Apparel")
+        self.assertEqual(categories[0]["media_count"], 1)
+        self.assertEqual(categories[1]["cat_name"], "Shoes")
+        self.assertEqual(categories[1]["media_count"], 2)
+
+    def test_get_media_gallery_data_search_multi_word(self):
+        # Uses build_search_filter - multi word matching brand and product name
+        results = get_media_gallery_data(params={"search": "Nike Air"})
+        self.assertEqual(results.count(), 2)  # m1 and m2 belong to Nike Air Max
+
+        results_none = get_media_gallery_data(params={"search": "Puma Runner"})
+        self.assertEqual(results_none.count(), 0)
+
+    def test_get_media_gallery_data_filters(self):
+        # Filter by media_type
+        videos = get_media_gallery_data(params={"media_type": "VIDEO"})
+        self.assertEqual(videos.count(), 1)
+        self.assertEqual(videos.first(), self.m2)
+
+        # Filter by category
+        cat_results = get_media_gallery_data(params={"category": str(self.category.id)})
+        self.assertEqual(cat_results.count(), 2)
+
+        # Filter by stock
+        in_stock = get_media_gallery_data(params={"stock": "in_stock"})
+        self.assertEqual(in_stock.count(), 2)  # m1, m2 from v1
+
+        low_stock = get_media_gallery_data(params={"stock": "low_stock"})
+        self.assertEqual(low_stock.count(), 1)  # m3 from v2
+
+        # Filter by on_sale
+        on_sale = get_media_gallery_data(params={"on_sale": "1"})
+        self.assertEqual(on_sale.count(), 2)
+
+    def test_get_media_gallery_data_with_request(self):
+        request = self.factory.get("/inventory/media/fetch/", {"search": "Adidas", "sort": "price_asc"})
+        results = get_media_gallery_data(request)
+        self.assertEqual(results.count(), 1)
+        self.assertEqual(results.first(), self.m3)
+
 

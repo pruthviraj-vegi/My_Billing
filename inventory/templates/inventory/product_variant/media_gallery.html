@@ -1,17 +1,16 @@
-<!-- Media Gallery Section for Variant Details -->
+<!-- Media Gallery Section for Variant Details (Single Polished View) -->
 <div class="media-gallery-section" id="mediaGallerySection">
+   <!-- Header -->
    <div class="media-gallery-header">
-      <h3>
-         <i class="fas fa-photo-video"></i>
-         Media Gallery (<span id="mediaCount">{{ media_files|length }}</span>)
+      <h3 class="media-gallery-title">
+         <i class="fas fa-camera-retro"></i>
+         Media Gallery
+         <span class="media-count-badge" id="mediaCount">{{ media_files|length }}</span>
       </h3>
       {% if perms.inventory.change_productvariant %}
          <div class="media-gallery-actions">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleMediaView" title="Toggle view">
-               <i class="fas fa-th-large"></i>
-            </button>
-            <label for="mediaFileInput" class="btn btn-primary btn-sm">
-               <i class="fas fa-upload"></i> Upload
+            <label for="mediaFileInput" class="btn btn-primary btn-sm m-0">
+               <i class="fas fa-cloud-upload-alt"></i> Upload Media
             </label>
             <input type="file" id="mediaFileInput" multiple
                    accept="image/*,video/mp4,video/webm,video/quicktime"
@@ -20,651 +19,166 @@
       {% endif %}
    </div>
 
-   <!-- Drop Zone -->
-   {% if perms.inventory.change_productvariant %}
-      <div id="mediaDropZone" class="media-drop-zone">
-         <i class="fas fa-cloud-upload-alt"></i>
-         <p>Drag &amp; drop images or videos here</p>
-         <small>JPG, PNG, WEBP, GIF, MP4, WEBM, MOV</small>
-      </div>
-   {% endif %}
-
-   <!-- Scrollable Horizontal Gallery -->
-   <div class="media-scroll-container" id="mediaScrollContainer">
-      <div class="media-scroll-track" id="mediaScrollTrack">
-         {% for media in media_files %}
-            <div class="media-scroll-item" data-id="{{ media.id }}" data-original="{{ media.original_url }}" data-type="{{ media.media_type }}">
-               {% if media.is_image %}
-                  <img src="{{ media.gallery_url }}" alt="{{ media.alt_text|default:media.variant }}" loading="lazy" class="media-scroll-thumb" />
-               {% else %}
-                  <div class="media-thumb video-poster">
-                     <i class="fas fa-film"></i>
-                  </div>
-                  <div class="media-badge-video"><i class="fas fa-play"></i></div>
-               {% endif %}
-               <div class="media-scroll-overlay">
-                  {% if perms.inventory.change_productvariant %}
-                     <button class="media-btn media-btn-star {% if media.is_featured %}active{% endif %}"
-                             title="{% if media.is_featured %}Remove featured{% else %}Set as featured{% endif %}"
-                             data-url="{% url 'inventory_variant:media_set_featured' media.id %}">
-                        <i class="fas fa-star"></i>
-                     </button>
-                     <button class="media-btn media-btn-delete"
-                             title="Delete"
-                             data-url="{% url 'inventory_variant:media_delete' media.id %}">
-                        <i class="fas fa-trash"></i>
-                     </button>
-                  {% endif %}
-               </div>
-               <div class="media-info">
-                  <span class="media-size">{{ media.file_size_display }}</span>
-               </div>
-            </div>
-         {% empty %}
-            <div class="media-empty-scroll">
-               <i class="fas fa-image"></i>
-               <p>No media uploaded yet</p>
-            </div>
-         {% endfor %}
-      </div>
-      <button class="scroll-btn scroll-left" id="scrollLeftBtn" aria-label="Scroll left">
-         <i class="fas fa-chevron-left"></i>
-      </button>
-      <button class="scroll-btn scroll-right" id="scrollRightBtn" aria-label="Scroll right">
-         <i class="fas fa-chevron-right"></i>
-      </button>
+   <!-- Drag & Drop Full Overlay -->
+   <div id="mediaDropOverlay" class="media-drop-overlay">
+      <i class="fas fa-cloud-upload-alt"></i>
+      <p>Drop photos or videos to upload</p>
    </div>
 
-   <!-- Media Grid -->
-   <div class="media-grid" id="mediaGrid">
+   <!-- Single Unified Responsive Media Grid -->
+   <div class="variant-media-grid" id="mediaGrid">
       {% for media in media_files %}
-         <div class="media-card" data-id="{{ media.id }}" data-original="{{ media.original_url }}" data-type="{{ media.media_type }}">
+         <div class="variant-media-card {% if media.is_featured %}is-featured{% endif %}"
+              data-id="{{ media.id }}"
+              data-original="{{ media.original_url }}"
+              data-type="{{ media.media_type }}"
+              data-featured="{% if media.is_featured %}true{% else %}false{% endif %}">
+
+            <!-- Featured / Cover Badge -->
+            <span class="media-badge-featured">
+               <i class="fas fa-star"></i> Featured
+            </span>
+
+            <!-- Media Thumbnail or Video Poster -->
             {% if media.is_image %}
-               <img src="{{ media.gallery_url }}" alt="{{ media.alt_text|default:media.variant }}"
-                    loading="lazy" class="media-thumb" width="140" height="140" />
+               <img src="{{ media.gallery_url }}"
+                    alt="{{ media.alt_text|default:media.variant }}"
+                    loading="lazy"
+                    class="variant-media-thumb"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+               <div class="variant-media-fallback" style="display: none;">
+                  <i class="fas fa-shirt fallback-icon"></i>
+                  <span class="fallback-text">Photo Not Available</span>
+               </div>
             {% else %}
-               <div class="media-thumb video-poster">
+               <div class="video-poster-box">
                   <i class="fas fa-film"></i>
                </div>
-               <div class="media-badge-video"><i class="fas fa-play"></i></div>
+               <div class="media-badge-video">
+                  <i class="fas fa-play"></i>
+               </div>
             {% endif %}
-            <div class="media-overlay">
-               {% if perms.inventory.change_productvariant %}
-                  <button class="media-btn media-btn-star {% if media.is_featured %}active{% endif %}"
-                          title="{% if media.is_featured %}Remove featured{% else %}Set as featured{% endif %}"
+
+            <!-- Action Buttons (Star, Delete) -->
+            {% if perms.inventory.change_productvariant %}
+               <div class="media-card-actions">
+                  <button type="button"
+                          class="media-action-btn media-action-star {% if media.is_featured %}active{% endif %}"
+                          title="{% if media.is_featured %}Remove featured status{% else %}Set as featured cover{% endif %}"
                           data-url="{% url 'inventory_variant:media_set_featured' media.id %}">
                      <i class="fas fa-star"></i>
                   </button>
-                  <button class="media-btn media-btn-delete"
-                          title="Delete"
+                  <button type="button"
+                          class="media-action-btn media-action-delete"
+                          title="Delete media"
                           data-url="{% url 'inventory_variant:media_delete' media.id %}">
                      <i class="fas fa-trash"></i>
                   </button>
-               {% endif %}
-            </div>
-            <div class="media-info">
-               <span class="media-size">{{ media.file_size_display }}</span>
+               </div>
+            {% endif %}
+
+            <!-- Footer Meta -->
+            <div class="media-card-footer">
+               <span>{{ media.file_size_display }}</span>
             </div>
          </div>
       {% empty %}
-         <div class="media-empty" id="mediaEmpty">
-            <i class="fas fa-image"></i>
-            <p>No media uploaded yet</p>
+         <!-- Default Placeholder Card (Like Media Gallery) -->
+         <div class="variant-media-card default-placeholder-card" id="mediaDefaultPlaceholder">
+            <span class="media-badge-placeholder">
+               <i class="fas fa-shirt"></i> Default
+            </span>
+            <div class="variant-media-fallback">
+               <i class="fas fa-shirt fallback-icon"></i>
+               <span class="fallback-text">No Image Uploaded</span>
+            </div>
+            {% if perms.inventory.change_productvariant %}
+               <label for="mediaFileInput" class="media-card-upload-overlay" title="Upload Image for this Variant">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <span>Upload Photo</span>
+               </label>
+            {% endif %}
+            <div class="media-card-footer">
+               <span>Default</span>
+            </div>
+         </div>
+
+         <!-- Interactive Empty Dropzone -->
+         <div class="variant-media-empty-dropzone" id="mediaEmptyDropzone">
+            <div class="empty-dropzone-icon">
+               <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <h4>Add Garment Photos</h4>
+            <p>
+               Drag &amp; drop photos or videos here, or
+               {% if perms.inventory.change_productvariant %}
+                  <label for="mediaFileInput" class="browse-link">browse files</label>
+               {% else %}
+                  <span>no media uploaded</span>
+               {% endif %}
+            </p>
+            <div class="empty-dropzone-hints">
+               <span class="hint-tag">JPG, PNG, WEBP</span>
+               <span class="hint-tag">MP4, WEBM</span>
+               <span class="hint-tag">Auto-optimised WebP</span>
+            </div>
          </div>
       {% endfor %}
    </div>
 </div>
 
-<!-- Lightbox -->
+<!-- Lightbox Modal -->
 <div id="mediaLightbox" class="media-lightbox">
-   <span class="media-lightbox-close" id="lightboxClose">&times;</span>
-   <a href="#" id="lightboxDownload" class="media-lightbox-download" download>
+   <button type="button" class="media-lightbox-close" id="lightboxClose" title="Close (Esc)">&times;</button>
+
+   <a href="#" id="lightboxDownload" class="media-lightbox-download" download target="_blank" rel="noopener">
       <i class="fas fa-download"></i> Download Original
    </a>
-   <button class="media-lightbox-nav media-lightbox-prev" id="lightboxPrev">
+
+   <button type="button" class="media-lightbox-nav media-lightbox-prev" id="lightboxPrev" title="Previous (←)">
       <i class="fas fa-chevron-left"></i>
    </button>
-   <button class="media-lightbox-nav media-lightbox-next" id="lightboxNext">
+   <button type="button" class="media-lightbox-nav media-lightbox-next" id="lightboxNext" title="Next (→)">
       <i class="fas fa-chevron-right"></i>
    </button>
+
    <div class="media-lightbox-content" id="lightboxContent"></div>
    <div class="media-lightbox-counter" id="lightboxCounter"></div>
 </div>
-
-<style>
-/* Upload button & hidden input */
-.media-upload-label { cursor: pointer; margin: 0; }
-.media-file-input { display: none; }
-
-/* Drop Zone */
-.media-drop-zone {
-   display: none;
-   flex-direction: column;
-   align-items: center;
-   justify-content: center;
-   gap: 0.25rem;
-   padding: 1.5rem;
-   border: 2px dashed var(--border-color);
-   border-radius: 0.5rem;
-   text-align: center;
-   color: var(--text-secondary);
-   transition: all 0.3s ease;
-   margin: 0.5rem;
-}
-.media-drop-zone.dragover {
-   display: flex;
-   border-color: var(--primary);
-   background: var(--primary-bg);
-   color: var(--primary);
-}
-.media-drop-zone i { font-size: 2rem; }
-.media-drop-zone small { font-size: 0.75rem; }
-
-/* Media Grid - integrated with page layout */
-.media-gallery-section .media-grid {
-   display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-   gap: 0.75rem;
-   padding: 1rem;
-}
-.media-gallery-section .media-card {
-   position: relative;
-   border-radius: 0.5rem;
-   overflow: hidden;
-   border: none;
-   background: var(--bg-body);
-   aspect-ratio: 1;
-   cursor: pointer;
-   box-shadow: var(--shadow-sm);
-   transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.media-gallery-section .media-card:hover {
-   transform: translateY(-2px);
-   box-shadow: var(--shadow-md);
-}
-.media-thumb {
-   width: 100%;
-   height: 100%;
-   object-fit: cover;
-   display: block;
-}
-.media-badge-video {
-   position: absolute;
-   top: 50%;
-   left: 50%;
-   transform: translate(-50%, -50%);
-   width: 36px;
-   height: 36px;
-   border-radius: 50%;
-   background: var(--text-primary);
-   color: var(--bg-surface);
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   pointer-events: none;
-   opacity: 0.8;
-}
-.video-poster {
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   background: var(--bg-surface-hover);
-   color: var(--text-secondary);
-   font-size: 2rem;
-}
-.media-overlay {
-   position: absolute;
-   top: 0.25rem;
-   right: 0.25rem;
-   display: flex;
-   gap: 0.25rem;
-   opacity: 0;
-   transition: opacity 0.2s;
-}
-.media-card:hover .media-overlay { opacity: 1; }
-.media-btn {
-   width: 28px; height: 28px;
-   border: none;
-   border-radius: 50%;
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   cursor: pointer;
-   font-size: 0.7rem;
-   transition: all 0.2s;
-}
-.media-btn-star {
-   background: var(--bg-surface);
-   color: var(--text-secondary);
-   opacity: 0.8;
-}
-.media-btn-star.active,
-.media-btn-star:hover {
-   background: var(--warning);
-   color: var(--text-on-primary, #fff);
-   opacity: 1;
-}
-.media-btn-delete {
-   background: var(--danger);
-   color: var(--text-on-primary, #fff);
-}
-.media-btn-delete:hover { filter: brightness(0.9); }
-.media-info {
-   position: absolute;
-   bottom: 0;
-   left: 0; right: 0;
-   padding: 0.2rem 0.4rem;
-   background: var(--text-primary);
-   color: var(--bg-surface);
-   font-size: 0.65rem;
-   text-align: right;
-   opacity: 0.8;
-}
-.media-empty {
-   grid-column: 1 / -1;
-   text-align: center;
-   padding: 2rem;
-   color: var(--text-secondary);
-}
-.media-empty i { font-size: 2rem; margin-bottom: 0.5rem; }
-
-/* ============================
-   UPLOAD PROGRESS CARD
-   ============================ */
-.media-card.uploading {
-   cursor: default;
-}
-.media-card.uploading:hover {
-   transform: none;
-   box-shadow: none;
-}
-.upload-preview {
-   width: 100%;
-   height: 100%;
-   object-fit: cover;
-   display: block;
-   filter: brightness(0.5);
-   transition: filter 0.3s ease;
-}
-.upload-progress-wrapper {
-   position: absolute;
-   bottom: 0;
-   left: 0; right: 0;
-   padding: 0.4rem;
-   background: var(--text-primary);
-   opacity: 0.9;
-}
-.upload-progress-bar-bg {
-   width: 100%;
-   height: 6px;
-   background: var(--border-color);
-   border-radius: 3px;
-   overflow: hidden;
-}
-.upload-progress-bar {
-   height: 100%;
-   width: 0%;
-   background: var(--primary);
-   border-radius: 3px;
-   transition: width 0.15s ease;
-}
-.upload-progress-text {
-   color: var(--text-on-primary, #fff);
-   font-size: 0.65rem;
-   margin-top: 0.15rem;
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-}
-.upload-filename {
-   white-space: nowrap;
-   overflow: hidden;
-   text-overflow: ellipsis;
-   max-width: 75%;
-}
-
-/* Status overlays */
-.upload-status-overlay {
-   position: absolute;
-   inset: 0;
-   display: flex;
-   flex-direction: column;
-   align-items: center;
-   justify-content: center;
-   gap: 0.25rem;
-   opacity: 0;
-   transition: opacity 0.3s ease;
-   pointer-events: none;
-}
-.upload-status-overlay.show {
-   opacity: 1;
-}
-.upload-status-overlay i {
-   font-size: 1.5rem;
-}
-.upload-status-overlay span {
-   font-size: 0.7rem;
-   font-weight: 600;
-}
-/* Success */
-.upload-status-success {
-   background: var(--success-bg);
-   color: var(--success);
-}
-/* Failure */
-.upload-status-failed {
-   background: var(--danger-bg);
-   color: var(--danger);
-}
-
-/* Horizontal Scrollable Gallery - integrated with page layout */
-.media-gallery-section .media-scroll-container {
-   position: relative;
-   display: none;
-   padding: 1rem 2.5rem;
-}
-.media-gallery-section .media-scroll-container.active {
-   display: block;
-}
-.media-gallery-section .media-scroll-track {
-   display: flex;
-   gap: 0.75rem;
-   overflow-x: auto;
-   scroll-behavior: smooth;
-   scrollbar-width: thin;
-   scrollbar-color: var(--border-color) transparent;
-   padding-bottom: 0.5rem;
-}
-.media-gallery-section .media-scroll-track::-webkit-scrollbar {
-   height: 6px;
-}
-.media-gallery-section .media-scroll-track::-webkit-scrollbar-track {
-   background: transparent;
-}
-.media-gallery-section .media-scroll-track::-webkit-scrollbar-thumb {
-   background: var(--border-color);
-   border-radius: 3px;
-}
-.media-gallery-section .media-scroll-item {
-   position: relative;
-   flex-shrink: 0;
-   width: 140px;
-   height: 140px;
-   border-radius: 0.5rem;
-   overflow: hidden;
-   border: none;
-   background: var(--bg-body);
-   cursor: pointer;
-   box-shadow: var(--shadow-sm);
-   transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.media-gallery-section .media-scroll-item:hover {
-   transform: translateY(-2px);
-   box-shadow: var(--shadow-md);
-}
-.media-scroll-thumb {
-   width: 100%;
-   height: 100%;
-   object-fit: cover;
-   display: block;
-}
-.media-scroll-overlay {
-   position: absolute;
-   top: 0.25rem;
-   right: 0.25rem;
-   display: flex;
-   gap: 0.25rem;
-   opacity: 0;
-   transition: opacity 0.2s;
-}
-.media-scroll-item:hover .media-scroll-overlay { opacity: 1; }
-.media-scroll-item .media-info {
-   position: absolute;
-   bottom: 0;
-   left: 0; right: 0;
-   padding: 0.2rem 0.4rem;
-   background: var(--text-primary);
-   color: var(--bg-surface);
-   font-size: 0.65rem;
-   text-align: right;
-   opacity: 0.8;
-}
-.media-empty-scroll {
-   display: flex;
-   flex-direction: column;
-   align-items: center;
-   justify-content: center;
-   width: 160px;
-   height: 160px;
-   color: var(--text-secondary);
-   background: var(--bg-body);
-   border: none;
-   border-radius: 0.5rem;
-   box-shadow: var(--shadow-sm);
-}
-.media-empty-scroll i { font-size: 2rem; margin-bottom: 0.5rem; }
-.media-empty-scroll p { margin: 0; font-size: 0.8rem; }
-
-.media-gallery-section .scroll-btn {
-   position: absolute;
-   top: 50%;
-   transform: translateY(-50%);
-   width: 32px;
-   height: 32px;
-   border-radius: 50%;
-   background: var(--bg-surface);
-   border: none;
-   color: var(--text-primary);
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   cursor: pointer;
-   box-shadow: var(--shadow-md);
-   transition: all 0.2s ease;
-   z-index: 2;
-}
-.media-gallery-section .scroll-btn:hover {
-   background: var(--primary-color);
-   color: var(--text-on-primary, #fff);
-}
-.media-gallery-section .scroll-btn.scroll-left { left: 0.5rem; }
-.media-gallery-section .scroll-btn.scroll-right { right: 0.5rem; }
-.media-gallery-section .scroll-btn.hidden { display: none; }
-
-/* Media Gallery Section */
-.media-gallery-section {
-   background: var(--bg-surface);
-   border: 1px solid var(--border-color);
-   border-radius: 0.5rem;
-   overflow: hidden;
-}
-.media-gallery-header {
-   display: flex;
-   align-items: center;
-   justify-content: space-between;
-   padding: 0.75rem 1rem;
-   border-bottom: 1px solid var(--border-color);
-}
-.media-gallery-header h3 {
-   margin: 0;
-   font-size: 0.95rem;
-   font-weight: 600;
-   color: var(--text-primary);
-}
-.media-gallery-header h3 i {
-   margin-right: 0.5rem;
-   color: var(--primary);
-}
-.media-gallery-actions {
-   display: flex;
-   align-items: center;
-   gap: 0.5rem;
-}
-
-/* Lightbox */
-.media-lightbox {
-   position: fixed;
-   inset: 0;
-   background: var(--text-primary);
-   opacity: 0.95;
-   z-index: 3000;
-   display: none;
-   align-items: center;
-   justify-content: center;
-}
-.media-lightbox-close {
-   position: absolute;
-   top: 1rem; right: 1.5rem;
-   color: var(--text-on-primary, #fff);
-   font-size: 2rem;
-   cursor: pointer;
-   z-index: 3001;
-}
-.media-lightbox-download {
-   position: absolute;
-   bottom: 1.5rem; right: 1.5rem;
-   color: var(--text-on-primary, #fff);
-   background: var(--primary);
-   padding: 0.5rem 1rem;
-   border-radius: 0.5rem;
-   text-decoration: none;
-   font-size: 0.85rem;
-   font-weight: 500;
-   z-index: 3001;
-   transition: background 0.2s;
-}
-.media-lightbox-download:hover {
-   background: var(--primary-hover);
-   color: var(--text-on-primary, #fff);
-}
-.media-lightbox-content img,
-.media-lightbox-content video {
-   max-width: 90vw;
-   max-height: 85vh;
-   border-radius: 0.5rem;
-}
-.media-lightbox-nav {
-   position: absolute;
-   top: 50%;
-   transform: translateY(-50%);
-   width: 48px;
-   height: 48px;
-   border: none;
-   border-radius: 50%;
-   background: var(--bg-surface);
-   color: var(--text-primary);
-   font-size: 1.25rem;
-   cursor: pointer;
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   transition: background 0.2s ease;
-   z-index: 3002;
-   opacity: 0.7;
-}
-.media-lightbox-nav:hover {
-   background: var(--bg-surface-hover);
-   opacity: 1;
-}
-.media-lightbox-prev { left: 1rem; }
-.media-lightbox-next { right: 1rem; }
-.media-lightbox-counter {
-   position: absolute;
-   bottom: 1rem;
-   left: 50%;
-   transform: translateX(-50%);
-   background: var(--bg-surface);
-   color: var(--text-primary);
-   padding: 0.4rem 0.8rem;
-   border-radius: 1rem;
-   font-size: 0.85rem;
-   font-weight: 500;
-   z-index: 3002;
-   opacity: 0.8;
-}
-
-@media(max-width: 768px) {
-   .media-grid {
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 0.5rem;
-      padding: 0.5rem;
-   }
-}
-</style>
 
 <script>
 (function() {
    const uploadUrl = '{% url "inventory_variant:media_upload" variant.id %}';
    const csrfToken = '{{ csrf_token }}';
+   const gallerySection = document.getElementById('mediaGallerySection');
    const grid = document.getElementById('mediaGrid');
-   const dropZone = document.getElementById('mediaDropZone');
+   const dropOverlay = document.getElementById('mediaDropOverlay');
    const fileInput = document.getElementById('mediaFileInput');
    const countEl = document.getElementById('mediaCount');
-   const scrollContainer = document.getElementById('mediaScrollContainer');
-   const scrollTrack = document.getElementById('mediaScrollTrack');
-   const scrollLeftBtn = document.getElementById('scrollLeftBtn');
-   const scrollRightBtn = document.getElementById('scrollRightBtn');
-   const toggleViewBtn = document.getElementById('toggleMediaView');
-   let isScrollView = false;
-
    const lightbox = document.getElementById('mediaLightbox');
+   const lightboxContent = document.getElementById('lightboxContent');
+   const lightboxDownload = document.getElementById('lightboxDownload');
+   const lightboxCounter = document.getElementById('lightboxCounter');
+   const lightboxPrev = document.getElementById('lightboxPrev');
+   const lightboxNext = document.getElementById('lightboxNext');
+   const lightboxClose = document.getElementById('lightboxClose');
 
-   const ALLOWED_IMAGE_EXT = ['jpg','jpeg','png','webp','gif'];
-   const ALLOWED_VIDEO_EXT = ['mp4','webm','mov'];
+   const ALLOWED_IMAGE_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+   const ALLOWED_VIDEO_EXT = ['mp4', 'webm', 'mov'];
    const MAX_IMAGE_SIZE = 25 * 1024 * 1024;  // 25 MB
    const MAX_VIDEO_SIZE = 50 * 1024 * 1024;  // 50 MB
 
-   // ============================
-   //  SCROLL VIEW CONTROLS
-   // ============================
-   function updateScrollButtons() {
-      if (!scrollTrack) return;
-      const hasOverflow = scrollTrack.scrollWidth > scrollTrack.clientWidth;
-      scrollLeftBtn.classList.toggle('hidden', !hasOverflow || scrollTrack.scrollLeft <= 0);
-      scrollRightBtn.classList.toggle('hidden', !hasOverflow || scrollTrack.scrollLeft >= scrollTrack.scrollWidth - scrollTrack.clientWidth - 1);
-   }
+   let allMediaCards = [];
+   let currentMediaIndex = 0;
 
-   function scrollByAmount(amount) {
-      if (!scrollTrack) return;
-      scrollTrack.scrollBy({ left: amount, behavior: 'smooth' });
-   }
-
-   if (scrollLeftBtn) {
-      scrollLeftBtn.addEventListener('click', function() { scrollByAmount(-200); });
-   }
-   if (scrollRightBtn) {
-      scrollRightBtn.addEventListener('click', function() { scrollByAmount(200); });
-   }
-   if (scrollTrack) {
-      scrollTrack.addEventListener('scroll', updateScrollButtons);
-      window.addEventListener('resize', updateScrollButtons);
-      updateScrollButtons();
-   }
-
-   // Toggle between scroll and grid view
-   if (toggleViewBtn) {
-      toggleViewBtn.addEventListener('click', function() {
-         isScrollView = !isScrollView;
-         scrollContainer.classList.toggle('active', isScrollView);
-         grid.style.display = isScrollView ? 'none' : 'grid';
-         if (isScrollView) {
-            updateScrollButtons();
-         }
-         const icon = toggleViewBtn.querySelector('i');
-         icon.className = isScrollView ? 'fas fa-images' : 'fas fa-th-large';
-      });
-   }
-
-   // ============================
-   //  CLIENT-SIDE VALIDATION
-   // ============================
+   // ── File Validation ──
    function validateFile(file) {
-      const name = file.name;
+      const name = file.name || '';
       const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
       const allAllowed = ALLOWED_IMAGE_EXT.concat(ALLOWED_VIDEO_EXT);
 
       if (!allAllowed.includes(ext)) {
-         return 'Unsupported type: .' + ext;
+         return 'Unsupported: .' + ext;
       }
 
       const isVideo = ALLOWED_VIDEO_EXT.includes(ext);
@@ -672,267 +186,475 @@
       const maxLabel = isVideo ? '50 MB' : '25 MB';
 
       if (file.size > maxSize) {
-         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-         return 'Too large: ' + fileSizeMB + ' MB (max ' + maxLabel + ')';
+         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+         return 'Too large: ' + sizeMB + ' MB (max ' + maxLabel + ')';
       }
-      return null; // Valid
+      return null;
    }
 
-   // ============================
-   //  UPLOAD WITH PROGRESS (per-file)
-   // ============================
-   function uploadFiles(fileList) {
-      if (!fileList.length) return;
-
-      const addToContainer = function(item) {
-         if (isScrollView && scrollTrack) {
-            const emptyEl = scrollTrack.querySelector('.media-empty-scroll');
-            if (emptyEl) emptyEl.remove();
-            scrollTrack.appendChild(item);
-            updateScrollButtons();
-         } else {
-            const emptyEl = document.getElementById('mediaEmpty');
-            if (emptyEl) emptyEl.remove();
-            grid.appendChild(item);
-         }
-      };
-
-      const removeFromContainer = function(item) {
-         if (isScrollView && scrollTrack) {
-            item.remove();
-            updateScrollButtons();
-            if (scrollTrack.querySelectorAll('.media-scroll-item').length === 0) {
-               scrollTrack.innerHTML = '<div class="media-empty-scroll"><i class="fas fa-image"></i><p>No media uploaded yet</p></div>';
-            }
-         } else {
-            item.remove();
-            if (grid.querySelectorAll('.media-card').length === 0) {
-               grid.innerHTML = '<div class="media-empty" id="mediaEmpty"><i class="fas fa-image"></i><p>No media uploaded yet</p></div>';
-            }
-         }
-      };
-
-      // Remove empty state
-      const emptyEl = document.getElementById('mediaEmpty');
+   // ── Empty State Management ──
+   function removeEmptyState() {
+      const emptyEl = document.getElementById('mediaEmptyDropzone');
       if (emptyEl) emptyEl.remove();
-      const emptyScrollEl = scrollTrack && scrollTrack.querySelector('.media-empty-scroll');
-      if (emptyScrollEl) emptyScrollEl.remove();
+      const placeholderEl = document.getElementById('mediaDefaultPlaceholder');
+      if (placeholderEl) placeholderEl.remove();
+   }
 
-      // Validate and upload each file individually
+   function checkEmptyState() {
+      const remaining = grid.querySelectorAll('.variant-media-card:not(.uploading):not(.default-placeholder-card)');
+      if (remaining.length === 0 && !grid.querySelector('#mediaEmptyDropzone')) {
+         grid.innerHTML = `
+            <div class="variant-media-card default-placeholder-card" id="mediaDefaultPlaceholder">
+               <span class="media-badge-placeholder">
+                  <i class="fas fa-shirt"></i> Default
+               </span>
+               <div class="variant-media-fallback">
+                  <i class="fas fa-shirt fallback-icon"></i>
+                  <span class="fallback-text">No Image Uploaded</span>
+               </div>
+               <label for="mediaFileInput" class="media-card-upload-overlay" title="Upload Image for this Variant">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <span>Upload Photo</span>
+               </label>
+               <div class="media-card-footer">
+                  <span>Default</span>
+               </div>
+            </div>
+            <div class="variant-media-empty-dropzone" id="mediaEmptyDropzone">
+               <div class="empty-dropzone-icon">
+                  <i class="fas fa-cloud-upload-alt"></i>
+               </div>
+               <h4>Add Garment Photos</h4>
+               <p>
+                  Drag &amp; drop photos or videos here, or
+                  <label for="mediaFileInput" class="browse-link">browse files</label>
+               </p>
+               <div class="empty-dropzone-hints">
+                  <span class="hint-tag">JPG, PNG, WEBP</span>
+                  <span class="hint-tag">MP4, WEBM</span>
+                  <span class="hint-tag">Auto-optimised WebP</span>
+               </div>
+            </div>
+         `;
+      }
+   }
+
+   // ── Multi-File Upload Queue ──
+   function uploadFiles(fileList) {
+      if (!fileList || !fileList.length) return;
+      removeEmptyState();
+
       Array.from(fileList).forEach(function(file) {
          const error = validateFile(file);
          if (error) {
-            showRejectedCard(file, error, addToContainer, removeFromContainer);
+            showRejectedCard(file, error);
          } else {
             const card = createUploadCard(file);
-            addToContainer(card);
-            uploadSingleFile(file, card, addToContainer, removeFromContainer);
+            grid.appendChild(card);
+            uploadSingleFile(file, card);
          }
       });
    }
 
-   // Instant rejection card (no upload attempt)
-   function showRejectedCard(file, errorMsg, addToContainer, removeFromContainer) {
+   // ── Instant Rejection Card ──
+   function showRejectedCard(file, errorMsg) {
       const card = document.createElement('div');
-      card.className = isScrollView ? 'media-scroll-item' : 'media-card uploading';
-      card.style.cursor = 'default';
+      card.className = 'variant-media-card uploading';
       card.style.opacity = '0';
-      addToContainer(card);
-      requestAnimationFrame(function() { card.style.opacity = '1'; });
+      grid.appendChild(card);
+
+      requestAnimationFrame(function() {
+         card.style.transition = 'opacity 0.25s ease';
+         card.style.opacity = '1';
+      });
 
       const isVideo = file.type.startsWith('video/');
-      let previewHtml = '';
-      if (isVideo) {
-         const videoUrl = URL.createObjectURL(file);
-         previewHtml = '<video src="' + videoUrl + '" class="' + (isScrollView ? 'media-scroll-thumb' : 'upload-preview') + '" style="object-fit:cover;width:100%;height:100%;filter:brightness(0.4);" muted preload="metadata"></video>';
-      } else {
-         const imgUrl = URL.createObjectURL(file);
-         previewHtml = '<img src="' + imgUrl + '" alt="Rejected" class="' + (isScrollView ? 'media-scroll-thumb' : 'upload-preview') + '" style="object-fit:cover;width:100%;height:100%;filter:brightness(0.4);" />';
-      }
+      const fileUrl = URL.createObjectURL(file);
+      const previewHtml = isVideo
+         ? `<video src="${fileUrl}" class="upload-preview-img" muted preload="metadata"></video>`
+         : `<img src="${fileUrl}" alt="Rejected" class="upload-preview-img" />`;
 
-      const name = file.name.length > 18 ? file.name.slice(0,15) + '...' : file.name;
+      const safeName = file.name.length > 18 ? file.name.slice(0, 15) + '...' : file.name;
 
-      card.innerHTML = previewHtml +
-         (isScrollView ?
-            '<div class="media-info" style="padding:0.2rem 0.4rem;background:var(--text-primary);color:var(--bg-surface);font-size:0.65rem;text-align:right;position:absolute;bottom:0;left:0;right:0;opacity:0.8;"><span class="upload-filename">' + name + '</span></div>' +
-            '<div class="upload-status-overlay upload-status-failed show" style="opacity:1;"><i class="fas fa-times-circle"></i><span>' + errorMsg + '</span></div>' :
-            '<div class="upload-progress-wrapper">' +
-               '<div class="upload-progress-bar-bg"><div class="upload-progress-bar" style="width:100%;background:var(--danger)"></div></div>' +
-               '<div class="upload-progress-text"><span class="upload-filename">' + name + '</span><span>Rejected</span></div>' +
-            '</div>' +
-            '<div class="upload-status-overlay upload-status-failed show">' +
-               '<i class="fas fa-times-circle"></i>' +
-               '<span>' + errorMsg + '</span>' +
-            '</div>');
+      card.innerHTML = `
+         ${previewHtml}
+         <div class="upload-progress-wrapper">
+            <div class="upload-progress-track">
+               <div class="upload-progress-fill" style="width: 100%; background: var(--danger);"></div>
+            </div>
+            <div class="upload-progress-info">
+               <span class="upload-filename">${safeName}</span>
+               <span style="color: var(--danger); font-weight: 600;">Rejected</span>
+            </div>
+         </div>
+         <div class="upload-status-overlay upload-status-failed show">
+            <i class="fas fa-times-circle"></i>
+            <span>${errorMsg}</span>
+         </div>
+      `;
 
-      // Auto-remove after 3 seconds
       setTimeout(function() {
-         card.style.transition = 'opacity 0.5s ease';
+         card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
          card.style.opacity = '0';
-         setTimeout(function() { removeFromContainer(card); }, 500);
-      }, 3000);
+         card.style.transform = 'scale(0.85)';
+         setTimeout(function() {
+            card.remove();
+            checkEmptyState();
+         }, 400);
+      }, 3500);
    }
 
-function createUploadCard(file) {
+   // ── Create Uploading Progress Card ──
+   function createUploadCard(file) {
       const card = document.createElement('div');
-      const isItem = isScrollView;
-      card.className = isItem ? 'media-scroll-item' : 'media-card uploading';
+      card.className = 'variant-media-card uploading';
       card.style.opacity = '0';
-      requestAnimationFrame(function() { card.style.opacity = '1'; });
+      requestAnimationFrame(function() {
+         card.style.transition = 'opacity 0.25s ease';
+         card.style.opacity = '1';
+      });
 
       const isVideo = file.type.startsWith('video/');
-      let previewHtml = '';
-      if (isVideo) {
-         const videoUrl = URL.createObjectURL(file);
-         previewHtml = `<video src="${videoUrl}" class="${isItem ? 'media-scroll-thumb' : 'upload-preview'}" style="${isItem ? 'object-fit:cover;width:100%;height:100%;' : ''}" muted preload="metadata"></video>
-                         <div class="media-badge-video"><i class="fas fa-play"></i></div>`;
-      } else {
-         const imgUrl = URL.createObjectURL(file);
-         previewHtml = `<img src="${imgUrl}" alt="Uploading..." class="${isItem ? 'media-scroll-thumb' : 'upload-preview'}" style="${isItem ? 'object-fit:cover;width:100%;height:100%;' : ''}" />`;
-      }
+      const fileUrl = URL.createObjectURL(file);
+      const previewHtml = isVideo
+         ? `<video src="${fileUrl}" class="upload-preview-img" muted preload="metadata"></video><div class="media-badge-video"><i class="fas fa-play"></i></div>`
+         : `<img src="${fileUrl}" alt="Uploading..." class="upload-preview-img" />`;
 
-      const name = file.name.length > 18 ? file.name.slice(0,15) + '...' : file.name;
+      const safeName = file.name.length > 18 ? file.name.slice(0, 15) + '...' : file.name;
 
-      if (isItem) {
-         card.innerHTML = previewHtml +
-            '<div class="media-info" style="padding:0.2rem 0.4rem;background:var(--text-primary);color:var(--bg-surface);font-size:0.65rem;text-align:right;position:absolute;bottom:0;left:0;right:0;opacity:0.8;"><span>' + name + '</span></div>' +
-            '<div class="upload-progress-wrapper" style="position:absolute;bottom:24px;left:0;right:0;padding:0.2rem;">' +
-               '<div class="upload-progress-bar-bg"><div class="upload-progress-bar" data-bar></div></div>' +
-            '</div>' +
-            '<div class="upload-status-overlay upload-status-success" data-success><i class="fas fa-check-circle"></i><span>Uploaded</span></div>' +
-            '<div class="upload-status-overlay upload-status-failed" data-failed><i class="fas fa-times-circle"></i><span>Failed</span></div>';
-      } else {
-         card.innerHTML = previewHtml +
-            '<div class="upload-progress-wrapper">' +
-               '<div class="upload-progress-bar-bg"><div class="upload-progress-bar" data-bar></div></div>' +
-               '<div class="upload-progress-text"><span class="upload-filename">' + name + '</span><span data-percent>0%</span></div>' +
-            '</div>' +
-            '<div class="upload-status-overlay upload-status-success" data-success><i class="fas fa-check-circle"></i><span>Uploaded</span></div>' +
-            '<div class="upload-status-overlay upload-status-failed" data-failed><i class="fas fa-times-circle"></i><span>Failed</span></div>';
-      }
+      card.innerHTML = `
+         ${previewHtml}
+         <div class="upload-progress-wrapper">
+            <div class="upload-progress-track">
+               <div class="upload-progress-fill" data-bar></div>
+            </div>
+            <div class="upload-progress-info">
+               <span class="upload-filename">${safeName}</span>
+               <span data-percent>0%</span>
+            </div>
+         </div>
+         <div class="upload-status-overlay upload-status-success" data-success>
+            <i class="fas fa-check-circle"></i>
+            <span>Uploaded</span>
+         </div>
+         <div class="upload-status-overlay upload-status-failed" data-failed>
+            <i class="fas fa-times-circle"></i>
+            <span>Failed</span>
+         </div>
+      `;
       return card;
    }
 
-function uploadSingleFile(file, card, addToContainer, removeFromContainer) {
-       const bar = card.querySelector('[data-bar]');
-       const pctText = card.querySelector('[data-percent]');
-       const successOverlay = card.querySelector('[data-success]');
-       const failedOverlay = card.querySelector('[data-failed]');
-       const preview = card.querySelector('.media-scroll-thumb') || card.querySelector('.upload-preview');
+   // ── Single File Upload XHR ──
+   function uploadSingleFile(file, card) {
+      const bar = card.querySelector('[data-bar]');
+      const pctText = card.querySelector('[data-percent]');
+      const successOverlay = card.querySelector('[data-success]');
+      const failedOverlay = card.querySelector('[data-failed]');
+      const preview = card.querySelector('.upload-preview-img');
 
-       const xhr = new XMLHttpRequest();
-       const formData = new FormData();
-       formData.append('file', file);
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('file', file);
 
-       // Progress event
-       xhr.upload.addEventListener('progress', function(e) {
-          if (e.lengthComputable) {
-             const pct = Math.round((e.loaded / e.total) * 100);
-             bar.style.width = pct + '%';
-             if (pctText) pctText.textContent = pct + '%';
-          }
-       });
+      xhr.upload.addEventListener('progress', function(e) {
+         if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            if (bar) bar.style.width = pct + '%';
+            if (pctText) pctText.textContent = pct + '%';
+         }
+      });
 
-       // Success
-       xhr.addEventListener('load', function() {
-          if (xhr.status >= 200 && xhr.status < 300) {
-             try {
-                const data = JSON.parse(xhr.responseText);
-                if (data.uploaded && data.uploaded.length > 0) {
-                   bar.style.width = '100%';
-                   bar.style.background = 'var(--success)';
-                   if (pctText) pctText.textContent = '100%';
-                   if (preview) preview.style.filter = 'brightness(0.7)';
-                   successOverlay.classList.add('show');
+      xhr.addEventListener('load', function() {
+         if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+               const data = JSON.parse(xhr.responseText);
+               if (data.uploaded && data.uploaded.length > 0) {
+                  if (bar) {
+                     bar.style.width = '100%';
+                     bar.style.background = 'var(--success)';
+                  }
+                  if (pctText) pctText.textContent = '100%';
+                  if (preview) preview.style.filter = 'brightness(0.6)';
+                  if (successOverlay) successOverlay.classList.add('show');
 
-                   if (data.total_media !== undefined) countEl.textContent = data.total_media;
+                  if (data.total_media !== undefined && countEl) {
+                     countEl.textContent = data.total_media;
+                  }
 
-                   setTimeout(function() {
-                      const m = data.uploaded[0];
-                      replaceWithRealCard(card, m, addToContainer);
-                   }, 1500);
-                } else {
-                   showFailure(card, failedOverlay, preview, data.errors, removeFromContainer);
-                }
-             } catch(e) {
-                showFailure(card, failedOverlay, preview, null, removeFromContainer);
-             }
-          } else {
-             showFailure(card, failedOverlay, preview, null, removeFromContainer);
-          }
-       });
+                  setTimeout(function() {
+                     replaceWithRealCard(card, data.uploaded[0]);
+                  }, 900);
+               } else {
+                  handleUploadError(card, failedOverlay, preview, data.errors);
+               }
+            } catch (err) {
+               handleUploadError(card, failedOverlay, preview, null);
+            }
+         } else {
+            handleUploadError(card, failedOverlay, preview, null);
+         }
+      });
 
-       // Network error
-       xhr.addEventListener('error', function() {
-          showFailure(card, failedOverlay, preview, null, removeFromContainer);
-       });
+      xhr.addEventListener('error', function() {
+         handleUploadError(card, failedOverlay, preview, null);
+      });
 
-       xhr.open('POST', uploadUrl);
-       xhr.setRequestHeader('X-CSRFToken', csrfToken);
-       xhr.send(formData);
-    }
+      xhr.open('POST', uploadUrl);
+      xhr.setRequestHeader('X-CSRFToken', csrfToken);
+      xhr.send(formData);
+   }
 
-    function showFailure(card, failedOverlay, preview, errors, removeFromContainer) {
-       const bar = card.querySelector('[data-bar]');
-       if (bar) bar.style.background = 'var(--danger)';
-       if (preview) preview.style.filter = 'brightness(0.4) saturate(0.5)';
-       failedOverlay.classList.add('show');
+   function handleUploadError(card, failedOverlay, preview, errors) {
+      const bar = card.querySelector('[data-bar]');
+      if (bar) bar.style.background = 'var(--danger)';
+      if (preview) preview.style.filter = 'brightness(0.3) saturate(0.5)';
+      if (failedOverlay) {
+         failedOverlay.classList.add('show');
+         if (errors && errors.length > 0) {
+            const span = failedOverlay.querySelector('span');
+            if (span) span.textContent = errors[0].errors ? errors[0].errors[0] : 'Failed';
+         }
+      }
 
-       if (errors && errors.length > 0) {
-          const span = failedOverlay.querySelector('span');
-          span.textContent = errors[0].errors ? errors[0].errors[0] : 'Failed';
-       }
+      setTimeout(function() {
+         card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+         card.style.opacity = '0';
+         card.style.transform = 'scale(0.85)';
+         setTimeout(function() {
+            card.remove();
+            checkEmptyState();
+         }, 400);
+      }, 3500);
+   }
 
-       setTimeout(function() {
-          card.style.transition = 'opacity 0.5s ease';
-          card.style.opacity = '0';
-          setTimeout(function() { removeFromContainer(card); }, 500);
-       }, 4000);
-    }
+   // ── Swap Upload Card with Real Card ──
+   function replaceWithRealCard(oldCard, m) {
+      const card = document.createElement('div');
+      card.className = 'variant-media-card' + (m.is_featured ? ' is-featured' : '');
+      card.dataset.id = m.id;
+      card.dataset.original = m.original_url || m.url;
+      card.dataset.type = m.media_type;
+      card.dataset.featured = m.is_featured ? 'true' : 'false';
 
-    function replaceWithRealCard(oldCard, m, addToContainer) {
-       const isItem = isScrollView;
-       const card = document.createElement('div');
-       card.className = isItem ? 'media-scroll-item' : 'media-card';
-       card.dataset.id = m.id;
+      let visualHtml = '';
+      if (m.media_type === 'IMAGE') {
+         visualHtml = `
+            <img src="${m.url}" alt="" loading="lazy" class="variant-media-thumb"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <div class="variant-media-fallback" style="display: none;">
+               <i class="fas fa-shirt fallback-icon"></i>
+               <span class="fallback-text">Photo Not Available</span>
+            </div>
+         `;
+      } else {
+         visualHtml = `
+            <div class="video-poster-box"><i class="fas fa-film"></i></div>
+            <div class="media-badge-video"><i class="fas fa-play"></i></div>
+         `;
+      }
 
-       card.dataset.original = m.original_url || m.url;
-       card.dataset.type = m.media_type;
+      card.innerHTML = `
+         <span class="media-badge-featured"><i class="fas fa-star"></i> Featured</span>
+         ${visualHtml}
+         <div class="media-card-actions">
+            <button type="button"
+                    class="media-action-btn media-action-star ${m.is_featured ? 'active' : ''}"
+                    title="${m.is_featured ? 'Remove featured status' : 'Set as featured cover'}"
+                    data-url="${m.featured_url || ''}">
+               <i class="fas fa-star"></i>
+            </button>
+            <button type="button"
+                    class="media-action-btn media-action-delete"
+                    title="Delete media"
+                    data-url="${m.delete_url || ''}">
+               <i class="fas fa-trash"></i>
+            </button>
+         </div>
+         <div class="media-card-footer">
+            <span>${m.file_size || ''}</span>
+         </div>
+      `;
 
-       let inner = '';
-       if (m.media_type === 'IMAGE') {
-          const thumbClass = isItem ? 'media-scroll-thumb' : 'media-thumb';
-          const thumbStyle = isItem ? 'style="object-fit:cover;width:100%;height:100%;"' : '';
-          inner = '<img src="' + m.url + '" alt="" loading="lazy" class="' + thumbClass + '" ' + thumbStyle + ' />';
-       } else {
-          const posterClass = isItem ? 'media-scroll-thumb' : 'media-thumb';
-          const posterStyle = isItem ? 'style="display:flex;align-items:center;justify-content:center;background:var(--bg-surface-hover);color:var(--text-secondary);font-size:2rem;width:100%;height:100%;"' : '';
-          inner = '<div class="' + posterClass + '" ' + posterStyle + '><i class="fas fa-film"></i></div>' +
-                  '<div class="media-badge-video"><i class="fas fa-play"></i></div>';
-       }
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.92)';
+      oldCard.replaceWith(card);
 
-       const overlayClass = isItem ? 'media-scroll-overlay' : 'media-overlay';
-       card.innerHTML = inner +
-          '<div class="' + overlayClass + '">' +
-             '<button class="media-btn media-btn-star" data-url="' + (m.featured_url || '') + '"><i class="fas fa-star"></i></button>' +
-             '<button class="media-btn media-btn-delete" data-url="' + (m.delete_url || '') + '"><i class="fas fa-trash"></i></button>' +
-          '</div>' +
-          '<div class="media-info"><span class="media-size">' + m.file_size + '</span></div>';
+      requestAnimationFrame(function() {
+         card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+         card.style.opacity = '1';
+         card.style.transform = 'scale(1)';
+      });
 
-       card.style.opacity = '0';
-       card.style.transform = 'scale(0.9)';
-       oldCard.replaceWith(card);
-       requestAnimationFrame(function() {
-          card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-          card.style.opacity = '1';
-          card.style.transform = 'scale(1)';
-       });
+      bindCardEvents(card);
+   }
 
-       bindCardEvents(card);
-       if (isScrollView) updateScrollButtons();
-    }
+   // ── Card Interaction Events ──
+   function bindCardEvents(card) {
+      // Star (Toggle Featured)
+      const starBtn = card.querySelector('.media-action-star');
+      if (starBtn) {
+         starBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fetch(starBtn.dataset.url, {
+               method: 'POST',
+               headers: {'X-CSRFToken': csrfToken},
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+               if (data.success) {
+                  // Un-feature all other cards in the grid
+                  grid.querySelectorAll('.variant-media-card').forEach(function(c) {
+                     c.classList.remove('is-featured');
+                     c.dataset.featured = 'false';
+                     const b = c.querySelector('.media-action-star');
+                     if (b) {
+                        b.classList.remove('active');
+                        b.title = 'Set as featured cover';
+                     }
+                  });
 
-   // --- File Input ---
+                  if (data.is_featured) {
+                     card.classList.add('is-featured');
+                     card.dataset.featured = 'true';
+                     starBtn.classList.add('active');
+                     starBtn.title = 'Remove featured status';
+                  }
+               }
+            })
+            .catch(function(err) {
+               console.error('Failed to toggle featured media:', err);
+            });
+         });
+      }
+
+      // Delete
+      const delBtn = card.querySelector('.media-action-delete');
+      if (delBtn) {
+         delBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (!confirm('Are you sure you want to delete this media item?')) return;
+
+            fetch(delBtn.dataset.url, {
+               method: 'POST',
+               headers: {'X-CSRFToken': csrfToken},
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+               if (data.success) {
+                  card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                  card.style.opacity = '0';
+                  card.style.transform = 'scale(0.8)';
+                  setTimeout(function() {
+                     card.remove();
+                     if (data.total_media !== undefined && countEl) {
+                        countEl.textContent = data.total_media;
+                     }
+                     checkEmptyState();
+                  }, 300);
+               }
+            })
+            .catch(function(err) {
+               console.error('Failed to delete media:', err);
+            });
+         });
+      }
+
+      // Lightbox click
+      card.addEventListener('click', function(e) {
+         if (e.target.closest('.media-card-actions')) return;
+         openLightboxAt(card);
+      });
+   }
+
+   // ── Lightbox Implementation ──
+   function getAllMediaCards() {
+      return Array.from(grid.querySelectorAll('.variant-media-card:not(.uploading)')).filter(function(c) {
+         return c.dataset.original;
+      });
+   }
+
+   function updateLightboxNav() {
+      allMediaCards = getAllMediaCards();
+      const count = allMediaCards.length;
+
+      if (lightboxPrev) lightboxPrev.style.display = count > 1 ? 'flex' : 'none';
+      if (lightboxNext) lightboxNext.style.display = count > 1 ? 'flex' : 'none';
+
+      if (lightboxCounter) {
+         if (count > 1) {
+            lightboxCounter.textContent = (currentMediaIndex + 1) + ' / ' + count;
+            lightboxCounter.style.display = 'block';
+         } else {
+            lightboxCounter.style.display = 'none';
+         }
+      }
+   }
+
+   function openLightboxAt(card) {
+      allMediaCards = getAllMediaCards();
+      currentMediaIndex = allMediaCards.indexOf(card);
+      if (currentMediaIndex === -1) currentMediaIndex = 0;
+
+      renderLightboxContent();
+      lightbox.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+   }
+
+   function renderLightboxContent() {
+      if (!allMediaCards.length || !allMediaCards[currentMediaIndex]) return;
+      const card = allMediaCards[currentMediaIndex];
+      const originalUrl = card.dataset.original;
+      const mediaType = card.dataset.type;
+
+      if (mediaType === 'IMAGE') {
+         lightboxContent.innerHTML = `
+            <img src="${originalUrl}" alt="Garment Photo"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <div class="lightbox-media-fallback" style="display: none;">
+               <i class="fas fa-shirt fallback-icon"></i>
+               <span class="fallback-title">Photo Not Available</span>
+               <span class="fallback-subtitle">The image file could not be loaded</span>
+            </div>
+         `;
+      } else {
+         lightboxContent.innerHTML = `
+            <video src="${originalUrl}" controls autoplay
+                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"></video>
+            <div class="lightbox-media-fallback" style="display: none;">
+               <i class="fas fa-film fallback-icon"></i>
+               <span class="fallback-title">Video Not Available</span>
+               <span class="fallback-subtitle">The video file could not be loaded</span>
+            </div>
+         `;
+      }
+
+      if (lightboxDownload) {
+         lightboxDownload.href = originalUrl;
+         lightboxDownload.style.display = 'inline-flex';
+      }
+
+      updateLightboxNav();
+   }
+
+   function navigateLightbox(direction) {
+      if (allMediaCards.length <= 1) return;
+      const currentVid = lightboxContent.querySelector('video');
+      if (currentVid) currentVid.pause();
+
+      currentMediaIndex = (currentMediaIndex + direction + allMediaCards.length) % allMediaCards.length;
+      renderLightboxContent();
+   }
+
+   function closeLightbox() {
+      lightbox.style.display = 'none';
+      document.body.style.overflow = '';
+      const currentVid = lightboxContent.querySelector('video');
+      if (currentVid) currentVid.pause();
+   }
+
+   // ── Event Listeners ──
+   // File input
    if (fileInput) {
       fileInput.addEventListener('change', function() {
          uploadFiles(fileInput.files);
@@ -940,211 +662,87 @@ function uploadSingleFile(file, card, addToContainer, removeFromContainer) {
       });
    }
 
-   // --- Drag & Drop ---
-   if (dropZone) {
+   // Drag and drop overlay
+   if (gallerySection && dropOverlay) {
       let dragCounter = 0;
-      document.addEventListener('dragenter', function(e) {
+
+      gallerySection.addEventListener('dragenter', function(e) {
          e.preventDefault();
          dragCounter++;
-         dropZone.style.display = 'flex';
-         dropZone.classList.add('dragover');
+         dropOverlay.classList.add('active');
       });
-      document.addEventListener('dragleave', function(e) {
+
+      gallerySection.addEventListener('dragleave', function(e) {
          e.preventDefault();
          dragCounter--;
          if (dragCounter <= 0) {
             dragCounter = 0;
-            dropZone.classList.remove('dragover');
-            dropZone.style.display = 'none';
+            dropOverlay.classList.remove('active');
          }
       });
-      document.addEventListener('dragover', function(e) { e.preventDefault(); });
-      dropZone.addEventListener('drop', function(e) {
+
+      gallerySection.addEventListener('dragover', function(e) {
+         e.preventDefault();
+      });
+
+      gallerySection.addEventListener('drop', function(e) {
          e.preventDefault();
          dragCounter = 0;
-         dropZone.classList.remove('dragover');
-         dropZone.style.display = 'none';
-         uploadFiles(e.dataTransfer.files);
+         dropOverlay.classList.remove('active');
+         if (e.dataTransfer && e.dataTransfer.files) {
+            uploadFiles(e.dataTransfer.files);
+         }
       });
    }
 
-   // --- Lightbox with Navigation ---
-    var allMediaCards = [];
-    var currentMediaIndex = 0;
+   // Lightbox controls
+   if (lightboxPrev) {
+      lightboxPrev.addEventListener('click', function(e) {
+         e.stopPropagation();
+         navigateLightbox(-1);
+      });
+   }
 
-    function getAllMediaCards() {
-       var cards = [];
-       if (isScrollView && scrollTrack) {
-          cards = Array.from(scrollTrack.querySelectorAll('.media-scroll-item'));
-       } else {
-          cards = Array.from(grid.querySelectorAll('.media-card'));
-       }
-       return cards.filter(function(c) { return c.dataset.original; });
-    }
+   if (lightboxNext) {
+      lightboxNext.addEventListener('click', function(e) {
+         e.stopPropagation();
+         navigateLightbox(1);
+      });
+   }
 
-    function updateLightboxNav() {
-       var prevBtn = document.getElementById('lightboxPrev');
-       var nextBtn = document.getElementById('lightboxNext');
-       var counter = document.getElementById('lightboxCounter');
-       if (!prevBtn || !nextBtn) return;
+   if (lightboxClose) {
+      lightboxClose.addEventListener('click', function(e) {
+         e.stopPropagation();
+         closeLightbox();
+      });
+   }
 
-       allMediaCards = getAllMediaCards();
-       prevBtn.style.display = allMediaCards.length > 1 ? 'flex' : 'none';
-       nextBtn.style.display = allMediaCards.length > 1 ? 'flex' : 'none';
+   if (lightbox) {
+      lightbox.addEventListener('click', function(e) {
+         if (e.target === lightbox) closeLightbox();
+      });
+   }
 
-       if (allMediaCards.length > 1 && counter) {
-          counter.textContent = (currentMediaIndex + 1) + ' / ' + allMediaCards.length;
-          counter.style.display = 'block';
-       } else if (counter) {
-          counter.style.display = 'none';
-       }
-    }
+   document.addEventListener('keydown', function(e) {
+      if (lightbox.style.display !== 'flex') return;
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+         navigateLightbox(-1);
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+         navigateLightbox(1);
+      } else if (e.key === 'Escape') {
+         closeLightbox();
+      }
+   });
 
-    function openLightboxAt(card) {
-       var content = document.getElementById('lightboxContent');
-       var dlBtn = document.getElementById('lightboxDownload');
-       var originalUrl = card.dataset.original;
-       var mediaType = card.dataset.type;
+   // Bind existing cards on page load (excluding placeholder)
+   grid.querySelectorAll('.variant-media-card:not(.default-placeholder-card)').forEach(bindCardEvents);
 
-       if (mediaType === 'IMAGE') {
-          content.innerHTML = '<img src="' + originalUrl + '" alt="" />';
-       } else {
-          content.innerHTML = '<video src="' + originalUrl + '" controls autoplay></video>';
-       }
-
-       dlBtn.href = originalUrl;
-       dlBtn.style.display = 'inline-block';
-
-       // Find current index
-       allMediaCards = getAllMediaCards();
-       currentMediaIndex = allMediaCards.indexOf(card);
-       updateLightboxNav();
-
-       lightbox.style.display = 'flex';
-    }
-
-    function navigateLightbox(direction) {
-       if (allMediaCards.length <= 1) return;
-       // Pause current video before switching
-       var currentVid = document.getElementById('lightboxContent').querySelector('video');
-       if (currentVid) currentVid.pause();
-       currentMediaIndex = (currentMediaIndex + direction + allMediaCards.length) % allMediaCards.length;
-       var card = allMediaCards[currentMediaIndex];
-       var content = document.getElementById('lightboxContent');
-       var dlBtn = document.getElementById('lightboxDownload');
-       var originalUrl = card.dataset.original;
-       var mediaType = card.dataset.type;
-
-       if (mediaType === 'IMAGE') {
-          content.innerHTML = '<img src="' + originalUrl + '" alt="" />';
-       } else {
-          content.innerHTML = '<video src="' + originalUrl + '" controls autoplay></video>';
-       }
-
-       dlBtn.href = originalUrl;
-       updateLightboxNav();
-    }
-
-    // --- Card Events (star, delete, lightbox) ---
-    function bindCardEvents(card) {
-       // Star
-       const starBtn = card.querySelector('.media-btn-star');
-       if (starBtn) {
-          starBtn.addEventListener('click', function(e) {
-             e.stopPropagation();
-             fetch(starBtn.dataset.url, {
-                method: 'POST',
-                headers: {'X-CSRFToken': csrfToken},
-             })
-             .then(function(r) { return r.json(); })
-             .then(function(data) {
-                if (data.success) {
-                   // Clear stars in BOTH views to keep them in sync
-                   grid.querySelectorAll('.media-btn-star').forEach(function(b) { b.classList.remove('active'); });
-                   if (scrollTrack) scrollTrack.querySelectorAll('.media-btn-star').forEach(function(b) { b.classList.remove('active'); });
-                   if (data.is_featured) {
-                      starBtn.classList.add('active');
-                      // Also set active on the matching card in the other view
-                      var cardId = card.dataset.id;
-                      var otherContainer = isScrollView ? grid : scrollTrack;
-                      if (otherContainer) {
-                         var otherStar = otherContainer.querySelector('[data-id="' + cardId + '"] .media-btn-star');
-                         if (otherStar) otherStar.classList.add('active');
-                      }
-                   }
-                }
-             });
-          });
-       }
-       // Delete
-       const delBtn = card.querySelector('.media-btn-delete');
-       if (delBtn) {
-          delBtn.addEventListener('click', function(e) {
-             e.stopPropagation();
-             if (!confirm('Delete this media?')) return;
-             fetch(delBtn.dataset.url, {
-                method: 'POST',
-                headers: {'X-CSRFToken': csrfToken},
-             })
-             .then(function(r) { return r.json(); })
-             .then(function(data) {
-                if (data.success) {
-                   card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                   card.style.opacity = '0';
-                   card.style.transform = 'scale(0.8)';
-                   setTimeout(function() {
-                      // Remove from BOTH views by data-id
-                      var cardId = card.dataset.id;
-                      document.querySelectorAll('[data-id="' + cardId + '"]').forEach(function(c) { c.remove(); });
-                      // Restore empty states if needed
-                      if (scrollTrack && scrollTrack.querySelectorAll('.media-scroll-item').length === 0) {
-                         scrollTrack.innerHTML = '<div class="media-empty-scroll"><i class="fas fa-image"></i><p>No media uploaded yet</p></div>';
-                      }
-                      if (grid.querySelectorAll('.media-card').length === 0) {
-                         grid.innerHTML = '<div class="media-empty" id="mediaEmpty"><i class="fas fa-image"></i><p>No media uploaded yet</p></div>';
-                      }
-                      if (isScrollView) updateScrollButtons();
-                   }, 300);
-                   countEl.textContent = data.total_media;
-                }
-             });
-          });
-       }
-       // Lightbox — use original full-resolution image
-       card.addEventListener('click', function() {
-          openLightboxAt(card);
-       });
-    }
-
-    // Bind existing cards (both grid and scroll view)
-    grid.querySelectorAll('.media-card').forEach(bindCardEvents);
-    if (scrollTrack) scrollTrack.querySelectorAll('.media-scroll-item').forEach(bindCardEvents);
-
-    // --- Lightbox Navigation Buttons ---
-    var prevBtn = document.getElementById('lightboxPrev');
-    var nextBtn = document.getElementById('lightboxNext');
-    if (prevBtn) prevBtn.addEventListener('click', function(e) { e.stopPropagation(); navigateLightbox(-1); });
-    if (nextBtn) nextBtn.addEventListener('click', function(e) { e.stopPropagation(); navigateLightbox(1); });
-
-    // --- Keyboard Navigation ---
-    document.addEventListener('keydown', function(e) {
-       if (lightbox.style.display === 'none' || lightbox.style.display === '') return;
-       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') navigateLightbox(-1);
-       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') navigateLightbox(1);
-       if (e.key === 'Escape') closeLightbox();
-    });
-
-    function closeLightbox() {
-       lightbox.style.display = 'none';
-       var vid = lightbox.querySelector('video');
-       if (vid) vid.pause();
-    }
-
-    // --- Lightbox close ---
-    var lbClose = document.getElementById('lightboxClose');
-    if (lbClose) lbClose.addEventListener('click', function(e) { e.stopPropagation(); closeLightbox(); });
-    if (lightbox) lightbox.addEventListener('click', function(e) {
-       if (e.target === lightbox) closeLightbox();
-    });
+   // Click on default placeholder card triggers file upload dialog
+   grid.addEventListener('click', function(e) {
+      const placeholder = e.target.closest('#mediaDefaultPlaceholder');
+      if (placeholder && fileInput) {
+         fileInput.click();
+      }
+   });
 })();
 </script>

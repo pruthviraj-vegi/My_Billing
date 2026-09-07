@@ -4,7 +4,7 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import DecimalField, F, Q, Sum
+from django.db.models import Count, DecimalField, F, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 
@@ -23,6 +23,7 @@ from .models import (
     ProductVariant,
     Size,
     UOM,
+    VariantMedia,
 )
 from supplier.models import SupplierInvoice
 
@@ -1681,5 +1682,154 @@ def get_variants_data(request=None, params=None):
             variants = variants.order_by("-created_at")
 
     return variants
+
+
+MEDIA_GALLERY_SEARCH_FIELDS = [
+    "variant__product__brand",
+    "variant__product__name",
+    "variant__color__name",
+    "variant__size__name",
+    "variant__product__cloth_type__name",
+    "variant__barcode",
+    "variant__extra_attributes",
+]
+
+
+def get_media_gallery_stats() -> dict:
+    """
+    Compute aggregate metrics across photographed garment variants, active categories,
+    and stock health for the media gallery hub.
+    """
+    active_media = VariantMedia.objects.filter(
+        variant__is_deleted=False,
+        variant__status=ProductVariant.VariantStatus.ACTIVE,
+    )
+
+    total_media = active_media.count()
+    images_count = active_media.filter(media_type=VariantMedia.MediaType.IMAGE).count()
+    videos_count = active_media.filter(media_type=VariantMedia.MediaType.VIDEO).count()
+    variants_count = active_media.values("variant_id").distinct().count()
+
+    low_stock_count = active_media.filter(
+        variant__quantity__lte=5, variant__quantity__gt=0
+    ).values("variant_id").distinct().count()
+    out_of_stock_count = active_media.filter(
+        variant__quantity=0
+    ).values("variant_id").distinct().count()
+    in_stock_count = active_media.filter(
+        variant__quantity__gt=5
+    ).values("variant_id").distinct().count()
+
+    on_sale_count = active_media.filter(
+        variant__discount_percentage__gt=0
+    ).values("variant_id").distinct().count()
+
+    in_stock_pct = round((in_stock_count / variants_count * 100)) if variants_count else 0
+
+    categories = list(
+        active_media.filter(variant__product__category__isnull=False)
+        .values(
+            cat_id=F("variant__product__category__id"),
+            cat_name=F("variant__product__category__name"),
+        )
+        .annotate(media_count=Count("id"))
+        .order_by("cat_name")
+    )
+
+    stats = {
+        "total_media": total_media,
+        "images_count": images_count,
+        "videos_count": videos_count,
+        "variants_count": variants_count,
+        "in_stock_count": in_stock_count,
+        "in_stock_pct": in_stock_pct,
+        "low_stock_count": low_stock_count,
+        "out_of_stock_count": out_of_stock_count,
+        "on_sale_count": on_sale_count,
+    }
+
+    return {
+        "stats": stats,
+        "categories": categories,
+    }
+
+
+def get_media_gallery_data(request=None, params=None):
+    """
+    Retrieve and filter VariantMedia based on request or parameter dictionary.
+
+    Supports:
+        - search: text query across brand, name, color, size, cloth_type, barcode, extra_attributes
+        - category: category id or 'all'
+        - stock: 'in_stock', 'low_stock', 'out_of_stock', or 'all'
+        - media_type: 'IMAGE', 'VIDEO', or 'all'
+        - on_sale: '1' or 'true' for discounted items
+        - sort: 'newest', 'price_asc', 'price_desc', 'discount_desc', 'stock_desc', 'name_asc'
+    """
+    if params is None:
+        if hasattr(request, "GET"):
+            params = request.GET
+        elif isinstance(request, dict):
+            params = request
+            request = None
+        else:
+            params = {}
+
+    search_query = params.get("search", "").strip()
+    category_id = params.get("category", "").strip()
+    stock_filter = params.get("stock", "").strip()
+    media_type = params.get("media_type", "").strip()
+    on_sale = params.get("on_sale", "").strip()
+    sort_key = params.get("sort", "newest").strip()
+
+    media_qs = VariantMedia.objects.filter(
+        variant__is_deleted=False,
+        variant__status=ProductVariant.VariantStatus.ACTIVE,
+    ).select_related(
+        "variant__product__category",
+        "variant__product__cloth_type",
+        "variant__color",
+        "variant__size",
+    )
+
+    if search_query:
+        search_filter = build_search_filter(
+            search_query,
+            MEDIA_GALLERY_SEARCH_FIELDS,
+        )
+        media_qs = media_qs.filter(search_filter)
+
+    if category_id and category_id.lower() != "all":
+        try:
+            media_qs = media_qs.filter(variant__product__category_id=int(category_id))
+        except (ValueError, TypeError):
+            pass
+
+    if stock_filter == "in_stock":
+        media_qs = media_qs.filter(variant__quantity__gt=5)
+    elif stock_filter == "low_stock":
+        media_qs = media_qs.filter(variant__quantity__gt=0, variant__quantity__lte=5)
+    elif stock_filter == "out_of_stock":
+        media_qs = media_qs.filter(variant__quantity=0)
+
+    if media_type in [VariantMedia.MediaType.IMAGE, VariantMedia.MediaType.VIDEO]:
+        media_qs = media_qs.filter(media_type=media_type)
+
+    if on_sale in ["1", "true", "True"]:
+        media_qs = media_qs.filter(variant__discount_percentage__gt=0)
+
+    sort_mapping = {
+        "newest": ["-created_at", "-id"],
+        "price_asc": ["variant__mrp", "variant__product__name"],
+        "price_desc": ["-variant__mrp", "variant__product__name"],
+        "discount_desc": ["-variant__discount_percentage", "-variant__mrp"],
+        "stock_desc": ["-variant__quantity", "-id"],
+        "name_asc": ["variant__product__brand", "variant__product__name"],
+    }
+    ordering = sort_mapping.get(sort_key, ["-created_at", "-id"])
+    media_qs = media_qs.order_by(*ordering)
+
+    return media_qs
+
 
 

@@ -45,7 +45,11 @@ from .forms import (
     VariantForm,
 )
 from .models import BarcodeMapping, InventoryLog, Product, ProductVariant, VariantMedia
-from .services import InventoryService
+from .services import (
+    InventoryService,
+    get_media_gallery_data,
+    get_media_gallery_stats,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1016,39 +1020,22 @@ def supplier_invoice_details_fetch(request, invoice_id):
 
 @required_permission("inventory.view_dashboard")
 def media_gallery(request):
-    """Media Gallery page with search and filter functionality."""
-    return render(request, "inventory/media/home.html")
+    """
+    Media Gallery hub with live inventory visual metrics and interactive filters.
+
+    Computes aggregate metrics across photographed garment variants, active categories,
+    and stock health to power the ambient hero statistics.
+    """
+    context = get_media_gallery_stats()
+    return render(request, "inventory/media/home.html", context)
 
 
 @required_permission("inventory.view_dashboard")
 def media_gallery_fetch(request):
     """
-    AJAX endpoint for media gallery with real-time search/filter.
-    Searches across: product brand, name, color, size, cloth_type, extra_attributes.
+    AJAX endpoint for media gallery with real-time multi-dimensional search and filtering.
     """
-    search_query = request.GET.get("search", "").strip()
-
-    media_qs = VariantMedia.objects.filter(
-        variant__is_deleted=False,
-        variant__status=ProductVariant.VariantStatus.ACTIVE,
-    ).select_related(
-        "variant__product__category",
-        "variant__product__cloth_type",
-        "variant__color",
-        "variant__size",
-    )
-
-    if search_query:
-        media_qs = media_qs.filter(
-            Q(variant__product__brand__icontains=search_query)
-            | Q(variant__product__name__icontains=search_query)
-            | Q(variant__color__name__icontains=search_query)
-            | Q(variant__size__name__icontains=search_query)
-            | Q(variant__product__cloth_type__name__icontains=search_query)
-            | Q(variant__barcode__icontains=search_query)
-            | Q(variant__extra_attributes__icontains=search_query)
-        )
-
+    media_qs = get_media_gallery_data(request)
     return render_paginated_response(
         request,
         media_qs,
