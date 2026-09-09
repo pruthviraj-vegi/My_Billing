@@ -472,15 +472,26 @@ class CartManager {
      * @private
      */
     initPriceToggle() {
+        const hideProfitRowInitially = () => {
+            const profitRow = document.getElementById('profitRow');
+            if (profitRow) {
+                profitRow.classList.remove('is-visible');
+                profitRow.style.setProperty('display', 'none', 'important');
+            }
+        };
+
         // Initialize price display format after DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
+                hideProfitRowInitially();
                 this.formatPriceDisplays();
                 this.initProfitRowClickListener();
             });
         } else {
             // DOM already loaded
+            hideProfitRowInitially();
             setTimeout(() => {
+                hideProfitRowInitially();
                 this.formatPriceDisplays();
                 this.initProfitRowClickListener();
             }, CartManager.DOM_READY_DELAY);
@@ -558,7 +569,13 @@ class CartManager {
         // Toggle profit row visibility
         const profitRow = document.getElementById('profitRow');
         if (profitRow) {
-            profitRow.style.display = this.priceToggleState ? 'flex' : 'none';
+            if (this.priceToggleState) {
+                profitRow.classList.add('is-visible');
+                profitRow.style.setProperty('display', 'flex', 'important');
+            } else {
+                profitRow.classList.remove('is-visible');
+                profitRow.style.setProperty('display', 'none', 'important');
+            }
         }
     }
 

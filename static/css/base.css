@@ -4544,6 +4544,39 @@ textarea:focus ~ .form-help .form-help-text,
   font-size: 0.825rem !important;
 }
 
+/* Color overrides for summary values */
+.sidebar-card .summary-value.text-danger,
+.cart-summary-card .summary-value.text-danger,
+.cart-summary-sidebar .summary-value.text-danger,
+.cart-summary-card #discountedAmount,
+#discountedAmount {
+  color: var(--danger) !important;
+}
+
+.sidebar-card .summary-value.text-success,
+.cart-summary-card .summary-value.text-success,
+.cart-summary-sidebar .summary-value.text-success,
+.cart-summary-card #estimatedProfit,
+#estimatedProfit {
+  color: var(--success) !important;
+}
+
+/* Profit Row - Hidden until F9 toggled */
+.sidebar-card #profitRow,
+.cart-summary-card #profitRow,
+.cart-summary-sidebar #profitRow,
+#profitRow {
+  display: none !important;
+  cursor: pointer;
+}
+
+.sidebar-card #profitRow.is-visible,
+.cart-summary-card #profitRow.is-visible,
+.cart-summary-sidebar #profitRow.is-visible,
+#profitRow.is-visible {
+  display: flex !important;
+}
+
 /* Total row at the bottom with a divider */
 .sidebar-card .total-row,
 .cart-summary-card .total-row,
@@ -4561,6 +4594,40 @@ textarea:focus ~ .form-help .form-help-text,
   font-size: 0.95rem !important;
   font-weight: 700 !important;
   color: var(--primary) !important;
+}
+
+/* Cart Summary Final Amount (Prominent Big Font without label) */
+.cart-summary-card .final-amount-row,
+.cart-summary-sidebar .final-amount-row,
+.sidebar-card .final-amount-row {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  text-align: right !important;
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid var(--border-color) !important;
+  border-radius: 0 !important;
+  padding: 0.45rem 0 0.15rem 0 !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 0 !important;
+  box-shadow: none !important;
+}
+
+.cart-summary-card .final-amount-row .final-amount-value,
+.cart-summary-card .final-amount-row .summary-value,
+.cart-summary-sidebar .final-amount-row .final-amount-value,
+.cart-summary-sidebar .final-amount-row .summary-value,
+.sidebar-card .final-amount-row .final-amount-value,
+.sidebar-card .final-amount-row .summary-value {
+  font-family: var(--font-heading) !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: var(--primary) !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.2 !important;
+  text-align: right !important;
+  width: auto !important;
 }
 
 /* Multi-stat Grid inside Sidebar Card */

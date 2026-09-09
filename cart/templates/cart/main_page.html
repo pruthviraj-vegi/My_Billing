@@ -333,6 +333,58 @@
             font-size: 0.8125rem;
         }
     }
+
+    /* Profit row hidden until F9 toggled */
+    #profitRow,
+    .cart-summary-card #profitRow,
+    .cart-summary-sidebar #profitRow {
+        display: none !important;
+        cursor: pointer;
+    }
+    #profitRow.is-visible,
+    .cart-summary-card #profitRow.is-visible,
+    .cart-summary-sidebar #profitRow.is-visible {
+        display: flex !important;
+    }
+
+    /* Discount amount in red colour */
+    .cart-summary-card #discountedAmount,
+    .cart-summary-sidebar #discountedAmount,
+    #discountedAmount,
+    .discount-summary-row .summary-value {
+        color: var(--danger) !important;
+    }
+
+    /* Final amount below highlighted in big font without label */
+    .cart-summary-card .final-amount-row,
+    .cart-summary-sidebar .final-amount-row {
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        text-align: right !important;
+        background: transparent !important;
+        border: none !important;
+        border-top: 1px solid var(--border-color) !important;
+        border-radius: 0 !important;
+        padding: 0.45rem 0 0.15rem 0 !important;
+        margin-top: 0.35rem !important;
+        margin-bottom: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .cart-summary-card .final-amount-row .final-amount-value,
+    .cart-summary-card .final-amount-row .summary-value,
+    .cart-summary-sidebar .final-amount-row .final-amount-value,
+    .cart-summary-sidebar .final-amount-row .summary-value {
+        font-family: var(--font-heading) !important;
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: var(--primary) !important;
+        letter-spacing: -0.01em !important;
+        line-height: 1.2 !important;
+        text-align: right !important;
+        width: auto !important;
+    }
     </style>
 {% endblock extra_css %}
 {% block content %}
