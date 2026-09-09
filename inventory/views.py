@@ -1040,7 +1040,7 @@ def media_gallery_fetch(request):
         request,
         media_qs,
         "inventory/media/fetch.html",
-        per_page=24,
+        per_page=28,
     )
 
 
