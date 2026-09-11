@@ -202,10 +202,28 @@
   }
 
   function initPageActionsDropdowns() {
-    document.querySelectorAll('.page-actions').forEach(function (actions) {
+    document.querySelectorAll('.page-actions:not(.dash-actions-group)').forEach(function (actions) {
       if (actions.dataset.collapsed) return;
 
-      var items = actions.querySelectorAll(':scope > a.btn, :scope > button.btn, :scope > form');
+      var rawItems = actions.querySelectorAll(':scope > a.btn, :scope > button.btn, :scope > form');
+      var items = Array.from(rawItems).filter(function (item) {
+        // Exclude date filter forms and filter containers from being treated as action buttons
+        if (item.classList && (
+          item.classList.contains('date-filter-form') ||
+          item.classList.contains('date-filter-container') ||
+          item.classList.contains('multipleSelection')
+        )) {
+          return false;
+        }
+        if (item.querySelector && item.querySelector('.date-filter-container, .date-filter-select, select, .multipleSelection')) {
+          return false;
+        }
+        if (item.tagName === 'FORM' && !item.querySelector('button.btn, a.btn, input[type="submit"]')) {
+          return false;
+        }
+        return true;
+      });
+
       if (items.length <= 1) return;
 
       var mainItem = findMainActionButton(items);
@@ -224,17 +242,20 @@
       var dropdown = document.createElement('div');
       dropdown.className = 'page-actions-dropdown';
 
-      // Move all other items into the dropdown
+      // Move all other action items into the dropdown
       items.forEach(function (item) {
         if (item !== mainItem) {
           dropdown.appendChild(item);
         }
       });
 
-      // Keep mainItem visible outside as first element, followed by toggle and dropdown
-      actions.insertBefore(mainItem, actions.firstChild);
-      actions.appendChild(toggle);
-      actions.appendChild(dropdown);
+      // Keep mainItem visible outside, followed by toggle and dropdown
+      if (mainItem.nextSibling) {
+        actions.insertBefore(toggle, mainItem.nextSibling);
+      } else {
+        actions.appendChild(toggle);
+      }
+      actions.insertBefore(dropdown, toggle.nextSibling);
 
       toggle.addEventListener('click', function (e) {
         e.preventDefault();

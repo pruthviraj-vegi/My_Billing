@@ -20,21 +20,12 @@
         <div class="page-actions dash-actions-group">
             <!-- Date Filter Dropdown -->
             {% include "common/_date_filter.html" with hide_custom=True %}
-
             {% if perms.cart.view_cart %}
                 <a href="{% url 'cart:main_page' %}" class="btn btn-dash-action primary">
                     <i class="fas fa-plus"></i>
                     New Bill
                 </a>
             {% endif %}
-            <a href="{% url 'invoice:home' %}" class="btn btn-dash-action">
-                <i class="fas fa-list"></i>
-                All Invoices
-            </a>
-            <a href="{% url 'invoice:search_invoices_home' %}" class="btn btn-dash-action">
-                <i class="fas fa-search"></i>
-                Search
-            </a>
         </div>
     </div>
 

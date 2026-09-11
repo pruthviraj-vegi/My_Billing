@@ -721,18 +721,18 @@
 }
 
 .hero-currency-symbol {
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: var(--text-primary);
   opacity: 0.85;
 }
 
 .hero-number-lg {
-  font-size: 2.1rem;
-  font-weight: 800;
-  line-height: 1;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   font-family: var(--font-heading);
 }
 

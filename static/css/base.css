@@ -3431,6 +3431,15 @@ textarea:focus ~ .form-help .form-help-text,
   color: var(--primary);
 }
 
+.badge-neutral,
+.badge-count,
+.badge-light {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color);
+  padding: 0.2rem 0.5rem;
+}
+
 .status-warning {
   background-color: rgba(255, 193, 7, 0.1);
   color: var(--warning);

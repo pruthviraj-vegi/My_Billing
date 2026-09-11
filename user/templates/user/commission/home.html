@@ -6,16 +6,12 @@
 {% endblock title %}
 {% block content %}
   <!-- Page Header -->
-  <div class="page-header">
+  <div class="page-header page-header-sticky">
     <h2 class="page-title">{{ user.full_name }} - Commission Report</h2>
-    <div class="page-actions">
+    <div class="page-actions dash-actions-group">
       <!-- Date Filter Dropdown -->
-      {% include "common/_date_filter.html" %}
-      <a href="{% url 'user:detail' user.id %}" class="btn btn-secondary ms-2">
-        <i class="fas fa-arrow-left"></i>
-        Back
-      </a>
-      {% if perms.user.change_user %}
+      {% include "common/_date_filter.html" with hide_today=True hide_yesterday=True hide_this_quarter=True hide_last_quarter=True  %}
+      {% if perms.user.change_customuser or perms.user.change_user %}
         <a href="{% url 'user:edit' user.id %}" class="btn btn-primary">
           <i class="fas fa-edit"></i>
           Edit User
