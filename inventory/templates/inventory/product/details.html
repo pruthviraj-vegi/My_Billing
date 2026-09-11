@@ -4,6 +4,52 @@
 {% block title %}
     {{ product.display_name }} - Product Details
 {% endblock title %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
+    <style>
+        /* ── Product Details Dashboard Hero Grid ── */
+        .product-dash-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-dash-grid .dash-hero-card {
+            margin-bottom: 0;
+            padding: 1rem 1.15rem;
+        }
+
+        .product-dash-grid .hero-card-header {
+            margin-bottom: 0.5rem;
+        }
+
+        .product-dash-grid .hero-val-display {
+            display: flex;
+            align-items: baseline;
+            gap: 0.4rem;
+            margin-top: 0.15rem;
+        }
+
+        .product-dash-grid .hero-number-lg {
+            font-size: 1.45rem;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+
+        .product-dash-grid .hero-submetrics {
+            margin-top: 0.75rem;
+            padding-top: 0.65rem;
+        }
+
+        @media (max-width: 992px) {
+            .product-dash-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+{% endblock extra_css %}
 {% block content %}
     <!-- Page Header -->
     <div class="page-header">
@@ -80,57 +126,95 @@
                     </div>
                 </div>
             </div>
-            <!-- Summary Cards -->
-            <div class="sidebar-card" id="inventorySummaryCard">
-                <div class="sidebar-card-header">
-                    <h3 class="sidebar-card-title">
-                        <i class="fas fa-cubes"></i> Inventory Summary
-                    </h3>
-                </div>
-                <div class="sidebar-card-body">
-                    <div class="summary-stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-number">{{ total_variants }}</span>
-                            <span class="stat-label">Variants</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">{{ total_quantity|floatformat:0 }}</span>
-                            <span class="stat-label">Quantity</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">{{ total_inventory_value|floatformat:0 }}</span>
-                            <span class="stat-label">Value</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="sidebar-card" id="stockSummaryCard">
-                <div class="sidebar-card-header">
-                    <h3 class="sidebar-card-title">
-                        <i class="fas fa-exclamation-triangle"></i> Stock Alerts
-                    </h3>
-                </div>
-                <div class="sidebar-card-body">
-                    <div class="summary-stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-number">{{ out_of_stock }}</span>
-                            <span class="stat-label">Out of Stock</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">{{ low_stock }}</span>
-                            <span class="stat-label">Low Stock</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">{{ total_damaged|floatformat:0 }}</span>
-                            <span class="stat-label">Damaged</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
-        <!-- Right Column - Tables -->
+        <!-- Right Column - Dashboard Overview & Variants Table -->
         <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
+            <!-- Product Inventory and Valuation Dashboard Hero Tier -->
+            <div class="dash-hero-grid product-dash-grid">
+                <!-- 1. Total Stock & Variants Card -->
+                <div class="dash-hero-card" id="stockSection">
+                    <div>
+                        <div class="hero-card-header">
+                            <span class="hero-card-title">
+                                <i class="fa-solid fa-boxes-stacked"></i>
+                                Inventory &amp; Variants
+                            </span>
+                            <span class="hero-tag {% if out_of_stock > 0 %}text-danger{% elif low_stock > 0 %}text-warning{% else %}text-success{% endif %}">
+                                {{ total_variants }} Variant{{ total_variants|pluralize }}
+                            </span>
+                        </div>
+                        <div class="hero-val-display">
+                            <span class="hero-number-lg {% if total_quantity == 0 %}text-danger{% elif low_stock > 0 %}text-warning{% endif %}">
+                                {{ total_quantity|floatformat:0 }}
+                            </span>
+                            <span class="stat-label-small ms-1">units in stock</span>
+                        </div>
+                        <div class="stat-label-small mt-1">
+                            Available across all active sizes and colors
+                        </div>
+                    </div>
+
+                    <div class="hero-submetrics">
+                        <div class="hero-submetric-item">
+                            <span class="hero-submetric-label">Total Variants</span>
+                            <div class="hero-submetric-val">{{ total_variants }}</div>
+                        </div>
+                        <div class="hero-submetric-item">
+                            <span class="hero-submetric-label">Low Stock</span>
+                            <div class="hero-submetric-val {% if low_stock > 0 %}text-warning{% endif %}">
+                                {{ low_stock }}
+                            </div>
+                        </div>
+                        <div class="hero-submetric-item">
+                            <span class="hero-submetric-label">Out of Stock</span>
+                            <div class="hero-submetric-val {% if out_of_stock > 0 %}text-danger{% endif %}">
+                                {{ out_of_stock }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Valuation & Stock Alerts Card -->
+                <div class="dash-hero-card" id="valueSection">
+                    <div>
+                        <div class="hero-card-header">
+                            <span class="hero-card-title">
+                                <i class="fa-solid fa-chart-line"></i>
+                                Valuation &amp; Health
+                            </span>
+                            <span class="hero-tag {% if total_damaged > 0 %}text-danger{% else %}text-success{% endif %}">
+                                {% if total_damaged > 0 %}{{ total_damaged|floatformat:0 }} Damaged{% else %}0 Defect{% endif %}
+                            </span>
+                        </div>
+                        <div class="hero-val-display">
+                            <span class="hero-number-lg">{{ total_inventory_value|currency }}</span>
+                            <span class="stat-label-small ms-1">estimated value</span>
+                        </div>
+                        <div class="stat-label-small mt-1">
+                            Based on total available inventory valuation
+                        </div>
+                    </div>
+
+                    <div class="hero-submetrics">
+                        <div class="hero-submetric-item">
+                            <span class="hero-submetric-label">Total Quantity</span>
+                            <div class="hero-submetric-val">{{ total_quantity|floatformat:0 }}</div>
+                        </div>
+                        <div class="hero-submetric-item">
+                            <span class="hero-submetric-label">Damaged Units</span>
+                            <div class="hero-submetric-val {% if total_damaged > 0 %}text-danger{% endif %}">
+                                {{ total_damaged|floatformat:0 }}
+                            </div>
+                        </div>
+                        <div class="hero-submetric-item">
+                            <span class="hero-submetric-label">Total Valuation</span>
+                            <div class="hero-submetric-val">{{ total_inventory_value|currency }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Product Variants Table -->
             <div class="table-section" id="variantsSection">
                 <div class="table-header">
@@ -275,19 +359,21 @@
 {% block extra_js %}
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Summary card click handlers
-      const inventorySummaryCard = document.getElementById('inventorySummaryCard')
-      const stockSummaryCard = document.getElementById('stockSummaryCard')
+      const stockSection = document.getElementById('stockSection')
+      const valueSection = document.getElementById('valueSection')
       const variantsSection = document.getElementById('variantsSection')
-      const activitySection = document.getElementById('activitySection')
-    
-      inventorySummaryCard.addEventListener('click', function () {
-        variantsSection.scrollIntoView({ behavior: 'smooth' })
-      })
-    
-      stockSummaryCard.addEventListener('click', function () {
-        variantsSection.scrollIntoView({ behavior: 'smooth' })
-      })
+
+      if (stockSection && variantsSection) {
+        stockSection.addEventListener('click', function () {
+          variantsSection.scrollIntoView({ behavior: 'smooth' })
+        })
+      }
+
+      if (valueSection && variantsSection) {
+        valueSection.addEventListener('click', function () {
+          variantsSection.scrollIntoView({ behavior: 'smooth' })
+        })
+      }
     })
     </script>
 {% endblock extra_js %}

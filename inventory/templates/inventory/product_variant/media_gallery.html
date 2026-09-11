@@ -102,27 +102,6 @@
                <span>Default</span>
             </div>
          </div>
-
-         <!-- Interactive Empty Dropzone -->
-         <div class="variant-media-empty-dropzone" id="mediaEmptyDropzone">
-            <div class="empty-dropzone-icon">
-               <i class="fas fa-cloud-upload-alt"></i>
-            </div>
-            <h4>Add Garment Photos</h4>
-            <p>
-               Drag &amp; drop photos or videos here, or
-               {% if perms.inventory.change_productvariant %}
-                  <label for="mediaFileInput" class="browse-link">browse files</label>
-               {% else %}
-                  <span>no media uploaded</span>
-               {% endif %}
-            </p>
-            <div class="empty-dropzone-hints">
-               <span class="hint-tag">JPG, PNG, WEBP</span>
-               <span class="hint-tag">MP4, WEBM</span>
-               <span class="hint-tag">Auto-optimised WebP</span>
-            </div>
-         </div>
       {% endfor %}
    </div>
 </div>
@@ -194,15 +173,13 @@
 
    // ── Empty State Management ──
    function removeEmptyState() {
-      const emptyEl = document.getElementById('mediaEmptyDropzone');
-      if (emptyEl) emptyEl.remove();
       const placeholderEl = document.getElementById('mediaDefaultPlaceholder');
       if (placeholderEl) placeholderEl.remove();
    }
 
    function checkEmptyState() {
       const remaining = grid.querySelectorAll('.variant-media-card:not(.uploading):not(.default-placeholder-card)');
-      if (remaining.length === 0 && !grid.querySelector('#mediaEmptyDropzone')) {
+      if (remaining.length === 0 && !grid.querySelector('#mediaDefaultPlaceholder')) {
          grid.innerHTML = `
             <div class="variant-media-card default-placeholder-card" id="mediaDefaultPlaceholder">
                <span class="media-badge-placeholder">
@@ -212,27 +189,14 @@
                   <i class="fas fa-shirt fallback-icon"></i>
                   <span class="fallback-text">No Image Uploaded</span>
                </div>
+               {% if perms.inventory.change_productvariant %}
                <label for="mediaFileInput" class="media-card-upload-overlay" title="Upload Image for this Variant">
                   <i class="fas fa-cloud-upload-alt"></i>
                   <span>Upload Photo</span>
                </label>
+               {% endif %}
                <div class="media-card-footer">
                   <span>Default</span>
-               </div>
-            </div>
-            <div class="variant-media-empty-dropzone" id="mediaEmptyDropzone">
-               <div class="empty-dropzone-icon">
-                  <i class="fas fa-cloud-upload-alt"></i>
-               </div>
-               <h4>Add Garment Photos</h4>
-               <p>
-                  Drag &amp; drop photos or videos here, or
-                  <label for="mediaFileInput" class="browse-link">browse files</label>
-               </p>
-               <div class="empty-dropzone-hints">
-                  <span class="hint-tag">JPG, PNG, WEBP</span>
-                  <span class="hint-tag">MP4, WEBM</span>
-                  <span class="hint-tag">Auto-optimised WebP</span>
                </div>
             </div>
          `;
