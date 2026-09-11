@@ -114,6 +114,17 @@ urlpatterns = [
         views.supplier_invoice_details_fetch,
         name="supplier_invoice_details_fetch",
     ),
+    # Supplier Inventory Analysis
+    path(
+        "supplier/<int:supplier_id>/analysis/",
+        views.supplier_inventory_analysis,
+        name="supplier_inventory_analysis",
+    ),
+    path(
+        "supplier/<int:supplier_id>/analysis/fetch/",
+        views.supplier_inventory_analysis_fetch,
+        name="supplier_inventory_analysis_fetch",
+    ),
     # Media Gallery
     path("media-gallery/", views.media_gallery, name="media_gallery"),
     path(

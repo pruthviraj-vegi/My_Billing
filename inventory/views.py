@@ -17,6 +17,7 @@ from django.db.models import (
     ExpressionWrapper,
     F,
     FloatField,
+    Max,
     Q,
     Sum,
     Value,
@@ -697,8 +698,22 @@ def supplier_invoice(request):
     suppliers = (
         Supplier.objects.filter(is_deleted=False).order_by("name").values("id", "name")
     )
+    invoices_count = (
+        SupplierInvoice.objects.filter(is_deleted=False, inventory_logs__isnull=False)
+        .distinct()
+        .count()
+    )
+    active_suppliers_count = (
+        Supplier.objects.filter(
+            is_deleted=False, invoices__inventory_logs__isnull=False
+        )
+        .distinct()
+        .count()
+    )
     context = {
         "suppliers": suppliers,
+        "invoices_count": invoices_count,
+        "active_suppliers_count": active_suppliers_count,
     }
 
     return render(
@@ -733,11 +748,12 @@ def _supplier_invoice_queryset(request):
                         inventory_logs__transaction_type__in=[
                             "STOCK_IN",
                             "INITIAL",
+                            "ADJUSTMENT_IN",
                         ],
                         then=F("inventory_logs__quantity_change"),
                     ),
                     default=Decimal("0"),
-                    output_field=models.DecimalField(),
+                    output_field=models.DecimalField(max_digits=16, decimal_places=2),
                 )
             ),
             Decimal("0"),
@@ -753,12 +769,27 @@ def _supplier_invoice_queryset(request):
                         inventory_logs__transaction_type__in=[
                             "RETURN",
                             "CANCEL",
-                            "DAMAGE",
                         ],
                         then=-Abs(F("inventory_logs__quantity_change")),
                     ),
                     default=Decimal("0"),
-                    output_field=models.DecimalField(),
+                    output_field=models.DecimalField(max_digits=16, decimal_places=2),
+                )
+            ),
+            Decimal("0"),
+        ),
+        damage_quantity=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        inventory_logs__transaction_type__in=[
+                            "DAMAGE",
+                            "ADJUSTMENT_OUT",
+                        ],
+                        then=Abs(F("inventory_logs__quantity_change")),
+                    ),
+                    default=Decimal("0"),
+                    output_field=models.DecimalField(max_digits=16, decimal_places=2),
                 )
             ),
             Decimal("0"),
@@ -770,6 +801,7 @@ def _supplier_invoice_queryset(request):
                         inventory_logs__transaction_type__in=[
                             "STOCK_IN",
                             "INITIAL",
+                            "ADJUSTMENT_IN",
                         ],
                         then=ExpressionWrapper(
                             F("inventory_logs__quantity_change")
@@ -792,7 +824,7 @@ def _supplier_invoice_queryset(request):
     )
     supplier_invoices = supplier_invoices.annotate(
         remaining_quantity=ExpressionWrapper(
-            F("stock_in_quantity") - F("sales_quantity"),
+            F("stock_in_quantity") - F("sales_quantity") - F("damage_quantity"),
             output_field=DecimalField(max_digits=16, decimal_places=2),
         ),
     )
@@ -802,8 +834,7 @@ def _supplier_invoice_queryset(request):
             When(
                 stock_in_quantity__gt=0,
                 then=ExpressionWrapper(
-                    Value(100.0)
-                    - (F("remaining_quantity") * Value(100.0) / F("stock_in_quantity")),
+                    F("sales_quantity") * Value(100.0) / F("stock_in_quantity"),
                     output_field=FloatField(),
                 ),
             ),
@@ -828,9 +859,226 @@ def _supplier_invoice_queryset(request):
     return supplier_invoices.order_by(*final_sorts)
 
 
+def _supplier_grouped_queryset(request):
+    """Return a queryset of suppliers annotated with aggregate inventory and sales stats.
+
+    Supports search, status filter, and multi-column sorting via query params.
+    """
+    search_query = request.GET.get("search", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+
+    quantity_field = models.DecimalField(max_digits=16, decimal_places=2)
+
+    suppliers = Supplier.objects.filter(is_deleted=False)
+
+    if search_query:
+        suppliers = suppliers.filter(
+            Q(name__icontains=search_query)
+            | Q(phone__icontains=search_query)
+            | Q(contact_person__icontains=search_query)
+            | Q(gstin__icontains=search_query)
+        )
+
+    suppliers = (
+        suppliers.annotate(
+            invoices_count=Count(
+                "invoices",
+                filter=Q(
+                    invoices__is_deleted=False,
+                    invoices__inventory_logs__isnull=False,
+                ),
+                distinct=True,
+            ),
+            total_invoiced=Coalesce(
+                Sum("invoices__total_amount", filter=Q(invoices__is_deleted=False)),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            stock_in_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            invoices__inventory_logs__transaction_type__in=[
+                                "STOCK_IN",
+                                "INITIAL",
+                                "ADJUSTMENT_IN",
+                            ],
+                            then=F("invoices__inventory_logs__quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            sales_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            invoices__inventory_logs__transaction_type="SALE",
+                            then=-F("invoices__inventory_logs__quantity_change"),
+                        ),
+                        When(
+                            invoices__inventory_logs__transaction_type__in=[
+                                "RETURN",
+                                "CANCEL",
+                            ],
+                            then=-F("invoices__inventory_logs__quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            damage_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            invoices__inventory_logs__transaction_type__in=[
+                                "DAMAGE",
+                                "ADJUSTMENT_OUT",
+                            ],
+                            then=-F("invoices__inventory_logs__quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            sales_revenue=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            invoices__inventory_logs__transaction_type="SALE",
+                            then=F("invoices__inventory_logs__total_value"),
+                        ),
+                        When(
+                            invoices__inventory_logs__transaction_type__in=[
+                                "RETURN",
+                                "CANCEL",
+                            ],
+                            then=-F("invoices__inventory_logs__total_value"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            cogs=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            invoices__inventory_logs__transaction_type="SALE",
+                            then=ExpressionWrapper(
+                                -F("invoices__inventory_logs__quantity_change")
+                                * Coalesce(
+                                    F("invoices__inventory_logs__purchase_price"),
+                                    Decimal("0"),
+                                ),
+                                output_field=quantity_field,
+                            ),
+                        ),
+                        When(
+                            invoices__inventory_logs__transaction_type__in=[
+                                "RETURN",
+                                "CANCEL",
+                            ],
+                            then=ExpressionWrapper(
+                                -F("invoices__inventory_logs__quantity_change")
+                                * Coalesce(
+                                    F("invoices__inventory_logs__purchase_price"),
+                                    Decimal("0"),
+                                ),
+                                output_field=quantity_field,
+                            ),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+        )
+        .annotate(
+            remaining_quantity=ExpressionWrapper(
+                F("stock_in_quantity") - F("sales_quantity") - F("damage_quantity"),
+                output_field=quantity_field,
+            ),
+            profit=ExpressionWrapper(
+                F("sales_revenue") - F("cogs"),
+                output_field=quantity_field,
+            ),
+            sold_percentage=Case(
+                When(
+                    stock_in_quantity__gt=0,
+                    then=ExpressionWrapper(
+                        F("sales_quantity") * Value(100.0) / F("stock_in_quantity"),
+                        output_field=FloatField(),
+                    ),
+                ),
+                default=Value(0.0),
+                output_field=FloatField(),
+            ),
+        )
+        .filter(stock_in_quantity__gt=0)
+    )
+
+    if status_filter == "sold_out":
+        suppliers = suppliers.filter(remaining_quantity__lte=0)
+    elif status_filter == "in_stock":
+        suppliers = suppliers.filter(remaining_quantity__gt=0)
+    elif status_filter == "low_stock":
+        suppliers = suppliers.filter(
+            remaining_quantity__gt=0, remaining_quantity__lte=10
+        )
+    elif status_filter == "selling_well":
+        suppliers = suppliers.filter(
+            sold_percentage__gte=50.0, remaining_quantity__gt=0
+        )
+    elif status_filter == "slow_moving":
+        suppliers = suppliers.filter(
+            sold_percentage__lt=50.0, remaining_quantity__gt=0
+        )
+    elif status_filter == "damaged":
+        suppliers = suppliers.filter(damage_quantity__gt=0)
+
+    ordering_map = {
+        "name": "name",
+        "invoices_count": "invoices_count",
+        "total_invoiced": "total_invoiced",
+        "stock_in_quantity": "stock_in_quantity",
+        "sales_quantity": "sales_quantity",
+        "damage_quantity": "damage_quantity",
+        "remaining_quantity": "remaining_quantity",
+        "sold_percentage": "sold_percentage",
+        "profit": "profit",
+    }
+
+    final_sorts = table_sorting(request, ordering_map, "-stock_in_quantity")
+    return suppliers.order_by(*final_sorts)
+
+
 @required_permission("inventory.view_supplier_invoice")
 def supplier_invoice_fetch(request):
     """AJAX endpoint powering supplier invoice tracking table."""
+    view_mode = request.GET.get("view_mode", "invoices").strip()
+
+    if view_mode == "suppliers":
+        suppliers = _supplier_grouped_queryset(request)
+        return render_paginated_response(
+            request,
+            suppliers,
+            "inventory/supplier_invoice_supplier_fetch.html",
+        )
+
     invoices = _supplier_invoice_queryset(request)
     return render_paginated_response(
         request,
@@ -840,58 +1088,182 @@ def supplier_invoice_fetch(request):
 
 
 def _supplier_invoice_totals(invoice_id):
-    """Aggregate totals for a supplier invoice (summary cards).
+    """Aggregate totals for a supplier invoice (summary and KPI cards).
 
-    Returns a dict with total_sales, total_stock_in, total_remaining.
+    Returns a dict with:
+      - total_stock_in: units received
+      - total_stock_in_value: total purchase value of units received
+      - total_sales: net units sold (sales - returns - cancels)
+      - total_sales_revenue: net revenue from sold items
+      - total_cogs: cost of goods sold
+      - total_profit: gross profit (sales revenue - cogs)
+      - profit_margin: gross profit margin %
+      - total_damage: units damaged/lost
+      - total_damage_value: cost of damaged units
+      - total_remaining: units remaining (stock in - sales - damage)
+      - sold_percentage: overall sell-through % (total_sales / total_stock_in * 100)
     """
-    quantity_field = models.DecimalField(max_digits=16, decimal_places=3)
+    quantity_field = models.DecimalField(max_digits=16, decimal_places=2)
 
     totals = InventoryLog.objects.filter(supplier_invoice_id=invoice_id).aggregate(
-        total_sales=Coalesce(
-            Sum(
-                Case(
-                    When(
-                        transaction_type__in=["SALE", "RETURN", "CANCEL", "DAMAGE"],
-                        then=F("quantity_change"),
-                    ),
-                    default=Decimal("0"),
-                    output_field=quantity_field,
-                )
-            ),
-            Decimal("0"),
-        ),
         total_stock_in=Coalesce(
             Sum(
                 Case(
                     When(
-                        transaction_type__in=["STOCK_IN", "INITIAL"],
+                        transaction_type__in=["STOCK_IN", "INITIAL", "ADJUSTMENT_IN"],
                         then=F("quantity_change"),
                     ),
-                    default=Decimal("0"),
+                    default=Value(Decimal("0")),
                     output_field=quantity_field,
                 )
             ),
-            Decimal("0"),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_stock_in_value=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["STOCK_IN", "INITIAL", "ADJUSTMENT_IN"],
+                        then=F("total_value"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        gross_sales=Coalesce(
+            Sum(
+                Case(
+                    When(transaction_type="SALE", then=-F("quantity_change")),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        returns_cancels=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["RETURN", "CANCEL"],
+                        then=F("quantity_change"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_damage=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["DAMAGE", "ADJUSTMENT_OUT"],
+                        then=-F("quantity_change"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_damage_value=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["DAMAGE", "ADJUSTMENT_OUT"],
+                        then=F("total_value"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_sales_revenue=Coalesce(
+            Sum(
+                Case(
+                    When(transaction_type="SALE", then=F("total_value")),
+                    When(
+                        transaction_type__in=["RETURN", "CANCEL"],
+                        then=-F("total_value"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_cogs=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type="SALE",
+                        then=ExpressionWrapper(
+                            -F("quantity_change")
+                            * Coalesce(F("purchase_price"), Decimal("0")),
+                            output_field=quantity_field,
+                        ),
+                    ),
+                    When(
+                        transaction_type__in=["RETURN", "CANCEL"],
+                        then=ExpressionWrapper(
+                            -F("quantity_change")
+                            * Coalesce(F("purchase_price"), Decimal("0")),
+                            output_field=quantity_field,
+                        ),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
         ),
     )
 
+    stock_in = totals["total_stock_in"]
+    net_sales = totals["gross_sales"] - totals["returns_cancels"]
+    damage = totals["total_damage"]
+    remaining = max(Decimal("0"), stock_in - net_sales - damage)
+    revenue = totals["total_sales_revenue"]
+    cogs = totals["total_cogs"]
+    profit = revenue - cogs
+    profit_margin = (profit / revenue * 100) if revenue > 0 else Decimal("0")
+    sold_pct = (net_sales / stock_in * 100) if stock_in > 0 else Decimal("0")
+
     return {
-        "total_sales": abs(totals["total_sales"]),
-        "total_stock_in": totals["total_stock_in"],
-        "total_remaining": totals["total_stock_in"] - abs(totals["total_sales"]),
+        "total_stock_in": stock_in,
+        "total_stock_in_value": totals["total_stock_in_value"],
+        "total_sales": net_sales,
+        "total_sales_revenue": revenue,
+        "total_cogs": cogs,
+        "total_profit": profit,
+        "profit_margin": profit_margin,
+        "total_damage": damage,
+        "total_damage_value": totals["total_damage_value"],
+        "total_remaining": remaining,
+        "sold_percentage": sold_pct,
     }
 
 
 def _supplier_invoice_details_products_qs(request, invoice_id):
     """Return a lazy queryset of per-product breakdown for a supplier invoice.
 
-    Supports search, status filter, and sorting via query params.
-    Sales/damage quantities are abs-converted at DB level for display.
+    Supports search, status filter, and multi-column sorting via query params.
     """
     search_query = request.GET.get("search", "").strip()
     status_filter = request.GET.get("status", "").strip()
 
-    quantity_field = models.DecimalField(max_digits=16, decimal_places=3)
+    quantity_field = models.DecimalField(max_digits=16, decimal_places=2)
 
     products_qs = (
         InventoryLog.objects.filter(supplier_invoice_id=invoice_id)
@@ -904,49 +1276,121 @@ def _supplier_invoice_details_products_qs(request, invoice_id):
             "variant__barcode",
             "variant__id",
         )
-        .with_stock_summary()
         .annotate(
-            purchase_price=Coalesce(
+            stock_in_quantity=Coalesce(
                 Sum(
+                    Case(
+                        When(
+                            transaction_type__in=[
+                                "STOCK_IN",
+                                "INITIAL",
+                                "ADJUSTMENT_IN",
+                            ],
+                            then=F("quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            sales_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(transaction_type="SALE", then=-F("quantity_change")),
+                        When(
+                            transaction_type__in=["RETURN", "CANCEL"],
+                            then=-F("quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            damage_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            transaction_type__in=["DAMAGE", "ADJUSTMENT_OUT"],
+                            then=-F("quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            purchase_price=Coalesce(
+                Max(
                     Case(
                         When(
                             transaction_type__in=["STOCK_IN", "INITIAL"],
                             then=F("purchase_price"),
                         ),
-                        default=Value(0),
+                        default=Value(Decimal("0")),
                         output_field=quantity_field,
                     )
                 ),
-                Value(0),
+                Value(Decimal("0")),
                 output_field=quantity_field,
             ),
             selling_price=Coalesce(
-                Sum(
+                Max(
                     Case(
                         When(
                             transaction_type__in=["STOCK_IN", "INITIAL"],
                             then=F("mrp"),
                         ),
-                        default=Value(0),
+                        default=Value(Decimal("0")),
                         output_field=quantity_field,
                     )
                 ),
-                Value(0),
+                Value(Decimal("0")),
                 output_field=quantity_field,
             ),
+            sales_revenue=Coalesce(
+                Sum(
+                    Case(
+                        When(transaction_type="SALE", then=F("total_value")),
+                        When(
+                            transaction_type__in=["RETURN", "CANCEL"],
+                            then=-F("total_value"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+        )
+        .annotate(
             remaining_quantity=ExpressionWrapper(
-                Coalesce(F("stock_in_quantity"), Value(0))
-                + Coalesce(F("sales_quantity"), Value(0))
-                + Coalesce(F("damage_quantity"), Value(0)),
+                F("stock_in_quantity") - F("sales_quantity") - F("damage_quantity"),
                 output_field=quantity_field,
             ),
-            # Abs-format sales & damage at DB level (they are negative
-            # from with_stock_summary)
-            abs_sales_quantity=Abs(
-                Coalesce(F("sales_quantity"), Value(0), output_field=quantity_field)
+            cogs=ExpressionWrapper(
+                F("sales_quantity") * F("purchase_price"),
+                output_field=quantity_field,
             ),
-            abs_damage_quantity=Abs(
-                Coalesce(F("damage_quantity"), Value(0), output_field=quantity_field)
+            profit=ExpressionWrapper(
+                F("sales_revenue") - (F("sales_quantity") * F("purchase_price")),
+                output_field=quantity_field,
+            ),
+            sold_percentage=Case(
+                When(
+                    stock_in_quantity__gt=0,
+                    then=ExpressionWrapper(
+                        F("sales_quantity") * Value(100.0) / F("stock_in_quantity"),
+                        output_field=FloatField(),
+                    ),
+                ),
+                default=Value(0.0),
+                output_field=FloatField(),
             ),
         )
     )
@@ -956,6 +1400,8 @@ def _supplier_invoice_details_products_qs(request, invoice_id):
             Q(variant__product__brand__icontains=search_query)
             | Q(variant__product__name__icontains=search_query)
             | Q(variant__barcode__icontains=search_query)
+            | Q(variant__color__name__icontains=search_query)
+            | Q(variant__size__name__icontains=search_query)
         )
 
     # Apply status filter at DB level
@@ -967,12 +1413,28 @@ def _supplier_invoice_details_products_qs(request, invoice_id):
         products_qs = products_qs.filter(
             remaining_quantity__gt=0, remaining_quantity__lte=5
         )
+    elif status_filter == "selling_well":
+        products_qs = products_qs.filter(
+            sold_percentage__gte=50.0, remaining_quantity__gt=0
+        )
+    elif status_filter == "slow_moving":
+        products_qs = products_qs.filter(
+            sold_percentage__lt=50.0, remaining_quantity__gt=0
+        )
+    elif status_filter == "damaged":
+        products_qs = products_qs.filter(damage_quantity__gt=0)
 
     ordering_map = {
         "brand": "variant__product__brand",
+        "barcode": "variant__barcode",
         "stock_in_quantity": "stock_in_quantity",
-        "sales_quantity": "abs_sales_quantity",
+        "sales_quantity": "sales_quantity",
+        "damage_quantity": "damage_quantity",
         "remaining_quantity": "remaining_quantity",
+        "purchase_price": "purchase_price",
+        "selling_price": "selling_price",
+        "sold_percentage": "sold_percentage",
+        "profit": "profit",
     }
 
     final_sorts = table_sorting(request, ordering_map, "-stock_in_quantity")
@@ -990,11 +1452,15 @@ def supplier_invoice_details(request, invoice_id):
     totals = _supplier_invoice_totals(invoice_id)
 
     context = {
+        "invoice": invoice,
         "invoice_number": invoice.invoice_number,
         "invoice_info": {
             "supplier_invoice__supplier__name": invoice.supplier.name,
             "supplier_invoice__invoice_date": invoice.invoice_date,
             "supplier_invoice__invoice_number": invoice.invoice_number,
+            "supplier_invoice__total_amount": invoice.total_amount,
+            "supplier_invoice__status": invoice.get_status_display(),
+            "supplier_invoice__type": invoice.get_invoice_type_display(),
         },
         "title": f"Invoice - {invoice.invoice_number}",
         "invoice_id": invoice_id,
@@ -1015,6 +1481,498 @@ def supplier_invoice_details_fetch(request, invoice_id):
         products_qs,
         "inventory/supplier_invoice_details_fetch.html",
         per_page=12,
+    )
+
+
+def _supplier_inventory_totals(supplier_id):
+    """Aggregate totals for all inventory logs associated with a supplier.
+
+    Args:
+        supplier_id (int): Primary key of the supplier.
+
+    Returns:
+        dict: Summary statistics including stock received, sales, damages,
+            remaining inventory, sales revenue, COGS, profit, and margins.
+    """
+    quantity_field = models.DecimalField(max_digits=16, decimal_places=2)
+
+    supplier_invoices = SupplierInvoice.objects.filter(
+        supplier_id=supplier_id, is_deleted=False
+    )
+    all_invoices_count = supplier_invoices.count()
+    total_invoice_amount = supplier_invoices.aggregate(
+        total=Coalesce(
+            Sum("total_amount"), Value(Decimal("0")), output_field=quantity_field
+        )
+    )["total"]
+
+    totals = InventoryLog.objects.filter(
+        supplier_invoice__supplier_id=supplier_id
+    ).aggregate(
+        total_stock_in=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["STOCK_IN", "INITIAL", "ADJUSTMENT_IN"],
+                        then=F("quantity_change"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_stock_in_value=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["STOCK_IN", "INITIAL", "ADJUSTMENT_IN"],
+                        then=F("total_value"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        gross_sales=Coalesce(
+            Sum(
+                Case(
+                    When(transaction_type="SALE", then=-F("quantity_change")),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        returns_cancels=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["RETURN", "CANCEL"],
+                        then=F("quantity_change"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_damage=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["DAMAGE", "ADJUSTMENT_OUT"],
+                        then=-F("quantity_change"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_damage_value=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type__in=["DAMAGE", "ADJUSTMENT_OUT"],
+                        then=F("total_value"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_sales_revenue=Coalesce(
+            Sum(
+                Case(
+                    When(transaction_type="SALE", then=F("total_value")),
+                    When(
+                        transaction_type__in=["RETURN", "CANCEL"],
+                        then=-F("total_value"),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        total_cogs=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        transaction_type="SALE",
+                        then=ExpressionWrapper(
+                            -F("quantity_change")
+                            * Coalesce(F("purchase_price"), Decimal("0")),
+                            output_field=quantity_field,
+                        ),
+                    ),
+                    When(
+                        transaction_type__in=["RETURN", "CANCEL"],
+                        then=ExpressionWrapper(
+                            -F("quantity_change")
+                            * Coalesce(F("purchase_price"), Decimal("0")),
+                            output_field=quantity_field,
+                        ),
+                    ),
+                    default=Value(Decimal("0")),
+                    output_field=quantity_field,
+                )
+            ),
+            Value(Decimal("0")),
+            output_field=quantity_field,
+        ),
+        active_invoices_count=Count("supplier_invoice", distinct=True),
+        products_count=Count("variant", distinct=True),
+    )
+
+    stock_in = totals["total_stock_in"]
+    net_sales = totals["gross_sales"] - totals["returns_cancels"]
+    damage = totals["total_damage"]
+    remaining = max(Decimal("0"), stock_in - net_sales - damage)
+    revenue = totals["total_sales_revenue"]
+    cogs = totals["total_cogs"]
+    profit = revenue - cogs
+    profit_margin = (profit / revenue * 100) if revenue > 0 else Decimal("0")
+    sold_pct = (net_sales / stock_in * 100) if stock_in > 0 else Decimal("0")
+
+    return {
+        "all_invoices_count": all_invoices_count,
+        "active_invoices_count": totals["active_invoices_count"],
+        "products_count": totals["products_count"],
+        "total_invoice_amount": total_invoice_amount,
+        "total_stock_in": stock_in,
+        "total_stock_in_value": totals["total_stock_in_value"],
+        "total_sales": net_sales,
+        "total_sales_revenue": revenue,
+        "total_cogs": cogs,
+        "total_profit": profit,
+        "profit_margin": profit_margin,
+        "total_damage": damage,
+        "total_damage_value": totals["total_damage_value"],
+        "total_remaining": remaining,
+        "sold_percentage": sold_pct,
+    }
+
+
+def _supplier_inventory_invoices_list(supplier_id):
+    """Return annotated invoices for a specific supplier with stock and sales metrics.
+
+    Args:
+        supplier_id (int): Primary key of the supplier.
+
+    Returns:
+        QuerySet: SupplierInvoice objects with stock_in_quantity, sales_quantity,
+            damage_quantity, remaining_quantity, and sold_percentage.
+    """
+    quantity_field = models.DecimalField(max_digits=16, decimal_places=2)
+
+    invoices = (
+        SupplierInvoice.objects.filter(supplier_id=supplier_id, is_deleted=False)
+        .annotate(
+            stock_in_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            inventory_logs__transaction_type__in=[
+                                "STOCK_IN",
+                                "INITIAL",
+                                "ADJUSTMENT_IN",
+                            ],
+                            then=F("inventory_logs__quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            sales_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            inventory_logs__transaction_type="SALE",
+                            then=Abs(F("inventory_logs__quantity_change")),
+                        ),
+                        When(
+                            inventory_logs__transaction_type__in=["RETURN", "CANCEL"],
+                            then=-Abs(F("inventory_logs__quantity_change")),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            damage_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            inventory_logs__transaction_type__in=[
+                                "DAMAGE",
+                                "ADJUSTMENT_OUT",
+                            ],
+                            then=Abs(F("inventory_logs__quantity_change")),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            products_count=Count(
+                "inventory_logs__variant",
+                filter=Q(inventory_logs__transaction_type__in=["STOCK_IN", "INITIAL"]),
+                distinct=True,
+            ),
+        )
+        .annotate(
+            remaining_quantity=ExpressionWrapper(
+                F("stock_in_quantity") - F("sales_quantity") - F("damage_quantity"),
+                output_field=quantity_field,
+            ),
+            sold_percentage=Case(
+                When(
+                    stock_in_quantity__gt=0,
+                    then=ExpressionWrapper(
+                        F("sales_quantity") * Value(100.0) / F("stock_in_quantity"),
+                        output_field=FloatField(),
+                    ),
+                ),
+                default=Value(0.0),
+                output_field=FloatField(),
+            ),
+        )
+        .order_by("-invoice_date")
+    )
+    return invoices
+
+
+def _supplier_inventory_products_qs(request, supplier_id):
+    """Return a lazy queryset of all product variants supplied by this vendor.
+
+    Supports search, status filter, and multi-column sorting via query params.
+    """
+    search_query = request.GET.get("search", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+
+    quantity_field = models.DecimalField(max_digits=16, decimal_places=2)
+
+    products_qs = (
+        InventoryLog.objects.filter(supplier_invoice__supplier_id=supplier_id)
+        .values(
+            "variant__product__brand",
+            "variant__product__name",
+            "variant__size__name",
+            "variant__color__name",
+            "variant__color__hex_code",
+            "variant__barcode",
+            "variant__id",
+        )
+        .annotate(
+            stock_in_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            transaction_type__in=[
+                                "STOCK_IN",
+                                "INITIAL",
+                                "ADJUSTMENT_IN",
+                            ],
+                            then=F("quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            sales_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(transaction_type="SALE", then=-F("quantity_change")),
+                        When(
+                            transaction_type__in=["RETURN", "CANCEL"],
+                            then=-F("quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            damage_quantity=Coalesce(
+                Sum(
+                    Case(
+                        When(
+                            transaction_type__in=["DAMAGE", "ADJUSTMENT_OUT"],
+                            then=-F("quantity_change"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            purchase_price=Coalesce(
+                Max(
+                    Case(
+                        When(
+                            transaction_type__in=["STOCK_IN", "INITIAL"],
+                            then=F("purchase_price"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            selling_price=Coalesce(
+                Max(
+                    Case(
+                        When(
+                            transaction_type__in=["STOCK_IN", "INITIAL"],
+                            then=F("mrp"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            sales_revenue=Coalesce(
+                Sum(
+                    Case(
+                        When(transaction_type="SALE", then=F("total_value")),
+                        When(
+                            transaction_type__in=["RETURN", "CANCEL"],
+                            then=-F("total_value"),
+                        ),
+                        default=Value(Decimal("0")),
+                        output_field=quantity_field,
+                    )
+                ),
+                Value(Decimal("0")),
+                output_field=quantity_field,
+            ),
+            invoices_count=Count("supplier_invoice", distinct=True),
+        )
+        .annotate(
+            remaining_quantity=ExpressionWrapper(
+                F("stock_in_quantity") - F("sales_quantity") - F("damage_quantity"),
+                output_field=quantity_field,
+            ),
+            cogs=ExpressionWrapper(
+                F("sales_quantity") * F("purchase_price"),
+                output_field=quantity_field,
+            ),
+            profit=ExpressionWrapper(
+                F("sales_revenue") - (F("sales_quantity") * F("purchase_price")),
+                output_field=quantity_field,
+            ),
+            sold_percentage=Case(
+                When(
+                    stock_in_quantity__gt=0,
+                    then=ExpressionWrapper(
+                        F("sales_quantity") * Value(100.0) / F("stock_in_quantity"),
+                        output_field=FloatField(),
+                    ),
+                ),
+                default=Value(0.0),
+                output_field=FloatField(),
+            ),
+        )
+    )
+
+    if search_query:
+        products_qs = products_qs.filter(
+            Q(variant__product__brand__icontains=search_query)
+            | Q(variant__product__name__icontains=search_query)
+            | Q(variant__barcode__icontains=search_query)
+            | Q(variant__color__name__icontains=search_query)
+            | Q(variant__size__name__icontains=search_query)
+        )
+
+    if status_filter == "sold_out":
+        products_qs = products_qs.filter(remaining_quantity__lte=0)
+    elif status_filter == "in_stock":
+        products_qs = products_qs.filter(remaining_quantity__gt=0)
+    elif status_filter == "low_stock":
+        products_qs = products_qs.filter(
+            remaining_quantity__gt=0, remaining_quantity__lte=5
+        )
+    elif status_filter == "selling_well":
+        products_qs = products_qs.filter(
+            sold_percentage__gte=50.0, remaining_quantity__gt=0
+        )
+    elif status_filter == "slow_moving":
+        products_qs = products_qs.filter(
+            sold_percentage__lt=50.0, remaining_quantity__gt=0
+        )
+    elif status_filter == "damaged":
+        products_qs = products_qs.filter(damage_quantity__gt=0)
+
+    ordering_map = {
+        "brand": "variant__product__brand",
+        "barcode": "variant__barcode",
+        "stock_in_quantity": "stock_in_quantity",
+        "sales_quantity": "sales_quantity",
+        "damage_quantity": "damage_quantity",
+        "remaining_quantity": "remaining_quantity",
+        "purchase_price": "purchase_price",
+        "selling_price": "selling_price",
+        "sold_percentage": "sold_percentage",
+        "profit": "profit",
+    }
+
+    final_sorts = table_sorting(request, ordering_map, "-stock_in_quantity")
+    return products_qs.order_by(*final_sorts)
+
+
+@required_permission("inventory.view_supplier_invoice")
+def supplier_inventory_analysis(request, supplier_id):
+    """Main dashboard view for full supplier-level inventory and sales analysis."""
+    supplier = get_object_or_404(Supplier, id=supplier_id, is_deleted=False)
+    totals = _supplier_inventory_totals(supplier_id)
+    invoices = _supplier_inventory_invoices_list(supplier_id)
+
+    context = {
+        "supplier": supplier,
+        "title": f"{supplier.name} - Inventory Analysis",
+        "invoices": invoices,
+        "supplier_id": supplier_id,
+        **totals,
+    }
+    return render(request, "inventory/supplier_analysis.html", context)
+
+
+@required_permission("inventory.view_supplier_invoice")
+def supplier_inventory_analysis_fetch(request, supplier_id):
+    """AJAX endpoint powering supplier products breakdown table."""
+    get_object_or_404(Supplier, id=supplier_id, is_deleted=False)
+    products_qs = _supplier_inventory_products_qs(request, supplier_id)
+    return render_paginated_response(
+        request,
+        products_qs,
+        "inventory/supplier_analysis_fetch.html",
+        per_page=15,
     )
 
 

@@ -286,6 +286,8 @@ class Product(SoftDeleteModel):
             ("export_reports", "Export Reports"),
             ("view_supplier_details", "View Supplier Details"),
             ("view_low_stock_details", "View Low Stock Details"),
+            ("view_supplier_invoice", "View Supplier Invoice"),
+            ("view_supplier_invoice_details", "View Supplier Invoice Details"),
         ]
 
     @transaction.atomic

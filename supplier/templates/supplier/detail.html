@@ -19,6 +19,12 @@
           View Report
         </a>
       {% endif %}
+      {% if perms.inventory.view_supplier_invoice %}
+        <a href="{% url 'inventory:supplier_inventory_analysis' supplier.pk %}" class="btn btn-primary">
+          <i class="fas fa-boxes"></i>
+          Stock Analysis
+        </a>
+      {% endif %}
       {% if perms.supplier.view_supplierinvoice or perms.supplier.view_supplierpayment %}
         <a href="{% url 'supplier:auto_reallocate' supplier.pk %}"
            class="btn btn-warning"

@@ -33,6 +33,11 @@
                 <code data-copy="{{ product.variant__barcode }}">{{ product.variant__barcode }}</code>
             </td>
             <td>
+                <span class="badge badge-count" title="Appears on {{ product.invoices_count }} invoice(s)">
+                    {{ product.invoices_count }} inv
+                </span>
+            </td>
+            <td>
                 <strong>{{ product.stock_in_quantity|floatformat:0 }}</strong>
             </td>
             <td>{{ product.sales_quantity|floatformat:0 }}</td>
@@ -78,7 +83,7 @@
                     {% endif %}
                 </span>
             </td>
-            <td>
+            <td class="text-right">
                 <div class="action-buttons">
                     <a href="{% url 'inventory_variant:details' product.variant__id %}"
                        class="btn-action btn-view"
@@ -91,11 +96,11 @@
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="15" class="text-center p-3">
+        <td colspan="16" class="text-center p-3">
             <div class="empty-state">
                 <i class="fas fa-boxes"></i>
                 <h4>No Products Found</h4>
-                <p>No products found in this invoice. Try adjusting your search criteria.</p>
+                <p>No products match your search or filter criteria for this supplier.</p>
             </div>
         </td>
     </tr>
