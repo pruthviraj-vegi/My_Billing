@@ -779,6 +779,76 @@
     gap: 8px;
   }
 
+  /* Stack hero cards to single column on calendar mobile */
+  .calendar-page-container .dash-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Tighter hero card on calendar mobile */
+  .calendar-page-container .dash-hero-card {
+    padding: 0.7rem 0.85rem !important;
+  }
+
+  .calendar-page-container .hero-card-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 0.3rem !important;
+  }
+
+  .calendar-page-container .hero-tag {
+    display: inline-flex !important;
+    font-size: 0.62rem !important;
+  }
+
+  .calendar-page-container .hero-number-lg {
+    font-size: 1.4rem !important;
+  }
+
+  .calendar-page-container .stat-label-small {
+    display: none !important;
+  }
+
+  .calendar-page-container .hero-submetrics {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.35rem !important;
+    margin-top: 0.5rem !important;
+    padding-top: 0.4rem !important;
+  }
+
+  .calendar-page-container .hero-submetric-label {
+    font-size: 0.58rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .calendar-page-container .hero-submetric-val {
+    font-size: 0.78rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Health boxes: side by side, no sub-text */
+  .calendar-page-container .health-highlights-row {
+    gap: 0.4rem !important;
+  }
+
+  .calendar-page-container .health-box {
+    padding: 0.45rem 0.6rem !important;
+  }
+
+  .calendar-page-container .health-box-sub {
+    display: none !important;
+  }
+
+  .calendar-page-container .health-box-val {
+    font-size: 0.9rem !important;
+  }
+
   .calendar-kpi-bar,
   .stats-grid,
   .kpi-grid {
@@ -847,28 +917,40 @@
 
   /* Compact Mobile Page Header & Alignment */
   .page-header {
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
     justify-content: space-between !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 6px !important;
     padding: 6px 12px !important;
   }
 
+  .page-header > .d-flex,
+  .page-header > div:first-child {
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
   .page-header .page-title {
-    font-size: 1.1rem !important;
-    color: #ffffff !important;
-    margin: 0 !important;
-    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .live-store-badge {
+    display: none !important;
   }
 
   .page-header .page-actions {
     display: flex !important;
+    flex-direction: row !important;
     align-items: center !important;
     gap: 6px !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
+    flex-shrink: 0 !important;
   }
 
-  .page-header .page-actions .btn {
+  .page-header .page-actions .btn:not(.btn-primary):not(.btn-dash-action) {
     padding: 4px 10px !important;
     font-size: 0.75rem !important;
     height: 30px !important;
@@ -999,6 +1081,15 @@
     overflow: hidden !important;
   }
 
+  .cal-amount {
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 2px !important;
+  }
+
   .cell-top-row {
     display: flex !important;
     justify-content: space-between !important;
@@ -1015,9 +1106,10 @@
   .cell-dot-count,
   .cell-count-pill,
   .cell-sales,
-  .cell-sales-chip {
+  .cell-sales-chip,
+  .cell-meta {
     display: none !important;
-    /* Hide long text chips on mobile to prevent cell overflow */
+    /* Hide bill count text on mobile — only show dot + amount */
   }
 
   .today-tag,
@@ -1068,12 +1160,6 @@
 
   .analytics-card {
     padding: 1rem;
-  }
-
-  .page-actions:not(.has-more) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
   }
 
   .date-filter .form-select {

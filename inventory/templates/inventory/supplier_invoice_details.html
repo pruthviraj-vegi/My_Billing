@@ -6,49 +6,6 @@
 {% endblock title %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
-<style>
-/* ── Invoice Dashboard Hero Grid ── */
-.invoice-dash-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.85rem;
-    margin-bottom: 1rem;
-}
-
-.invoice-dash-grid .dash-hero-card {
-    margin-bottom: 0;
-    padding: 1rem 1.15rem;
-}
-
-.invoice-dash-grid .hero-card-header {
-    margin-bottom: 0.5rem;
-}
-
-.invoice-dash-grid .hero-val-display {
-    display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
-    margin-top: 0.15rem;
-}
-
-.invoice-dash-grid .hero-number-lg {
-    font-size: 1.45rem;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-}
-
-.invoice-dash-grid .hero-submetrics {
-    margin-top: 0.75rem;
-    padding-top: 0.65rem;
-}
-
-@media (max-width: 992px) {
-    .invoice-dash-grid {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
 {% endblock extra_css %}
 {% block content %}
     <!-- Page Header -->
@@ -79,7 +36,7 @@
     </nav>
 
     <!-- Invoice Overview Hero Tier (Dashboard Style) -->
-    <div class="dash-hero-grid invoice-dash-grid">
+    <div class="dash-hero-grid detail-dash-grid">
         <!-- 1. Invoice Financials & Profit Hero Card -->
         <div class="dash-hero-card">
             <div>

@@ -6,49 +6,6 @@
 {% endblock title %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
-<style>
-/* ── Supplier Analysis Dashboard Hero Grid ── */
-.supplier-dash-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.85rem;
-    margin-bottom: 1rem;
-}
-
-.supplier-dash-grid .dash-hero-card {
-    margin-bottom: 0;
-    padding: 1rem 1.15rem;
-}
-
-.supplier-dash-grid .hero-card-header {
-    margin-bottom: 0.5rem;
-}
-
-.supplier-dash-grid .hero-val-display {
-    display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
-    margin-top: 0.15rem;
-}
-
-.supplier-dash-grid .hero-number-lg {
-    font-size: 1.45rem;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-}
-
-.supplier-dash-grid .hero-submetrics {
-    margin-top: 0.75rem;
-    padding-top: 0.65rem;
-}
-
-@media (max-width: 992px) {
-    .supplier-dash-grid {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
 {% endblock extra_css %}
 {% block content %}
     <!-- Page Header -->
@@ -84,7 +41,7 @@
     </nav>
 
     <!-- Supplier Analysis Dashboard Hero Tier -->
-    <div class="dash-hero-grid supplier-dash-grid">
+    <div class="dash-hero-grid detail-dash-grid">
         <!-- 1. Purchases & Profit Hero Card -->
         <div class="dash-hero-card">
             <div>

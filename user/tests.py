@@ -54,6 +54,18 @@ class CustomUserModelTestCase(TestCase):
         self.assertTrue(user.is_commission_eligible)
         self.assertTrue(user.commission)
 
+        # Inactive user with commission salary should have inactive commission
+        user.is_active = False
+        user.save()
+        self.assertFalse(user.is_commission_eligible)
+        self.assertFalse(user.commission)
+
+        # Reactivating user restores commission eligibility
+        user.is_active = True
+        user.save()
+        self.assertTrue(user.is_commission_eligible)
+        self.assertTrue(user.commission)
+
         # Update salary history (supersede old salary)
         salary1.effective_to = timezone.now()
         salary1.save()
@@ -166,3 +178,56 @@ class UserViewsTestCase(TestCase):
             },
         )
         self.assertEqual(res_txn.status_code, 302)
+
+    def test_user_commission_page_active_and_inactive_status(self):
+        """Test user commission page shows active commission when user is active and inactive when user is inactive."""
+        # Create salary with commission for test user
+        Salary.objects.create(
+            user=self.test_user,
+            amount=Decimal("15000.00"),
+            commission=True,
+            effective_from=timezone.now(),
+        )
+
+        # Active user - commission is active
+        res_active = self.client.get(reverse("user:commission", kwargs={"user_id": self.test_user.pk}))
+        self.assertEqual(res_active.status_code, 200)
+        self.assertTrue(res_active.context["is_commission_active"])
+        self.assertContains(res_active, "Commission Active")
+
+        # Inactive user - commission should be inactive
+        self.test_user.is_active = False
+        self.test_user.save()
+
+        res_inactive = self.client.get(reverse("user:commission", kwargs={"user_id": self.test_user.pk}))
+        self.assertEqual(res_inactive.status_code, 200)
+        self.assertFalse(res_inactive.context["is_commission_active"])
+        self.assertContains(res_inactive, "Commission Inactive")
+        self.assertContains(res_inactive, "User is Inactive:")
+
+    def test_user_commission_filter_active_and_inactive(self):
+        """Test user list commission filter respects user active/inactive status."""
+        Salary.objects.create(
+            user=self.test_user,
+            amount=Decimal("15000.00"),
+            commission=True,
+            effective_from=timezone.now(),
+        )
+
+        # Active user with commission matches commission=yes
+        res_yes = self.client.get(reverse("user:fetch"), {"commission": "yes"})
+        self.assertEqual(res_yes.status_code, 200)
+        self.assertContains(res_yes, self.test_user.first_name)
+
+        # Inactivate user - should not match commission=yes
+        self.test_user.is_active = False
+        self.test_user.save()
+
+        res_yes_inactive = self.client.get(reverse("user:fetch"), {"commission": "yes"})
+        self.assertEqual(res_yes_inactive.status_code, 200)
+        self.assertNotContains(res_yes_inactive, self.test_user.first_name)
+
+        # Inactive user matches commission=no
+        res_no = self.client.get(reverse("user:fetch"), {"commission": "no"})
+        self.assertEqual(res_no.status_code, 200)
+        self.assertContains(res_no, self.test_user.first_name)

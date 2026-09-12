@@ -17,7 +17,7 @@
     <span class="text-white-50 fs-7 d-none d-md-inline">• {{ month_name }} {{ year }}</span>
   </div>
   <div class="page-actions dash-actions-group">
-    <a href="{% url 'base:calendar_details' %}?start={{ year }}-{{ month|stringformat:'02d' }}-01" id="pageHeaderAnalyticsBtn" class="btn btn-dash-action" title="View Detailed Analytics">
+    <a href="{% url 'base:calendar_details' %}?start={{ year }}-{{ month|stringformat:'02d' }}-01" id="pageHeaderAnalyticsBtn" class="btn btn-dash-action primary" title="View Detailed Analytics">
       <i class="fa-solid fa-chart-pie"></i>
       <span>Analytics</span>
     </a>

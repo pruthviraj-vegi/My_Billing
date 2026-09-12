@@ -68,19 +68,19 @@ def get_data(request):
     elif status_filter == "inactive":
         filters &= Q(is_active=False)
 
-    # Apply commission filter (check current salary's commission)
+    # Apply commission filter (check current salary's commission and active status)
     if commission_filter == "yes":
-        # Users with current salary (effective_to is null) AND commission=True
-        filters &= Q(salaries__effective_to__isnull=True, salaries__commission=True)
+        # Users with current salary (effective_to is null) AND commission=True AND is_active=True
+        filters &= Q(salaries__effective_to__isnull=True, salaries__commission=True, is_active=True)
     elif commission_filter == "no":
-        # Users with no current salary OR current salary with commission=False
-        # Exclude users who have current salary with commission=True
+        # Users with no current salary OR current salary with commission=False OR is_active=False
+        # Exclude active users who have current salary with commission=True
         from .models import (
             Salary as SalaryModel,
         )  # pylint: disable=redefined-outer-name
 
         has_commission = SalaryModel.objects.filter(
-            user=OuterRef("pk"), effective_to__isnull=True, commission=True
+            user=OuterRef("pk"), effective_to__isnull=True, commission=True, user__is_active=True
         )
         filters &= ~Exists(has_commission)
 
@@ -630,10 +630,12 @@ def user_commission(request, user_id):
     """View commission data for a user by month and year."""
     user = get_object_or_404(User, id=user_id)
     current_salary = user.current_salary
+    is_commission_active = bool(user.is_active and user.is_commission_eligible)
 
     context = {
         "user": user,
         "current_salary": current_salary,
+        "is_commission_active": is_commission_active,
     }
 
     return render(request, "user/commission/home.html", context)

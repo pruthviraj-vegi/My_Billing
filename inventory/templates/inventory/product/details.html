@@ -6,49 +6,6 @@
 {% endblock title %}
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/dashboard-charts.css' %}">
-    <style>
-        /* ── Product Details Dashboard Hero Grid ── */
-        .product-dash-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.85rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .product-dash-grid .dash-hero-card {
-            margin-bottom: 0;
-            padding: 1rem 1.15rem;
-        }
-
-        .product-dash-grid .hero-card-header {
-            margin-bottom: 0.5rem;
-        }
-
-        .product-dash-grid .hero-val-display {
-            display: flex;
-            align-items: baseline;
-            gap: 0.4rem;
-            margin-top: 0.15rem;
-        }
-
-        .product-dash-grid .hero-number-lg {
-            font-size: 1.45rem;
-            font-weight: 700;
-            line-height: 1.2;
-            letter-spacing: -0.01em;
-        }
-
-        .product-dash-grid .hero-submetrics {
-            margin-top: 0.75rem;
-            padding-top: 0.65rem;
-        }
-
-        @media (max-width: 992px) {
-            .product-dash-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
 {% endblock extra_css %}
 {% block content %}
     <!-- Page Header -->
@@ -131,7 +88,7 @@
         <!-- Right Column - Dashboard Overview & Variants Table -->
         <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
             <!-- Product Inventory and Valuation Dashboard Hero Tier -->
-            <div class="dash-hero-grid product-dash-grid">
+            <div class="dash-hero-grid detail-dash-grid">
                 <!-- 1. Total Stock & Variants Card -->
                 <div class="dash-hero-card" id="stockSection">
                     <div>

@@ -70,7 +70,7 @@
                         </a>
                     {% endif %}
                     {% if perms.user.view_salary %}
-                        {% if user.commission %}
+                        {% if user.commission or user.current_salary and user.current_salary.commission %}
                             <a href="{% url 'user:commission' user.id %}"
                                class="btn-action btn-info"
                                title="View Commission">

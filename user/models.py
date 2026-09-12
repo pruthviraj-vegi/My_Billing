@@ -110,7 +110,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
 
     @property
     def commission(self):
-        """Get commission status from current salary"""
+        """Get commission status from current salary (inactive if user is inactive)."""
+        if not self.is_active:
+            return False
         current = self.current_salary
         return current.commission if current else False
 
@@ -121,7 +123,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
 
     @property
     def is_commission_eligible(self):
-        """Check if the user is eligible for commission."""
+        """Check if the user is eligible for commission (inactive if user is inactive)."""
+        if not self.is_active:
+            return False
         return self.current_salary.commission if self.current_salary else False
 
 

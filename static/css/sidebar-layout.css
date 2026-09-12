@@ -208,7 +208,7 @@
     margin: 0;
   }
   /* Hide extra buttons by default */
-  .page-actions > .btn:not(.btn-primary) {
+  .page-actions > .btn:not(.btn-primary):not(.btn-dash-action) {
     display: none;
   }
 

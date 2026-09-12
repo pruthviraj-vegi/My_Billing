@@ -27,6 +27,14 @@
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">Commission</span>
   </nav>
+  {% if not user.is_active %}
+    <div class="alert alert-warning d-flex align-items-center mb-2" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <div>
+        <strong>User is Inactive:</strong> Commission is inactive for this user.
+      </div>
+    </div>
+  {% endif %}
   <!-- Main Layout -->
   <div class="col d-flex flex-row">
     <!-- Left Column - User Details and Summary -->
@@ -41,13 +49,23 @@
         <div class="details-info-compact">
           <div class="detail-name-compact">
             <h4>{{ user.full_name }}</h4>
-            <span class="detail-status {% if user.is_active %}status-active{% else %}status-inactive{% endif %}">
-              {% if user.is_active %}
-                Active
-              {% else %}
-                Inactive
-              {% endif %}
-            </span>
+            <div class="d-flex justify-content-center gap-1 flex-wrap">
+              <span class="detail-status {% if user.is_active %}status-active{% else %}status-inactive{% endif %}" title="User Status">
+                {% if user.is_active %}
+                  Active
+                {% else %}
+                  Inactive
+                {% endif %}
+              </span>
+              <span class="detail-status {% if is_commission_active %}status-active{% else %}status-inactive{% endif %}" title="Commission Status">
+                <i class="fas fa-percentage"></i>
+                {% if is_commission_active %}
+                  Commission Active
+                {% else %}
+                  Commission Inactive
+                {% endif %}
+              </span>
+            </div>
           </div>
           <div class="detail-contact-compact">
             <div class="contact-item">
@@ -76,6 +94,20 @@
                 <span>{{ current_salary.amount|currency }}/mo</span>
               </div>
             {% endif %}
+            <div class="contact-item">
+              <i class="fas fa-percentage"></i>
+              <span>Commission:
+                {% if is_commission_active %}
+                  <span class="badge text-success">
+                    <i class="fas fa-check-circle"></i> Active
+                  </span>
+                {% else %}
+                  <span class="badge text-danger">
+                    <i class="fas fa-times-circle"></i> Inactive
+                  </span>
+                {% endif %}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -85,7 +117,16 @@
           <i class="fas fa-percentage"></i>
         </div>
         <div class="summary-content-compact">
-          <h4>Commission Summary</h4>
+          <div class="d-flex justify-content-between align-items-center mb-1 pb-1" style="border-bottom: 1px solid var(--border-color);">
+            <h4 class="mb-0 pb-0" style="border-bottom: none;">Commission Summary</h4>
+            <span class="badge {% if is_commission_active %}text-success{% else %}text-danger{% endif %}" style="font-size: 0.75rem;">
+              {% if is_commission_active %}
+                <i class="fas fa-check-circle"></i> Active
+              {% else %}
+                <i class="fas fa-times-circle"></i> Inactive
+              {% endif %}
+            </span>
+          </div>
           <div class="summary-stats-compact">
             <div class="stat-item-compact">
               <span class="stat-number-compact" id="totalCommission">{{ total_commission|currency_abbreviation }}</span>
