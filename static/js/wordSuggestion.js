@@ -36,6 +36,8 @@ class WordSuggestion {
         this.abortController = null;
         this.currentQuery = "";
         this.isSelecting = false;
+        this.queryCache = new Map();
+        this.maxQueryCache = 50;
 
         // Bind methods to instance
         this.boundHandleInput = (e) => this.handleInput(e);
@@ -230,6 +232,19 @@ class WordSuggestion {
             return;
         }
 
+        const cacheKey = (query || "").trim().toLowerCase();
+        if (this.queryCache && this.queryCache.has(cacheKey)) {
+            this.suggestions = this.queryCache.get(cacheKey);
+            this.selectedIndex = -1;
+            if (this.suggestions.length > 0) {
+                this.renderSuggestions();
+                this.showDropdown();
+            } else {
+                this.hideDropdown();
+            }
+            return;
+        }
+
         if (this.abortController)
             this.abortController.abort();
 
@@ -243,14 +258,24 @@ class WordSuggestion {
                 throw new Error(`HTTP ${response.status}`);
 
             const data = await response.json();
+            const items = data.data || [];
+
+            // Cache successful result
+            if (this.queryCache) {
+                if (this.queryCache.size >= this.maxQueryCache) {
+                    const oldestKey = this.queryCache.keys().next().value;
+                    this.queryCache.delete(oldestKey);
+                }
+                this.queryCache.set(cacheKey, items);
+            }
 
             // Verify input is still focused before showing dropdown
             if (document.activeElement !== this.input) {
-                this.suggestions = data.data || [];
+                this.suggestions = items;
                 return;
             }
 
-            this.suggestions = data.data || [];
+            this.suggestions = items;
             this.selectedIndex = -1;
 
             if (this.suggestions.length > 0) {

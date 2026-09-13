@@ -231,21 +231,26 @@ def barcode_suggestions(request):
         ).select_related("product", "product__category", "size", "color")[:10]
     )
 
-    # 2. Substring matches via get_variants_data
-    general_variants = list(get_variants_data(request)[:15])
+    combined_variants = list(barcode_matches)
+    seen_ids = {v.id for v in barcode_matches}
 
-    seen_ids = set()
-    combined_variants = []
+    # 2. Substring matches via get_variants_data (only if needed and no exact barcode match)
+    has_exact_barcode = any((v.barcode or "").lower() == search_lower for v in barcode_matches)
+    if not has_exact_barcode and len(combined_variants) < 10:
+        needed = 10 - len(combined_variants)
+        general_variants = list(get_variants_data(request)[: needed + 5])
+        for v in general_variants:
+            if v.id not in seen_ids:
+                seen_ids.add(v.id)
+                combined_variants.append(v)
+                if len(combined_variants) >= 10:
+                    break
 
-    for v in barcode_matches + general_variants:
-        if v.id not in seen_ids:
-            seen_ids.add(v.id)
-            combined_variants.append(v)
-
-    # 3. Fuzzy weighted search fallback/supplement if fewer than 10
-    if len(combined_variants) < 10:
-        fuzzy_results = search_variants_weighted(search, limit=10, min_score=45.0)
-        fuzzy_ids = [r["id"] for r in fuzzy_results if r.get("id") not in seen_ids]
+    # 3. Fuzzy weighted search fallback/supplement if fewer than 10 (only if no exact barcode match)
+    if not has_exact_barcode and len(combined_variants) < 10:
+        needed = 10 - len(combined_variants)
+        fuzzy_results = search_variants_weighted(search, limit=needed + 5, min_score=45.0)
+        fuzzy_ids = [r["id"] for r in fuzzy_results if r.get("id") not in seen_ids][:needed]
         if fuzzy_ids:
             fuzzy_variants_dict = {
                 v.id: v
@@ -286,6 +291,15 @@ def barcode_suggestions(request):
     combined_variants.sort(key=relevance_key)
     variants = combined_variants[:10]
 
+    # Batch compute cart quantities for all returned variants to eliminate N+1 queries
+    variant_ids = [v.id for v in variants]
+    cart_qty_map = dict(
+        CartItem.objects.filter(product_variant_id__in=variant_ids)
+        .values("product_variant_id")
+        .annotate(total=Sum("quantity"))
+        .values_list("product_variant_id", "total")
+    )
+
     data = [
         {
             "barcode": v.barcode,
@@ -296,7 +310,7 @@ def barcode_suggestions(request):
             "mrp": str(v.mrp),
             "final_price": str(v.final_price),
             "discount_percentage": str(v.discount_percentage or 0),
-            "stock": str(v.billing_stock),
+            "stock": str(max(0, v.quantity - (cart_qty_map.get(v.id) or 0))),
         }
         for v in variants
     ]

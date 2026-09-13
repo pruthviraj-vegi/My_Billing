@@ -1524,6 +1524,9 @@ class CartManager {
 
         let debounceTimer = null;
         let isSelecting = false;
+        let abortController = null;
+        const queryCache = new Map();
+        const MAX_QUERY_CACHE = 50;
 
         const dropdown = document.createElement('div');
         dropdown.id = 'barcodeSuggestions';
@@ -1556,19 +1559,29 @@ class CartManager {
                 row.dataset.barcode = item.barcode;
 
                 let variant = [item.color, item.size].filter(Boolean).join(' / ');
+                const stockNum = parseFloat(item.stock);
+                const isOutOfStock = !isNaN(stockNum) && stockNum <= 0;
                 if (item.stock !== undefined) {
                     variant = variant ? `${variant} (Qty: ${item.stock})` : `Qty: ${item.stock}`;
                 }
                 const productLabel = item.brand ? `${item.brand} - ${item.product}` : item.product;
                 const finalPriceNum = parseFloat(item.final_price);
                 const mrpNum = parseFloat(item.mrp);
+                const discountNum = parseFloat(item.discount_percentage);
                 const priceText = (!isNaN(finalPriceNum) && !isNaN(mrpNum) && finalPriceNum < mrpNum)
                     ? `${self.format(finalPriceNum)} <small class="text-muted text-decoration-line-through">${self.format(mrpNum)}</small>`
                     : self.format(item.final_price || item.mrp);
 
+                const discountBadge = (!isNaN(discountNum) && discountNum > 0)
+                    ? `<span class="badge bg-success ms-1">${Math.round(discountNum)}% OFF</span>`
+                    : '';
+                const stockBadge = isOutOfStock
+                    ? `<span class="badge bg-danger ms-1">Out of Stock</span>`
+                    : '';
+
                 row.innerHTML = `
                     <div class="suggestion-header">
-                        <span class="suggestion-product">${productLabel}</span>
+                        <span class="suggestion-product">${productLabel}${discountBadge}${stockBadge}</span>
                         <span class="suggestion-price">${priceText}</span>
                     </div>
                     <div class="suggestion-meta">
@@ -1611,6 +1624,10 @@ class CartManager {
 
         function closeDropdown() {
             clearTimeout(debounceTimer);
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
             dropdown.style.display = 'none';
             dropdown.innerHTML = '';
             backdrop.classList.remove('active');
@@ -1631,19 +1648,45 @@ class CartManager {
                 closeDropdown();
                 return;
             }
+
+            // Return from in-memory cache instantly if available
+            const cacheKey = query.toLowerCase();
+            if (queryCache.has(cacheKey)) {
+                renderDropdown(queryCache.get(cacheKey));
+                return;
+            }
+
+            if (abortController) {
+                abortController.abort();
+            }
+            abortController = new AbortController();
+
             const url = `${self.urls.barcodeSuggestions}?search=${encodeURIComponent(query)}`;
             fetch(url, {
+                signal: abortController.signal,
                 headers: { 'X-CSRFToken': self.csrf }
             })
                 .then(r => r.json())
                 .then(items => {
+                    // Update cache (LRU eviction if at limit)
+                    if (queryCache.size >= MAX_QUERY_CACHE) {
+                        const oldest = queryCache.keys().next().value;
+                        queryCache.delete(oldest);
+                    }
+                    queryCache.set(cacheKey, items);
+
                     if (input.value.trim() !== query) {
                         closeDropdown();
                         return;
                     }
                     renderDropdown(items);
                 })
-                .catch(() => closeDropdown());
+                .catch(err => {
+                    if (err && err.name === 'AbortError') {
+                        return;
+                    }
+                    closeDropdown();
+                });
         }
 
         input.addEventListener('input', function () {

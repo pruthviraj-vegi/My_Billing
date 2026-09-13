@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from django.core.cache import cache
 from rapidfuzz import fuzz
+from rapidfuzz.distance import Levenshtein
 
 from customer.models import Customer
 from inventory.models import Category, GSTHsnCode, Product, ProductVariant, UOM
@@ -193,6 +194,28 @@ def get_product_records(
     return records
 
 
+def word_match_quality(qw: str, cw: str) -> float:
+    """
+    Evaluates fuzzy match quality between a single query word and a candidate word.
+    Protects against short-word partial_ratio false positives (e.g. 'r' matching 'hepper' at 90%).
+    """
+    if qw == cw:
+        return 100.0
+    # Prevent 1-2 char words from matching long words via partial ratio
+    if (len(cw) <= 2 and len(qw) > 2) or (len(qw) <= 2 and len(cw) > 2):
+        return 0.0
+    if cw.startswith(qw):
+        return 95.0
+    sim = Levenshtein.normalized_similarity(qw, cw) * 100
+    if sim >= 70.0:
+        if qw[0] == cw[0]:
+            sim = min(100.0, sim + 10.0)
+        return float(sim)
+    if len(qw) >= 3 and qw in cw:
+        return 85.0
+    return 0.0
+
+
 def score_product(
     query: str,
     product: Dict[str, Any],
@@ -252,25 +275,38 @@ def score_product(
             best_field_score = weighted_score
 
     # 2. Composite string matches
-    name_score = max(fuzz.WRatio(query_str, name), fuzz.token_sort_ratio(query_str, name)) if name else 0.0
+    name_words = name.split() if name else []
+    best_name_word_score = 0.0
+    for w in name_words:
+        if len(w) >= 2:
+            sim = Levenshtein.normalized_similarity(query_str, w) * 100
+            if sim >= 70.0 and query_str and w and query_str[0] == w[0]:
+                sim = min(100.0, sim + 10.0)
+            if sim > best_name_word_score:
+                best_name_word_score = sim
+
+    whole_name_score = max(fuzz.WRatio(query_str, name), fuzz.token_sort_ratio(query_str, name)) if name else 0.0
+    name_score = max(whole_name_score, best_name_word_score)
     brand_name_score = max(fuzz.WRatio(query_str, brand_name), fuzz.token_sort_ratio(query_str, brand_name)) if brand_name else 0.0
 
-    # 3. Word-by-word alignment for multi-word queries (handles typos & reordering)
+    # 3. Word-by-word alignment for multi-word queries (handles typos & reordering with token coverage)
     if len(q_words) > 1 and full_comp:
         comp_words = full_comp.split()
         word_scores = []
         for qw in q_words:
-            # Find best match for this query word across all product words
             best_qw_score = max(
-                (fuzz.WRatio(qw, cw) for cw in comp_words),
+                (word_match_quality(qw, cw) for cw in comp_words),
                 default=0.0,
             )
-            # Extra boost if a product word starts with this query token
-            if any(cw.startswith(qw) for cw in comp_words):
-                best_qw_score = max(best_qw_score, 95.0)
             word_scores.append(best_qw_score)
 
-        word_alignment_score = sum(word_scores) / len(word_scores)
+        avg_score = sum(word_scores) / len(word_scores)
+        matched_words = sum(1 for s in word_scores if s >= 65.0)
+        coverage = matched_words / len(q_words)
+        if coverage < 0.6:
+            word_alignment_score = avg_score * (coverage ** 2)
+        else:
+            word_alignment_score = avg_score
     else:
         word_alignment_score = 0.0
 
@@ -416,6 +452,31 @@ def format_product_suggestion_label(brand: str, name: str, query: str) -> str:
     return f"{brand} {name}"
 
 
+def score_brand_or_category_match(query_clean: str, target_name: str) -> float:
+    """
+    Evaluates how strongly a single-word query matches a brand or category name.
+    Requires an exact match, prefix match on the target name or its words,
+    or a high full-ratio match (>= 75.0) for typo tolerance.
+    Avoids loose partial-ratio matches that incorrectly match unrelated entities.
+    """
+    q = query_clean.strip().lower()
+    t = target_name.strip().lower()
+    if not q or not t:
+        return 0.0
+    if q == t:
+        return 100.0
+    t_words = t.split()
+    if t.startswith(q):
+        return 95.0
+    if any(w.startswith(q) for w in t_words):
+        return 90.0
+    # Typo tolerance: full string ratio (NOT loose partial ratio)
+    ratio = max(fuzz.ratio(q, t), fuzz.token_sort_ratio(q, t))
+    if ratio >= 75.0:
+        return float(ratio)
+    return 0.0
+
+
 def get_weighted_product_suggestions(
     query: str,
     records: Optional[List[Dict[str, Any]]] = None,
@@ -452,19 +513,19 @@ def get_weighted_product_suggestions(
     query_clean = query.strip()
     tokens = query_clean.split()
 
-    suggestions: List[Dict[str, str]] = []
+    candidates: List[Any] = []
     seen = set()
 
-    def add_suggestion(label: str, item_type: str):
+    def add_candidate(score: float, label: str, item_type: str):
         label_clean = label.strip()
         if not label_clean:
             return
         label_lower = label_clean.lower()
         if label_lower not in seen:
             seen.add(label_lower)
-            suggestions.append({"label": label_clean, "type": item_type})
+            candidates.append((score, label_clean, item_type))
 
-    # Case 1: Single-word query -> Show Brand/Category matches first
+    # Case 1: Single-word query -> Check matching Brands & Categories (strict)
     if len(tokens) == 1:
         unique_brands: Dict[str, str] = {}
         unique_categories: Dict[str, str] = {}
@@ -476,31 +537,17 @@ def get_weighted_product_suggestions(
             if cat:
                 unique_categories[cat.lower()] = cat
 
-        # Match Brands
-        scored_brands = []
+        # Match Brands (strict prefix/exact/high-ratio)
         for brand_lower, brand_orig in unique_brands.items():
-            b_score = fuzz.WRatio(query_clean.lower(), brand_lower)
-            if brand_lower.startswith(query_clean.lower()):
-                b_score += 15.0
+            b_score = score_brand_or_category_match(query_clean, brand_orig)
             if b_score >= min_score:
-                scored_brands.append((b_score, brand_orig))
-        scored_brands.sort(key=lambda x: x[0], reverse=True)
+                add_candidate(b_score, brand_orig, "brand")
 
-        for _, brand_orig in scored_brands[:3]:
-            add_suggestion(brand_orig, "brand")
-
-        # Match Categories
-        scored_cats = []
+        # Match Categories (strict prefix/exact/high-ratio)
         for cat_lower, cat_orig in unique_categories.items():
-            c_score = fuzz.WRatio(query_clean.lower(), cat_lower)
-            if cat_lower.startswith(query_clean.lower()):
-                c_score += 15.0
+            c_score = score_brand_or_category_match(query_clean, cat_orig)
             if c_score >= min_score:
-                scored_cats.append((c_score, cat_orig))
-        scored_cats.sort(key=lambda x: x[0], reverse=True)
-
-        for _, cat_orig in scored_cats[:2]:
-            add_suggestion(cat_orig, "category")
+                add_candidate(c_score, cat_orig, "category")
 
     # Match Products
     ranked_products = search_products_weighted(
@@ -519,13 +566,15 @@ def get_weighted_product_suggestions(
         if not label:
             continue
 
-        add_suggestion(label, "product")
-        if len(suggestions) >= limit:
-            break
+        add_candidate(item.get("score", 0.0), label, "product")
+
+    # Sort all candidates together by relevance score descending
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    results = [{"label": c[1], "type": c[2]} for c in candidates[:limit]]
 
     if rich:
-        return suggestions[:limit]
-    return [s["label"] for s in suggestions[:limit]]
+        return results
+    return [s["label"] for s in results]
 
 
 # ==========================================
@@ -566,7 +615,11 @@ def get_variant_records(
     # 2. Query from database
     try:
         queryset = (
-            ProductVariant.objects.filter(is_deleted=False, product__is_deleted=False)
+            ProductVariant.objects.filter(
+                is_deleted=False,
+                status="ACTIVE",
+                product__is_deleted=False,
+            )
             .values(
                 "id",
                 "barcode",
@@ -582,16 +635,41 @@ def get_variant_records(
 
         records: List[Dict[str, Any]] = []
         for row in queryset:
+            brand = (row["product__brand"] or "").strip()
+            name = (row["product__name"] or "").strip()
+            size = (row["size__name"] or "").strip()
+            color = (row["color__name"] or "").strip()
+            category = (row["product__category__name"] or "").strip()
+            barcode = (row["barcode"] or "").strip()
+
+            name_details = f"{name} {size} {color}".strip().lower()
+            brand_name = f"{brand} {name}".strip().lower()
+            full_composite = f"{brand} {name} {size} {color} {category}".strip().lower()
+            search_blob = f"{brand} {name} {size} {color} {category} {barcode}".strip().lower()
+            comp_words = tuple(full_composite.split()) if full_composite else ()
+            brand_lower = brand.lower()
+            name_lower = name.lower()
+            name_words = tuple(name_lower.split()) if name_lower else ()
+
             records.append(
                 {
                     "id": row["id"],
-                    "barcode": row["barcode"] or "",
+                    "barcode": barcode,
                     "product_id": row["product_id"],
-                    "product__brand": row["product__brand"] or "",
-                    "product__name": row["product__name"] or "",
-                    "product__category__name": row["product__category__name"] or "",
-                    "size__name": row["size__name"] or "",
-                    "color__name": row["color__name"] or "",
+                    "product__brand": brand,
+                    "product__name": name,
+                    "product__category__name": category,
+                    "size__name": size,
+                    "color__name": color,
+                    # Pre-computed normalized search blobs for zero-allocation scoring
+                    "product__brand_lower": brand_lower,
+                    "product__name_lower": name_lower,
+                    "name_words": name_words,
+                    "name_details": name_details,
+                    "brand_name": brand_name,
+                    "full_composite": full_composite,
+                    "search_blob": search_blob,
+                    "comp_words": comp_words,
                 }
             )
             if len(records) >= max_records:
@@ -646,45 +724,69 @@ def score_variant(
         if query_str == val_str:
             return 100.0
 
-        f_wratio = fuzz.WRatio(query_str, val_str)
-        f_sort = fuzz.token_sort_ratio(query_str, val_str)
-
-        # Word-level match within field for single-word typo tolerance
-        val_words = val_str.split()
-        max_word_match = max((fuzz.WRatio(query_str, w) for w in val_words), default=0.0) if val_words else 0.0
-
-        f_score = max(f_wratio, f_sort, max_word_match)
-
-        # Prefix boost (consistency with score_generic_record)
-        if val_str.startswith(query_str) or any(w.startswith(query_str) for w in val_words):
-            f_score = min(100.0, f_score + 10.0)
+        if len(q_words) > 1:
+            f_score = fuzz.token_sort_ratio(query_str, val_str)
+        else:
+            f_wratio = fuzz.WRatio(query_str, val_str)
+            f_sort = fuzz.token_sort_ratio(query_str, val_str)
+            val_words = val_str.split()
+            max_word_match = max((fuzz.WRatio(query_str, w) for w in val_words), default=0.0) if val_words else 0.0
+            f_score = max(f_wratio, f_sort, max_word_match)
+            if val_str.startswith(query_str) or any(w.startswith(query_str) for w in val_words):
+                f_score = min(100.0, f_score + 10.0)
 
         weight_multiplier = 0.7 + 0.3 * (weight / max_weight)
         weighted_score = f_score * weight_multiplier
         if weighted_score > best_field_score:
             best_field_score = weighted_score
 
-    # 2. Composite string matching
-    brand = str(variant.get("product__brand", "") or "").strip().lower()
-    name = str(variant.get("product__name", "") or "").strip().lower()
-    size = str(variant.get("size__name", "") or "").strip().lower()
-    color = str(variant.get("color__name", "") or "").strip().lower()
-    category = str(variant.get("product__category__name", "") or "").strip().lower()
+    # 2. Composite string matching (use pre-computed normalized blobs if available)
+    brand = variant.get("product__brand_lower")
+    if brand is None:
+        brand = str(variant.get("product__brand", "") or "").strip().lower()
+    name = variant.get("product__name_lower")
+    if name is None:
+        name = str(variant.get("product__name", "") or "").strip().lower()
+
     barcode = str(variant.get("barcode", "") or "").strip().lower()
 
     # Product Name alone (crucial for queries targeting product name like 'special gald' -> 'special gold')
-    name_score = max(fuzz.WRatio(query_str, name), fuzz.token_sort_ratio(query_str, name)) if name else 0.0
+    name_words = variant.get("name_words")
+    if name_words is None:
+        name_words = tuple(name.split()) if name else ()
+    best_name_word_score = 0.0
+    for w in name_words:
+        if len(w) >= 2:
+            sim = Levenshtein.normalized_similarity(query_str, w) * 100
+            if sim >= 70.0 and query_str and w and query_str[0] == w[0]:
+                sim = min(100.0, sim + 10.0)
+            if sim > best_name_word_score:
+                best_name_word_score = sim
+
+    whole_name_score = max(fuzz.WRatio(query_str, name), fuzz.token_sort_ratio(query_str, name)) if name else 0.0
+    name_score = max(whole_name_score, best_name_word_score)
 
     # Name + Size + Color
-    name_details = f"{name} {size} {color}".strip()
+    name_details = variant.get("name_details")
+    if name_details is None:
+        size = str(variant.get("size__name", "") or "").strip().lower()
+        color = str(variant.get("color__name", "") or "").strip().lower()
+        name_details = f"{name} {size} {color}".strip()
     name_details_score = max(fuzz.WRatio(query_str, name_details), fuzz.token_sort_ratio(query_str, name_details)) if name_details else 0.0
 
     # Brand + Name
-    brand_name = f"{brand} {name}".strip()
+    brand_name = variant.get("brand_name")
+    if brand_name is None:
+        brand_name = f"{brand} {name}".strip()
     brand_name_score = max(fuzz.WRatio(query_str, brand_name), fuzz.token_sort_ratio(query_str, brand_name)) if brand_name else 0.0
 
     # Full Composite
-    full_composite = f"{brand} {name} {size} {color} {category}".strip()
+    full_composite = variant.get("full_composite")
+    if full_composite is None:
+        size = str(variant.get("size__name", "") or "").strip().lower()
+        color = str(variant.get("color__name", "") or "").strip().lower()
+        category = str(variant.get("product__category__name", "") or "").strip().lower()
+        full_composite = f"{brand} {name} {size} {color} {category}".strip()
     full_comp_wratio = fuzz.WRatio(query_str, full_composite) if full_composite else 0.0
     full_comp_sort = fuzz.token_sort_ratio(query_str, full_composite) if full_composite else 0.0
 
@@ -693,18 +795,33 @@ def score_variant(
 
     # 3. Word-by-word alignment for multi-word queries (handles typos & reordering)
     if len(q_words) > 1 and full_composite:
-        comp_words = full_composite.split()
+        comp_words = variant.get("comp_words")
+        if comp_words is None:
+            comp_words = tuple(full_composite.split())
         word_scores = []
         for qw in q_words:
             best_qw_score = max(
-                (fuzz.WRatio(qw, cw) for cw in comp_words),
+                (word_match_quality(qw, cw) for cw in comp_words),
                 default=0.0,
             )
-            if any(cw.startswith(qw) for cw in comp_words):
-                best_qw_score = max(best_qw_score, 95.0)
             word_scores.append(best_qw_score)
 
-        word_alignment_score = sum(word_scores) / len(word_scores)
+        avg_score = sum(word_scores) / len(word_scores)
+        matched_words = sum(1 for s in word_scores if s >= 65.0)
+        coverage = matched_words / len(q_words)
+        if coverage < 0.6:
+            word_alignment_score = avg_score * (coverage ** 2)
+            full_comp_wratio = 0.0
+            full_comp_sort = 0.0
+            name_score = 0.0
+            name_details_score = 0.0
+            brand_name_score = 0.0
+        else:
+            word_alignment_score = avg_score
+            full_comp_sort = fuzz.token_sort_ratio(query_str, full_composite)
+            name_score = fuzz.token_sort_ratio(query_str, name) if name else 0.0
+            name_details_score = fuzz.token_sort_ratio(query_str, name_details) if name_details else 0.0
+            brand_name_score = fuzz.token_sort_ratio(query_str, brand_name) if brand_name else 0.0
     else:
         word_alignment_score = 0.0
 
@@ -753,10 +870,26 @@ def search_variants_weighted(
         weights = VARIANT_FIELD_WEIGHTS
 
     query_clean = query.strip()
+    query_lower = query_clean.lower()
+    q_words = query_lower.split()
 
-    # 1. Compute direct score for each variant
+    # 1. Compute direct score for each variant (with fast pre-filtering for large record sets)
     scored_items: List[Dict[str, Any]] = []
+    use_prefilter = len(records) > 200
+
     for variant in records:
+        if use_prefilter:
+            search_blob = variant.get("search_blob")
+            if search_blob:
+                comp_words = variant.get("comp_words") or ()
+                # Fast gate: check if query tokens appear as substrings OR have word-level typo tolerance
+                has_match = (
+                    any(qw in search_blob for qw in q_words)
+                    or any(fuzz.ratio(qw, cw, score_cutoff=70.0) >= 70.0 for qw in q_words for cw in comp_words)
+                )
+                if not has_match:
+                    continue
+
         direct_score = score_variant(query_clean, variant, weights)
         scored_items.append(
             {
@@ -811,8 +944,15 @@ def search_variants_weighted(
             reverse=True,
         )
 
-    # 4. Filter by min_score and limit results
-    results = [item for item in scored_items if item["score"] >= min_score]
+    # 4. Filter by min_score with relative drop-off threshold to prune unrelated noise
+    if scored_items:
+        top_score = scored_items[0]["score"]
+        # If top score is high (>= 80), prune items that fall far below the top match
+        threshold = max(min_score, top_score * 0.65) if top_score >= 80.0 else min_score
+    else:
+        threshold = min_score
+
+    results = [item for item in scored_items if item["score"] >= threshold]
     return results[:limit]
 
 
@@ -848,19 +988,19 @@ def get_weighted_variant_suggestions(
     query_clean = query.strip()
     tokens = query_clean.split()
 
-    suggestions: List[Dict[str, str]] = []
+    candidates: List[Any] = []
     seen = set()
 
-    def add_suggestion(label: str, item_type: str):
+    def add_candidate(score: float, label: str, item_type: str):
         label_clean = label.strip()
         if not label_clean:
             return
         label_lower = label_clean.lower()
         if label_lower not in seen:
             seen.add(label_lower)
-            suggestions.append({"label": label_clean, "type": item_type})
+            candidates.append((score, label_clean, item_type))
 
-    # Case 1: Single-word query -> Show Brand matches first
+    # Case 1: Single-word query -> Check matching Brands (strict)
     if len(tokens) == 1:
         unique_brands: Dict[str, str] = {}
         for item in records:
@@ -868,17 +1008,10 @@ def get_weighted_variant_suggestions(
             if brand:
                 unique_brands[brand.lower()] = brand
 
-        scored_brands = []
         for brand_lower, brand_orig in unique_brands.items():
-            b_score = fuzz.WRatio(query_clean.lower(), brand_lower)
-            if brand_lower.startswith(query_clean.lower()):
-                b_score += 15.0
+            b_score = score_brand_or_category_match(query_clean, brand_orig)
             if b_score >= min_score:
-                scored_brands.append((b_score, brand_orig))
-        scored_brands.sort(key=lambda x: x[0], reverse=True)
-
-        for _, brand_orig in scored_brands[:3]:
-            add_suggestion(brand_orig, "brand")
+                add_candidate(b_score, brand_orig, "brand")
 
     # Variant & product matches
     ranked_variants = search_variants_weighted(
@@ -898,7 +1031,7 @@ def get_weighted_variant_suggestions(
 
         prod_label = format_product_suggestion_label(brand, name, query_clean)
         details = [p for p in (size, color) if p]
-        
+
         if prod_label:
             label = f"{prod_label} {' '.join(details)}".strip() if details else prod_label
             item_type = "variant" if details else ("product" if (brand and name) else "brand")
@@ -911,13 +1044,15 @@ def get_weighted_variant_suggestions(
         else:
             continue
 
-        add_suggestion(label, item_type)
-        if len(suggestions) >= limit:
-            break
+        add_candidate(item.get("score", 0.0), label, item_type)
+
+    # Sort all candidates together by relevance score descending
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    results = [{"label": c[1], "type": c[2]} for c in candidates[:limit]]
 
     if rich:
-        return suggestions[:limit]
-    return [s["label"] for s in suggestions[:limit]]
+        return results
+    return [s["label"] for s in results]
 
 
 # ==========================================
