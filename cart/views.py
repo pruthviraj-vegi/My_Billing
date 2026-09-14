@@ -292,9 +292,13 @@ def barcode_suggestions(request):
     variants = combined_variants[:10]
 
     # Batch compute cart quantities for all returned variants to eliminate N+1 queries
+    # Filter for OPEN carts only to avoid reserving stock for ARCHIVED carts
     variant_ids = [v.id for v in variants]
     cart_qty_map = dict(
-        CartItem.objects.filter(product_variant_id__in=variant_ids)
+        CartItem.objects.filter(
+            product_variant_id__in=variant_ids,
+            cart__status=Cart.CartStatus.OPEN,
+        )
         .values("product_variant_id")
         .annotate(total=Sum("quantity"))
         .values_list("product_variant_id", "total")

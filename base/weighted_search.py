@@ -167,12 +167,33 @@ def get_product_records(
 
         records: List[Dict[str, Any]] = []
         for row in queryset:
+            brand = (row["brand"] or "").strip()
+            name = (row["name"] or "").strip()
+            category = (row["category__name"] or "").strip()
+
+            brand_lower = brand.lower()
+            name_lower = name.lower()
+            category_lower = category.lower()
+
+            brand_name = f"{brand_lower} {name_lower}".strip()
+            full_comp = f"{brand_lower} {name_lower} {category_lower}".strip()
+            name_words = tuple(name_lower.split()) if name_lower else ()
+            comp_words = tuple(full_comp.split()) if full_comp else ()
+
             records.append(
                 {
                     "id": row["id"],
-                    "brand": row["brand"] or "",
-                    "name": row["name"] or "",
-                    "category__name": row["category__name"] or "",
+                    "brand": brand,
+                    "name": name,
+                    "category__name": category,
+                    # Pre-computed normalized search blobs for zero-allocation scoring
+                    "brand_lower": brand_lower,
+                    "name_lower": name_lower,
+                    "category_lower": category_lower,
+                    "brand_name": brand_name,
+                    "full_comp": full_comp,
+                    "name_words": name_words,
+                    "comp_words": comp_words,
                 }
             )
             if len(records) >= max_records:
@@ -236,19 +257,44 @@ def score_product(
     q_words = query_str.split()
     max_weight = max(weights.values()) if weights else 1.0
 
-    brand = str(product.get("brand", "") or "").strip().lower()
-    name = str(product.get("name", "") or "").strip().lower()
-    category = str(product.get("category__name", "") or "").strip().lower()
-    brand_name = f"{brand} {name}".strip()
-    full_comp = f"{brand} {name} {category}".strip()
+    # Retrieve pre-computed lowercase fields if present, fallback for backwards compatibility
+    brand = product.get("brand_lower")
+    if brand is None:
+        brand = str(product.get("brand", "") or "").strip().lower()
+    name = product.get("name_lower")
+    if name is None:
+        name = str(product.get("name", "") or "").strip().lower()
+    category = product.get("category_lower")
+    if category is None:
+        category = str(product.get("category__name", "") or "").strip().lower()
+
+    brand_name = product.get("brand_name")
+    if brand_name is None:
+        brand_name = f"{brand} {name}".strip()
+
+    full_comp = product.get("full_comp")
+    if full_comp is None:
+        full_comp = f"{brand} {name} {category}".strip()
+
+    name_words = product.get("name_words")
+    if name_words is None:
+        name_words = tuple(name.split()) if name else ()
+
+    field_lower_map = {
+        "brand": brand,
+        "name": name,
+        "category__name": category,
+    }
 
     # 1. Direct field matches (WRatio and token_sort_ratio)
     best_field_score = 0.0
     for field_name, weight in weights.items():
-        val = product.get(field_name, "")
-        if not val:
-            continue
-        val_str = str(val).strip().lower()
+        val_str = field_lower_map.get(field_name)
+        if val_str is None:
+            val = product.get(field_name, "")
+            if not val:
+                continue
+            val_str = str(val).strip().lower()
         if not val_str:
             continue
 
@@ -260,7 +306,10 @@ def score_product(
         f_sort = fuzz.token_sort_ratio(query_str, val_str)
 
         # Word-level match within field for single-word typo tolerance
-        val_words = val_str.split()
+        if field_name == "name" and name_words:
+            val_words = name_words
+        else:
+            val_words = val_str.split()
         max_word_match = max((fuzz.WRatio(query_str, w) for w in val_words), default=0.0) if val_words else 0.0
 
         f_score = max(f_wratio, f_sort, max_word_match)
@@ -275,7 +324,6 @@ def score_product(
             best_field_score = weighted_score
 
     # 2. Composite string matches
-    name_words = name.split() if name else []
     best_name_word_score = 0.0
     for w in name_words:
         if len(w) >= 2:
@@ -291,7 +339,9 @@ def score_product(
 
     # 3. Word-by-word alignment for multi-word queries (handles typos & reordering with token coverage)
     if len(q_words) > 1 and full_comp:
-        comp_words = full_comp.split()
+        comp_words = product.get("comp_words")
+        if comp_words is None:
+            comp_words = tuple(full_comp.split())
         word_scores = []
         for qw in q_words:
             best_qw_score = max(
@@ -353,10 +403,25 @@ def search_products_weighted(
         weights = FIELD_WEIGHTS
 
     query_clean = query.strip()
+    query_lower = query_clean.lower()
+    q_words = query_lower.split()
 
-    # 1. Compute direct score for each product
+    # 1. Compute direct score for each product (with fast pre-filtering for large catalogs)
     scored_items: List[Dict[str, Any]] = []
+    use_prefilter = len(records) > 200
+
     for product in records:
+        if use_prefilter:
+            full_comp = product.get("full_comp")
+            if full_comp:
+                comp_words = product.get("comp_words") or ()
+                has_match = (
+                    any(qw in full_comp for qw in q_words)
+                    or any(fuzz.ratio(qw, cw, score_cutoff=70.0) >= 70.0 for qw in q_words for cw in comp_words)
+                )
+                if not has_match:
+                    continue
+
         direct_score = score_product(query_clean, product, weights)
         scored_items.append(
             {
@@ -1099,7 +1164,31 @@ def get_generic_records(config: GenericSearchConfig) -> List[Dict[str, Any]]:
         qs = config.model_class.objects.filter(**config.filter_kwargs).values(*config.fields)
         records: List[Dict[str, Any]] = []
         for row in qs.iterator():
-            records.append({f: (row.get(f) or "") for f in config.fields})
+            rec = {f: (row.get(f) or "") for f in config.fields}
+
+            # Pre-compute normalized fields and composite search blob for zero-allocation scoring
+            lower_fields: Dict[str, str] = {}
+            field_words_map: Dict[str, tuple] = {}
+            comp_parts: List[str] = []
+            for f in config.fields:
+                val = rec[f]
+                val_str = str(val).strip().lower() if val else ""
+                lower_fields[f] = val_str
+                if val_str:
+                    w_tup = tuple(val_str.split())
+                    field_words_map[f] = w_tup
+                    if f in config.weights:
+                        comp_parts.append(val_str)
+
+            composite_str = " ".join(comp_parts).strip()
+            comp_words = tuple(composite_str.split()) if composite_str else ()
+
+            rec["__lower_fields__"] = lower_fields
+            rec["__field_words__"] = field_words_map
+            rec["__composite_str__"] = composite_str
+            rec["__comp_words__"] = comp_words
+
+            records.append(rec)
             if len(records) >= config.max_records:
                 break
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -1136,17 +1225,33 @@ def score_generic_record(
     weights = config.weights
     max_weight = max(weights.values()) if weights else 1.0
 
+    lower_fields = record.get("__lower_fields__")
+    field_words_map = record.get("__field_words__")
+    composite_str = record.get("__composite_str__")
+    comp_words = record.get("__comp_words__")
+
+    # Fallback if record was cached prior to pre-computation optimization
+    if lower_fields is None:
+        lower_fields = {}
+        field_words_map = {}
+        comp_parts = []
+        for f in config.fields:
+            val = record.get(f, "")
+            val_str = str(val).strip().lower() if val else ""
+            lower_fields[f] = val_str
+            if val_str:
+                field_words_map[f] = tuple(val_str.split())
+                if f in weights:
+                    comp_parts.append(val_str)
+        composite_str = " ".join(comp_parts).strip()
+        comp_words = tuple(composite_str.split()) if composite_str else ()
+
     # 1. Direct field matches
     best_field_score = 0.0
-    field_vals: List[str] = []
     for field_name, weight in weights.items():
-        val = record.get(field_name, "")
-        if not val:
-            continue
-        val_str = str(val).strip().lower()
+        val_str = lower_fields.get(field_name, "")
         if not val_str:
             continue
-        field_vals.append(val_str)
 
         # Early exact-match exit
         if query_str == val_str:
@@ -1156,7 +1261,7 @@ def score_generic_record(
         f_sort = fuzz.token_sort_ratio(query_str, val_str)
 
         # Word-level match within field for single-word typo tolerance
-        val_words = val_str.split()
+        val_words = field_words_map.get(field_name) or ()
         max_word_match = max((fuzz.WRatio(query_str, w) for w in val_words), default=0.0) if val_words else 0.0
 
         f_score = max(f_wratio, f_sort, max_word_match)
@@ -1171,13 +1276,11 @@ def score_generic_record(
             best_field_score = weighted_score
 
     # 2. Composite string match
-    composite_str = " ".join(field_vals).strip()
     comp_wratio = fuzz.WRatio(query_str, composite_str) if composite_str else 0.0
     comp_sort = fuzz.token_sort_ratio(query_str, composite_str) if composite_str else 0.0
 
     # 3. Word-by-word alignment for multi-word queries
     if len(q_words) > 1 and composite_str:
-        comp_words = composite_str.split()
         word_scores = []
         for qw in q_words:
             best_qw_score = max(
@@ -1220,8 +1323,23 @@ def search_generic_weighted(
         return []
 
     query_clean = query.strip()
+    query_lower = query_clean.lower()
+    q_words = query_lower.split()
+
+    use_prefilter = len(records) > 200
     scored = []
     for item in records:
+        if use_prefilter:
+            composite_str = item.get("__composite_str__")
+            if composite_str:
+                comp_words = item.get("__comp_words__") or ()
+                has_match = (
+                    any(qw in composite_str for qw in q_words)
+                    or any(fuzz.ratio(qw, cw, score_cutoff=70.0) >= 70.0 for qw in q_words for cw in comp_words)
+                )
+                if not has_match:
+                    continue
+
         score = score_generic_record(query_clean, item, config)
         if score >= min_score:
             scored.append({"item": item, "score": score})

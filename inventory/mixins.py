@@ -179,9 +179,11 @@ class ProductVariantStockMixin:
 
     @property
     def cart_qty(self):
-        """Get the cart quantity for the variant"""
+        """Get the cart quantity for the variant in open carts"""
         return (
-            self.cart_items.aggregate(total_quantity=Sum("quantity"))["total_quantity"]
+            self.cart_items.filter(cart__status="OPEN").aggregate(
+                total_quantity=Sum("quantity")
+            )["total_quantity"]
             or 0
         )
 
