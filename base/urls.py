@@ -11,6 +11,11 @@ app_name = "base"
 urlpatterns = [
     path("", views.HomeView.as_view(), name="home"),
     path("login/", views.CustomLoginView.as_view(), name="login"),
+    path(
+        "login/forget-account/",
+        views.forget_remembered_account,
+        name="forget_account",
+    ),
     path("logout/", views.logout_view, name="logout"),
     path("dashboard-stats/", views.dashboard_stats, name="dashboard_stats"),
     path("calendar/", views.CalendarView.as_view(), name="calendar"),

@@ -5,9 +5,11 @@ import datetime
 import logging
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import logout
+from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.views import LoginView
+from django.core.signing import BadSignature, SignatureExpired
 from django.db.models import Count, DecimalField, F, Q, Sum, OuterRef, Subquery
 from django.db.models.functions import Abs, Coalesce, TruncDate, TruncMonth, TruncWeek
 from django.http import JsonResponse
@@ -33,11 +35,52 @@ logger = logging.getLogger(__name__)
 
 
 class CustomLoginView(LoginView):
-    """Handle user login with remember-me and safe redirect support."""
+    """Handle user login with remember-me, remembered account, and safe redirect support."""
 
     form_class = CustomLoginForm
     template_name = "base/login.html"
     redirect_authenticated_user = True
+
+    def get_context_data(self, **kwargs):
+        """Add remembered account details to context if a valid signed cookie exists."""
+        context = super().get_context_data(**kwargs)
+        remembered_user = None
+        switch_account = self.request.GET.get("switch") == "1"
+
+        try:
+            phone = self.request.get_signed_cookie(
+                "remembered_account",
+                salt="remembered_account_salt",
+                max_age=30 * 24 * 60 * 60,
+            )
+        except (BadSignature, SignatureExpired, KeyError):
+            phone = None
+
+        if phone:
+            user_model = get_user_model()
+            user_obj = user_model.objects.filter(
+                phone_number=phone, is_active=True
+            ).first()
+            if user_obj:
+                name = user_obj.full_name.strip() or user_obj.first_name or "User"
+                parts = name.split()
+                initials = (
+                    "".join([part[0].upper() for part in parts[:2]])
+                    if parts
+                    else "U"
+                )
+                masked_phone = f"•••••• {phone[-4:]}" if len(phone) >= 4 else phone
+                remembered_user = {
+                    "phone_number": phone,
+                    "full_name": name,
+                    "first_name": user_obj.first_name or name,
+                    "masked_phone": masked_phone,
+                    "initials": initials,
+                }
+
+        context["remembered_user"] = remembered_user
+        context["switch_account"] = switch_account
+        return context
 
     def get_success_url(self):
         """
@@ -78,6 +121,21 @@ class CustomLoginView(LoginView):
         # Add success message
         messages.success(self.request, f"Welcome back, {self.request.user.full_name}!")
 
+        # Handle remembered account signed cookie
+        user = self.request.user
+        if remember:
+            response.set_signed_cookie(
+                "remembered_account",
+                str(user.phone_number),
+                salt="remembered_account_salt",
+                max_age=30 * 24 * 60 * 60,
+                httponly=True,
+                samesite="Lax",
+                secure=getattr(settings, "SESSION_COOKIE_SECURE", False),
+            )
+        else:
+            response.delete_cookie("remembered_account")
+
         return response
 
     def form_invalid(self, form):
@@ -87,6 +145,13 @@ class CustomLoginView(LoginView):
         )
 
         return super().form_invalid(form)
+
+
+def forget_remembered_account(request):
+    """Clear remembered account cookie and return to login page."""
+    response = redirect("base:login")
+    response.delete_cookie("remembered_account")
+    return response
 
 
 class HomeView(TemplateView):
