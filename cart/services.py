@@ -19,7 +19,7 @@ class CartService:
         """
         Retrieves cart items with optimized query, category counts, and total MRP selling price.
         """
-        cart_items = (
+        cart_items = list(
             CartItem.objects.filter(cart=cart)
             .select_related(
                 "product_variant",
@@ -31,27 +31,35 @@ class CartService:
             .order_by("-created_at")
         )
 
-        category_counts = list(
-            cart_items.values(
-                category_name=Coalesce(
-                    "product_variant__product__category__name", Value("Other")
-                )
-            ).annotate(total_qty=Sum("quantity")).order_by("-total_qty")
+        category_map = {}
+        total_selling_price = Decimal("0.00")
+        for item in cart_items:
+            variant = item.product_variant
+            qty = item.quantity or Decimal("0")
+            mrp = getattr(variant, "mrp", Decimal("0"))
+            total_selling_price += qty * mrp
+
+            product = getattr(variant, "product", None)
+            category = getattr(product, "category", None) if product else None
+            cat_name = category.name if category else "Other"
+            category_map[cat_name] = category_map.get(cat_name, Decimal("0")) + qty
+
+        category_counts = [
+            {"category_name": cat_name, "total_qty": total_qty}
+            for cat_name, total_qty in sorted(
+                category_map.items(), key=lambda x: x[1], reverse=True
+            )
+        ]
+        total_selling_price = round(total_selling_price, 2)
+
+        frequent_prices_map = CartService.get_frequent_sold_prices(
+            [item.product_variant for item in cart_items]
         )
 
-        total_selling_price = cart_items.aggregate(
-            total=Sum(
-                ExpressionWrapper(
-                    F("quantity") * F("product_variant__mrp"),
-                    output_field=DecimalField(max_digits=10, decimal_places=2),
-                )
-            )
-        )["total"] or Decimal("0.00")
-
-        frequent_prices_map = CartService.get_frequent_sold_prices([item.product_variant for item in cart_items])
-
         for item in cart_items:
-            item.frequent_sold_prices = frequent_prices_map.get(item.product_variant.id, [])
+            item.frequent_sold_prices = frequent_prices_map.get(
+                item.product_variant.id, []
+            )
 
         return {
             "cart_items": cart_items,

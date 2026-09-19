@@ -12,12 +12,52 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum, Value
+from django.db.models.functions import Coalesce
 
 from base.utility import StringProcessor
 from inventory.models import ProductVariant
 
 User = settings.AUTH_USER_MODEL
+
+
+class CartQuerySet(models.QuerySet):
+    """Custom queryset for Cart providing precomputed totals to eliminate N+1 queries."""
+
+    def with_totals(self):
+        """Precomputes total amount, total quantity, and item count in a single query."""
+        return self.annotate(
+            annotated_total_amount=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        F("cart_items__quantity") * F("cart_items__price"),
+                        output_field=DecimalField(max_digits=10, decimal_places=2),
+                    )
+                ),
+                Value(Decimal("0.00")),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            ),
+            annotated_total_quantity=Coalesce(
+                Sum("cart_items__quantity"),
+                Value(Decimal("0.00")),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            ),
+            annotated_total_profit=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        F("cart_items__quantity")
+                        * (
+                            F("cart_items__price")
+                            - F("cart_items__product_variant__purchase_price")
+                        ),
+                        output_field=DecimalField(max_digits=10, decimal_places=2),
+                    )
+                ),
+                Value(Decimal("0.00")),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            ),
+            annotated_item_count=Count("cart_items", distinct=True),
+        )
 
 
 class Cart(models.Model):
@@ -50,6 +90,8 @@ class Cart(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = CartQuerySet.as_manager()
+
     class Meta:
         """Meta options for Cart model."""
         ordering = ["-created_at"]
@@ -71,8 +113,17 @@ class Cart(models.Model):
 
     @property
     def total_amount(self):
-        """Calculate total amount using database aggregation for better performance"""
-        # Use database aggregation to calculate total in a single query
+        """Calculate total amount using annotated value if available, in-memory if prefetched, otherwise DB aggregation."""
+        if hasattr(self, "annotated_total_amount"):
+            return round(self.annotated_total_amount or Decimal(0), 2)
+
+        if hasattr(self, "_prefetched_objects_cache") and "cart_items" in self._prefetched_objects_cache:
+            total = sum(
+                (item.quantity * item.price for item in self.cart_items.all()),
+                Decimal(0),
+            )
+            return round(total, 2)
+
         total = self.cart_items.aggregate(
             total=Sum(
                 ExpressionWrapper(
@@ -86,20 +137,30 @@ class Cart(models.Model):
 
     @property
     def total_quantity(self):
-        """Calculate total quantity using database aggregation for better performance"""
-        # Use database aggregation to calculate total Quantity in a single query
+        """Calculate total quantity using annotated value if available, in-memory if prefetched, otherwise DB aggregation."""
+        if hasattr(self, "annotated_total_quantity"):
+            return round(self.annotated_total_quantity or Decimal(0), 2)
+
+        if hasattr(self, "_prefetched_objects_cache") and "cart_items" in self._prefetched_objects_cache:
+            total = sum((item.quantity for item in self.cart_items.all()), Decimal(0))
+            return round(total, 2)
+
         total = self.cart_items.aggregate(total=Sum("quantity"))["total"] or Decimal(0)
 
         return round(total, 2)
 
     def get_item_count(self):
-        """Get item count with database optimization"""
+        """Get item count using annotated value if available, in-memory if prefetched, otherwise DB count."""
+        if hasattr(self, "annotated_item_count"):
+            return self.annotated_item_count
+
+        if hasattr(self, "_prefetched_objects_cache") and "cart_items" in self._prefetched_objects_cache:
+            return len(self.cart_items.all())
+
         return self.cart_items.count()
 
     def get_cart_summary(self):
         """Get cart summary in a single query"""
-        # Uses top-level Sum and Count imports
-
         summary = self.cart_items.aggregate(
             total_items=Count("id"), total_amount=Sum("price")
         )
@@ -116,8 +177,17 @@ class Cart(models.Model):
 
     @property
     def total_profit(self):
-        """Calculate total profit using database aggregation for better performance"""
-        # Sum of: quantity * (price - product_variant__purchase_price)
+        """Calculate total profit using annotated value if available, in-memory if prefetched, otherwise DB aggregation."""
+        if hasattr(self, "annotated_total_profit"):
+            return round(self.annotated_total_profit or Decimal(0), 2)
+
+        if hasattr(self, "_prefetched_objects_cache") and "cart_items" in self._prefetched_objects_cache:
+            total = Decimal(0)
+            for item in self.cart_items.all():
+                purchase_price = getattr(item.product_variant, "purchase_price", Decimal(0))
+                total += item.quantity * (item.price - purchase_price)
+            return round(total, 2)
+
         profit = self.cart_items.aggregate(
             total=Sum(
                 ExpressionWrapper(

@@ -58,11 +58,11 @@ class CartMainPageView(RequiredPermissionMixin, TemplateView):
         to eliminate N+1 query redundancy.
         """
         context = super().get_context_data(**kwargs)
-        # Use select_related to avoid N+1 queries
+        # Use with_totals() to precompute amounts in a single query
         context["carts"] = (
             Cart.objects.filter(status="OPEN", created_by=self.request.user)
+            .with_totals()
             .select_related("created_by")
-            .prefetch_related("cart_items__product_variant__product")
             .order_by("-created_at")
         )
         context["shop_details"] = ShopDetails.get_active()
@@ -77,10 +77,12 @@ def get_cart_data(request, pk):
     template_name = "cart/main_page.html"
 
     try:
-        cart = Cart.objects.get(id=pk)
+        cart = Cart.objects.with_totals().get(id=pk)
         summary = CartService.get_cart_summary(cart)
-        carts = Cart.objects.filter(status="OPEN", created_by=request.user).order_by(
-            "-created_at"
+        carts = (
+            Cart.objects.filter(status="OPEN", created_by=request.user)
+            .with_totals()
+            .order_by("-created_at")
         )
         shop_details = ShopDetails.get_active()
 
@@ -195,8 +197,10 @@ def auto_cart_create(request):
     If none are empty, it creates a new "Walk in" cart and redirects to it.
     """
 
-    carts = Cart.objects.filter(status="OPEN", created_by=request.user).order_by(
-        "-created_at"
+    carts = (
+        Cart.objects.filter(status="OPEN", created_by=request.user)
+        .with_totals()
+        .order_by("-created_at")
     )
 
     for cart in carts:
