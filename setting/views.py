@@ -272,23 +272,23 @@ def set_default_config(request, pk):
 def shop_settings_dashboard(request):
     """Dashboard for shop and report settings."""
     # Get shop details
-    shops = ShopDetails.objects.filter(is_active=True).order_by("-created_at")
-    active_shop = shops.first() if shops.exists() else None
+    shops = list(ShopDetails.objects.filter(is_active=True).order_by("-created_at"))
+    active_shop = shops[0] if shops else None
 
     # Get report configurations
-    configs = ReportConfiguration.objects.filter(is_active=True).order_by(
-        "-is_default", "-created_at"
+    configs = list(
+        ReportConfiguration.objects.filter(is_active=True).order_by(
+            "-is_default", "-created_at"
+        )
     )
 
-    # Get default configs by type
-    default_configs = {}
-    for report_type, _ in ReportConfiguration.ReportType.choices:
-        try:
-            default_configs[report_type] = ReportConfiguration.objects.get(
-                report_type=report_type, is_default=True, is_active=True
-            )
-        except ReportConfiguration.DoesNotExist:
-            default_configs[report_type] = None
+    # Get default configs by type in memory without additional queries
+    default_configs = {
+        report_type: None for report_type, _ in ReportConfiguration.ReportType.choices
+    }
+    for cfg in configs:
+        if cfg.is_default and default_configs.get(cfg.report_type) is None:
+            default_configs[cfg.report_type] = cfg
 
     context = {
         "active_shop": active_shop,

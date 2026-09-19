@@ -84,7 +84,7 @@ def dashboard_fetch(request):
     payments = Payment.objects.filter(
         payment_type=Payment.PaymentType.Paid,
         payment_date__date__range=[start_date, end_date],
-    ).select_related("customer")
+    )
 
     # Calculate PERIOD-BASED totals in a single query
     invoice_metrics = invoices.aggregate(
@@ -266,7 +266,11 @@ def get_data(request):
     # Apply sorting (Multi-column support)
     valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-created_at")
 
-    customers = Customer.objects.filter(filters).order_by(*valid_sorts)
+    customers = (
+        Customer.objects.filter(filters)
+        .select_related("referred_by")
+        .order_by(*valid_sorts)
+    )
 
     return customers
 

@@ -100,7 +100,7 @@ def dashboard_fetch(request):
 
     payments = SupplierPayment.objects.filter(
         is_deleted=False, payment_date__date__range=[start_date, end_date]
-    ).select_related("supplier")
+    )
 
     # Calculate PERIOD-BASED totals in a single query
     invoice_metrics = invoices.aggregate(
