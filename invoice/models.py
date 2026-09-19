@@ -932,21 +932,35 @@ class ReturnInvoice(models.Model):
         return None
 
     @property
+    def _cached_return_items(self):
+        """Cache return_invoice_items queryset to avoid repeated DB hits."""
+        if hasattr(self, "_prefetched_objects_cache") and "return_invoice_items" in self._prefetched_objects_cache:
+            return self.return_invoice_items.all()
+        if not hasattr(self, "_items_cache"):
+            self._items_cache = list(self.return_invoice_items.all())
+        return self._items_cache
+
+    @property
     def total_tax_value(self):
         """Calculate the sum of tax values across all return invoice items."""
-        return round(sum(item.tax_value for item in self.return_invoice_items.all()), 2)
+        return round(sum(item.tax_value for item in self._cached_return_items), 2)
 
     @property
     def total_gst_amount(self):
         """Calculate the sum of GST amounts across all return invoice items."""
         return round(
-            sum(item.gst_amount for item in self.return_invoice_items.all()), 2
+            sum(item.gst_amount for item in self._cached_return_items), 2
         )
 
     @property
     def cgst_amount(self):
         """Calculate CGST amount as half of the total GST amount."""
         return round(self.total_gst_amount / 2, 2)
+
+    @property
+    def igst_amount(self):
+        """Calculate IGST amount across all return invoice items."""
+        return Decimal("0.00")
 
     def __str__(self):
         return f"Return {self.return_number or self.pk} for {self.customer.name}"

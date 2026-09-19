@@ -6,7 +6,19 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q, Sum, Count, F, DecimalField, OuterRef, Subquery
+from django.db.models import (
+    Case,
+    Count,
+    DecimalField,
+    F,
+    IntegerField,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
 from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, Coalesce
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
@@ -71,16 +83,37 @@ def invoice_dashboard_fetch(request):
     # Active non-cancelled invoices
     invoices = all_invoices.filter(is_cancelled=False)
 
-    # Full gross metrics from all created invoices
-    gross_metrics = all_invoices.aggregate(
+    # Consolidated invoice metrics (gross, paid from active, and cancelled) in a single query
+    metrics = all_invoices.aggregate(
         total_invoices=Count("id"),
         gross_total_amount=Coalesce(Sum("amount"), Decimal("0")),
         total_discount=Coalesce(Sum("discount_amount"), Decimal("0")),
-    )
-
-    # Paid metrics from active invoices
-    active_metrics = invoices.aggregate(
-        total_paid=Coalesce(Sum("paid_amount"), Decimal("0")),
+        total_paid=Coalesce(
+            Sum(
+                Case(
+                    When(is_cancelled=False, then=F("paid_amount")),
+                    default=Value(Decimal("0")),
+                    output_field=DecimalField(),
+                )
+            ),
+            Decimal("0"),
+        ),
+        total_cancelled_amount=Coalesce(
+            Sum(
+                Case(
+                    When(is_cancelled=True, then=F("amount")),
+                    default=Value(Decimal("0")),
+                    output_field=DecimalField(),
+                )
+            ),
+            Decimal("0"),
+        ),
+        total_cancelled_invoices=Count(
+            Case(
+                When(is_cancelled=True, then=1),
+                output_field=IntegerField(),
+            )
+        ),
     )
 
     # Get return invoice metrics
@@ -88,12 +121,6 @@ def invoice_dashboard_fetch(request):
         return_date__date__range=[start_date, end_date],
         invoice__is_cancelled=False,
     ).aggregate(total_return_amount=Coalesce(Sum("refund_amount"), Decimal("0")))
-
-    # Get cancelled invoice metrics
-    cancelled_metrics = all_invoices.filter(is_cancelled=True).aggregate(
-        total_cancelled_amount=Coalesce(Sum("amount"), Decimal("0")),
-        total_cancelled_invoices=Count("id"),
-    )
 
     # Calculate profit from invoice items in a single query
     # Note: We need to account for returned items when calculating profit
@@ -134,11 +161,11 @@ def invoice_dashboard_fetch(request):
     )
 
     # Extract metrics
-    total_amount = gross_metrics["gross_total_amount"]
-    total_discount = gross_metrics["total_discount"]
-    total_paid = active_metrics["total_paid"]
+    total_amount = metrics["gross_total_amount"]
+    total_discount = metrics["total_discount"]
+    total_paid = metrics["total_paid"]
     total_return_amount = return_metrics["total_return_amount"]
-    total_cancelled_amount = cancelled_metrics["total_cancelled_amount"]
+    total_cancelled_amount = metrics["total_cancelled_amount"]
     total_profit = profit_data["total_profit"] - total_discount
 
     # Calculate derived Net Amount: Full Gross Amount minus Discount, Returned Amount, and Cancelled Amount
@@ -156,10 +183,10 @@ def invoice_dashboard_fetch(request):
 
     # Calculate Average Order Value (AOV)
     aov = (
-        (net_amount / gross_metrics["total_invoices"]).quantize(
+        (net_amount / metrics["total_invoices"]).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
-        if gross_metrics["total_invoices"] > 0
+        if metrics["total_invoices"] > 0
         else Decimal("0")
     )
 
@@ -238,7 +265,7 @@ def invoice_dashboard_fetch(request):
 
     # Build stats dictionary
     stats = {
-        "total_invoices": gross_metrics["total_invoices"],
+        "total_invoices": metrics["total_invoices"],
         "total_amount": float(total_amount),
         "total_discount": float(total_discount),
         "total_paid": float(total_paid),
@@ -248,7 +275,7 @@ def invoice_dashboard_fetch(request):
         "margin_percentage": float(margin_percentage),
         "total_return_amount": float(total_return_amount),
         "total_cancelled_amount": float(total_cancelled_amount),
-        "total_cancelled_invoices": cancelled_metrics["total_cancelled_invoices"],
+        "total_cancelled_invoices": metrics["total_cancelled_invoices"],
         "aov": float(aov),
         "recovery_rate": float(recovery_rate),
         "cash_amount": float(cash_amount),

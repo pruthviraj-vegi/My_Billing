@@ -6,9 +6,10 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 
-from invoice.models import Invoice, ReturnInvoice
+from invoice.models import Invoice, ReturnInvoice, ReturnInvoiceItem
 
 logger = logging.getLogger(__name__)
 
@@ -178,27 +179,44 @@ class ReturnInvoiceService:
 
 def get_invoice_report_data(date_range):
     """Get GST invoices within the given date range."""
-    return Invoice.objects.select_related("customer").filter(
-        invoice_type=Invoice.Invoice_type.GST,
-        invoice_date__date__range=date_range,
+    return (
+        Invoice.objects.select_related("customer")
+        .prefetch_related("invoice_items")
+        .filter(
+            invoice_type=Invoice.Invoice_type.GST,
+            invoice_date__date__range=date_range,
+        )
     )
 
 
 def get_invoice_cancled_data(date_range):
     """Get cancelled GST invoices within the given date range."""
-    return Invoice.objects.select_related("customer").filter(
-        invoice_type=Invoice.Invoice_type.GST,
-        cancelled_at__date__range=date_range,
-        is_cancelled=True,
+    return (
+        Invoice.objects.select_related("customer")
+        .prefetch_related("invoice_items")
+        .filter(
+            invoice_type=Invoice.Invoice_type.GST,
+            cancelled_at__date__range=date_range,
+            is_cancelled=True,
+        )
     )
 
 
 def get_invoice_return_data(date_range):
     """Get approved GST return invoices within the given date range."""
-    return ReturnInvoice.objects.select_related("invoice__customer").filter(
-        invoice__invoice_type=Invoice.Invoice_type.GST,
-        updated_at__date__range=date_range,
-        invoice__is_cancelled=False,
-        status=ReturnInvoice.RefundStatus.APPROVED,
+    return (
+        ReturnInvoice.objects.select_related("customer", "invoice")
+        .prefetch_related(
+            Prefetch(
+                "return_invoice_items",
+                queryset=ReturnInvoiceItem.objects.select_related("original_invoice_item"),
+            )
+        )
+        .filter(
+            invoice__invoice_type=Invoice.Invoice_type.GST,
+            updated_at__date__range=date_range,
+            invoice__is_cancelled=False,
+            status=ReturnInvoice.RefundStatus.APPROVED,
+        )
     )
 
