@@ -11,7 +11,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
-from django.db.models import Exists, OuterRef, Q, Sum
+from django.db.models import Exists, OuterRef, Prefetch, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -85,7 +85,18 @@ def get_data(request):
         filters &= ~Exists(has_commission)
 
     valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-date_joined")
-    users = User.objects.filter(filters).order_by(*valid_sorts)
+    users = (
+        User.objects.filter(filters)
+        .prefetch_related(
+            "groups",
+            Prefetch(
+                "salaries",
+                queryset=Salary.objects.filter(effective_to__isnull=True),
+                to_attr="current_salaries",
+            ),
+        )
+        .order_by(*valid_sorts)
+    )
 
     return users
 
@@ -312,17 +323,23 @@ def sessions_overview(request):
     )
 
     if settings.SESSION_ENGINE in ["django.contrib.sessions.backends.db", "django.contrib.sessions.backends.cached_db"]:
-        active_sessions = Session.objects.filter(expire_date__gt=now)
-        active_count = active_sessions.count()
+        active_sessions = list(Session.objects.filter(expire_date__gt=now))
+        active_count = len(active_sessions)
         
+        decoded_sessions = []
+        user_ids = set()
         for session in active_sessions:
             data = session.get_decoded()
             user_id = data.get("_auth_user_id")
-            if not user_id:
-                continue
-            try:
-                user = User.objects.get(id=user_id)
-            except User.DoesNotExist:
+            if user_id:
+                user_ids.add(user_id)
+                decoded_sessions.append((session, data, str(user_id)))
+
+        users_by_id = {str(u.id): u for u in User.objects.filter(id__in=user_ids)}
+
+        for session, data, user_id in decoded_sessions:
+            user = users_by_id.get(user_id)
+            if not user:
                 continue
 
             sessions_data.append(
@@ -345,6 +362,8 @@ def sessions_overview(request):
         prefix = SessionStore().cache_key_prefix
         
         try:
+            cached_entries = []
+            user_ids = set()
             for key in cache.iter_keys(f"{prefix}*"):
                 if isinstance(key, bytes):
                     key = key.decode("utf-8")
@@ -358,11 +377,8 @@ def sessions_overview(request):
                 user_id = data.get("_auth_user_id")
                 if not user_id:
                     continue
-                    
-                try:
-                    user = User.objects.get(id=user_id)
-                except User.DoesNotExist:
-                    continue
+                
+                user_ids.add(user_id)
                 
                 # Approximate expire date based on Redis TTL
                 try:
@@ -371,6 +387,15 @@ def sessions_overview(request):
                 except Exception:
                     expire_date = now + timezone.timedelta(seconds=settings.SESSION_COOKIE_AGE)
                     
+                cached_entries.append((session_key, data, str(user_id), expire_date))
+
+            users_by_id = {str(u.id): u for u in User.objects.filter(id__in=user_ids)}
+
+            for session_key, data, user_id, expire_date in cached_entries:
+                user = users_by_id.get(user_id)
+                if not user:
+                    continue
+
                 sessions_data.append(
                     {
                         "session_key": session_key,

@@ -105,7 +105,17 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
 
     @property
     def current_salary(self):
-        """Get the current active salary record (effective_to is None)"""
+        """Get the current active salary record (effective_to is None) with prefetch support."""
+        if hasattr(self, "current_salaries"):
+            salaries = self.current_salaries
+            return salaries[0] if salaries else None
+
+        if hasattr(self, "_prefetched_objects_cache") and "salaries" in self._prefetched_objects_cache:
+            for s in self.salaries.all():
+                if s.effective_to is None:
+                    return s
+            return None
+
         return self.salaries.filter(effective_to__isnull=True).first()
 
     @property
