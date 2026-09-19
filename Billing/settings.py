@@ -85,6 +85,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Performance metrics — MUST be first to capture total request duration
+    "base.metrics.PerformanceMetricsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -99,6 +101,9 @@ MIDDLEWARE = [
     "base.middleware.CustomLoginRequiredMiddleware",
     "notification.middleware.NotificationCountMiddleware",
 ]
+
+# ─── Performance Metrics ───────────────────────────────────────────
+METRICS_ENABLED = config("METRICS_ENABLED", cast=bool, default=True)
 
 ROOT_URLCONF = "Billing.urls"
 
@@ -317,6 +322,10 @@ LOGGING = {
             "format": "{levelname} {filename}:{lineno} {message}",
             "style": "{",
         },
+        "metrics_jsonl": {
+            "format": "{message}",
+            "style": "{",
+        },
     },
     "filters": {
         "only_debug": {"()": MaxLevelFilter, "max_level": logging.DEBUG},
@@ -370,6 +379,14 @@ LOGGING = {
             "class": "django.utils.log.AdminEmailHandler",
             "filters": ["require_debug_false"],
         },
+        "metrics_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(BASE_DIR, "logs/metrics.jsonl"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 5,
+            "formatter": "metrics_jsonl",
+        },
     },
     "loggers": {
         "django": {
@@ -402,6 +419,12 @@ LOGGING = {
         "fontTools": {
             "handlers": ["error_file"],
             "level": "WARNING",
+            "propagate": False,
+        },
+        # Performance metrics — structured JSON log for dashboard
+        "performance": {
+            "handlers": ["metrics_file"],
+            "level": "INFO",
             "propagate": False,
         },
     },
