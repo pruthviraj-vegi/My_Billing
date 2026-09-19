@@ -238,6 +238,9 @@ X_FRAME_OPTIONS = "DENY"
 # Referrer Policy
 SECURE_REFERRER_POLICY = "same-origin"
 
+#sql matrix data
+METRICS_CAPTURE_SQL = True
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
