@@ -75,10 +75,10 @@
               </td>
               <td class="mobile-hide">{{ cloth_type.description|default:'No description' }}</td>
               <td class="mobile-hide">
-                <span class="badge badge-primary">{{ cloth_type.products.count }}</span>
+                <span class="badge badge-primary">{{ cloth_type.products_count|default:0 }}</span>
               </td>
               <td>
-                <span class="badge badge-primary">{{ cloth_type.products.count }}</span>
+                <span class="badge badge-primary">{{ cloth_type.variants_count|default:0 }}</span>
               </td>
               <td class="mobile-hide">{{ cloth_type.created_at|date:'M d, Y' }}</td>
               <td>

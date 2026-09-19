@@ -25,7 +25,7 @@
                 {% endif %}
             </td>
             <td>
-                <span class="badge badge-primary">{{ category.products.count }}</span>
+                <span class="badge badge-primary">{{ category.products_count|default:0 }}</span>
             </td>
             <td class="mobile-hide">{{ category.created_at|date:"M d, Y" }}</td>
             <td>

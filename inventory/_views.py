@@ -11,7 +11,7 @@ AJAX endpoints for search suggestions, paginated fetching, and modal-based creat
 import logging
 
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -52,11 +52,30 @@ OBJECTS_PER_PAGE = 20
 
 @required_permission("inventory.view_clothtype")
 def cloth_home(request):
-    """List all cloth types"""
-    cloth_types = ClothType.objects.all().order_by("name")
+    """List all cloth types with annotated product and variant counts."""
+    search_query = request.GET.get("search", "").strip()
+    sort_by = request.GET.get("sort", "-created_at").strip()
+
+    cloth_types = ClothType.objects.annotate(
+        products_count=Count("products", distinct=True),
+        variants_count=Count("products__product_variants", distinct=True),
+    )
+
+    if search_query:
+        cloth_types = cloth_types.filter(
+            Q(name__icontains=search_query) | Q(description__icontains=search_query)
+        )
+
+    valid_sorts = ["name", "-name", "created_at", "-created_at"]
+    if sort_by in valid_sorts:
+        cloth_types = cloth_types.order_by(sort_by)
+    else:
+        cloth_types = cloth_types.order_by("name")
 
     context = {
         "cloth_types": cloth_types,
+        "search_query": search_query,
+        "sort_by": sort_by,
     }
 
     return render(request, "inventory/cloth/home.html", context)
@@ -218,11 +237,29 @@ class DeleteColor(RequiredPermissionMixin, DeleteView):
 
 @required_permission("inventory.view_size")
 def size_home(request):
-    """List all sizes"""
-    sizes = Size.objects.all().order_by("name")
+    """List all sizes with annotated variant counts."""
+    search_query = request.GET.get("search", "").strip()
+    sort_by = request.GET.get("sort", "-created_at").strip()
+
+    sizes = Size.objects.annotate(
+        variants_count=Count("product_variants", distinct=True)
+    )
+
+    if search_query:
+        sizes = sizes.filter(
+            Q(name__icontains=search_query) | Q(description__icontains=search_query)
+        )
+
+    valid_sorts = ["name", "-name", "created_at", "-created_at"]
+    if sort_by in valid_sorts:
+        sizes = sizes.order_by(sort_by)
+    else:
+        sizes = sizes.order_by("name")
 
     context = {
         "sizes": sizes,
+        "search_query": search_query,
+        "sort_by": sort_by,
     }
 
     return render(request, "inventory/size/home.html", context)
@@ -335,7 +372,11 @@ def fetch_categories(request):
         for word in term.split():
             filters &= Q(name__icontains=word) | Q(description__icontains=word)
 
-    categories = Category.objects.filter(filters)
+    categories = (
+        Category.objects.filter(filters)
+        .select_related("parent")
+        .annotate(products_count=Count("products", distinct=True))
+    )
 
     # Apply sorting
     if sort_by not in VALID_CATEGORY_SORT_FIELDS:

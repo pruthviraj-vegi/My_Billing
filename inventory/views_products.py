@@ -5,7 +5,7 @@ Views for managing products, including creation, listing, editing, and detailed 
 import logging
 
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Sum, F, Q
+from django.db.models import Sum, F, Q, Count
 from django.contrib import messages
 from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
@@ -76,6 +76,7 @@ def fetch_products(request):
             "cloth_type",
             "hsn_code",
         )
+        .annotate(variants_count=Count("product_variants", distinct=True))
         .filter(filters)
         .order_by(*valid_sorts)
     )

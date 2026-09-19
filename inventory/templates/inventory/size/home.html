@@ -74,7 +74,7 @@
                             </td>
                             <td class="mobile-hide">{{ size.description|default:'No description' }}</td>
                             <td>
-                                <span class="badge badge-primary">{{ size.product_variants.count }}</span>
+                                <span class="badge badge-primary">{{ size.variants_count|default:0 }}</span>
                             </td>
                             <td class="mobile-hide">{{ size.created_at|date:'M d, Y' }}</td>
                             <td>

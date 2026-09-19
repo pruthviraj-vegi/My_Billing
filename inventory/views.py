@@ -379,37 +379,44 @@ def low_stock_page(request):
 @required_permission("inventory.view_productvariant")
 def damaged_stock_page(request):
     """Shell page for Damaged Stock management with summary stat cards and filters."""
-    from django.db.models import Q, Sum
+    from decimal import Decimal
+    from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
+    from django.db.models.functions import Coalesce
     from inventory.models import DamagedItemRecord
     from supplier.models import Supplier
 
     all_active = DamagedItemRecord.objects.filter(is_deleted=False)
-    total_records = all_active.count()
-    pending_count = all_active.filter(status=DamagedItemRecord.Status.PENDING).count()
-    returned_count = all_active.filter(status=DamagedItemRecord.Status.RETURNED).count()
-    repaired_count = all_active.filter(status=DamagedItemRecord.Status.REPAIRED).count()
-    written_off_count = all_active.filter(status=DamagedItemRecord.Status.WRITTEN_OFF).count()
-
-    total_units_damaged = (
-        all_active.aggregate(sum=Sum("quantity"))["sum"] or Decimal("0")
-    )
-
-    total_damaged_value = sum(
-        (rec.quantity * (rec.variant.purchase_price or Decimal("0")))
-        for rec in all_active.filter(status=DamagedItemRecord.Status.PENDING)
+    stats = all_active.aggregate(
+        total_records=Count("id"),
+        pending_count=Count("id", filter=Q(status=DamagedItemRecord.Status.PENDING)),
+        returned_count=Count("id", filter=Q(status=DamagedItemRecord.Status.RETURNED)),
+        repaired_count=Count("id", filter=Q(status=DamagedItemRecord.Status.REPAIRED)),
+        written_off_count=Count("id", filter=Q(status=DamagedItemRecord.Status.WRITTEN_OFF)),
+        total_units_damaged=Coalesce(Sum("quantity"), Decimal("0")),
+        total_damaged_value=Coalesce(
+            Sum(
+                ExpressionWrapper(
+                    F("quantity") * F("variant__purchase_price"),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
+                filter=Q(status=DamagedItemRecord.Status.PENDING),
+            ),
+            Decimal("0"),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
     )
 
     suppliers = Supplier.objects.filter(is_deleted=False).order_by("name")
 
     context = {
         "suppliers": suppliers,
-        "total_records": total_records,
-        "pending_count": pending_count,
-        "returned_count": returned_count,
-        "repaired_count": repaired_count,
-        "written_off_count": written_off_count,
-        "total_units_damaged": total_units_damaged,
-        "total_damaged_value": total_damaged_value,
+        "total_records": stats["total_records"],
+        "pending_count": stats["pending_count"],
+        "returned_count": stats["returned_count"],
+        "repaired_count": stats["repaired_count"],
+        "written_off_count": stats["written_off_count"],
+        "total_units_damaged": stats["total_units_damaged"],
+        "total_damaged_value": stats["total_damaged_value"],
         "title": "Damaged Stock Management",
         "status_choices": DamagedItemRecord.Status.choices,
     }
