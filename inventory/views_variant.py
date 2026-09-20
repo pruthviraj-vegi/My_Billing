@@ -438,7 +438,35 @@ class EditProductVariant(RequiredPermissionMixin, UpdateView):
         )
 
 
-class StockInCreate(RequiredPermissionMixin, CreateView):
+class VariantOperationMixin:
+    """Mixin to efficiently fetch and cache the target variant with its related product."""
+
+    def get_variant(self):
+        if not hasattr(self, "_variant"):
+            variant_id = self.kwargs.get("variant_id")
+            if variant_id:
+                try:
+                    self._variant = ProductVariant.objects.select_related("product").get(
+                        id=variant_id, is_deleted=False
+                    )
+                except ProductVariant.DoesNotExist:
+                    self._variant = None
+            else:
+                self._variant = None
+        return self._variant
+
+    def get_form_kwargs(self):
+        """Pass variant to form constructor"""
+        kwargs = super().get_form_kwargs()
+        variant = self.get_variant()
+        if variant:
+            kwargs["variant"] = variant
+        elif self.kwargs.get("variant_id"):
+            messages.error(self.request, "Selected variant not found.")
+        return kwargs
+
+
+class StockInCreate(RequiredPermissionMixin, VariantOperationMixin, CreateView):
     """View to process stock in operations for a variant"""
 
     required_permission = "inventory.add_inventorylog"
@@ -452,40 +480,21 @@ class StockInCreate(RequiredPermissionMixin, CreateView):
         context["title"] = "Stock In"
         context["operation_type"] = "stock_in"
 
-        # Get the variant if variant_id is provided
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id, is_deleted=False)
-                context["selected_variant"] = variant
-            except ProductVariant.DoesNotExist:
-                messages.error(self.request, "Selected variant not found.")
+        variant = self.get_variant()
+        if variant:
+            context["selected_variant"] = variant
 
         return context
-
-    def get_form_kwargs(self):
-        """Pass variant to form constructor"""
-        kwargs = super().get_form_kwargs()
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id, is_deleted=False)
-                kwargs["variant"] = variant
-            except ProductVariant.DoesNotExist:
-                messages.error(self.request, "Selected variant not found.")
-        return kwargs
 
     def get_initial(self):
         """Set initial values for the Stock In form."""
         initial = super().get_initial()
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id)
-                initial["purchase_price"] = variant.purchase_price
-                initial["mrp"] = variant.mrp
-            except ProductVariant.DoesNotExist:
-                messages.error(self.request, "Selected variant not found.")
+        variant = self.get_variant()
+        if variant:
+            initial["purchase_price"] = variant.purchase_price
+            initial["mrp"] = variant.mrp
+        elif self.kwargs.get("variant_id"):
+            messages.error(self.request, "Selected variant not found.")
         return initial
 
     def get_success_url(self):
@@ -506,12 +515,8 @@ class StockInCreate(RequiredPermissionMixin, CreateView):
         try:
             with transaction.atomic():
                 # Get the variant
-                variant_id = self.kwargs.get("variant_id")
-                if variant_id:
-                    variant = get_object_or_404(
-                        ProductVariant, id=variant_id, is_deleted=False
-                    )
-                else:
+                variant = self.get_variant()
+                if not variant:
                     # If no variant_id, redirect to products page
                     messages.error(
                         self.request,
@@ -552,7 +557,7 @@ class StockInCreate(RequiredPermissionMixin, CreateView):
         return super().form_invalid(form)
 
 
-class AdjustmentInCreate(RequiredPermissionMixin, CreateView):
+class AdjustmentInCreate(RequiredPermissionMixin, VariantOperationMixin, CreateView):
     """View to process adjustment in operations for a variant"""
 
     required_permission = "inventory.add_inventorylog"
@@ -567,28 +572,11 @@ class AdjustmentInCreate(RequiredPermissionMixin, CreateView):
         context["title"] = "Adjustment In"
         context["operation_type"] = "adjustment_in"
 
-        # Get the variant if variant_id is provided
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id, is_deleted=False)
-                context["selected_variant"] = variant
-            except ProductVariant.DoesNotExist:
-                messages.error(self.request, "Selected variant not found.")
+        variant = self.get_variant()
+        if variant:
+            context["selected_variant"] = variant
 
         return context
-
-    def get_form_kwargs(self):
-        """Pass variant to form constructor"""
-        kwargs = super().get_form_kwargs()
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id, is_deleted=False)
-                kwargs["variant"] = variant
-            except ProductVariant.DoesNotExist:
-                messages.error(self.request, "Selected variant not found.")
-        return kwargs
 
     def get_success_url(self):
         """Return the URL to redirect to upon successful Adjustment In."""
@@ -604,12 +592,8 @@ class AdjustmentInCreate(RequiredPermissionMixin, CreateView):
         try:
             with transaction.atomic():
                 # Get the variant
-                variant_id = self.kwargs.get("variant_id")
-                if variant_id:
-                    variant = get_object_or_404(
-                        ProductVariant, id=variant_id, is_deleted=False
-                    )
-                else:
+                variant = self.get_variant()
+                if not variant:
                     # If no variant_id, redirect to products page
                     messages.error(
                         self.request,
@@ -644,7 +628,7 @@ class AdjustmentInCreate(RequiredPermissionMixin, CreateView):
         return super().form_invalid(form)
 
 
-class AdjustmentOutCreate(RequiredPermissionMixin, CreateView):
+class AdjustmentOutCreate(RequiredPermissionMixin, VariantOperationMixin, CreateView):
     """View to process adjustment out operations for a variant"""
 
     required_permission = "inventory.add_inventorylog"
@@ -659,28 +643,11 @@ class AdjustmentOutCreate(RequiredPermissionMixin, CreateView):
         context["title"] = "Adjustment Out"
         context["operation_type"] = "adjustment_out"
 
-        # Get the variant if variant_id is provided
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id, is_deleted=False)
-                context["selected_variant"] = variant
-            except ProductVariant.DoesNotExist:
-                messages.error(self.request, "Selected variant not found.")
+        variant = self.get_variant()
+        if variant:
+            context["selected_variant"] = variant
 
         return context
-
-    def get_form_kwargs(self):
-        """Pass variant to form constructor"""
-        kwargs = super().get_form_kwargs()
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id, is_deleted=False)
-                kwargs["variant"] = variant
-            except ProductVariant.DoesNotExist:
-                messages.error(self.request, "Selected variant not found.")
-        return kwargs
 
     def get_success_url(self):
         """Return the URL to redirect to upon successful Adjustment Out."""
@@ -696,12 +663,8 @@ class AdjustmentOutCreate(RequiredPermissionMixin, CreateView):
         try:
             with transaction.atomic():
                 # Get the variant
-                variant_id = self.kwargs.get("variant_id")
-                if variant_id:
-                    variant = get_object_or_404(
-                        ProductVariant, id=variant_id, is_deleted=False
-                    )
-                else:
+                variant = self.get_variant()
+                if not variant:
                     # If no variant_id, redirect to operations page
                     messages.error(
                         self.request,
@@ -735,7 +698,7 @@ class AdjustmentOutCreate(RequiredPermissionMixin, CreateView):
         return super().form_invalid(form)
 
 
-class DamageCreate(RequiredPermissionMixin, CreateView):
+class DamageCreate(RequiredPermissionMixin, VariantOperationMixin, CreateView):
     """View to process damage out operations for a variant"""
 
     required_permission = "inventory.add_inventorylog"
@@ -750,30 +713,11 @@ class DamageCreate(RequiredPermissionMixin, CreateView):
         context["title"] = "Mark as Damaged"
         context["operation_type"] = "damage"
 
-        # Get the variant if variant_id is provided
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id)
-                context["selected_variant"] = variant
-            except ProductVariant.DoesNotExist as e:
-                logger.error("Selected variant not found: %s", e)
-                messages.error(self.request, "Selected variant not found.")
+        variant = self.get_variant()
+        if variant:
+            context["selected_variant"] = variant
 
         return context
-
-    def get_form_kwargs(self):
-        """Pass variant to form constructor"""
-        kwargs = super().get_form_kwargs()
-        variant_id = self.kwargs.get("variant_id")
-        if variant_id:
-            try:
-                variant = ProductVariant.objects.get(id=variant_id)
-                kwargs["variant"] = variant
-            except ProductVariant.DoesNotExist as e:
-                logger.error("Selected variant not found: %s", e)
-                messages.error(self.request, "Selected variant not found.")
-        return kwargs
 
     def get_success_url(self):
         """Return the URL to redirect to upon successful Damage Out."""
@@ -789,10 +733,8 @@ class DamageCreate(RequiredPermissionMixin, CreateView):
         try:
             with transaction.atomic():
                 # Get the variant
-                variant_id = self.kwargs.get("variant_id")
-                if variant_id:
-                    variant = get_object_or_404(ProductVariant, id=variant_id)
-                else:
+                variant = self.get_variant()
+                if not variant:
                     # If no variant_id, redirect to operations page
                     messages.error(
                         self.request,

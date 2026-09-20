@@ -8,14 +8,14 @@
   <div class="page-header">
     <h2 class="page-title">{{ title }}</h2>
     <div class="page-actions">
-      <a href="{% url 'inventory:variant_details' variant.pk %}" class="btn">
+      <a href="{% url 'inventory_variant:details' variant.pk %}" class="btn">
         <i class="fas fa-arrow-left"></i>
         Back to Variant Details
       </a>
-      <a href="{% url 'inventory:stock_management_home' %}"
+      <a href="{% url 'inventory_products:home' %}"
          class="btn btn-primary">
         <i class="fas fa-boxes"></i>
-        Stock Management
+        Products
       </a>
     </div>
   </div>
@@ -23,10 +23,10 @@
   <nav class="breadcrumb breadcrumb-right">
     <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
     <span class="breadcrumb-separator">/</span>
-    <a href="{% url 'inventory:stock_management_home' %}"
-       class="breadcrumb-item">Stock Management</a>
+    <a href="{% url 'inventory_products:home' %}"
+       class="breadcrumb-item">Products</a>
     <span class="breadcrumb-separator">/</span>
-    <a href="{% url 'inventory:variant_details' variant.pk %}"
+    <a href="{% url 'inventory_variant:details' variant.pk %}"
        class="breadcrumb-item">{{ variant.full_name }}</a>
     <span class="breadcrumb-separator">/</span>
     <span class="breadcrumb-active">Update</span>
@@ -145,7 +145,7 @@
             <i class="fas fa-save"></i>
             Update Variant
           </button>
-          <a href="{% url 'inventory:variant_details' variant.pk %}"
+          <a href="{% url 'inventory_variant:details' variant.pk %}"
              class="btn btn-secondary">
             <i class="fas fa-times"></i>
             Cancel
@@ -163,10 +163,10 @@
     const sellingPrice = parseFloat(document.getElementById('{{ form.mrp.id_for_label }}').value) || 0;
     const discountPercentage = parseFloat(document.getElementById('{{ form.discount_percentage.id_for_label }}').value) || 0;
     
-    // Calculate profit margin
+    // Calculate gross margin (consistent with Python model property)
     let profitMargin = 0;
-    if (purchasePrice > 0 && sellingPrice > 0) {
-      profitMargin = ((sellingPrice - purchasePrice) / purchasePrice) * 100;
+    if (sellingPrice > 0) {
+      profitMargin = ((sellingPrice - purchasePrice) / sellingPrice) * 100;
     }
     
     // Calculate final price with discount
@@ -202,15 +202,16 @@
     }
   });
 
-  // Form validation
+  // Form validation — warn (don't block) when selling at/below cost
   document.querySelector('form').addEventListener('submit', function(e) {
     const purchasePrice = parseFloat(document.getElementById('{{ form.purchase_price.id_for_label }}').value) || 0;
     const sellingPrice = parseFloat(document.getElementById('{{ form.mrp.id_for_label }}').value) || 0;
     
-    if (sellingPrice <= purchasePrice) {
-      e.preventDefault();
-      alert('Selling price must be greater than purchase price.');
-      return false;
+    if (sellingPrice > 0 && sellingPrice <= purchasePrice) {
+      if (!confirm('Selling price is at or below purchase price. Continue anyway?')) {
+        e.preventDefault();
+        return false;
+      }
     }
   });
 

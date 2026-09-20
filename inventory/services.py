@@ -106,6 +106,11 @@ class InventoryService:
             if change == 0:
                 raise ValueError("Quantity change cannot be zero")
 
+            if change > variant.quantity:
+                raise ValueError(
+                    f"Insufficient stock to adjust out. Available stock: {variant.quantity}"
+                )
+
             new_quantity = variant.quantity - change
             variant.quantity = new_quantity
             variant.save()

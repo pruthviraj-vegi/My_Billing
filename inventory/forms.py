@@ -34,14 +34,18 @@ class GSTHsnCodeSelect(forms.Select):
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
         option = super().create_option(name, value, label, selected, index, subindex, attrs)
         if value:
-            val_id = value.value if hasattr(value, "value") else value
-            if val_id:
-                try:
-                    from inventory.models import GSTHsnCode
-                    hsn = GSTHsnCode.objects.get(pk=val_id)
-                    option["attrs"]["data-gst-percentage"] = str(hsn.gst_percentage)
-                except Exception:
-                    pass
+            instance = getattr(value, "instance", None)
+            if instance and hasattr(instance, "gst_percentage"):
+                option["attrs"]["data-gst-percentage"] = str(instance.gst_percentage)
+            else:
+                val_id = value.value if hasattr(value, "value") else value
+                if val_id:
+                    try:
+                        from inventory.models import GSTHsnCode
+                        hsn = GSTHsnCode.objects.only("gst_percentage").get(pk=val_id)
+                        option["attrs"]["data-gst-percentage"] = str(hsn.gst_percentage)
+                    except Exception:
+                        pass
         return option
 
 
@@ -96,6 +100,7 @@ class ProductForm(forms.ModelForm):
         # Restrict to active querysets
         self._set_active_queryset("hsn_code", GSTHsnCode)
         self._set_active_queryset("uom", UOM)
+        self.fields["category"].queryset = Category.objects.select_related("parent").all()
 
     def _set_active_queryset(self, field_name, model):
         """Helper method to set active queryset for a field"""
@@ -138,14 +143,18 @@ class SupplierInvoiceSelect(forms.Select):
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
         option = super().create_option(name, value, label, selected, index, subindex, attrs)
         if value:
-            val_id = value.value if hasattr(value, "value") else value
-            if val_id:
-                try:
-                    from supplier.models import SupplierInvoice
-                    invoice = SupplierInvoice.objects.get(pk=val_id)
-                    option["attrs"]["data-invoice-type"] = invoice.invoice_type
-                except Exception:
-                    pass
+            instance = getattr(value, "instance", None)
+            if instance and hasattr(instance, "invoice_type"):
+                option["attrs"]["data-invoice-type"] = instance.invoice_type
+            else:
+                val_id = value.value if hasattr(value, "value") else value
+                if val_id:
+                    try:
+                        from supplier.models import SupplierInvoice
+                        invoice = SupplierInvoice.objects.only("invoice_type").get(pk=val_id)
+                        option["attrs"]["data-invoice-type"] = invoice.invoice_type
+                    except Exception:
+                        pass
         return option
 
 
@@ -153,9 +162,9 @@ class VariantForm(forms.ModelForm):
     """Form for creating a variant"""
 
     supplier_invoice = forms.ModelChoiceField(
-        queryset=SupplierInvoice.objects.filter(supplier__is_deleted=False).order_by(
-            "-created_at"
-        ),
+        queryset=SupplierInvoice.objects.filter(supplier__is_deleted=False).select_related(
+            "supplier"
+        ).order_by("-created_at"),
         required=False,
         widget=SupplierInvoiceSelect(attrs={"class": "form-input"}),
         help_text="Select the supplier invoice for this variant (optional)",
@@ -318,9 +327,13 @@ class CategoryForm(forms.ModelForm):
         if self.instance.pk:
             excluded_ids = {self.instance.pk}
             excluded_ids.update(d.pk for d in self.instance.get_descendants())
-            self.fields["parent"].queryset = Category.objects.exclude(
-                pk__in=excluded_ids
-            )
+            self.fields["parent"].queryset = Category.objects.select_related(
+                "parent"
+            ).exclude(pk__in=excluded_ids)
+        else:
+            self.fields["parent"].queryset = Category.objects.select_related(
+                "parent"
+            ).all()
 
     def clean_parent(self):
         """Prevent circular parent references (server-side backup validation)."""
@@ -754,7 +767,7 @@ class StockInForm(forms.ModelForm):
 
         self.fields["supplier_invoice"].queryset = SupplierInvoice.objects.filter(
             supplier__is_deleted=False
-        )
+        ).select_related("supplier")
         self.fields["supplier_invoice"].required = False
         self.fields["purchase_price"].required = True
 
@@ -829,7 +842,6 @@ class InventoryAdjustmentForm(forms.ModelForm):
         if self.variant:
             # For damage operations, only show supplier invoices that supplied stock (INITIAL or STOCK_IN) for this variant
             if self.adjustment_type == "damage":
-                from inventory.models import InventoryLog
                 self.fields["supplier_invoice"].queryset = (
                     SupplierInvoice.objects.filter(
                         supplier__is_deleted=False,
@@ -838,18 +850,20 @@ class InventoryAdjustmentForm(forms.ModelForm):
                             InventoryLog.TransactionTypes.INITIAL,
                             InventoryLog.TransactionTypes.STOCK_IN,
                         ],
-                    ).distinct()
+                    ).select_related("supplier").distinct()
                 )
             else:
                 # For other operations, show all active supplier invoices
                 self.fields["supplier_invoice"].queryset = (
-                    SupplierInvoice.objects.filter(supplier__is_deleted=False)
+                    SupplierInvoice.objects.filter(supplier__is_deleted=False).select_related(
+                        "supplier"
+                    )
                 )
         else:
             # If no variant provided, show all active supplier invoices
             self.fields["supplier_invoice"].queryset = SupplierInvoice.objects.filter(
                 supplier__is_deleted=False
-            )
+            ).select_related("supplier")
 
         # Make supplier_invoice optional
         self.fields["supplier_invoice"].required = False
@@ -890,7 +904,6 @@ class InventoryAdjustmentForm(forms.ModelForm):
 
         # Validate supplier invoice contains this variant (if supplier invoice is selected)
         if supplier_invoice and variant:
-            from inventory.models import InventoryLog
             if self.adjustment_type == "damage":
                 has_supplied_stock = supplier_invoice.inventory_logs.filter(
                     variant=variant,
@@ -1084,7 +1097,7 @@ class DamageResolveForm(forms.Form):
                 self.fields["supplier"].initial = target_supplier
                 inv_qs = SupplierInvoice.objects.filter(
                     supplier=target_supplier, is_deleted=False
-                )
+                ).select_related("supplier")
                 variant_inv_qs = inv_qs.filter(
                     inventory_logs__variant=variant
                 ).distinct()
@@ -1094,11 +1107,13 @@ class DamageResolveForm(forms.Form):
             else:
                 variant_inv_qs = SupplierInvoice.objects.filter(
                     is_deleted=False, inventory_logs__variant=variant
-                ).distinct()
+                ).select_related("supplier").distinct()
                 self.fields["supplier_invoice"].queryset = (
                     variant_inv_qs
                     if variant_inv_qs.exists()
-                    else SupplierInvoice.objects.filter(is_deleted=False)
+                    else SupplierInvoice.objects.filter(is_deleted=False).select_related(
+                        "supplier"
+                    )
                 )
 
             if record.supplier_invoice:
@@ -1267,4 +1282,4 @@ class BulkUploadForm(forms.ModelForm):
 
         self.fields["supplier_invoice"].queryset = SupplierInvoice.objects.filter(
             supplier__is_deleted=False
-        ).order_by("-created_at")
+        ).select_related("supplier").order_by("-created_at")

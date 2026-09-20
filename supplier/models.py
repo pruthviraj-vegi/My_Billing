@@ -81,6 +81,8 @@ class Supplier(SoftDeleteModel):
     @property
     def balance_due(self):
         """Calculate total balance due for this supplier."""
+        if hasattr(self, "annotated_balance_due") and self.annotated_balance_due is not None:
+            return self.annotated_balance_due
         total_invoiced = self.invoices.filter(is_deleted=False).aggregate(
             total=Coalesce(
                 Sum("total_amount"),
@@ -100,6 +102,8 @@ class Supplier(SoftDeleteModel):
     @property
     def last_invoice(self):
         """Get the date of the last unpaid or partially paid invoice."""
+        if hasattr(self, "annotated_last_invoice") and self.annotated_last_invoice is not None:
+            return self.annotated_last_invoice
         invoice = (
             self.invoices.filter(
                 is_deleted=False,

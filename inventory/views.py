@@ -681,14 +681,15 @@ def variant_update(request, pk):
                     messages.success(
                         request, f"Successfully updated {variant.full_name}"
                     )
-                    return redirect("inventory:variant_details", pk=pk)
+                    return redirect("inventory_variant:details", variant_id=pk)
             except Exception as e:  # pylint: disable=broad-except
                 logger.error("Error updating variant: %s", str(e))
                 messages.error(request, f"Error updating variant: {str(e)}")
+        else:
+            logger.warning("Variant update form invalid: %s", form.errors)
+            messages.error(request, "Please correct the errors below.")
     else:
         form = VariantForm(instance=variant)
-        logger.error("Form invalid: %s", form.errors)
-        messages.error(request, "Please correct the errors below.")
 
     context = {
         "form": form,
