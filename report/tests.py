@@ -264,3 +264,63 @@ class PdfCleanupServiceTests(TestCase):
         from report.services import PdfCleanupService
         count = PdfCleanupService.cleanup_old(days=30)
         self.assertEqual(count, 1)
+
+
+class PdfJobViewsTests(TestCase):
+    """Tests for PdfJob views including delete_pdf_job."""
+
+    def setUp(self):
+        from report.models import PdfJob, StatusChoices
+        self.PdfJob = PdfJob
+        self.StatusChoices = StatusChoices
+        self.user = User.objects.create_user(
+            first_name="JobUser",
+            phone_number="9999999992",
+            password="testpass123",
+        )
+        self.other_user = User.objects.create_user(
+            first_name="OtherUser",
+            phone_number="9999999993",
+            password="testpass123",
+        )
+
+    def test_delete_pdf_job_requires_post(self):
+        self.client.login(phone_number="9999999992", password="testpass123")
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.DONE,
+        )
+        response = self.client.get(
+            reverse("report:delete_pdf_job", kwargs={"job_id": job.id})
+        )
+        self.assertEqual(response.status_code, 405)
+
+    def test_delete_pdf_job_success(self):
+        self.client.login(phone_number="9999999992", password="testpass123")
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.DONE,
+        )
+        response = self.client.post(
+            reverse("report:delete_pdf_job", kwargs={"job_id": job.id})
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertFalse(self.PdfJob.objects.filter(id=job.id).exists())
+
+    def test_delete_pdf_job_other_user_forbidden(self):
+        self.client.login(phone_number="9999999993", password="testpass123")
+        job = self.PdfJob.objects.create(
+            created_by=self.user,
+            job_type="test_job",
+            status=self.StatusChoices.DONE,
+        )
+        response = self.client.post(
+            reverse("report:delete_pdf_job", kwargs={"job_id": job.id})
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(self.PdfJob.objects.filter(id=job.id).exists())
+

@@ -119,7 +119,11 @@
         confirmBtn.disabled = true;
 
         try {
-          var csrfToken = typeof getCsrfToken === 'function' ? getCsrfToken() : '{{ csrf_token }}';
+          var csrfToken = (typeof getCsrfToken === 'function' ? getCsrfToken() : null) || window.csrfToken || '{{ csrf_token }}';
+          if (!csrfToken) {
+            showNotification('CSRF token missing. Please reload the page.', 'error');
+            return;
+          }
           var response = await fetch(`/report/downloads/${pendingJobIdToDelete}/delete/`, {
             method: 'POST',
             headers: {
