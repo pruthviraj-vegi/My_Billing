@@ -9,6 +9,7 @@ from datetime import datetime, date
 
 from celery import shared_task
 from django.core.files.base import ContentFile
+from django.utils import timezone
 
 from notification.services import notify
 

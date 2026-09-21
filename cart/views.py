@@ -95,8 +95,8 @@ def get_cart_data(request, pk):
             "shop_details": shop_details,
         }
     except Cart.DoesNotExist as e:
-        logger.error("Cart not found: %s", e)
-        return redirect("cart:main_page")
+        logger.info("Cart not found: %s", e)
+        return redirect("cart:auto_cart_create")
 
     return render(request, template_name, context)
 

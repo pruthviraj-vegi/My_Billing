@@ -20,7 +20,7 @@
       <!-- Date Filter Dropdown -->
       {% include "common/_date_filter.html" with hide_custom=True %}
       {% if perms.cart.add_cart %}
-        <a href="{% url 'cart:main_page' %}" class="btn btn-dash-action primary">
+        <a href="{% url 'cart:auto_cart_create' %}" class="btn btn-dash-action primary">
           <i class="fas fa-plus"></i>
           New Bill
         </a>
