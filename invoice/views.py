@@ -35,7 +35,7 @@ from base.utility import (
     render_paginated_response,
     table_sorting,
 )
-from base.decorators import required_permission, RequiredPermissionMixin
+from base.decorators import required_permission, RequiredPermissionMixin, query_debugger
 
 from cart.models import Cart
 from customer.forms import CustomerForm
@@ -43,7 +43,7 @@ from customer.models import Customer
 from inventory.services import InventoryService
 
 
-from invoice.choices import PaymentStatusChoices
+from invoice.choices import PaymentStatusChoices, RefundStatusChoices
 from invoice.form import InvoiceForm
 from invoice.models import Invoice, InvoiceItem, ReturnInvoice, ReturnInvoiceItem
 from setting.models import ShopDetails, ReportConfiguration
@@ -75,102 +75,167 @@ def invoice_dashboard_fetch(request):
     date_filter = request.GET.get("date_filter", "this_month")
     start_date, end_date = getDates(request)
 
-    # Base queryset with date filtering (all created invoices excluding VOID)
+    # Base queryset: all invoices created in this period (excluding VOID)
     all_invoices = Invoice.objects.filter(
         invoice_date__date__range=[start_date, end_date]
     ).exclude(payment_status=PaymentStatusChoices.VOID)
 
-    # Active non-cancelled invoices
-    invoices = all_invoices.filter(is_cancelled=False)
-
-    # Consolidated invoice metrics (gross, paid from active, and cancelled) in a single query
-    metrics = all_invoices.aggregate(
-        total_invoices=Count("id"),
-        gross_total_amount=Coalesce(Sum("amount"), Decimal("0")),
-        total_discount=Coalesce(Sum("discount_amount"), Decimal("0")),
-        total_paid=Coalesce(
-            Sum(
-                Case(
-                    When(is_cancelled=False, then=F("paid_amount")),
-                    default=Value(Decimal("0")),
-                    output_field=DecimalField(),
-                )
-            ),
-            Decimal("0"),
-        ),
-        total_cancelled_amount=Coalesce(
-            Sum(
-                Case(
-                    When(is_cancelled=True, then=F("amount")),
-                    default=Value(Decimal("0")),
-                    output_field=DecimalField(),
-                )
-            ),
-            Decimal("0"),
-        ),
-        total_cancelled_invoices=Count(
-            Case(
-                When(is_cancelled=True, then=1),
-                output_field=IntegerField(),
-            )
-        ),
+    # Invoices that were active during this period (Closed-window rule):
+    # An invoice is active for this period if it was never cancelled, OR if its cancellation
+    # happened AFTER this period closed (cancelled_at__date > end_date).
+    invoices = all_invoices.filter(
+        Q(is_cancelled=False) | Q(cancelled_at__date__gt=end_date)
     )
 
-    # Get return invoice metrics
+    # Metrics for invoices billed in this period
+    gross_metrics = all_invoices.aggregate(
+        total_invoices=Count("id"),
+        gross_total_amount=Coalesce(Sum("amount"), Decimal("0")),
+    )
+    active_metrics = invoices.aggregate(
+        active_count=Count("id"),
+        active_gross_amount=Coalesce(Sum("amount"), Decimal("0")),
+        total_discount=Coalesce(Sum("discount_amount"), Decimal("0")),
+        total_paid=Coalesce(Sum("paid_amount"), Decimal("0")),
+    )
+
+    # Cancelled metrics: based on WHEN the cancellation happened (cancelled_at).
+    # This records all cancellations executed in this period regardless of when billed.
+    cancelled_metrics = Invoice.objects.filter(
+        cancelled_at__date__range=[start_date, end_date],
+        is_cancelled=True,
+    ).aggregate(
+        total_cancelled_amount=Coalesce(Sum("amount"), Decimal("0")),
+        total_cancelled_invoices=Count("id"),
+    )
+
+    # Return metrics: based on return_date (when return was executed),
+    # counting approved/completed returns and excluding draft/rejected/cancelled
     return_metrics = ReturnInvoice.objects.filter(
         return_date__date__range=[start_date, end_date],
         invoice__is_cancelled=False,
-    ).aggregate(total_return_amount=Coalesce(Sum("refund_amount"), Decimal("0")))
-
-    # Calculate profit from invoice items in a single query
-    # Note: We need to account for returned items when calculating profit
-    # actual_quantity = quantity - returned_quantity
-
-    returned_subquery = (
-        ReturnInvoiceItem.objects.filter(
-            original_invoice_item=OuterRef("pk"), quantity_returned__gt=0
-        )
-        .values("original_invoice_item")
-        .annotate(total_returned=Sum("quantity_returned"))
-        .values("total_returned")
+        status__in=[
+            RefundStatusChoices.APPROVED,
+            RefundStatusChoices.PROCESSING,
+            RefundStatusChoices.COMPLETED,
+        ],
+    ).aggregate(
+        total_return_amount=Coalesce(Sum("refund_amount"), Decimal("0"))
     )
 
-    profit_data = (
+    metrics = {
+        "total_invoices": gross_metrics["total_invoices"],
+        "gross_total_amount": gross_metrics["gross_total_amount"],
+        "active_count": active_metrics["active_count"],
+        "active_gross_amount": active_metrics["active_gross_amount"],
+        "total_discount": active_metrics["total_discount"],
+        "total_paid": active_metrics["total_paid"],
+        "total_cancelled_amount": cancelled_metrics["total_cancelled_amount"],
+        "total_cancelled_invoices": cancelled_metrics["total_cancelled_invoices"],
+    }
+
+    # 1. Profit from items billed on invoices active in this period
+    billed_items_profit = (
         InvoiceItem.objects.filter(
-            invoice__invoice_date__date__range=[start_date, end_date],
-            invoice__is_cancelled=False,
+            invoice__in=invoices,
             unit_price__isnull=False,
             purchase_price__isnull=False,
-        )
-        .annotate(
-            returned_quantity=Coalesce(
-                Subquery(returned_subquery),
-                Decimal("0"),
-            ),
-            actual_qty=F("quantity") - F("returned_quantity"),
-        )
-        .aggregate(
+        ).aggregate(
             total_profit=Coalesce(
                 Sum(
-                    (F("unit_price") - F("purchase_price")) * F("actual_qty"),
+                    (F("unit_price") - F("purchase_price")) * F("quantity"),
                     output_field=DecimalField(),
                 ),
                 Decimal("0"),
             )
         )
-    )
+    )["total_profit"]
+
+    # 2. Profit lost from returns executed in this period (event date basis)
+    returned_profit_loss = (
+        ReturnInvoiceItem.objects.filter(
+            return_invoice__return_date__date__range=[start_date, end_date],
+            return_invoice__status__in=[
+                RefundStatusChoices.APPROVED,
+                RefundStatusChoices.PROCESSING,
+                RefundStatusChoices.COMPLETED,
+            ],
+            return_invoice__invoice__is_cancelled=False,
+            quantity_returned__gt=0,
+            original_invoice_item__unit_price__isnull=False,
+            original_invoice_item__purchase_price__isnull=False,
+        ).aggregate(
+            lost_profit=Coalesce(
+                Sum(
+                    (
+                        F("original_invoice_item__unit_price")
+                        - F("original_invoice_item__purchase_price")
+                    )
+                    * F("quantity_returned"),
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+            )
+        )
+    )["lost_profit"]
+
+    # 3. Profit lost from past invoices cancelled in this period
+    past_cancelled_profit_loss = (
+        InvoiceItem.objects.filter(
+            invoice__cancelled_at__date__range=[start_date, end_date],
+            invoice__is_cancelled=True,
+            invoice__invoice_date__date__lt=start_date,
+            unit_price__isnull=False,
+            purchase_price__isnull=False,
+        ).aggregate(
+            lost_profit=Coalesce(
+                Sum(
+                    (F("unit_price") - F("purchase_price")) * F("quantity"),
+                    output_field=DecimalField(),
+                ),
+                Decimal("0"),
+            )
+        )
+    )["lost_profit"]
 
     # Extract metrics
     total_amount = metrics["gross_total_amount"]
+    active_gross_amount = metrics["active_gross_amount"]
+    active_count = metrics["active_count"]
     total_discount = metrics["total_discount"]
     total_paid = metrics["total_paid"]
     total_return_amount = return_metrics["total_return_amount"]
     total_cancelled_amount = metrics["total_cancelled_amount"]
-    total_profit = profit_data["total_profit"] - total_discount
 
-    # Calculate derived Net Amount: Full Gross Amount minus Discount, Returned Amount, and Cancelled Amount
-    net_amount = total_amount - total_discount - total_return_amount - total_cancelled_amount
-    outstanding_amount = net_amount - total_paid
+    total_profit = max(
+        Decimal("0"),
+        billed_items_profit - total_discount - returned_profit_loss - past_cancelled_profit_loss,
+    )
+
+    # Net billed on active invoices in this period
+    active_billed_net = max(Decimal("0"), active_gross_amount - total_discount)
+
+    # Invoices billed in a past period that were cancelled in this period
+    past_cancelled_amount = (
+        Invoice.objects.filter(
+            cancelled_at__date__range=[start_date, end_date],
+            is_cancelled=True,
+            invoice_date__date__lt=start_date,
+        ).aggregate(
+            total=Coalesce(Sum(F("amount") - F("discount_amount")), Decimal("0"))
+        )
+    )["total"]
+
+    # Net Realized Revenue (Day-book closed-window basis):
+    # Active net billed revenue in this period minus returns executed in this period
+    # minus cancellations of past invoices executed in this period.
+    net_amount = max(
+        Decimal("0"),
+        active_billed_net - total_return_amount - past_cancelled_amount,
+    )
+
+    # Outstanding due on active invoices billed in this period
+    outstanding_amount = max(Decimal("0"), active_billed_net - total_paid)
 
     # Calculate margin percentage (Profit / Net Revenue * 100)
     margin_percentage = (
@@ -181,21 +246,21 @@ def invoice_dashboard_fetch(request):
         else Decimal("0")
     )
 
-    # Calculate Average Order Value (AOV)
+    # Calculate Average Order Value (AOV) based on active billed invoices
     aov = (
-        (net_amount / metrics["total_invoices"]).quantize(
+        (active_billed_net / active_count).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
-        if metrics["total_invoices"] > 0
+        if active_count > 0
         else Decimal("0")
     )
 
-    # Calculate Recovery Rate (% of Net Revenue collected as Paid)
+    # Calculate Recovery Rate (% of active billed net revenue collected as Paid)
     recovery_rate = (
-        (total_paid / net_amount * 100).quantize(
+        (total_paid / active_billed_net * 100).quantize(
             Decimal("0.1"), rounding=ROUND_HALF_UP
         )
-        if net_amount > 0
+        if active_billed_net > 0
         else Decimal("0")
     )
 
@@ -245,11 +310,10 @@ def invoice_dashboard_fetch(request):
         else Decimal("0")
     )
 
-    # Category breakdown from invoice items
+    # Category breakdown from invoice items active in this period
     category_breakdown = list(
         InvoiceItem.objects.filter(
-            invoice__invoice_date__date__range=[start_date, end_date],
-            invoice__is_cancelled=False,
+            invoice__in=invoices,
         )
         .select_related("product_variant__product__category")
         .values("product_variant__product__category__name")
@@ -286,12 +350,12 @@ def invoice_dashboard_fetch(request):
 
     # Process payment status breakdown
     payment_status_data = _process_breakdown_data(
-        payment_status_breakdown, total_amount, "payment_status"
+        payment_status_breakdown, active_gross_amount, "payment_status"
     )
 
     # Process payment type breakdown
     payment_type_data = _process_breakdown_data(
-        payment_type_breakdown, total_amount, "payment_type"
+        payment_type_breakdown, active_gross_amount, "payment_type"
     )
 
     # Process category breakdown

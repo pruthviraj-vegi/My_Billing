@@ -240,3 +240,102 @@ class ReturnInvoiceFetchViewTests(TestCase):
         self.assertIn("RET-002", data.get("html"))
         self.assertNotIn("RET-001", data.get("html"))
 
+
+class InvoiceDashboardFetchTests(TestCase):
+    """Tests for invoice_dashboard_fetch view metrics."""
+
+    def setUp(self):
+        self.user = create_test_user(is_staff=True, is_superuser=True)
+        self.client.force_login(self.user)
+        self.customer = create_test_customer(created_by=self.user)
+
+    def test_dashboard_fetch_closed_window_yesterday_and_today(self):
+        from django.urls import reverse
+        from django.utils import timezone
+        from datetime import timedelta
+        from invoice.models import Invoice
+
+        yesterday = (timezone.now() - timedelta(days=1)).date()
+        yesterday_str = yesterday.strftime("%Y-%m-%d")
+
+        # 1. Invoice billed yesterday for 1000, paid in cash 1000
+        inv_yesterday = create_test_invoice(
+            customer=self.customer,
+            sold_by=self.user,
+            created_by=self.user,
+            amount=Decimal("1000.00"),
+            payment_type="CASH",
+            payment_status="PAID",
+        )
+        Invoice.objects.filter(pk=inv_yesterday.pk).update(
+            invoice_date=timezone.now() - timedelta(days=1),
+        )
+
+        # 2. Today, inv_yesterday was cancelled
+        Invoice.objects.filter(pk=inv_yesterday.pk).update(
+            is_cancelled=True,
+            payment_status=PaymentStatusChoices.CANCELLED,
+            cancelled_at=timezone.now(),
+        )
+
+        # 3. Invoice billed today for 2000, paid 2000
+        inv_today = create_test_invoice(
+            customer=self.customer,
+            sold_by=self.user,
+            created_by=self.user,
+            amount=Decimal("2000.00"),
+            payment_type="CASH",
+            payment_status="PAID",
+        )
+
+        # 4. Return executed today for 300 against inv_today
+        ReturnInvoice.objects.create(
+            invoice=inv_today,
+            customer=self.customer,
+            total_amount=Decimal("2000.00"),
+            refund_amount=Decimal("300.00"),
+            status=RefundStatusChoices.APPROVED,
+            created_by=self.user,
+            return_date=timezone.now(),
+        )
+
+        # --- A: Check Yesterday's Dashboard (Window Closed) ---
+        response_yesterday = self.client.get(
+            reverse("invoice:dashboard_fetch"),
+            {"date_filter": "yesterday"},
+        )
+        self.assertEqual(response_yesterday.status_code, 200)
+        data_yesterday = response_yesterday.json()
+        self.assertTrue(data_yesterday.get("success"))
+        stats_y = data_yesterday.get("stats")
+
+        # Yesterday's window is closed and untouched:
+        # Billed: 1000, Net: 1000, Cancelled: 0, Returns: 0
+        self.assertEqual(stats_y["total_amount"], 1000.0)
+        self.assertEqual(stats_y["net_amount"], 1000.0)
+        self.assertEqual(stats_y["total_cancelled_amount"], 0.0)
+        self.assertEqual(stats_y["total_cancelled_invoices"], 0)
+        self.assertEqual(stats_y["total_return_amount"], 0.0)
+
+        # --- B: Check Today's Dashboard (Today captures today's events) ---
+        response_today = self.client.get(
+            reverse("invoice:dashboard_fetch"),
+            {"date_filter": "today"},
+        )
+        self.assertEqual(response_today.status_code, 200)
+        data_today = response_today.json()
+        self.assertTrue(data_today.get("success"))
+        stats_t = data_today.get("stats")
+
+        # Today captures:
+        # New billed today: 2000
+        self.assertEqual(stats_t["total_amount"], 2000.0)
+        # Cancelled today: 1000 (1 invoice)
+        self.assertEqual(stats_t["total_cancelled_amount"], 1000.0)
+        self.assertEqual(stats_t["total_cancelled_invoices"], 1)
+        # Returned today: 300
+        self.assertEqual(stats_t["total_return_amount"], 300.0)
+        # Net realized today: 2000 - 300 - 1000 = 700.0
+        self.assertEqual(stats_t["net_amount"], 700.0)
+
+

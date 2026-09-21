@@ -47,6 +47,35 @@ def build_invoice_report_context(start_date, end_date):
         get_invoice_return_data(date_range), "refund_amount"
     )
 
+    # Invoices billed in a past period that were cancelled in this period
+    from invoice.models import Invoice
+
+    past_cancelled = sum_invoice_data(
+        Invoice.objects.filter(
+            invoice_type=Invoice.Invoice_type.GST,
+            cancelled_at__date__range=date_range,
+            is_cancelled=True,
+            invoice_date__date__lt=start_date,
+        )
+    )
+
+    grand_total_net = max(
+        Decimal("0"),
+        invoices["total_net"] - invoices_return["total_net"] - past_cancelled["total_net"],
+    )
+    grand_total_cgst = max(
+        Decimal("0"),
+        invoices["total_cgst_amount"] - invoices_return["total_cgst_amount"] - past_cancelled["total_cgst_amount"],
+    )
+    grand_total_gst = max(
+        Decimal("0"),
+        invoices["total_gst"] - invoices_return["total_gst"] - past_cancelled["total_gst"],
+    )
+    grand_total_amount = max(
+        Decimal("0"),
+        invoices["total_amount"] - invoices_return["total_amount"] - past_cancelled["total_amount"],
+    )
+
     return {
         "start_date": start_date,
         "end_date": end_date,
@@ -57,17 +86,9 @@ def build_invoice_report_context(start_date, end_date):
             "count": invoices["total_count"]
             + invoices_cancelled["total_count"]
             + invoices_return["total_count"],
-            "net": invoices["total_net"]
-            - invoices_cancelled["total_net"]
-            - invoices_return["total_net"],
-            "cgst": invoices["total_cgst_amount"]
-            - invoices_cancelled["total_cgst_amount"]
-            - invoices_return["total_cgst_amount"],
-            "gst": invoices["total_gst"]
-            - invoices_cancelled["total_gst"]
-            - invoices_return["total_gst"],
-            "amount": invoices["total_amount"]
-            - invoices_cancelled["total_amount"]
-            - invoices_return["total_amount"],
+            "net": grand_total_net,
+            "cgst": grand_total_cgst,
+            "gst": grand_total_gst,
+            "amount": grand_total_amount,
         },
     }

@@ -6,9 +6,10 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.utils import timezone
 
+from invoice.choices import RefundStatusChoices
 from invoice.models import Invoice, ReturnInvoice, ReturnInvoiceItem
 
 logger = logging.getLogger(__name__)
@@ -178,13 +179,17 @@ class ReturnInvoiceService:
 
 
 def get_invoice_report_data(date_range):
-    """Get GST invoices within the given date range."""
+    """Get GST invoices active during the given date range (closed-window rule)."""
+    end_date = date_range[1] if len(date_range) > 1 else date_range[0]
     return (
         Invoice.objects.select_related("customer")
         .prefetch_related("invoice_items")
         .filter(
             invoice_type=Invoice.Invoice_type.GST,
             invoice_date__date__range=date_range,
+        )
+        .filter(
+            Q(is_cancelled=False) | Q(cancelled_at__date__gt=end_date)
         )
     )
 
@@ -203,7 +208,7 @@ def get_invoice_cancled_data(date_range):
 
 
 def get_invoice_return_data(date_range):
-    """Get approved GST return invoices within the given date range."""
+    """Get approved/completed GST return invoices within the given date range."""
     return (
         ReturnInvoice.objects.select_related("customer", "invoice")
         .prefetch_related(
@@ -214,9 +219,13 @@ def get_invoice_return_data(date_range):
         )
         .filter(
             invoice__invoice_type=Invoice.Invoice_type.GST,
-            updated_at__date__range=date_range,
+            return_date__date__range=date_range,
             invoice__is_cancelled=False,
-            status=ReturnInvoice.RefundStatus.APPROVED,
+            status__in=[
+                RefundStatusChoices.APPROVED,
+                RefundStatusChoices.PROCESSING,
+                RefundStatusChoices.COMPLETED,
+            ],
         )
     )
 
