@@ -490,17 +490,58 @@
         {% endif %}
     </div>
 </div>
-<!-- Breadcrumb Navigation -->
-<nav class="breadcrumb breadcrumb-right">
-    <a href="#" class="breadcrumb-item">Carts</a>
-    <span class="breadcrumb-separator">/</span>
-    <span class="breadcrumb-active">Cart Details</span>
-    <span class="breadcrumb-separator">/</span>
-    <span class="breadcrumb-active">{{ cart.created_at|timesince }} ago</span>
-</nav>
 {% if cart %}
+    <!-- Search and Filter Section with Inline Breadcrumbs -->
+    <div class="search-filter-section">
+        <!-- Inline Breadcrumbs -->
+        <nav class="breadcrumb-inline" aria-label="breadcrumb">
+            <a href="{% url 'cart:main_page' %}" class="breadcrumb-item">Carts</a>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-active">Cart Details</span>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-active">{{ cart.created_at|timesince }} ago</span>
+        </nav>
+
+        <form href=""
+              class="search-filter-form"
+              id="barcodeForm"
+              data-allow-double-submit
+              autocomplete="off">
+            {% csrf_token %}
+            <div class="search-group search-expanded">
+                <i class="fas fa-search search-icon"></i>
+                <input type="search"
+                       name="barcode"
+                       class="search-input"
+                       placeholder="Scan barcode..."
+                       value=""
+                       id="barcodeInput"
+                       autofocus>
+            </div>
+
+            <!-- Camera Scan Button — visible on mobile only -->
+            <button type="button"
+                    class="btn btn-primary btn-camera-scan d-md-none"
+                    id="cameraScanBtn"
+                    title="Scan barcode with camera"
+                    aria-label="Open camera barcode scanner">
+                <i class="fas fa-camera"></i>
+            </button>
+
+            <button type="submit" class="btn btn-primary" tabindex="-1">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+        </form>
+    </div>
+
     {% include "cart/models/cart.html" %}
 {% else %}
+    <nav class="breadcrumb breadcrumb-right">
+        <a href="{% url 'cart:main_page' %}" class="breadcrumb-item">Carts</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">No Cart</span>
+    </nav>
     <div class="empty-state">
         <i class="fas fa-shopping-cart"></i>
         <h4>No Cart Selected</h4>

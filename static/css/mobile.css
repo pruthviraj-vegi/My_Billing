@@ -284,6 +284,44 @@
   /* Search bar: single row on mobile — input + icon-only button */
   .search-filter-section {
     padding: 0.35rem 0.4rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .breadcrumb-inline {
+    order: 0;
+    justify-content: flex-start;
+    padding: 0.1rem 0.25rem 0.25rem 0.25rem;
+    font-size: 0.72rem;
+    border-right: none;
+    border-bottom: 1px dashed var(--border-color);
+    margin-bottom: 0.1rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .breadcrumb-inline::-webkit-scrollbar {
+    display: none;
+  }
+
+  .search-filter-section:has(.breadcrumb-inline)::before,
+  .search-filter-section:has(.breadcrumb-inline)::after {
+    display: none;
+  }
+
+  .search-filter-section:has(.breadcrumb-inline) .search-filter-form {
+    order: 1;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .search-filter-section:has(.breadcrumb-inline) .search-expanded {
+    width: 100%;
+    max-width: none;
+    flex: 1;
   }
 
   .search-filter-form {

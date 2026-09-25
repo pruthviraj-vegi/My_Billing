@@ -25,15 +25,15 @@
         </div>
     </div>
 
-    <!-- ── Breadcrumb Navigation ── -->
-    <nav class="breadcrumb breadcrumb-right">
-        <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Inventory</a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-active">Media Gallery</span>
-    </nav>
-
-    <!-- ── Search & Filter Section (Standard Single Row) ── -->
+    <!-- ── Search & Filter Section with Inline Breadcrumbs ── -->
     <div class="search-filter-section mb-3">
+        <!-- Inline Breadcrumbs -->
+        <nav class="breadcrumb-inline" aria-label="breadcrumb">
+            <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Inventory</a>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-active">Media Gallery</span>
+        </nav>
+
         <form method="#" class="search-filter-form" id="searchForm" onsubmit="return false;">
             <div class="search-group search-expanded">
                 <i class="fas fa-search search-icon"></i>

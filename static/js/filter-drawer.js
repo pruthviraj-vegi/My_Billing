@@ -312,7 +312,7 @@
                     hoverPreview.style.removeProperty('display');
                 }, 100);
             }
-            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            if (funnelWrapper && funnelWrapper.contains(document.activeElement) && typeof document.activeElement.blur === 'function') {
                 document.activeElement.blur();
             }
         }

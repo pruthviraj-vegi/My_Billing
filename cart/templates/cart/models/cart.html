@@ -1,42 +1,9 @@
 {% load custom_filters %}
 {% load static %}
 <!-- Data Table -->
-<!-- Search and Filter Section -->
 <div class="col d-flex flex-row cart-detail-layout two-column-layout">
-    <!-- LEFT: Search Bar + Cart Items Table -->
+    <!-- LEFT: Cart Items Table -->
     <div class="col-md-9 d-flex flex-column gap-2 layout-main-column">
-        <div class="search-filter-section">
-            <form href=""
-                  class="search-filter-form"
-                  id="barcodeForm"
-                  data-allow-double-submit
-                  autocomplete="off">
-                {% csrf_token %}
-                <div class="search-group search-expanded">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="search"
-                           name="barcode"
-                           class="search-input"
-                           placeholder="Scan barcode..."
-                           value=""
-                           id="barcodeInput">
-                </div>
-
-                <!-- Camera Scan Button — visible on mobile only -->
-                <button type="button"
-                        class="btn btn-primary btn-camera-scan d-md-none"
-                        id="cameraScanBtn"
-                        title="Scan barcode with camera"
-                        aria-label="Open camera barcode scanner">
-                    <i class="fas fa-camera"></i>
-                </button>
-
-                <button type="submit" class="btn btn-primary" tabindex="-1">
-                    <i class="fas fa-search"></i>
-                    Search
-                </button>
-            </form>
-        </div>
         <div class="table-container" data-cart-id="{{ cart.id }}">
             <table class="data-table">
                 <thead>

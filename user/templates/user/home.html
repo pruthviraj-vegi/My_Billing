@@ -33,14 +33,15 @@
             {% endif %}
         </div>
     </div>
-    <!-- Breadcrumb Navigation -->
-    <nav class="breadcrumb breadcrumb-right">
-        <a href="#" class="breadcrumb-item">Users</a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-active">All Users</span>
-    </nav>
-    <!-- Search and Filter Section -->
+    <!-- Search and Filter Section with Inline Breadcrumbs -->
     <div class="search-filter-section">
+        <!-- Inline Breadcrumbs -->
+        <nav class="breadcrumb-inline" aria-label="breadcrumb">
+            <a href="#" class="breadcrumb-item">Users</a>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-active">All Users</span>
+        </nav>
+
         <form method="get"
               class="search-filter-form"
               id="searchForm"
