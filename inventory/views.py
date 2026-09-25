@@ -484,7 +484,6 @@ def damaged_stock_fetch(request):
     )
 
 
-
 class CreateProduct(RequiredPermissionMixin, View):
     """View to handle product creation."""
 

@@ -324,3 +324,43 @@ class PdfJobViewsTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertTrue(self.PdfJob.objects.filter(id=job.id).exists())
 
+    @patch("report.tasks.generate_variants_pdf_task.delay")
+    def test_request_variants_pdf_captures_all_filter_parameters(self, mock_task):
+        """Ensure request_variants_pdf captures price, discount, and attribute filters."""
+        from report.views import build_variants_context
+
+        self.client.login(phone_number="9999999992", password="testpass123")
+        payload = {
+            "search": "cotton",
+            "category": "1",
+            "color": "2",
+            "size": "3",
+            "status": "available",
+            "stock": "in_stock",
+            "sort": "-mrp",
+            "min_price": "100.00",
+            "max_price": "500.00",
+            "discount_only": "1",
+            "discount_type": "percent",
+            "min_discount": "10",
+            "max_discount": "50",
+        }
+        response = self.client.post(reverse("report:request_variants_pdf"), data=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("job_id", data)
+
+        job = self.PdfJob.objects.get(id=data["job_id"])
+        self.assertEqual(job.job_type, "variants_report")
+        for key, val in payload.items():
+            self.assertEqual(job.parameters.get(key), val)
+
+        mock_task.assert_called_once_with(str(job.id))
+
+        # Also verify build_variants_context accepts these parameters cleanly
+        context = build_variants_context(job.parameters)
+        self.assertIn("variants", context)
+        self.assertIn("total_outstanding", context)
+        self.assertIn("total_count", context)
+
+

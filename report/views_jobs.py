@@ -23,7 +23,22 @@ def request_variants_pdf(request):
     """
     # Capture current filter/sort params from the request
     job_params = {}
-    for key in ("search", "category", "color", "size", "status", "stock", "sort"):
+    filter_keys = (
+        "search",
+        "category",
+        "color",
+        "size",
+        "status",
+        "stock",
+        "sort",
+        "min_price",
+        "max_price",
+        "discount_only",
+        "discount_type",
+        "min_discount",
+        "max_discount",
+    )
+    for key in filter_keys:
         val = request.GET.get(key, "") or request.POST.get(key, "")
         if val:
             job_params[key] = val

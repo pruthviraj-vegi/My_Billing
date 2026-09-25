@@ -4,7 +4,7 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import Count, DecimalField, F, Q, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 
@@ -1613,6 +1613,12 @@ def get_variants_data(request=None, params=None):
     size_filter = params.get("size", "")
     status_filter = params.get("status", "")
     stock_filter = params.get("stock", "")
+    min_price = params.get("min_price", "")
+    max_price = params.get("max_price", "")
+    discount_type = params.get("discount_type", "percent")
+    min_discount = params.get("min_discount", "")
+    max_discount = params.get("max_discount", "")
+    discount_only = params.get("discount_only", "")
 
     # Apply search filter
     filters = build_search_filter(
@@ -1666,12 +1672,61 @@ def get_variants_data(request=None, params=None):
     elif stock_filter == "low_stock":
         filters &= Q(quantity__lte=F("minimum_quantity"), quantity__gt=0)
 
-    variants = (
-        ProductVariant.objects.select_related(
-            "product", "product__category", "size", "color"
-        )
-        .filter(filters)
+    # Apply price range filters (MRP)
+    if min_price:
+        try:
+            filters &= Q(mrp__gte=Decimal(str(min_price).strip()))
+        except (InvalidOperation, ValueError):
+            pass
+
+    if max_price:
+        try:
+            filters &= Q(mrp__lte=Decimal(str(max_price).strip()))
+        except (InvalidOperation, ValueError):
+            pass
+
+    # Apply discounted only filter
+    if discount_only in ("true", "1", "on", True):
+        filters &= Q(discount_percentage__gt=0)
+
+    # Apply discount filters (percent or amount)
+    needs_discount_amount = False
+    if discount_type == "amount":
+        if min_discount:
+            try:
+                filters &= Q(discount_amount__gte=Decimal(str(min_discount).strip()))
+                needs_discount_amount = True
+            except (InvalidOperation, ValueError):
+                pass
+        if max_discount:
+            try:
+                filters &= Q(discount_amount__lte=Decimal(str(max_discount).strip()))
+                needs_discount_amount = True
+            except (InvalidOperation, ValueError):
+                pass
+    else:
+        if min_discount:
+            try:
+                filters &= Q(discount_percentage__gte=Decimal(str(min_discount).strip()))
+            except (InvalidOperation, ValueError):
+                pass
+        if max_discount:
+            try:
+                filters &= Q(discount_percentage__lte=Decimal(str(max_discount).strip()))
+            except (InvalidOperation, ValueError):
+                pass
+
+    variants = ProductVariant.objects.select_related(
+        "product", "product__category", "size", "color"
     )
+    if needs_discount_amount:
+        variants = variants.annotate(
+            discount_amount=ExpressionWrapper(
+                F("mrp") * F("discount_percentage") / Decimal("100"),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
+        )
+    variants = variants.filter(filters)
 
     # Apply sorting
     if request is not None and hasattr(request, "GET"):

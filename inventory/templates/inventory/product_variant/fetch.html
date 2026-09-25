@@ -51,7 +51,7 @@
             <td class="mobile-hide">{{ variant.created_at|date:"M d, Y" }}</td>
             <td>
                 <div class="action-buttons">
-                    {% if perms.inventory.view_product_variant %}
+                    {% if perms.inventory.view_productvariant or perms.inventory.view_product_variant %}
                         <a href="{% url 'inventory_variant:details' variant.id %}"
                            class="btn-action btn-view"
                            title="View Variant Details">

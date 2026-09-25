@@ -680,6 +680,38 @@ class VariantQueryServicesTests(TestCase):
         results = get_variants_data(request)
         self.assertEqual(results.count(), 2)
 
+    def test_get_variants_data_price_and_discount_filters(self):
+        # Update v1 to have discount
+        self.v1.discount_percentage = Decimal("10.00")
+        self.v1.save()
+
+        # Price range: min_price 220 should return only v2 (mrp=250)
+        res_min_price = get_variants_data(params={"min_price": "220"})
+        self.assertEqual(res_min_price.count(), 1)
+        self.assertEqual(res_min_price.first().id, self.v2.id)
+
+        # Price range: max_price 210 should return only v1 (mrp=200)
+        res_max_price = get_variants_data(params={"max_price": "210"})
+        self.assertEqual(res_max_price.count(), 1)
+        self.assertEqual(res_max_price.first().id, self.v1.id)
+
+        # Discounted only: should return only v1
+        res_discount_only = get_variants_data(params={"discount_only": "true"})
+        self.assertEqual(res_discount_only.count(), 1)
+        self.assertEqual(res_discount_only.first().id, self.v1.id)
+
+        # Discount percent filter
+        res_discount_pct = get_variants_data(params={"min_discount": "5", "max_discount": "15"})
+        self.assertEqual(res_discount_pct.count(), 1)
+        self.assertEqual(res_discount_pct.first().id, self.v1.id)
+
+        # Discount amount filter: 200 * 10% = 20.00
+        res_discount_amt = get_variants_data(
+            params={"discount_type": "amount", "min_discount": "15", "max_discount": "25"}
+        )
+        self.assertEqual(res_discount_amt.count(), 1)
+        self.assertEqual(res_discount_amt.first().id, self.v1.id)
+
 
 class MediaGalleryServicesTests(TestCase):
     """Tests for get_media_gallery_stats and get_media_gallery_data service functions."""
