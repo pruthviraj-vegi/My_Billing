@@ -86,14 +86,14 @@
                         id="toggleInvoicesBtn"
                         onclick="switchMainViewMode('invoices')">
                     <i class="fas fa-file-invoice"></i>
-                    <span>Invoices ({{ invoices_count|default:0 }})</span>
+                    <span> ({{ invoices_count|default:0 }})</span>
                 </button>
                 <button type="button"
                         class="view-toggle-btn"
                         id="toggleSuppliersBtn"
                         onclick="switchMainViewMode('suppliers')">
                     <i class="fas fa-building"></i>
-                    <span>Suppliers ({{ active_suppliers_count|default:0 }})</span>
+                    <span> ({{ active_suppliers_count|default:0 }})</span>
                 </button>
             </div>
 

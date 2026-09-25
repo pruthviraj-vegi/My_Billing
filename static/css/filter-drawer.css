@@ -8,15 +8,37 @@
     width: 420px !important;
     background-color: var(--bg-surface) !important;
     color: var(--text-primary) !important;
-    border-left: 1px solid var(--border-color) !important;
-    box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15) !important;
     z-index: 1060 !important;
+}
+
+/* Default / Right-aligned drawer */
+.filter-drawer,
+.filter-drawer.offcanvas-end {
+    border-left: 1px solid var(--border-color) !important;
+    border-right: none !important;
+    box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Left-aligned drawer */
+.filter-drawer.offcanvas-start {
+    border-left: none !important;
+    border-right: 1px solid var(--border-color) !important;
+    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15) !important;
 }
 
 [data-theme="dark"] .filter-drawer {
     background-color: var(--bg-surface) !important;
+}
+
+[data-theme="dark"] .filter-drawer,
+[data-theme="dark"] .filter-drawer.offcanvas-end {
     border-left-color: var(--border-color) !important;
     box-shadow: -4px 0 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .filter-drawer.offcanvas-start {
+    border-right-color: var(--border-color) !important;
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5) !important;
 }
 
 .filter-drawer .offcanvas-header {
@@ -608,12 +630,7 @@ th.sortable.desc .sort-icon {
 
 /* --- Inline Active Filter Chips Bar (Touch & Mobile Friendly) --- */
 .active-filters-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.25rem 0.25rem 0.25rem;
-    width: 100%;
+    display: none !important;
 }
 
 .active-filter-chip {

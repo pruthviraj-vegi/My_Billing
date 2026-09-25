@@ -285,7 +285,8 @@
             hoverClearAllId: 'filterHoverClearAll',
             applyBtnId: 'applyModalFiltersBtn',
             resetBtnId: 'resetModalFiltersBtn',
-            chipsContainerId: 'activeFiltersBar',
+            showChips: false,
+            chipsContainerId: null,
             syncUrl: true,
             filters: []
         }, userOptions);
@@ -507,9 +508,9 @@
                 }
             }
 
-            // Touch / Mobile chips container (if element exists)
+            // Touch / Mobile chips container (if element exists and enabled)
             if (chipsContainer) {
-                if (count > 0) {
+                if (options.showChips && count > 0) {
                     chipsContainer.classList.remove('d-none');
                     chipsContainer.innerHTML = activeFilters.map(item => `
                         <div class="active-filter-chip">

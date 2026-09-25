@@ -72,8 +72,8 @@
         Search
       </button>
 
-      <!-- Slide-over Filter Offcanvas Drawer (Right Side) -->
-      <div class="offcanvas offcanvas-end filter-drawer" tabindex="-1" id="filterDrawer" aria-labelledby="filterDrawerLabel">
+      <!-- Slide-over Filter Offcanvas Drawer (Left Side) -->
+      <div class="offcanvas offcanvas-start filter-drawer" tabindex="-1" id="filterDrawer" aria-labelledby="filterDrawerLabel">
         <div class="offcanvas-header border-bottom">
           <div class="d-flex align-items-center">
             <div class="filter-header-icon me-2">
@@ -248,8 +248,6 @@
       </div>
     </form>
 
-    <!-- Inline Active Filter Chips Bar (Touch & Mobile friendly) -->
-    <div class="active-filters-bar d-none" id="activeFiltersBar"></div>
   </div>
   <!-- Data Table -->
   <div class="table-container">
@@ -321,7 +319,6 @@
                 drawerId: 'filterDrawer',
                 formId: 'searchForm',
                 tableId: 'data_table',
-                chipsContainerId: 'activeFiltersBar',
                 syncUrl: true,
                 filters: [
                     { id: 'billTypesFilter', key: 'bill_types', label: 'Bill Type', type: 'select' },

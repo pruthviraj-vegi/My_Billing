@@ -96,8 +96,8 @@
                 Search
             </button>
 
-            <!-- Slide-over Filter Offcanvas Drawer (Right Side) -->
-            <div class="offcanvas offcanvas-end filter-drawer"
+            <!-- Slide-over Filter Offcanvas Drawer (Left Side) -->
+            <div class="offcanvas offcanvas-start filter-drawer"
                  tabindex="-1"
                  id="filterDrawer"
                  aria-labelledby="filterDrawerLabel">
@@ -273,8 +273,6 @@
             </div>
         </form>
 
-        <!-- Inline Active Filter Chips Bar (Touch & Mobile friendly) -->
-        <div class="active-filters-bar d-none" id="activeFiltersBar"></div>
     </div>
     <!-- Data Table -->
     <div class="table-container">
@@ -349,7 +347,6 @@
                 drawerId: 'filterDrawer',
                 formId: 'searchForm',
                 tableId: 'data_table',
-                chipsContainerId: 'activeFiltersBar',
                 syncUrl: true,
                 filters: [
                     { id: 'groupFilter', key: 'group', label: 'Role', type: 'select' },
