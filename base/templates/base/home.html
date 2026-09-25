@@ -89,35 +89,33 @@
 
       <!-- Balance & Working Capital Health -->
       <div class="dash-hero-card dash-stagger-item" style="--delay: 2;">
-        <div>
-          <div class="hero-card-header">
-            <span class="hero-card-title">
-              <i class="fa-solid fa-scale-balanced"></i>
-              Receivables &amp; Payables Balance
+        <div class="hero-card-header">
+          <span class="hero-card-title">
+            <i class="fa-solid fa-scale-balanced"></i>
+            Receivables &amp; Payables Balance
+          </span>
+          <span class="hero-tag">Working Capital</span>
+        </div>
+        <div class="health-highlights-row">
+          <div class="health-box">
+            <span class="health-box-label">
+              <i class="fa-solid fa-hand-holding-dollar"></i>
+              Customer Receivables
             </span>
-            <span class="hero-tag">Working Capital</span>
+            <div class="health-box-val">
+              <span class="counting-number" id="customerReceivable" data-count="{{ customer_receivable|default:0 }}">0</span>
+            </div>
+            <span class="health-box-sub">Pending credit due from customers</span>
           </div>
-          <div class="health-highlights-row mt-2">
-            <div class="health-box">
-              <span class="health-box-label">
-                <i class="fa-solid fa-hand-holding-dollar"></i>
-                Customer Receivables
-              </span>
-              <div class="health-box-val">
-                <span class="counting-number" id="customerReceivable" data-count="{{ customer_receivable|default:0 }}">0</span>
-              </div>
-              <span class="health-box-sub">Pending credit due from customers</span>
+          <div class="health-box">
+            <span class="health-box-label">
+              <i class="fa-solid fa-truck-ramp-box"></i>
+              Supplier Payables
+            </span>
+            <div class="health-box-val">
+              <span class="counting-number" id="supplierBalance" data-count="{{ supplier_balance|default:0 }}">0</span>
             </div>
-            <div class="health-box">
-              <span class="health-box-label">
-                <i class="fa-solid fa-truck-ramp-box"></i>
-                Supplier Payables
-              </span>
-              <div class="health-box-val">
-                <span class="counting-number" id="supplierBalance" data-count="{{ supplier_balance|default:0 }}">0</span>
-              </div>
-              <span class="health-box-sub">Outstanding balance owed to suppliers</span>
-            </div>
+            <span class="health-box-sub">Outstanding balance owed to suppliers</span>
           </div>
         </div>
       </div>
