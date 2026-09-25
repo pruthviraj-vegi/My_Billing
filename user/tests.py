@@ -231,3 +231,64 @@ class UserViewsTestCase(TestCase):
         res_no = self.client.get(reverse("user:fetch"), {"commission": "no"})
         self.assertEqual(res_no.status_code, 200)
         self.assertContains(res_no, self.test_user.first_name)
+
+    def test_user_filter_drawer_and_sorting(self):
+        """Test home view context and fetch filters for status, group, staff_status, email, salary, and dates."""
+        from django.contrib.auth.models import Group
+
+        # 1. Home page context has groups and slider_max_salary
+        res_home = self.client.get(reverse("user:home"))
+        self.assertEqual(res_home.status_code, 200)
+        self.assertIn("groups", res_home.context)
+        self.assertIn("slider_max_salary", res_home.context)
+
+        # 2. Setup users for filter verification
+        managers_group = Group.objects.create(name="Managers")
+        self.test_user.groups.add(managers_group)
+        self.test_user.email = "regular@example.com"
+        self.test_user.save()
+
+        Salary.objects.create(
+            user=self.test_user,
+            amount=Decimal("25000.00"),
+            effective_from=timezone.now(),
+        )
+
+        # Test group filter
+        res_group = self.client.get(reverse("user:fetch"), {"group": str(managers_group.id)})
+        self.assertEqual(res_group.status_code, 200)
+        self.assertContains(res_group, self.test_user.first_name)
+
+        # Test staff status filter
+        res_staff = self.client.get(reverse("user:fetch"), {"staff_status": "superuser"})
+        self.assertEqual(res_staff.status_code, 200)
+        self.assertContains(res_staff, self.admin.first_name)
+        self.assertNotContains(res_staff, self.test_user.first_name)
+
+        res_regular = self.client.get(reverse("user:fetch"), {"staff_status": "regular"})
+        self.assertEqual(res_regular.status_code, 200)
+        self.assertContains(res_regular, self.test_user.first_name)
+        self.assertNotContains(res_regular, self.admin.first_name)
+
+        # Test salary range filter
+        res_sal_match = self.client.get(reverse("user:fetch"), {"min_salary": "20000", "max_salary": "30000"})
+        self.assertEqual(res_sal_match.status_code, 200)
+        self.assertContains(res_sal_match, self.test_user.first_name)
+
+        res_sal_nomatch = self.client.get(reverse("user:fetch"), {"min_salary": "30000"})
+        self.assertEqual(res_sal_nomatch.status_code, 200)
+        self.assertNotContains(res_sal_nomatch, self.test_user.first_name)
+
+        # Test has_email and has_salary
+        res_email = self.client.get(reverse("user:fetch"), {"has_email": "1"})
+        self.assertEqual(res_email.status_code, 200)
+        self.assertContains(res_email, self.test_user.first_name)
+
+        res_salary = self.client.get(reverse("user:fetch"), {"has_salary": "1"})
+        self.assertEqual(res_salary.status_code, 200)
+        self.assertContains(res_salary, self.test_user.first_name)
+
+        # Test sorting
+        res_sort = self.client.get(reverse("user:fetch"), {"sort": "full_name"})
+        self.assertEqual(res_sort.status_code, 200)
+

@@ -10,8 +10,9 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.sessions.models import Session
-from django.db.models import Exists, OuterRef, Prefetch, Q, Sum
+from django.db.models import Exists, Max, OuterRef, Prefetch, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -20,7 +21,12 @@ from django.views.decorators.http import require_POST
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 
 from base.getDates import getDates
-from base.utility import build_search_filter, render_paginated_response, table_sorting
+from base.utility import (
+    build_search_filter,
+    parse_flexible_date,
+    render_paginated_response,
+    table_sorting,
+)
 
 from base.decorators import RequiredPermissionMixin, required_permission
 
@@ -35,10 +41,12 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 VALID_SORT_FIELDS = {
-    "full_name",
-    "date_joined",
-    "phone_number",
-    "email",
+    "id": "id",
+    "full_name": "first_name",
+    "phone_number": "phone_number",
+    "email": "email",
+    "address": "address",
+    "date_joined": "date_joined",
 }
 
 USERS_PER_PAGE = 20
@@ -47,26 +55,61 @@ USERS_PER_PAGE = 20
 @required_permission("user.view_customuser")
 def home(request):
     """User management main page - initial load only."""
-    # For initial page load, just render the template with empty data
-    context = {}
+    groups = Group.objects.all().order_by("name")
+    max_sal = (
+        Salary.objects.filter(effective_to__isnull=True).aggregate(Max("amount"))["amount__max"]
+    )
+    slider_max_salary = int(max_sal * Decimal("1.2")) if max_sal and max_sal > 0 else 50000
+    slider_max_salary = max(slider_max_salary, 50000)
+
+    context = {
+        "groups": groups,
+        "slider_max_salary": slider_max_salary,
+    }
     return render(request, "user/home.html", context)
 
 
 def get_data(request):
     """Helper function to get filtered and sorted users."""
     # Get search and filter parameters
-    search_query = request.GET.get("search", "")
-    status_filter = request.GET.get("status", "")
-    commission_filter = request.GET.get("commission", "")
+    search_query = request.GET.get("search", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    group_filter = request.GET.get("group", "").strip()
+    staff_status = request.GET.get("staff_status", "").strip()
+    commission_filter = request.GET.get("commission", "").strip()
+    has_email = request.GET.get("has_email", "").strip()
+    has_salary = request.GET.get("has_salary", "").strip()
+    min_salary = request.GET.get("min_salary", "").strip()
+    max_salary = request.GET.get("max_salary", "").strip()
+    date_from = request.GET.get("date_from", "").strip()
+    date_to = request.GET.get("date_to", "").strip()
 
-    # Apply search filter
-    filters = build_search_filter(search_query, ["full_name", "phone_number", "email", "address"])
+    # Apply search filter across real model fields
+    filters = build_search_filter(
+        search_query,
+        ["first_name", "last_name", "phone_number", "email", "address", "profile_id"],
+    )
 
     # Status filter (active/inactive)
     if status_filter == "active":
         filters &= Q(is_active=True)
     elif status_filter == "inactive":
         filters &= Q(is_active=False)
+
+    # Group / Role filter
+    if group_filter:
+        if group_filter.isdigit():
+            filters &= Q(groups__id=int(group_filter))
+        else:
+            filters &= Q(groups__name__iexact=group_filter)
+
+    # Staff / Superuser filter
+    if staff_status == "staff":
+        filters &= Q(is_staff=True)
+    elif staff_status == "superuser":
+        filters &= Q(is_superuser=True)
+    elif staff_status == "regular":
+        filters &= Q(is_staff=False, is_superuser=False)
 
     # Apply commission filter (check current salary's commission and active status)
     if commission_filter == "yes":
@@ -84,9 +127,48 @@ def get_data(request):
         )
         filters &= ~Exists(has_commission)
 
+    # Has email toggle
+    if has_email in ("1", "true", "yes"):
+        filters &= Q(email__isnull=False) & ~Q(email="")
+
+    # Has active salary toggle
+    if has_salary in ("1", "true", "yes"):
+        filters &= Q(salaries__effective_to__isnull=True)
+
+    # Salary range filter
+    if min_salary:
+        try:
+            filters &= Q(
+                salaries__effective_to__isnull=True,
+                salaries__amount__gte=Decimal(min_salary),
+            )
+        except (ValueError, ArithmeticError):
+            pass
+
+    if max_salary:
+        try:
+            filters &= Q(
+                salaries__effective_to__isnull=True,
+                salaries__amount__lte=Decimal(max_salary),
+            )
+        except (ValueError, ArithmeticError):
+            pass
+
+    # Date joined range
+    if date_from:
+        d_from = parse_flexible_date(date_from)
+        if d_from:
+            filters &= Q(date_joined__date__gte=d_from)
+
+    if date_to:
+        d_to = parse_flexible_date(date_to)
+        if d_to:
+            filters &= Q(date_joined__date__lte=d_to)
+
     valid_sorts = table_sorting(request, VALID_SORT_FIELDS, "-date_joined")
     users = (
         User.objects.filter(filters)
+        .distinct()
         .prefetch_related(
             "groups",
             Prefetch(
