@@ -1,8 +1,8 @@
 """Invoice views for dashboard, CRUD operations, and search."""
 
 import logging
-from datetime import timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.contrib import messages
 from django.db import transaction
@@ -12,6 +12,7 @@ from django.db.models import (
     DecimalField,
     F,
     IntegerField,
+    Max,
     OuterRef,
     Q,
     Subquery,
@@ -617,37 +618,53 @@ VALID_SORT_FIELDS = {
     "due_date",
     "created_at",
     "created_by__first_name",
+    "sold_by__username",
+    "created_by__username",
 }
 
 
 @required_permission("invoice.view_invoice")
 def invoice_home(request):
-    """Invoice management main page - initial load only."""
-    # For initial page load, just render the template with empty data
-
+    """Invoice management main page with search, filter drawer, and sorting functionality."""
     financial_years = (
         Invoice.objects.values_list("financial_year", flat=True)
         .distinct()
         .filter(financial_year__isnull=False)
         .order_by("-financial_year")
     )
+    # Dynamic slider max amount calculation
+    stats = Invoice.objects.aggregate(
+        max_amt=Coalesce(Max("amount"), Value(Decimal("100000")))
+    )
+    raw_max_amt = float(stats["max_amt"] or 100000)
+    slider_max_amount = max(10000, int((raw_max_amt + 9999) // 10000) * 10000)
+
     context = {
         "payment_type_choices": Invoice.PaymentType.choices,
         "bill_types": Invoice.Invoice_type.choices,
+        "payment_status_choices": Invoice.PaymentStatus.choices,
         "financial_years": financial_years,
+        "slider_max_amount": slider_max_amount,
     }
     return render(request, "invoice/home.html", context)
 
 
 def get_data(request):
-    """Build filtered and sorted invoice queryset from request params."""
+    """Build filtered and sorted invoice queryset from request params with drawer filters."""
     # Get search and filter parameters
-    search_query = request.GET.get("search", "")
-    status_filter = request.GET.get("status", "")
-    payment_type_filter = request.GET.get("payment_type", "")
-    sort_by = request.GET.get("sort", "-id")
-    bill_types_filter = request.GET.get("bill_types", "")
-    financial_year = request.GET.get("financial_year", "")
+    search_query = request.GET.get("search", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    payment_type_filter = request.GET.get("payment_type", "").strip()
+    bill_types_filter = request.GET.get("bill_types", "").strip()
+    financial_year = request.GET.get("financial_year", "").strip()
+    is_cancelled = request.GET.get("is_cancelled", "").strip()
+    min_amount = request.GET.get("min_amount", "").strip()
+    max_amount = request.GET.get("max_amount", "").strip()
+    date_from = request.GET.get("date_from", "").strip()
+    date_to = request.GET.get("date_to", "").strip()
+    due_date_from = request.GET.get("due_date_from", "").strip()
+    due_date_to = request.GET.get("due_date_to", "").strip()
+    sort_by = request.GET.get("sort", "-id").strip()
 
     # Apply search filter
     filters = build_search_filter(
@@ -663,7 +680,14 @@ def get_data(request):
 
     # Apply status filter
     if status_filter:
-        filters &= Q(payment_status=status_filter)
+        if status_filter == "CANCELLED":
+            filters &= Q(is_cancelled=True)
+        else:
+            filters &= Q(payment_status=status_filter)
+
+    # Cancelled only toggle
+    if is_cancelled in ("1", "true", "on", True):
+        filters &= Q(is_cancelled=True)
 
     # Apply payment type filter
     if payment_type_filter:
@@ -676,6 +700,49 @@ def get_data(request):
     # Apply financial year filter
     if financial_year:
         filters &= Q(financial_year=financial_year)
+
+    # Apply amount range
+    if min_amount:
+        try:
+            filters &= Q(amount__gte=Decimal(min_amount))
+        except (InvalidOperation, ValueError):
+            pass
+
+    if max_amount:
+        try:
+            filters &= Q(amount__lte=Decimal(max_amount))
+        except (InvalidOperation, ValueError):
+            pass
+
+    # Apply invoice date range
+    if date_from:
+        try:
+            d_from = datetime.strptime(date_from, "%Y-%m-%d").date()
+            filters &= Q(invoice_date__date__gte=d_from)
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            d_to = datetime.strptime(date_to, "%Y-%m-%d").date()
+            filters &= Q(invoice_date__date__lte=d_to)
+        except ValueError:
+            pass
+
+    # Apply due date range
+    if due_date_from:
+        try:
+            d_due_from = datetime.strptime(due_date_from, "%Y-%m-%d").date()
+            filters &= Q(due_date__date__gte=d_due_from)
+        except ValueError:
+            pass
+
+    if due_date_to:
+        try:
+            d_due_to = datetime.strptime(due_date_to, "%Y-%m-%d").date()
+            filters &= Q(due_date__date__lte=d_due_to)
+        except ValueError:
+            pass
 
     invoices = Invoice.objects.select_related("customer", "sold_by").filter(filters)
 
@@ -719,13 +786,14 @@ class CreateInvoice(RequiredPermissionMixin, View):
     def get(self, request, pk):
         """Display the invoice creation form for a given cart."""
         cart = get_object_or_404(Cart, id=pk)
-        if int(cart.total_amount) <= 0:
+        cart_total = cart.total_amount  # cache to avoid repeated DB aggregate
+        if int(cart_total) <= 0:
             messages.error(request, "Cart is empty")
             return redirect("cart:get_cart_data", pk=cart.id)
         form = self.form_class(
             initial={
                 "payment_type": Invoice.PaymentType.CASH,
-                "amount": cart.total_amount,
+                "amount": cart_total,
                 "due_date": timezone.now() + timedelta(days=30),
             }
         )
@@ -741,7 +809,8 @@ class CreateInvoice(RequiredPermissionMixin, View):
     def post(self, request, pk):
         """Process invoice creation from cart items."""
         cart = get_object_or_404(Cart, id=pk)
-        if int(cart.total_amount) <= 0:
+        cart_total = cart.total_amount  # cache to avoid repeated DB aggregate
+        if int(cart_total) <= 0:
             messages.error(request, "Cart is empty")
             return redirect("cart:get_cart_data", pk=cart.id)
         form = self.form_class(request.POST)
@@ -749,7 +818,7 @@ class CreateInvoice(RequiredPermissionMixin, View):
             with transaction.atomic():
                 invoice = form.save(commit=False)
                 invoice.cart_no = cart.id
-                invoice.amount = cart.total_amount
+                invoice.amount = cart_total
                 invoice.modified_by = request.user
                 invoice.created_by = request.user
                 invoice.save()
