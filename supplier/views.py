@@ -6,7 +6,8 @@ payments, and reporting.
 
 import json
 import logging
-from decimal import Decimal
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.db.models import (
@@ -267,10 +268,21 @@ def dashboard_fetch(request):
 
 @required_permission("supplier.view_supplier")
 def home(request):
-    """Supplier management main page with search and filter functionality."""
+    """Supplier management main page with search, filter drawer, and sorting functionality."""
+    cities = list(
+        Supplier.objects.exclude(city__isnull=True)
+        .exclude(city="")
+        .values_list("city", flat=True)
+        .distinct()
+        .order_by("city")
+    )
+    slider_max_balance = 1200000
 
-    # Initial render only; data loads via AJAX from fetch_suppliers
-    return render(request, "supplier/home.html")
+    context = {
+        "cities": cities,
+        "slider_max_balance": slider_max_balance,
+    }
+    return render(request, "supplier/home.html", context)
 
 
 # Constants for AJAX fetch
@@ -289,14 +301,23 @@ VALID_SORT_FIELDS = {
 
 def get_suppliers_data(request):
     """
-    Get filtered and sorted suppliers data.
+    Get filtered and sorted suppliers data with advanced filter drawer support.
 
     OPTIMIZED:
     - Uses table_sorting utility for consistent sort handling
     - Annotates balance_due and last_invoice to prevent N+1 queries
+    - Filters by status, balance due status, GST registration, balance range, city, and created date
     - Reduces queries from 77 to 2-3 regardless of supplier count
     """
     search_query = request.GET.get("search", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    balance_status = request.GET.get("balance_status", "").strip()
+    gst_only = request.GET.get("gst_only", "").strip()
+    city_filter = request.GET.get("city", "").strip()
+    min_balance = request.GET.get("min_balance", "").strip()
+    max_balance = request.GET.get("max_balance", "").strip()
+    created_from = request.GET.get("created_from", "").strip()
+    created_to = request.GET.get("created_to", "").strip()
 
     # Use table_sorting utility for consistent sort handling (returns a list)
     sort_fields = table_sorting(request, VALID_SORT_FIELDS, "-id")
@@ -306,8 +327,7 @@ def get_suppliers_data(request):
         field.replace("balance_due", "annotated_balance_due") for field in sort_fields
     ]
 
-    # Get primary sort field (first in list)
-    # Build filters
+    # Build search filters
     filters = build_search_filter(
         search_query,
         [
@@ -327,8 +347,37 @@ def get_suppliers_data(request):
         ],
     )
 
-    # Base queryset
-    suppliers = Supplier.objects.filter(filters)
+    # City filter
+    if city_filter:
+        filters &= Q(city__iexact=city_filter)
+
+    # GST Registered Only
+    if gst_only in ("1", "true", "on", True):
+        filters &= Q(gstin__isnull=False) & ~Q(gstin="")
+
+    # Created date range
+    if created_from:
+        try:
+            d_from = datetime.strptime(created_from, "%Y-%m-%d").date()
+            filters &= Q(created_at__date__gte=d_from)
+        except ValueError:
+            pass
+
+    if created_to:
+        try:
+            d_to = datetime.strptime(created_to, "%Y-%m-%d").date()
+            filters &= Q(created_at__date__lte=d_to)
+        except ValueError:
+            pass
+
+    # Status filter (Active vs Inactive vs All)
+    if status_filter == "inactive":
+        suppliers = Supplier.all_objects.filter(filters, is_deleted=True)
+    elif status_filter == "all":
+        suppliers = Supplier.all_objects.filter(filters)
+    else:
+        # Default: active only
+        suppliers = Supplier.objects.filter(filters)
 
     # Subqueries for balance_due calculation (used for both display and optional sorting)
     invoice_totals_subquery = (
@@ -385,6 +434,30 @@ def get_suppliers_data(request):
         # Precompute last_invoice (template uses annotated_last_invoice to avoid property)
         annotated_last_invoice=Subquery(last_invoice_subquery),
     )
+
+    # Filter by balance due status & range on annotated balance
+    if balance_status == "outstanding":
+        suppliers = suppliers.filter(annotated_balance_due__gt=0)
+    elif balance_status == "cleared":
+        suppliers = suppliers.filter(annotated_balance_due=0)
+    elif balance_status == "advance":
+        suppliers = suppliers.filter(annotated_balance_due__lt=0)
+
+    if min_balance:
+        try:
+            suppliers = suppliers.filter(
+                annotated_balance_due__gte=Decimal(min_balance)
+            )
+        except (InvalidOperation, ValueError):
+            pass
+
+    if max_balance:
+        try:
+            suppliers = suppliers.filter(
+                annotated_balance_due__lte=Decimal(max_balance)
+            )
+        except (InvalidOperation, ValueError):
+            pass
 
     return suppliers.order_by(*sort_fields)
 

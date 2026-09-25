@@ -116,7 +116,7 @@ class SupplierPaymentService:
                         payment=payment,
                         invoice=inv,
                         amount_allocated=allocation_amount,
-                        created_by=payment.created_by,
+                        created_by_id=payment.created_by_id,
                     )
                 )
 

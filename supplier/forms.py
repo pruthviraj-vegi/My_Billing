@@ -204,8 +204,8 @@ class SupplierInvoiceForm(ThemedFormMixin, forms.ModelForm):
             "class"
         ] = "form-input indian-number"
 
-        # Set initial values for new invoices
-        if not self.instance.pk:
+        # Set initial values for new invoices (skip on POST — data comes from submission)
+        if not self.instance.pk and not self.is_bound:
             if self.supplier:
                 last_invoice = self.supplier.invoices.filter(is_deleted=False).order_by("-invoice_date").first()
                 if last_invoice:

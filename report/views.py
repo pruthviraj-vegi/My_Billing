@@ -10,7 +10,7 @@ from io import BytesIO
 
 import qrcode
 from django.conf import settings
-from django.db.models import F, Q, Sum, DecimalField
+from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
@@ -335,12 +335,17 @@ def generate_credit_ind_pdf(request, pk):
 def generate_suppliers_pdf(request):
     """Generate PDF for suppliers list with search and sort parameters."""
     suppliers = get_suppliers_data(request)
-    total_outstanding = get_total_outstanding_balance()
 
     if isinstance(suppliers, list):
         count = len(suppliers)
+        total_outstanding = sum(
+            (s.annotated_balance_due for s in suppliers), Decimal("0.00")
+        )
     else:
         count = suppliers.count()
+        total_outstanding = suppliers.aggregate(
+            total=Coalesce(Sum("annotated_balance_due"), Value(Decimal("0.00")))
+        )["total"]
 
     # Prepare context
     context = {
