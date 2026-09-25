@@ -108,9 +108,10 @@ class ProductForm(forms.ModelForm):
             active_qs = model.objects.filter(is_active=True)
             self.fields[field_name].queryset = active_qs
 
-            if active_qs.exists():
-                if not self.instance.pk:
-                    self.fields[field_name].initial = active_qs.first()
+            first_active = active_qs.first()
+            if first_active is not None:
+                if not self.is_bound and not self.instance.pk:
+                    self.fields[field_name].initial = first_active
             else:
                 model_name = model._meta.verbose_name or model.__name__
                 self.fields[field_name].help_text = (

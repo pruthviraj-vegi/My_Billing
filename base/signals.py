@@ -156,13 +156,23 @@ def delete_product_cache(sender, instance, **kwargs):
     invalidate_cache(PRODUCT_VARIANT_WEIGHTED_CACHE_KEY)
 
 
+# Fields on ProductVariant that, when changed, could affect search tokens.
+_VARIANT_SEARCH_LOCAL_FIELDS = frozenset({"barcode", "product", "product_id"})
+
+
 # --- Product Variant ---
 @receiver(pre_save, sender=ProductVariant)
-def capture_variant_tokens(sender, instance, **kwargs):
+def capture_variant_tokens(sender, instance, update_fields=None, **kwargs):
     """Capture tokens for ProductVariant before saving."""
+    # Skip token capture when update_fields is specified and doesn't touch search fields
+    if update_fields is not None and not (_VARIANT_SEARCH_LOCAL_FIELDS & set(update_fields)):
+        return
+
     if instance.pk:
         try:
-            old_inst = ProductVariant.objects.get(pk=instance.pk)
+            old_inst = ProductVariant.objects.select_related(
+                "product__category"
+            ).get(pk=instance.pk)
             setattr(
                 instance,
                 "old_tokens",
@@ -175,8 +185,12 @@ def capture_variant_tokens(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=ProductVariant)
-def invalidate_variant_cache(sender, instance, **kwargs):
+def invalidate_variant_cache(sender, instance, update_fields=None, **kwargs):
     """Invalidate Variant cache if search tokens have changed."""
+    # Skip cache invalidation when update_fields is specified and doesn't touch search fields
+    if update_fields is not None and not (_VARIANT_SEARCH_LOCAL_FIELDS & set(update_fields)):
+        return
+
     check_and_invalidate(
         instance,
         PRODUCT_VARIANT_SEARCH_FIELDS,

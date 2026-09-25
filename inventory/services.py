@@ -297,7 +297,7 @@ class InventoryService:
             # Update variant quantity AFTER FIFO allocation
             new_quantity = variant.quantity - quantity_sold
             variant.quantity = new_quantity
-            variant.save()
+            variant.save(update_fields=["quantity", "updated_at"])
 
             return {
                 "success": True,
