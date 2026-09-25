@@ -4098,19 +4098,37 @@ textarea:focus ~ .form-help .form-help-text,
 
 .quantity-input,
 .price-input {
-  width: 80px;
-  text-align: center;
-  padding: 0.25rem;
+  width: 100%;
+  max-width: 5rem;
+  padding: 0.35rem 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   background: var(--bg-surface);
   color: var(--text-primary);
+  font-size: var(--table-font-size, 0.875rem);
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.price-input {
+  max-width: 6rem;
+}
+
+/* Hide native browser number spin buttons */
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button,
+.price-input::-webkit-outer-spin-button,
+.price-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .quantity-input:focus,
 .price-input:focus {
   border-color: var(--border-color-focus);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  outline: none;
 }
 
 .price-bubble-container {
@@ -8483,27 +8501,63 @@ a:hover {
 .barcode-suggestions-dropdown {
   position: absolute;
   z-index: 9999;
-  max-height: 320px;
+  max-height: 380px;
   overflow-y: auto;
+  overflow-x: hidden !important;
   display: none;
-  width: 50%;
-  top: 100%;
+  min-width: 480px;
+  width: max-content;
+  max-width: min(620px, calc(100vw - 2rem));
+  top: calc(100% + 6px);
   left: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.35), 0 6px 14px -2px rgba(0, 0, 0, 0.2);
   color: var(--text-primary);
+  animation: barcodeDropdownFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes barcodeDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom sleek scrollbar */
+.barcode-suggestions-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+.barcode-suggestions-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+.barcode-suggestions-dropdown::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+.barcode-suggestions-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
 
 .suggestion-row {
-  padding: 8px 12px;
+  padding: 0.65rem 0.95rem;
   cursor: pointer;
   border-bottom: 1px solid var(--border-color);
-  font-size: 13px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-left-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.suggestion-row:last-child {
+  border-bottom: none;
 }
 
 .suggestion-row:hover,
@@ -8511,43 +8565,119 @@ a:hover {
   background: var(--bg-surface-hover);
 }
 
+.suggestion-row.suggestion-active {
+  border-left: 3px solid var(--primary);
+  padding-left: calc(0.95rem - 3px);
+}
+
 .suggestion-row .suggestion-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+}
+
+.suggestion-row .suggestion-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.suggestion-row .suggestion-product {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-badge-discount {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.suggestion-badge-out {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  white-space: nowrap;
+}
+
+.suggestion-row .suggestion-price-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.suggestion-row .suggestion-price {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.suggestion-row .suggestion-mrp {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-decoration: line-through;
+  opacity: 0.75;
 }
 
 .suggestion-row .suggestion-meta {
   display: flex;
-  gap: 8px;
-  margin-top: 2px;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
-.suggestion-row .suggestion-product {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.suggestion-row .suggestion-price {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+.suggestion-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .suggestion-row .suggestion-barcode {
-  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
   color: var(--text-secondary);
+  background: rgba(148, 163, 184, 0.12);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
 }
 
 .suggestion-row .suggestion-variant {
-  font-size: 11px;
+  font-size: 0.75rem;
   color: var(--text-secondary);
 }
 
-.suggestion-row .suggestion-brand {
-  font-size: 11px;
+.suggestion-row .suggestion-stock {
+  font-size: 0.75rem;
   color: var(--text-secondary);
-  opacity: 0.8;
+  font-weight: 500;
+}
+
+.suggestion-row .suggestion-stock.stock-zero {
+  color: #ef4444;
+  font-weight: 600;
 }
 
 .suggestion-backdrop {

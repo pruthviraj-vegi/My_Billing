@@ -836,11 +836,11 @@ class CartManager {
                 // Update discount percentage
                 if (discountCell) {
                     if (data.cart_item.discount_percentage !== undefined) {
-                        discountCell.textContent = `${data.cart_item.discount_percentage}%`;
+                        discountCell.textContent = `${data.cart_item.discount_percentage}`;
                     } else {
                         const sellingPrice = parseFloat(priceToggleCell?.dataset.sellingPrice) || 0;
                         const discount = this.calcDiscount(sellingPrice, data.cart_item.price);
-                        discountCell.textContent = `${discount.toFixed(2)}%`;
+                        discountCell.textContent = `${discount.toFixed(2)}`;
                     }
                 }
 
@@ -962,11 +962,11 @@ class CartManager {
 
         if (discountCell) {
             if (item.discount_percentage !== undefined) {
-                discountCell.textContent = `${item.discount_percentage}%`;
+                discountCell.textContent = `${item.discount_percentage}`;
             } else {
                 const selling = parseFloat(priceToggleCell?.dataset.sellingPrice) || 0;
                 const discount = this.calcDiscount(selling, item.price);
-                discountCell.textContent = `${discount.toFixed(2)}%`;
+                discountCell.textContent = `${discount.toFixed(2)}`;
             }
         }
 
@@ -1039,17 +1039,17 @@ class CartManager {
                 </div>
             </td>
             <td class="mobile-hide">${safeVariantName}</td>
-            <td class="price-toggle-cell"
+            <td class="price-toggle-cell text-end"
                 data-selling-price="${sellingPrice}"
                 data-purchase-price="${purchasePrice}">
                 <span class="price-display">${priceDisplay}</span>
             </td>
-            <td>
+            <td class="text-end">
                 <input type="number" class="form-input quantity-input" value="${quantity}"
                        data-item-id="${id}" min="1" step="1"
                        title="Press Enter to update" aria-label="Quantity">
             </td>
-            <td>
+            <td class="text-end">
                 <div class="price-bubble-container" style="position: relative;">
                     <input type="number" class="form-input price-input" value="${price}" 
                            data-item-id="${id}"
@@ -1060,8 +1060,8 @@ class CartManager {
                     </div>
                 </div>
             </td>
-            <td class="discount-cell mobile-hide">${calculatedDiscount.toFixed(2)}%</td>
-            <td class="amount-cell">${this.format(amount)}</td>
+            <td class="discount-cell mobile-hide text-end">${calculatedDiscount.toFixed(2)}</td>
+            <td class="amount-cell text-end">${this.format(amount)}</td>
             <td class="text-center">
                 <div class="action-buttons d-inline-flex flex-nowrap align-items-center justify-content-center gap-1">
                     <button type="button" class="btn btn-danger delete-item-btn" data-item-id="${id}"
@@ -1558,36 +1558,44 @@ class CartManager {
                 row.className = 'suggestion-row';
                 row.dataset.barcode = item.barcode;
 
-                let variant = [item.color, item.size].filter(Boolean).join(' / ');
+                const variantParts = [item.color, item.size].filter(Boolean);
+                const variantText = variantParts.join(' / ');
                 const stockNum = parseFloat(item.stock);
                 const isOutOfStock = !isNaN(stockNum) && stockNum <= 0;
-                if (item.stock !== undefined) {
-                    variant = variant ? `${variant} (Qty: ${item.stock})` : `Qty: ${item.stock}`;
-                }
+
                 const productLabel = item.brand ? `${item.brand} - ${item.product}` : item.product;
                 const finalPriceNum = parseFloat(item.final_price);
                 const mrpNum = parseFloat(item.mrp);
                 const discountNum = parseFloat(item.discount_percentage);
-                const priceText = (!isNaN(finalPriceNum) && !isNaN(mrpNum) && finalPriceNum < mrpNum)
-                    ? `${self.format(finalPriceNum)} <small class="text-muted text-decoration-line-through">${self.format(mrpNum)}</small>`
-                    : self.format(item.final_price || item.mrp);
+                const hasDiscount = !isNaN(finalPriceNum) && !isNaN(mrpNum) && finalPriceNum < mrpNum;
 
                 const discountBadge = (!isNaN(discountNum) && discountNum > 0)
-                    ? `<span class="badge bg-success ms-1">${Math.round(discountNum)}% OFF</span>`
+                    ? `<span class="suggestion-badge-discount">${Math.round(discountNum)}% OFF</span>`
                     : '';
                 const stockBadge = isOutOfStock
-                    ? `<span class="badge bg-danger ms-1">Out of Stock</span>`
+                    ? `<span class="suggestion-badge-out">Out of Stock</span>`
                     : '';
 
                 row.innerHTML = `
                     <div class="suggestion-header">
-                        <span class="suggestion-product">${productLabel}${discountBadge}${stockBadge}</span>
-                        <span class="suggestion-price">${priceText}</span>
+                        <div class="suggestion-title-wrap">
+                            <span class="suggestion-product" title="${productLabel}">${productLabel}</span>
+                            ${discountBadge}
+                            ${stockBadge}
+                        </div>
+                        <div class="suggestion-price-wrap">
+                            <span class="suggestion-price">${self.format(item.final_price || item.mrp)}</span>
+                            ${hasDiscount ? `<span class="suggestion-mrp">${self.format(mrpNum)}</span>` : ''}
+                        </div>
                     </div>
                     <div class="suggestion-meta">
-                        <span class="suggestion-barcode">${item.barcode}</span>
-                        ${variant ? `<span class="suggestion-variant">· ${variant}</span>` : ''}
-                        ${item.brand ? `<span class="suggestion-brand">· ${item.brand}</span>` : ''}
+                        <span class="suggestion-meta-item suggestion-barcode">
+                            <i class="fas fa-barcode"></i> ${item.barcode}
+                        </span>
+                        ${variantText ? `<span class="suggestion-meta-item suggestion-variant">· ${variantText}</span>` : ''}
+                        <span class="suggestion-meta-item suggestion-stock ${isOutOfStock ? 'stock-zero' : ''}">
+                            · Qty: ${item.stock !== undefined ? item.stock : '—'}
+                        </span>
                     </div>
                 `;
 

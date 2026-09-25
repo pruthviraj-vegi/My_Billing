@@ -385,6 +385,21 @@
         text-align: right !important;
         width: auto !important;
     }
+
+    /* Cart Table column alignment */
+    .data-table th.text-end,
+    .data-table td.text-end {
+        text-align: right !important;
+    }
+
+    .data-table th.text-center,
+    .data-table td.text-center {
+        text-align: center !important;
+    }
+
+    .data-table td.text-end .price-bubble-container {
+        display: inline-block;
+    }
     </style>
 {% endblock extra_css %}
 {% block content %}

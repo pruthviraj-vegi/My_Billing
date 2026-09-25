@@ -10,12 +10,12 @@
         </div>
     </td>
     <td class="mobile-hide">{{ item.product_variant.simple_name }}</td>
-    <td class="price-toggle-cell"
+    <td class="price-toggle-cell text-end"
         data-selling-price="{{ item.product_variant.mrp }}"
         data-purchase-price="{{ item.product_variant.purchase_price }}">
         <span class="price-display">{{ item.product_variant.mrp|currency }}</span>
     </td>
-    <td>
+    <td class="text-end">
         <input type="number"
                class="form-input quantity-input"
                value="{{ item.quantity }}"
@@ -23,7 +23,7 @@
                min="1"
                step="1">
     </td>
-    <td>
+    <td class="text-end">
         <div class="price-bubble-container" style="position: relative;">
             <input type="number"
                    class="form-input price-input"
@@ -43,8 +43,8 @@
             </div>
         </div>
     </td>
-    <td class="discount-cell mobile-hide">{{ item.discount_percentage|default:"0" }}%</td>
-    <td class="amount-cell">{{ item.amount|currency }}</td>
+    <td class="discount-cell mobile-hide text-end">{{ item.discount_percentage|default:"0" }}</td>
+    <td class="amount-cell text-end">{{ item.amount|currency }}</td>
     <td class="text-center">
         <div class="action-buttons d-inline-flex flex-nowrap align-items-center justify-content-center gap-1">
             <button type="button"

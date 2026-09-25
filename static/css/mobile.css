@@ -333,7 +333,11 @@
 
   /* Expand barcode suggestion dropdown to 100% width on mobile */
   .barcode-suggestions-dropdown {
+    min-width: 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
   }
 
   /* Camera scan button: show on mobile */
