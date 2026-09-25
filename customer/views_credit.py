@@ -8,10 +8,10 @@ flows using Django class-based views.
 
 import logging
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
-from django.db.models import Q, Sum, Value
+from django.db.models import Max, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -23,7 +23,7 @@ from base.decorators import required_permission, RequiredPermissionMixin
 from base.utility import build_search_filter, render_paginated_response, table_sorting
 
 from .forms import PaymentForm
-from .models import Customer, Payment
+from .models import Customer, CustomerCreditSummary, Payment
 from .services import CustomerPaymentService, _build_ledger_rows, get_opening_balance
 
 logger = logging.getLogger(__name__)
@@ -44,16 +44,29 @@ VALID_SORT_FIELDS = {
 
 @required_permission("customer.view_customercreditsummary")
 def home(request):
-    """Credit management main page - initial load only."""
-    # For initial page load, just render the template with empty data
-    return render(request, "credit/home.html")
+    """Credit management main page - initial load with dynamic slider max bounds."""
+    stats = CustomerCreditSummary.objects.aggregate(
+        max_balance=Coalesce(Max("balance_amount"), Value(Decimal("100000"))),
+        max_credit=Coalesce(Max("credit_amount"), Value(Decimal("200000"))),
+    )
+    raw_max_balance = float(stats["max_balance"] or 100000)
+    raw_max_credit = float(stats["max_credit"] or 200000)
+
+    # Ceiling to rounded bounds (e.g. nearest 10,000)
+    slider_max_balance = max(10000, int((raw_max_balance + 9999) // 10000) * 10000)
+    slider_max_credit = max(10000, int((raw_max_credit + 9999) // 10000) * 10000)
+
+    context = {
+        "slider_max_balance": slider_max_balance,
+        "slider_max_credit": slider_max_credit,
+    }
+    return render(request, "credit/home.html", context)
 
 
 def total_credit_customers_data(request):
-    """Return the aggregate balance amount across all active credit customers."""
-    return Customer.objects.filter(is_deleted=False).aggregate(
-        total=Coalesce(Sum("credit_summary__balance_amount"), Value(Decimal("0")))
-    )["total"]
+    """Return the aggregate balance amount across filtered credit customers."""
+    customers = credit_customers_data(request)
+    return sum((c.balance_amount for c in customers), Decimal("0"))
 
 
 def credit_customers_data(request):
@@ -64,7 +77,20 @@ def credit_customers_data(request):
     - No Python computation needed
     """
 
+    # ===== SEARCH & FILTER PARAMS =====
     search_query = request.GET.get("search", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    is_overdue = request.GET.get("is_overdue", "").strip()
+    has_unpaid = request.GET.get("has_unpaid", "").strip()
+    min_balance = request.GET.get("min_balance", "").strip()
+    max_balance = request.GET.get("max_balance", "").strip()
+    min_credit = request.GET.get("min_credit", "").strip()
+    max_credit = request.GET.get("max_credit", "").strip()
+    last_invoice_from = request.GET.get("last_invoice_from", "").strip()
+    last_invoice_to = request.GET.get("last_invoice_to", "").strip()
+    last_payment_from = request.GET.get("last_payment_from", "").strip()
+    last_payment_to = request.GET.get("last_payment_to", "").strip()
+
     # ===== BASE QUERYSET =====
     # Only customers with credit activity
     qs = (
@@ -78,6 +104,75 @@ def credit_customers_data(request):
         search_query,
         ["name", "phone_number", "email", "address"],
     )
+
+    # ===== DEBT & ACCOUNT STATUS FILTERS =====
+    if status_filter == "outstanding":
+        filters &= Q(credit_summary__balance_amount__gt=0)
+    elif status_filter == "cleared":
+        filters &= Q(credit_summary__balance_amount=0)
+    elif status_filter == "advance":
+        filters &= Q(credit_summary__balance_amount__lt=0)
+
+    if is_overdue in ("1", "true", "on", True):
+        filters &= Q(credit_summary__is_overdue=True)
+
+    if has_unpaid in ("1", "true", "on", True):
+        filters &= Q(credit_summary__unpaid_invoices_count__gt=0)
+
+    # ===== BALANCE RANGE =====
+    if min_balance:
+        try:
+            filters &= Q(credit_summary__balance_amount__gte=Decimal(min_balance))
+        except (InvalidOperation, ValueError):
+            pass
+
+    if max_balance:
+        try:
+            filters &= Q(credit_summary__balance_amount__lte=Decimal(max_balance))
+        except (InvalidOperation, ValueError):
+            pass
+
+    # ===== CREDIT AMOUNT RANGE =====
+    if min_credit:
+        try:
+            filters &= Q(credit_summary__credit_amount__gte=Decimal(min_credit))
+        except (InvalidOperation, ValueError):
+            pass
+
+    if max_credit:
+        try:
+            filters &= Q(credit_summary__credit_amount__lte=Decimal(max_credit))
+        except (InvalidOperation, ValueError):
+            pass
+
+    # ===== DATE FILTERS =====
+    if last_invoice_from:
+        try:
+            d_from = datetime.strptime(last_invoice_from, "%Y-%m-%d").date()
+            filters &= Q(credit_summary__last_invoice_date__date__gte=d_from)
+        except ValueError:
+            pass
+
+    if last_invoice_to:
+        try:
+            d_to = datetime.strptime(last_invoice_to, "%Y-%m-%d").date()
+            filters &= Q(credit_summary__last_invoice_date__date__lte=d_to)
+        except ValueError:
+            pass
+
+    if last_payment_from:
+        try:
+            d_p_from = datetime.strptime(last_payment_from, "%Y-%m-%d").date()
+            filters &= Q(credit_summary__last_payment_date__date__gte=d_p_from)
+        except ValueError:
+            pass
+
+    if last_payment_to:
+        try:
+            d_p_to = datetime.strptime(last_payment_to, "%Y-%m-%d").date()
+            filters &= Q(credit_summary__last_payment_date__date__lte=d_p_to)
+        except ValueError:
+            pass
 
     # ===== SORTING (All in database!) =====
     # Map frontend sort keys to database fields
@@ -229,6 +324,17 @@ class PaymentCreateView(RequiredPermissionMixin, CreateView):
     required_permission = "customer.add_payment"
     title = "Create Payment"
 
+    def dispatch(self, request, *args, **kwargs):
+        customer_id = kwargs.get("customer_id")
+        if customer_id:
+            self.customer = get_object_or_404(
+                Customer.objects.select_related("credit_summary"),
+                id=customer_id,
+            )
+        else:
+            self.customer = None
+        return super().dispatch(request, *args, **kwargs)
+
     def get_success_url(self):
         return reverse_lazy(
             "customer:credit_detail", kwargs={"customer_id": self.object.customer.id}
@@ -236,24 +342,15 @@ class PaymentCreateView(RequiredPermissionMixin, CreateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        customer_id = self.kwargs.get("customer_id")
-        if customer_id:
-            try:
-                customer = Customer.objects.get(id=customer_id)
-                kwargs["customer"] = customer
-            except Customer.DoesNotExist:
-                pass
+        if self.customer:
+            kwargs["customer"] = self.customer
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = self.title
-        customer_id = self.kwargs.get("customer_id")
-        if customer_id:
-            try:
-                context["customer"] = Customer.objects.get(id=customer_id)
-            except Customer.DoesNotExist:
-                pass
+        if self.customer:
+            context["customer"] = self.customer
         return context
 
     def form_valid(self, form):

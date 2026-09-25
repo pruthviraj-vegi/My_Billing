@@ -223,7 +223,7 @@ class CustomerPaymentService:
                             payment=paid_payment,
                             invoice=inv,
                             amount_allocated=allocation_amount,
-                            created_by=paid_payment.created_by,
+                            created_by_id=paid_payment.created_by_id,
                         )
                     )
                     inv.paid_amount += allocation_amount

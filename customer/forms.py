@@ -220,6 +220,7 @@ class PaymentForm(ThemedFormMixin, forms.ModelForm):
         )
         if customer:
             self.customer = customer
+            self.fields["customer"].queryset = Customer.objects.filter(pk=customer.pk)
             self.fields["customer"].initial = customer
             self.fields["customer"].disabled = True
 
