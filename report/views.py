@@ -588,3 +588,28 @@ def direct_print_estimate(request, pk):
         return JsonResponse({"success": True, "message": "Estimate sent to printer successfully."})
     else:
         return JsonResponse({"success": False, "error": err_msg}, status=500)
+
+
+def generate_damaged_stock_pdf(request):
+    """Generate PDF for damaged stock grouped by shop name (supplier), invoice no, and date."""
+    from inventory.services import DamageResolutionService
+
+    data = DamageResolutionService.get_grouped_damaged_stock(request.GET)
+    shop_details = (
+        ShopDetails.objects.filter(is_active=True).first()
+        or ShopDetails.objects.first()
+    )
+
+    context = {
+        "shop_details": shop_details,
+        "groups": data["groups"],
+        "overall_total_units": data["overall_total_units"],
+        "overall_total_amount": data["overall_total_amount"],
+        "total_shops": data["total_shops"],
+        "total_records": data["total_records"],
+        "active_filters": data["active_filters"],
+    }
+
+    template = "damaged_stock_pdf.html"
+    filename = "damaged_stock"
+    return generate_pdf(template, filename, context)

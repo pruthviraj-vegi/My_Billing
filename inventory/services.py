@@ -1098,6 +1098,172 @@ class DamageResolutionService:
 
         return sorted(suggestions, key=lambda s: s["priority"])
 
+    @staticmethod
+    def get_filtered_damaged_records(params):
+        """Filter DamagedItemRecord queryset based on query parameters.
+
+        Args:
+            params: dict-like object (e.g. request.GET, request.POST, or dict)
+                Supported keys:
+                    - status: PENDING, RETURNED, REPAIRED, WRITTEN_OFF, ALL (default: PENDING)
+                    - search: string to search across variant, brand, barcode, supplier, area, invoice
+                    - supplier: supplier ID
+                    - area: supplier city / area name
+
+        Returns:
+            QuerySet of DamagedItemRecord.
+        """
+        from base.utility import build_search_filter
+        from inventory.models import DamagedItemRecord
+
+        status_filter = str(params.get("status", "PENDING") or "").strip()
+        search_query = str(params.get("search", "") or "").strip()
+        supplier_filter = str(params.get("supplier", "") or "").strip()
+        area_filter = str(params.get("area", "") or "").strip()
+
+        records = (
+            DamagedItemRecord.objects.filter(is_deleted=False)
+            .select_related(
+                "variant",
+                "variant__product",
+                "variant__product__category",
+                "variant__size",
+                "variant__color",
+                "supplier",
+                "supplier_invoice",
+            )
+        )
+
+        if status_filter and status_filter != "ALL":
+            records = records.filter(status=status_filter)
+
+        if search_query:
+            filters = build_search_filter(
+                search_query,
+                [
+                    "variant__product__brand",
+                    "variant__product__name",
+                    "variant__barcode",
+                    "supplier__name",
+                    "supplier__city",
+                    "supplier_invoice__invoice_number",
+                ],
+            )
+            records = records.filter(filters)
+
+        if supplier_filter and supplier_filter.isdigit():
+            records = records.filter(supplier_id=int(supplier_filter))
+
+        if area_filter:
+            records = records.filter(supplier__city__iexact=area_filter)
+
+        return records
+
+    @staticmethod
+    def get_grouped_damaged_stock(params):
+        """Prepare grouped damaged stock data structured by shop name (supplier).
+
+        Organizes records by Shop Name (Supplier), invoice number, date,
+        and computes line amounts, shop subtotals, and grand totals.
+
+        Args:
+            params: dict-like object with filter criteria.
+
+        Returns:
+            dict containing:
+                - groups: list of shop group dictionaries
+                - overall_total_units: Decimal
+                - overall_total_amount: Decimal
+                - total_shops: int
+                - total_records: int
+                - active_filters: dict
+        """
+        from collections import OrderedDict
+
+        records = DamageResolutionService.get_filtered_damaged_records(params)
+        records = records.order_by(
+            "supplier__name",
+            "supplier_invoice__invoice_number",
+            "-created_at",
+        )
+
+        groups_map = OrderedDict()
+        overall_total_units = Decimal("0")
+        overall_total_amount = Decimal("0.00")
+        total_records = 0
+
+        for record in records:
+            total_records += 1
+            supplier = record.supplier
+            shop_key = supplier.id if supplier else None
+
+            if shop_key not in groups_map:
+                groups_map[shop_key] = {
+                    "supplier": supplier,
+                    "shop_name": supplier.name if supplier else "Unassigned / Direct",
+                    "area": supplier.city if supplier and supplier.city else "—",
+                    "phone": supplier.phone if supplier and supplier.phone else "—",
+                    "items": [],
+                    "subtotal_quantity": Decimal("0"),
+                    "subtotal_amount": Decimal("0.00"),
+                }
+
+            qty = record.quantity or Decimal("0")
+            price = (
+                record.variant.purchase_price
+                if (record.variant and record.variant.purchase_price)
+                else Decimal("0.00")
+            )
+            item_amount = (qty * price).quantize(Decimal("0.01"))
+
+            invoice_num = (
+                record.supplier_invoice.invoice_number
+                if record.supplier_invoice
+                else "—"
+            )
+            invoice_dt = (
+                record.supplier_invoice.invoice_date
+                if record.supplier_invoice
+                else record.created_at
+            )
+
+            item_data = {
+                "record": record,
+                "invoice_number": invoice_num,
+                "invoice_date": invoice_dt,
+                "variant_name": record.variant.full_name if record.variant else "Unknown",
+                "barcode": record.variant.barcode if record.variant else "—",
+                "quantity": qty,
+                "purchase_price": price,
+                "amount": item_amount,
+                "reason": record.get_reason_display(),
+                "status": record.get_status_display(),
+                "notes": record.notes or "",
+            }
+
+            groups_map[shop_key]["items"].append(item_data)
+            groups_map[shop_key]["subtotal_quantity"] += qty
+            groups_map[shop_key]["subtotal_amount"] += item_amount
+
+            overall_total_units += qty
+            overall_total_amount += item_amount
+
+        active_filters = {
+            "status": str(params.get("status", "PENDING") or "").strip(),
+            "search": str(params.get("search", "") or "").strip(),
+            "supplier": str(params.get("supplier", "") or "").strip(),
+            "area": str(params.get("area", "") or "").strip(),
+        }
+
+        return {
+            "groups": list(groups_map.values()),
+            "overall_total_units": overall_total_units,
+            "overall_total_amount": overall_total_amount,
+            "total_shops": len(groups_map),
+            "total_records": total_records,
+            "active_filters": active_filters,
+        }
+
 
 class BulkUploadService:
     """Service class for BulkUpload batch and item operations."""

@@ -203,3 +203,93 @@ class DamageResolutionServiceTestCase(TestCase):
         # Attempt to repair or return again
         with self.assertRaises(ValueError):
             DamageResolutionService.repair(record=record, user=self.user)
+
+    def test_filtered_and_grouped_damaged_stock(self):
+        """Test filtering by area/supplier and grouping by shop name, invoice no, and amount."""
+        self.supplier.city = "Secunderabad"
+        self.supplier.save()
+
+        supplier_b = Supplier.objects.create(
+            name="Agarwal Sarees",
+            phone="9876543211",
+            city="Rikabgunj",
+        )
+        invoice_b = SupplierInvoice.objects.create(
+            supplier=supplier_b,
+            invoice_number="INV-002",
+            invoice_date="2026-02-01",
+            sub_total=Decimal("500.00"),
+            total_amount=Decimal("500.00"),
+        )
+
+        # Create damage record for supplier A
+        InventoryService.damage_log(
+            variant=self.variant,
+            quantity_damaged=Decimal("2.00"),
+            user=self.user,
+            supplier_invoice=self.invoice,
+        )
+        # Create damage record for supplier B
+        InventoryService.damage_log(
+            variant=self.variant,
+            quantity_damaged=Decimal("3.00"),
+            user=self.user,
+            supplier_invoice=invoice_b,
+        )
+
+        # 1. Filter by Area
+        area_records = DamageResolutionService.get_filtered_damaged_records({"area": "Secunderabad", "status": "ALL"})
+        self.assertEqual(area_records.count(), 1)
+        self.assertEqual(area_records.first().supplier.city, "Secunderabad")
+
+        # 2. Filter by Supplier
+        supplier_records = DamageResolutionService.get_filtered_damaged_records({"supplier": str(supplier_b.id), "status": "ALL"})
+        self.assertEqual(supplier_records.count(), 1)
+        self.assertEqual(supplier_records.first().supplier.name, "Agarwal Sarees")
+
+        # 3. Grouped Damaged Stock
+        grouped = DamageResolutionService.get_grouped_damaged_stock({"status": "ALL"})
+        self.assertEqual(grouped["total_shops"], 2)
+        self.assertEqual(grouped["total_records"], 2)
+        self.assertEqual(grouped["overall_total_units"], Decimal("5.00"))
+        # 5 units * 100 purchase_price = 500.00
+        self.assertEqual(grouped["overall_total_amount"], Decimal("500.00"))
+
+        # Verify shop groups structure
+        shop_names = [g["shop_name"] for g in grouped["groups"]]
+        self.assertIn("Main Supplier", shop_names)
+        self.assertIn("Agarwal Sarees", shop_names)
+
+        sec_group = next(g for g in grouped["groups"] if g["shop_name"] == "Main Supplier")
+        self.assertEqual(sec_group["area"], "Secunderabad")
+        self.assertEqual(sec_group["subtotal_quantity"], Decimal("2.00"))
+        self.assertEqual(sec_group["subtotal_amount"], Decimal("200.00"))
+        self.assertEqual(sec_group["items"][0]["invoice_number"], "INV-001")
+
+    def test_damaged_stock_download_pdf(self):
+        """Test downloading damaged stock via PDF endpoint in report app."""
+        from django.contrib.auth.models import Permission
+        from django.urls import reverse
+
+        self.supplier.city = "Secunderabad"
+        self.supplier.save()
+
+        # Add view permission to user
+        perm = Permission.objects.get(codename="view_productvariant")
+        self.user.user_permissions.add(perm)
+
+        InventoryService.damage_log(
+            variant=self.variant,
+            quantity_damaged=Decimal("2.00"),
+            user=self.user,
+            supplier_invoice=self.invoice,
+        )
+
+        self.client.force_login(self.user)
+
+        # Test PDF download (report app)
+        rep_pdf_url = reverse("report:damaged_stock_pdf")
+        rep_pdf_resp = self.client.get(rep_pdf_url, {"area": "Secunderabad", "status": "ALL"})
+        self.assertEqual(rep_pdf_resp.status_code, 200)
+        self.assertEqual(rep_pdf_resp["Content-Type"], "application/pdf")
+

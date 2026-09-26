@@ -29,7 +29,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.views.generic import View
 
-from base.decorators import RequiredPermissionMixin, required_permission
+from base.decorators import RequiredPermissionMixin, required_permission, query_debugger
 from base.getDates import getDates
 from base.utility import build_search_filter, render_paginated_response, table_sorting
 from supplier.models import Supplier, SupplierInvoice
@@ -406,10 +406,7 @@ def damaged_stock_page(request):
         ),
     )
 
-    suppliers = Supplier.objects.filter(is_deleted=False).order_by("name")
-
     context = {
-        "suppliers": suppliers,
         "total_records": stats["total_records"],
         "pending_count": stats["pending_count"],
         "returned_count": stats["returned_count"],
@@ -427,43 +424,9 @@ def damaged_stock_page(request):
 @required_permission("inventory.view_productvariant")
 def damaged_stock_fetch(request):
     """AJAX endpoint powering Damaged Stock table with searching, filtering, and sorting."""
-    from django.db.models import Q
-    from inventory.models import DamagedItemRecord
+    from inventory.services import DamageResolutionService
 
-    status_filter = request.GET.get("status", "PENDING").strip()
-    search_query = request.GET.get("search", "").strip()
-    supplier_filter = request.GET.get("supplier", "").strip()
-
-    records = (
-        DamagedItemRecord.objects.filter(is_deleted=False)
-        .select_related(
-            "variant",
-            "variant__product",
-            "variant__size",
-            "variant__color",
-            "supplier",
-            "supplier_invoice",
-        )
-    )
-
-    if status_filter and status_filter != "ALL":
-        records = records.filter(status=status_filter)
-
-    if search_query:
-        filters = build_search_filter(
-            search_query,
-            [
-                "variant__product__brand",
-                "variant__product__name",
-                "variant__barcode",
-                "supplier__name",
-                "supplier_invoice__invoice_number",
-            ],
-        )
-        records = records.filter(filters)
-
-    if supplier_filter and supplier_filter.isdigit():
-        records = records.filter(supplier_id=int(supplier_filter))
+    records = DamageResolutionService.get_filtered_damaged_records(request.GET)
 
     sort_mapping = {
         "id": "id",

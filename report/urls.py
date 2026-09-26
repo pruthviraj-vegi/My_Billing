@@ -40,6 +40,11 @@ urlpatterns = [
         views.generate_invoice_report_pdf,
         name="invoice_report_pdf",
     ),
+    path(
+        "damaged-stock/pdf/",
+        views.generate_damaged_stock_pdf,
+        name="damaged_stock_pdf",
+    ),
     # ── Async PDF jobs ─────────────────────────────────────────
     path(
         "variants/pdf/request/",

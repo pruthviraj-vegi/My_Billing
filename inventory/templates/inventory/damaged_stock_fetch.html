@@ -60,6 +60,11 @@
                         <i class="fas fa-building text-muted"></i>
                         {{ record.supplier.name }}
                     </div>
+                    {% if record.supplier.city %}
+                        <div class="text-muted small">
+                            <i class="fas fa-map-marker-alt"></i> {{ record.supplier.city }}
+                        </div>
+                    {% endif %}
                 {% endif %}
                 {% if record.supplier_invoice %}
                     <div class="text-muted small">
