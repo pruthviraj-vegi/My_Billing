@@ -145,11 +145,11 @@
             <i class="fas fa-save"></i>
             Update Variant
           </button>
-          <a href="{% url 'inventory_variant:details' variant.pk %}"
-             class="btn btn-secondary">
-            <i class="fas fa-times"></i>
-            Cancel
-          </a>
+          <div class="cart-options-row">
+            <a class="cart-option-btn text-danger" href="{% url 'inventory_variant:details' variant.pk %}" title="Cancel">
+              <i class="fas fa-times"></i>
+            </a>
+          </div>
         </div>
       </form>
     </div>

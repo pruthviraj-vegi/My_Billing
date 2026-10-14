@@ -191,10 +191,11 @@
               Create UOM
             {% endif %}
           </button>
-          <a href="{% url 'inventory:uom_home' %}" class="btn btn-secondary">
-            <i class="fas fa-times"></i>
-            Cancel
-          </a>
+          <div class="cart-options-row">
+            <a class="cart-option-btn text-danger" href="{% url 'inventory:uom_home' %}" title="Cancel">
+              <i class="fas fa-times"></i>
+            </a>
+          </div>
         </div>
       </form>
     </div>

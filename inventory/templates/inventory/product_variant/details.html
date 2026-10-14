@@ -18,7 +18,7 @@
                class="btn">
                 <i class="fas fa-arrow-left"></i>
                 Back to Variants
-            </a>
+            </a>  
             {% if perms.inventory.change_product_variant %}
                 <a href="{% url 'inventory_variant:edit' variant.id %}"
                    class="btn btn-primary">
@@ -26,6 +26,10 @@
                     Edit Variant
                 </a>
             {% endif %}
+            <a href="{% url 'report:barcode' variant.id %}" title="Print Barcode" target="_blank" class="btn">
+                <i class="fas fa-barcode"></i>
+                Barcode
+            </a>
         </div>
     </div>
     <!-- Breadcrumb Navigation -->

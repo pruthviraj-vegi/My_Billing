@@ -766,6 +766,7 @@ class StockInForm(forms.ModelForm):
                 is_deleted=False
             )
 
+        # Stock In can be from any active supplier
         self.fields["supplier_invoice"].queryset = SupplierInvoice.objects.filter(
             supplier__is_deleted=False
         ).select_related("supplier")
@@ -841,25 +842,20 @@ class InventoryAdjustmentForm(forms.ModelForm):
 
         # Filter supplier invoices based on variant and operation type
         if self.variant:
-            # For damage operations, only show supplier invoices that supplied stock (INITIAL or STOCK_IN) for this variant
-            if self.adjustment_type == "damage":
-                self.fields["supplier_invoice"].queryset = (
-                    SupplierInvoice.objects.filter(
-                        supplier__is_deleted=False,
-                        inventory_logs__variant=self.variant,
-                        inventory_logs__transaction_type__in=[
-                            InventoryLog.TransactionTypes.INITIAL,
-                            InventoryLog.TransactionTypes.STOCK_IN,
-                        ],
-                    ).select_related("supplier").distinct()
+            # For variant operations (damage, adjustment in, adjustment out),
+            # only show supplier invoices that supplied stock (INITIAL or STOCK_IN) for this variant
+            self.fields["supplier_invoice"].queryset = (
+                SupplierInvoice.objects.filter(
+                    supplier__is_deleted=False,
+                    inventory_logs__variant=self.variant,
+                    inventory_logs__transaction_type__in=[
+                        InventoryLog.TransactionTypes.INITIAL,
+                        InventoryLog.TransactionTypes.STOCK_IN,
+                    ],
                 )
-            else:
-                # For other operations, show all active supplier invoices
-                self.fields["supplier_invoice"].queryset = (
-                    SupplierInvoice.objects.filter(supplier__is_deleted=False).select_related(
-                        "supplier"
-                    )
-                )
+                .select_related("supplier")
+                .distinct()
+            )
         else:
             # If no variant provided, show all active supplier invoices
             self.fields["supplier_invoice"].queryset = SupplierInvoice.objects.filter(
@@ -905,23 +901,18 @@ class InventoryAdjustmentForm(forms.ModelForm):
 
         # Validate supplier invoice contains this variant (if supplier invoice is selected)
         if supplier_invoice and variant:
-            if self.adjustment_type == "damage":
-                has_supplied_stock = supplier_invoice.inventory_logs.filter(
-                    variant=variant,
-                    transaction_type__in=[
-                        InventoryLog.TransactionTypes.INITIAL,
-                        InventoryLog.TransactionTypes.STOCK_IN,
-                    ],
-                ).exists()
-                if not has_supplied_stock:
-                    raise forms.ValidationError(
-                        f"The selected supplier invoice does not have stock supplied for the variant '{variant.full_name}'. "
-                        "Please select a supplier invoice that supplied stock for this variant."
-                    )
-            elif not supplier_invoice.inventory_logs.filter(variant=variant).exists():
-                raise forms.ValidationError(
-                    f"The selected supplier invoice does not contain the variant '{variant.full_name}'. "
-                    "Please select a supplier invoice that contains this variant."
+            has_supplied_stock = supplier_invoice.inventory_logs.filter(
+                variant=variant,
+                transaction_type__in=[
+                    InventoryLog.TransactionTypes.INITIAL,
+                    InventoryLog.TransactionTypes.STOCK_IN,
+                ],
+            ).exists()
+            if not has_supplied_stock:
+                self.add_error(
+                    "supplier_invoice",
+                    f"The selected supplier invoice does not have stock supplied for the variant '{variant.full_name}'. "
+                    "Please select a supplier invoice that supplied stock for this variant.",
                 )
 
         # Validate quantity based on adjustment type

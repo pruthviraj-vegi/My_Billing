@@ -161,8 +161,12 @@ class CreateProductVariant(RequiredPermissionMixin, CreateView):
         context["title"] = self.title
         context["size_form"] = SizeForm()
         context["color_form"] = ColorForm()
-        product = Product.objects.get(id=self.kwargs["product_id"])
+        product = get_object_or_404(
+            Product.objects.select_related("hsn_code", "category", "cloth_type"),
+            id=self.kwargs["product_id"],
+        )
         context["product"] = product
+        context["variant"] = None
         context["gst_rate"] = product.hsn_code.gst_percentage
 
         # Check if this is the first variant for this product
@@ -364,11 +368,27 @@ class EditProductVariant(RequiredPermissionMixin, UpdateView):
     model = ProductVariant
     title = "Edit Product Variant"
 
+    def get_queryset(self):
+        """Optimize variant queries with related product, category, cloth type, and attributes."""
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "product__hsn_code",
+                "product__category",
+                "product__cloth_type",
+                "size",
+                "color",
+            )
+        )
+
     def get_context_data(self, **kwargs):
         """Prepare context data for the variant editing form."""
         context = super().get_context_data(**kwargs)
         context["title"] = self.title
         context["variant"] = self.object
+        context["product"] = self.object.product
+        context["gst_rate"] = self.object.product.hsn_code.gst_percentage
         context["size_form"] = SizeForm()
         context["color_form"] = ColorForm()
         return context
@@ -509,7 +529,7 @@ class StockInCreate(RequiredPermissionMixin, VariantOperationMixin, CreateView):
                 self.request,
                 "Please select a variant from the variant details page.",
             )
-            return redirect("inventory:product_home")
+            return redirect("inventory_products:home")
 
     def form_valid(self, form):
         try:
@@ -522,7 +542,7 @@ class StockInCreate(RequiredPermissionMixin, VariantOperationMixin, CreateView):
                         self.request,
                         "Please select a variant from the variant details page.",
                     )
-                    return redirect("inventory:product_home")
+                    return redirect("inventory_products:home")
 
                 # Use InventoryService instead of direct method call
                 inventory_log = InventoryService.update_stock_in_log(
@@ -585,7 +605,7 @@ class AdjustmentInCreate(RequiredPermissionMixin, VariantOperationMixin, CreateV
             return reverse_lazy(
                 "inventory_variant:details", kwargs={"variant_id": variant_id}
             )
-        return reverse_lazy("inventory:product_home")
+        return reverse_lazy("inventory_products:home")
 
     def form_valid(self, form):
         """Handle valid Adjustment In form submission."""
@@ -599,7 +619,7 @@ class AdjustmentInCreate(RequiredPermissionMixin, VariantOperationMixin, CreateV
                         self.request,
                         "Please select a variant from the variant details page.",
                     )
-                    return redirect("inventory:product_home")
+                    return redirect("inventory_products:home")
 
                 # Use InventoryService instead of direct method call
                 InventoryService.adjust_in_quantity(
@@ -607,6 +627,7 @@ class AdjustmentInCreate(RequiredPermissionMixin, VariantOperationMixin, CreateV
                     change=form.cleaned_data.get("quantity_change"),
                     user=self.request.user,
                     notes=form.cleaned_data.get("notes"),
+                    supplier_invoice=form.cleaned_data.get("supplier_invoice"),
                 )
 
                 messages.success(
@@ -656,7 +677,7 @@ class AdjustmentOutCreate(RequiredPermissionMixin, VariantOperationMixin, Create
             return reverse_lazy(
                 "inventory_variant:details", kwargs={"variant_id": variant_id}
             )
-        return reverse_lazy("inventory:product_home")
+        return reverse_lazy("inventory_products:home")
 
     def form_valid(self, form):
         """Handle valid Adjustment Out form submission."""
@@ -670,7 +691,7 @@ class AdjustmentOutCreate(RequiredPermissionMixin, VariantOperationMixin, Create
                         self.request,
                         "Please select a variant from the variant details page.",
                     )
-                    return redirect("inventory:product_home")
+                    return redirect("inventory_products:home")
 
                 # Use InventoryService instead of direct method call
                 InventoryService.adjust_out_quantity(
@@ -678,6 +699,7 @@ class AdjustmentOutCreate(RequiredPermissionMixin, VariantOperationMixin, Create
                     change=form.cleaned_data.get("quantity_change"),
                     user=self.request.user,
                     notes=form.cleaned_data.get("notes"),
+                    supplier_invoice=form.cleaned_data.get("supplier_invoice"),
                 )
 
                 messages.success(
@@ -726,7 +748,7 @@ class DamageCreate(RequiredPermissionMixin, VariantOperationMixin, CreateView):
             return reverse_lazy(
                 "inventory_variant:details", kwargs={"variant_id": variant_id}
             )
-        return reverse_lazy("inventory:product_home")
+        return reverse_lazy("inventory_products:home")
 
     def form_valid(self, form):
         """Handle valid Damage form submission."""
@@ -740,7 +762,7 @@ class DamageCreate(RequiredPermissionMixin, VariantOperationMixin, CreateView):
                         self.request,
                         "Please select a variant from the variant details page.",
                     )
-                    return redirect("inventory:product_home")
+                    return redirect("inventory_products:home")
 
                 # Use InventoryService instead of direct method call
                 InventoryService.damage_log(

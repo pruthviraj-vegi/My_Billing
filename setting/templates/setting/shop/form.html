@@ -332,13 +332,14 @@
                 </div>
                 <!-- Form Actions -->
                 <div class="form-actions">
-                    <a href="{% url 'setting:shop_details_list' %}"
-                       class="btn btn-secondary">
-                        <i class="fas fa-times"></i> Cancel
-                    </a>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> {{ form_action }} Shop Details
                     </button>
+                    <div class="cart-options-row">
+                        <a class="cart-option-btn text-danger" href="{% url 'setting:shop_details_list' %}" title="Cancel">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>

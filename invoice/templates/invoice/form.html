@@ -297,8 +297,9 @@
             </div>
           </div>
           <!-- Form Actions -->
-          <div class="form-actions d-flex flex-column gap-2 mt-3 pt-3 border-top">
-            <button type="submit" class="btn btn-primary w-100 justify-content-center">
+          <div class="cart-sidebar-actions mt-3 pt-3 border-top">
+            <!-- Submit is the solid primary button -->
+            <button type="submit" class="btn btn-primary submit-cart-btn">
               <i class="fas fa-save"></i>
               {% if invoice %}
               Update Invoice
@@ -306,23 +307,22 @@
               Create Invoice
               {% endif %}
             </button>
-            {% if invoice %}
-            <a href="{% url 'invoice:detail' invoice.id %}" class="btn btn-secondary w-100 justify-content-center">
-              <i class="fas fa-times"></i>
-              Cancel
-            </a>
-            {% elif cart %}
-            <a href="{% url 'cart:get_cart_data' cart.id %}" class="btn btn-secondary w-100 justify-content-center">
-              <i class="fas fa-times"></i>
-              Cancel
-            </a>
-            {% endif %}
-            {% if invoice %}
-            <a href="{% url 'invoice:detail' invoice.id %}" class="btn btn-secondary w-100 justify-content-center">
-              <i class="fas fa-eye"></i>
-              View Invoice
-            </a>
-            {% endif %}
+
+            <!-- Options row with highlighted background -->
+            <div class="cart-options-row">
+              {% if invoice %}
+              <a class="cart-option-btn" href="{% url 'invoice:detail' invoice.id %}" title="View Invoice">
+                <i class="fas fa-eye"></i>
+              </a>
+              <a class="cart-option-btn text-danger" href="{% url 'invoice:detail' invoice.id %}" title="Cancel">
+                <i class="fas fa-times"></i>
+              </a>
+              {% elif cart %}
+              <a class="cart-option-btn text-danger" href="{% url 'cart:get_cart_data' cart.id %}" title="Cancel">
+                <i class="fas fa-times"></i>
+              </a>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>

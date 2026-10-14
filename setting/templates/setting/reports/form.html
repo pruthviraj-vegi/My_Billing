@@ -359,16 +359,16 @@
                             Create Configuration
                         {% endif %}
                     </button>
-                    <a href="{% url 'setting:report_config_list' %}" class="btn btn-secondary">
-                        <i class="fas fa-times"></i>
-                        Cancel
-                    </a>
-                    {% if config %}
-                        <a href="{% url 'setting:report_config_detail' config.id %}" class="btn btn-secondary">
-                            <i class="fas fa-eye"></i>
-                            View Configuration
+                    <div class="cart-options-row">
+                        {% if config %}
+                            <a href="{% url 'setting:report_config_detail' config.id %}" class="cart-option-btn" title="View Configuration">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'setting:report_config_list' %}" class="cart-option-btn text-danger" title="Cancel">
+                            <i class="fas fa-times"></i>
                         </a>
-                    {% endif %}
+                    </div>
                 </div>
             </form>
         </div>

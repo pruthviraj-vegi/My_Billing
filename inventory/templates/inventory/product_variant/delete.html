@@ -9,13 +9,13 @@
     <h2 class="page-title">Delete Product Variant</h2>
     <div class="page-actions">
       {% if variant.product and variant.product.id %}
-        <a href="{% url 'inventory:product_details' variant.product.id %}"
+        <a href="{% url 'inventory_products:details' variant.product.id %}"
            class="btn btn-secondary">
           <i class="fas fa-arrow-left"></i>
           Back to Product
         </a>
       {% endif %}
-      <a href="{% url 'inventory:product_home' %}" class="btn btn-secondary">
+      <a href="{% url 'inventory_products:home' %}" class="btn btn-secondary">
         <i class="fas fa-list"></i>
         Back to Products
       </a>
@@ -25,10 +25,10 @@
   <nav class="breadcrumb breadcrumb-right">
     <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item">Dashboard</a>
     <span class="breadcrumb-separator">/</span>
-    <a href="{% url 'inventory:product_home' %}" class="breadcrumb-item">Products</a>
+    <a href="{% url 'inventory_products:home' %}" class="breadcrumb-item">Products</a>
     <span class="breadcrumb-separator">/</span>
     {% if variant.product and variant.product.id %}
-      <a href="{% url 'inventory:product_details' variant.product.id %}"
+      <a href="{% url 'inventory_products:details' variant.product.id %}"
          class="breadcrumb-item">{{ variant.product.display_name }}</a>
       <span class="breadcrumb-separator">/</span>
     {% endif %}
@@ -183,13 +183,13 @@
             Delete Variant
           </button>
           {% if variant.product and variant.product.id %}
-            <a href="{% url 'inventory:product_details' variant.product.id %}"
+            <a href="{% url 'inventory_products:details' variant.product.id %}"
                class="btn btn-secondary">
               <i class="fas fa-times"></i>
               Cancel
             </a>
           {% else %}
-            <a href="{% url 'inventory:product_home' %}" class="btn btn-secondary">
+            <a href="{% url 'inventory_products:home' %}" class="btn btn-secondary">
               <i class="fas fa-times"></i>
               Cancel
             </a>

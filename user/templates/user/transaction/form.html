@@ -181,10 +181,11 @@
                                 Create Transaction
                             {% endif %}
                         </button>
-                        <a href="{% url 'user:detail' user.id %}" class="btn btn-secondary">
+                        <div class="cart-options-row">
+                          <a class="cart-option-btn text-danger" href="{% url 'user:detail' user.id %}" title="Cancel">
                             <i class="fas fa-times"></i>
-                            Cancel
-                        </a>
+                          </a>
+                        </div>
                     </div>
                 </div>
             </form>

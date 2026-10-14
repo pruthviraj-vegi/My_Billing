@@ -79,7 +79,7 @@ class InventoryService:
             )
 
     @staticmethod
-    def adjust_in_quantity(variant, change, user=None, notes=""):
+    def adjust_in_quantity(variant, change, user=None, notes="", supplier_invoice=None):
         """Adjust quantity and create log entry"""
         with transaction.atomic():
             if change == 0:
@@ -97,10 +97,11 @@ class InventoryService:
                 transaction_type=InventoryLog.TransactionTypes.ADJUSTMENT_IN,
                 total_value=change * variant.purchase_price,
                 notes=notes or f"Adjustment In: {change} units",
+                supplier_invoice=supplier_invoice,
             )
 
     @staticmethod
-    def adjust_out_quantity(variant, change, user=None, notes=""):
+    def adjust_out_quantity(variant, change, user=None, notes="", supplier_invoice=None):
         """Adjust quantity and create log entry"""
         with transaction.atomic():
             if change == 0:
@@ -123,6 +124,7 @@ class InventoryService:
                 transaction_type=InventoryLog.TransactionTypes.ADJUSTMENT_OUT,
                 total_value=change * variant.purchase_price,
                 notes=notes or f"Adjustment Out: {change} units",
+                supplier_invoice=supplier_invoice,
             )
 
     @staticmethod

@@ -128,10 +128,11 @@
               Create Cart
             {% endif %}
           </button>
-          <a href="{% url 'cart:main_page' %}" class="btn btn-secondary">
-            <i class="fas fa-times"></i>
-            Cancel
-          </a>
+          <div class="cart-options-row">
+            <a class="cart-option-btn text-danger" href="{% url 'cart:main_page' %}" title="Cancel">
+              <i class="fas fa-times"></i>
+            </a>
+          </div>
         </div>
       </form>
     </div>

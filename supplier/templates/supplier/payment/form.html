@@ -355,11 +355,11 @@
               Create Payment
             {% endif %}
           </button>
-          <a href="{% url 'supplier:detail' supplier.pk %}"
-             class="btn btn-secondary">
-            <i class="fas fa-times"></i>
-            Cancel
-          </a>
+          <div class="cart-options-row">
+            <a class="cart-option-btn text-danger" href="{% url 'supplier:detail' supplier.pk %}" title="Cancel">
+              <i class="fas fa-times"></i>
+            </a>
+          </div>
         </div>
       </form>
     </div>

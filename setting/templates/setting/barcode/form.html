@@ -238,13 +238,14 @@
                     </div>
                 </div>
                 <div class="form-actions">
-                    <a href="{% url 'setting:barcode_config_list' %}"
-                       class="btn btn-secondary">
-                        <i class="fas fa-times"></i> Cancel
-                    </a>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> {{ form_action }} Configuration
                     </button>
+                    <div class="cart-options-row">
+                        <a class="cart-option-btn text-danger" href="{% url 'setting:barcode_config_list' %}" title="Cancel">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>

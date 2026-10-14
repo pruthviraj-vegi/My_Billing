@@ -312,23 +312,22 @@
               Submit Resolution
             {% endif %}
           </button>
-          {% if damage_record or 'damage_' in operation_type %}
-            <a href="{% url 'inventory:damaged_stock' %}" class="btn btn-secondary">
-              <i class="fas fa-times"></i>
-              Cancel
-            </a>
-          {% elif selected_variant %}
-            <a href="{% url 'inventory_variant:details' selected_variant.id %}"
-               class="btn btn-secondary">
-              <i class="fas fa-times"></i>
-              Cancel
-            </a>
-          {% else %}
-            <a href="{% url 'inventory_products:home' %}" class="btn btn-secondary">
-              <i class="fas fa-times"></i>
-              Cancel
-            </a>
-          {% endif %}
+          <div class="cart-options-row">
+            {% if damage_record or 'damage_' in operation_type %}
+              <a href="{% url 'inventory:damaged_stock' %}" class="cart-option-btn text-danger" title="Cancel">
+                <i class="fas fa-times"></i>
+              </a>
+            {% elif selected_variant %}
+              <a href="{% url 'inventory_variant:details' selected_variant.id %}"
+                 class="cart-option-btn text-danger" title="Cancel">
+                <i class="fas fa-times"></i>
+              </a>
+            {% else %}
+              <a href="{% url 'inventory_products:home' %}" class="cart-option-btn text-danger" title="Cancel">
+                <i class="fas fa-times"></i>
+              </a>
+            {% endif %}
+          </div>
         </div>
       </form>
     </div>
@@ -391,6 +390,7 @@
       }
 
       // Dynamic Supplier Invoice filtering based on selected Supplier
+      const supplierInvoiceField = document.getElementById('{{ form.supplier_invoice.id_for_label }}')
       const supplierField = document.getElementById('id_supplier')
       if (supplierField && supplierInvoiceField) {
         supplierField.addEventListener('change', function () {
@@ -410,7 +410,6 @@
       // Form validation for supplier invoice with custom modal
       let allowSubmitWithoutInvoice = false
       const form = document.querySelector('form')
-      const supplierInvoiceField = document.getElementById('{{ form.supplier_invoice.id_for_label }}')
       const modal = document.getElementById('supplierInvoiceModal')
       const modalCancelBtn = document.getElementById('modalCancelBtn')
       const modalContinueBtn = document.getElementById('modalContinueBtn')

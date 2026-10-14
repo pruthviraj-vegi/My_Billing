@@ -533,8 +533,9 @@
             </div>
 
             <!-- Form Actions -->
-            <div class="form-actions d-flex flex-column gap-2 mt-3 pt-3 border-top">
-              <button type="submit" class="btn btn-primary w-100 justify-content-center">
+            <div class="cart-sidebar-actions mt-3 pt-3 border-top">
+              <!-- Submit is the solid primary button -->
+              <button type="submit" class="btn btn-primary submit-cart-btn">
                 <i class="fas fa-save"></i>
                 {% if invoice %}
                   Update Invoice
@@ -542,11 +543,15 @@
                   Create Invoice
                 {% endif %}
               </button>
-              <a href="{% url 'supplier:detail' supplier.pk %}"
-                 class="btn btn-secondary w-100 justify-content-center">
-                <i class="fas fa-times"></i>
-                Cancel
-              </a>
+
+              <!-- Options row with highlighted background -->
+              <div class="cart-options-row">
+                <a class="cart-option-btn text-danger"
+                   href="{% url 'supplier:detail' supplier.pk %}"
+                   title="Cancel">
+                  <i class="fas fa-times"></i>
+                </a>
+              </div>
             </div>
           </div>
         </div>

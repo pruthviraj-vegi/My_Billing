@@ -8,51 +8,6 @@
   {% endif %}
 {% endblock title %}
 {% block content %}
-  <style>
-    .gst-bubble-container {
-      position: relative;
-    }
-    .gst-apply-bubble {
-      position: absolute;
-      top: -38px;
-      right: 10px;
-      background: var(--primary-color, #4f46e5);
-      color: white;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      transition: all 0.2s ease;
-      z-index: 10;
-      animation: popIn 0.3s ease;
-      white-space: nowrap;
-    }
-    .gst-apply-bubble:hover {
-      background: var(--primary-hover, #4338ca);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-    }
-    .gst-apply-bubble::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      right: 15px;
-      border-width: 5px 5px 0;
-      border-style: solid;
-      border-color: var(--primary-color, #4f46e5) transparent;
-      display: block;
-      width: 0;
-    }
-    .gst-apply-bubble:hover::after {
-      border-color: var(--primary-hover, #4338ca) transparent;
-    }
-    @keyframes popIn {
-      0% { transform: scale(0.8) translateY(5px); opacity: 0; }
-      100% { transform: scale(1) translateY(0); opacity: 1; }
-    }
-  </style>
   <!-- Page Header -->
   <div class="page-header">
     <h2 class="page-title">
@@ -106,11 +61,24 @@
           autocomplete="off"
           data-prevent-double-submit>
       {% csrf_token %}
+      <!-- Form Errors -->
+      {% if form.non_field_errors %}
+        <div class="form-errors">
+          {% for error in form.non_field_errors %}
+            <div class="error-message">
+              <i class="fas fa-exclamation-triangle"></i>
+              {{ error }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
       <div class="row">
         <!-- LEFT COLUMN: Variant Details -->
         <div class="col-lg-9 col-md-8 col-12 form-main-column mb-3">
           <div class="form-card">
             <!-- Supplier Invoice Section -->
+            <div class="form-section">
               <h5 class="section-title"><i class="fas fa-file-invoice"></i> Supplier Invoice</h5>
               <div class="row">
                 <div class="col-md-6">
@@ -133,6 +101,83 @@
                 </div>
               </div>
             </div>
+
+            <!-- Product Information Section -->
+            {% if product %}
+              {% with prod=product %}
+                <div class="form-section">
+                  <h5 class="section-title"><i class="fas fa-box"></i> Product Information</h5>
+                  <div class="row">
+                    <div class="col-md-3">
+                      <div class="form-group mb-2">
+                        <label class="form-label text-muted">Brand</label>
+                        <div class="fw-semibold">{{ prod.brand|default:"-" }}</div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group mb-2">
+                        <label class="form-label text-muted">Product Name</label>
+                        <div class="fw-semibold">{{ prod.name }}</div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group mb-2">
+                        <label class="form-label text-muted">Category</label>
+                        <div class="fw-semibold">{{ prod.category.name|default:"-" }}</div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group mb-2">
+                        <label class="form-label text-muted">Cloth Type / HSN</label>
+                        <div class="fw-semibold">
+                          {{ prod.cloth_type.name|default:"-" }}
+                          {% if prod.hsn_code %}
+                            <small class="text-muted">({{ prod.hsn_code.code }})</small>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+            {% elif variant %}
+              {% with prod=variant.product %}
+                <div class="form-section">
+                  <h5 class="section-title"><i class="fas fa-box"></i> Product Information</h5>
+                  <div class="row">
+                    <div class="col-md-3">
+                      <div class="form-group mb-2">
+                        <label class="form-label text-muted">Brand</label>
+                        <div class="fw-semibold">{{ prod.brand|default:"-" }}</div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group mb-2">
+                        <label class="form-label text-muted">Product Name</label>
+                        <div class="fw-semibold">{{ prod.name }}</div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group mb-2">
+                        <label class="form-label text-muted">Category</label>
+                        <div class="fw-semibold">{{ prod.category.name|default:"-" }}</div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group mb-2">
+                        <label class="form-label text-muted">Cloth Type / HSN</label>
+                        <div class="fw-semibold">
+                          {{ prod.cloth_type.name|default:"-" }}
+                          {% if prod.hsn_code %}
+                            <small class="text-muted">({{ prod.hsn_code.code }})</small>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+            {% endif %}
 
             <!-- Variant Details Section -->
             <div class="form-section">
@@ -159,9 +204,9 @@
                 <div class="col-md-3">
                   <div class="form-group {% if form.purchase_price.errors %}has-error{% endif %}">
                     <label for="{{ form.purchase_price.id_for_label }}" class="form-label">{{ form.purchase_price.label }}</label>
-                    <div class="gst-bubble-container" style="position: relative;">
+                    <div class="price-bubble-container" style="position: relative;">
                       {{ form.purchase_price }}
-                      <div id="gst-apply-bubble" class="gst-apply-bubble d-none"></div>
+                      <div id="gst-apply-bubble" class="suggestion-bubble d-none" style="position: absolute; top: -38px; right: 10px; z-index: 10;"></div>
                     </div>
                     <small class="form-help {% if form.purchase_price.errors %}has-error{% endif %}">
                       {% if form.purchase_price.errors %}
@@ -219,7 +264,7 @@
                   <div class="form-group {% if form.commission_percentage.errors %}has-error{% endif %}">
                     <label for="{{ form.commission_percentage.id_for_label }}"
                            class="form-label">{{ form.commission_percentage.label }}</label>
-                    <div class="input-group">{{ form.commission_percentage }}</div>
+                    {{ form.commission_percentage }}
                     <small class="form-help {% if form.commission_percentage.errors %}has-error{% endif %}">
                       {% if form.commission_percentage.errors %}
                         {% for error in form.commission_percentage.errors %}
@@ -283,7 +328,7 @@
                           </span>
                         {% endfor %}
                       {% else %}
-                        <span class="form-help-text">e.g., 10, 25, 50 (minimum stock quantity)</span>
+                        <span class="form-help-text">e.g., 5, 10, 15 (minimum stock quantity)</span>
                       {% endif %}
                     </small>
                   </div>
@@ -328,28 +373,47 @@
             </div>
 
             <!-- Form Actions -->
-            <div class="form-actions d-flex flex-column gap-2 mt-3 pt-3 border-top">
-              {% if not variant %}
+            <div class="cart-sidebar-actions mt-3 pt-3 border-top">
+              {% if variant %}
+                <!-- Submit is the solid primary button -->
+                <button type="submit" class="btn btn-primary submit-cart-btn">
+                  <i class="fas fa-save"></i>
+                  Update Variant
+                </button>
+
+                <!-- Options row with highlighted background -->
+                <div class="cart-options-row">
+                  <a href="{% url 'inventory_products:details' variant.product.id %}"
+                     class="cart-option-btn text-danger"
+                     title="Cancel">
+                    <i class="fas fa-times"></i>
+                  </a>
+                </div>
+              {% else %}
+                <!-- Create & Add is the solid primary button -->
                 <button type="submit"
                         name="action"
                         value="create_add"
-                        class="btn btn-outline-primary w-100 justify-content-center">
+                        class="btn btn-primary submit-cart-btn"
+                        title="Create & Add Another">
                   <i class="fas fa-plus-circle"></i>
                   Create & Add Another
                 </button>
+
+                <!-- Options row with highlighted background -->
+                <div class="cart-options-row">
+                  <button type="submit"
+                          class="cart-option-btn"
+                          title="Create Variant">
+                    <i class="fas fa-save"></i>
+                  </button>
+                  <a href="{% url 'inventory_products:details' product.id %}"
+                     class="cart-option-btn text-danger"
+                     title="Cancel">
+                    <i class="fas fa-times"></i>
+                  </a>
+                </div>
               {% endif %}
-              <button type="submit" class="btn btn-primary w-100 justify-content-center">
-                <i class="fas fa-save"></i>
-                {% if variant %}
-                  Update
-                {% else %}
-                  Create
-                {% endif %}
-              </button>
-              <a href="{% url 'inventory_products:home' %}" class="btn btn-secondary w-100 justify-content-center">
-                <i class="fas fa-times"></i>
-                Cancel
-              </a>
             </div>
           </div>
         </div>
@@ -372,10 +436,7 @@
     setupModal('id_color', 'Color', 'new_color', '#add_new_color', '{% url "inventory:color_create_ajax" %}');
     
     // Initialize select2 for dropdowns
-    $('#id_size, #id_supplier_invoice, #id_color, #id_cloth_type').select2({
-      placeholder: "Type to search...",
-      allowClear: true
-    });
+    Select2Helper.init('#id_size, #id_supplier_invoice, #id_color');
     
   });
   </script>
@@ -425,7 +486,7 @@
       }
       
       // Calculate GST amount
-      document.getElementById('gst-amount-display').textContent = `${gstAmount.toFixed(2)}`
+      document.getElementById('gst-amount-display').textContent = `${formatCurrency(gstAmount)}`
   
       // Calculate purchase price with GST
       document.getElementById('purchase-with-gst-display').textContent = `${formatCurrency(purchaseWithGST)}`

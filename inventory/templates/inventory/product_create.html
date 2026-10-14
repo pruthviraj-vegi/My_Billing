@@ -371,22 +371,28 @@
             </div>
 
             <!-- Form Actions -->
-            <div class="form-actions d-flex flex-column gap-2 mt-3 pt-3 border-top">
+            <div class="cart-sidebar-actions mt-3 pt-3 border-top">
+              <!-- Submit is the solid primary button -->
               <button type="submit"
                       name="action"
                       value="create_add"
-                      class="btn btn-outline-primary w-100 justify-content-center">
+                      class="btn btn-primary submit-cart-btn"
+                      title="Create & Add Another">
                 <i class="fas fa-plus-circle"></i>
                 Create & Add Another
               </button>
-              <button type="submit" class="btn btn-primary w-100 justify-content-center">
-                <i class="fas fa-save"></i>
-                Create Product & Variant
-              </button>
-              <a href="{% url 'inventory:dashboard' %}" class="btn btn-secondary w-100 justify-content-center">
-                <i class="fas fa-times"></i>
-                Cancel
-              </a>
+
+              <!-- Options row with highlighted background -->
+              <div class="cart-options-row">
+                <button type="submit"
+                        class="cart-option-btn"
+                        title="Create Product & Variant">
+                  <i class="fas fa-save"></i>
+                </button>
+                <a href="{% url 'inventory:dashboard' %}" class="cart-option-btn text-danger" title="Cancel">
+                  <i class="fas fa-times"></i>
+                </a>
+              </div>
             </div>
           </div>
         </div>

@@ -179,10 +179,11 @@
                 Create Audit Session
               {% endif %}
             </button>
-            <a href="{% url 'invoice:audit_home' %}" class="btn btn-secondary">
-              <i class="fas fa-times"></i>
-              Cancel
-            </a>
+            <div class="cart-options-row">
+              <a class="cart-option-btn text-danger" href="{% url 'invoice:audit_home' %}" title="Cancel">
+                <i class="fas fa-times"></i>
+              </a>
+            </div>
           </div>
         </form>
       </div>
