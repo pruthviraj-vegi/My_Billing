@@ -9,10 +9,6 @@
   <div class="page-header">
     <h2 class="page-title">{{ supplier.name }}</h2>
     <div class="page-actions">
-      <a href="{% url 'supplier:home' %}" class="btn btn-secondary">
-        <i class="fas fa-arrow-left"></i>
-        Back
-      </a>
       {% if perms.supplier.download_report %}
         <a href="{% url 'supplier:report' supplier.pk %}" class="btn btn-info">
           <i class="fas fa-chart-line"></i>

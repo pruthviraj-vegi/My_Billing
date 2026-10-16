@@ -373,18 +373,18 @@
             </div>
 
             <!-- Form Actions -->
-            <div class="cart-sidebar-actions mt-3 pt-3 border-top">
+            <div class="form-sidebar-actions cart-sidebar-actions mt-3 pt-3 border-top">
               {% if variant %}
                 <!-- Submit is the solid primary button -->
-                <button type="submit" class="btn btn-primary submit-cart-btn">
+                <button type="submit" class="btn btn-primary form-submit-btn submit-cart-btn">
                   <i class="fas fa-save"></i>
                   Update Variant
                 </button>
 
                 <!-- Options row with highlighted background -->
-                <div class="cart-options-row">
+                <div class="form-options-row cart-options-row">
                   <a href="{% url 'inventory_products:details' variant.product.id %}"
-                     class="cart-option-btn text-danger"
+                     class="form-option-btn cart-option-btn text-danger"
                      title="Cancel">
                     <i class="fas fa-times"></i>
                   </a>
@@ -394,21 +394,21 @@
                 <button type="submit"
                         name="action"
                         value="create_add"
-                        class="btn btn-primary submit-cart-btn"
+                        class="btn btn-primary form-submit-btn submit-cart-btn"
                         title="Create & Add Another">
                   <i class="fas fa-plus-circle"></i>
                   Create & Add Another
                 </button>
 
                 <!-- Options row with highlighted background -->
-                <div class="cart-options-row">
+                <div class="form-options-row cart-options-row">
                   <button type="submit"
-                          class="cart-option-btn"
+                          class="form-option-btn cart-option-btn"
                           title="Create Variant">
                     <i class="fas fa-save"></i>
                   </button>
                   <a href="{% url 'inventory_products:details' product.id %}"
-                     class="cart-option-btn text-danger"
+                     class="form-option-btn cart-option-btn text-danger"
                      title="Cancel">
                     <i class="fas fa-times"></i>
                   </a>

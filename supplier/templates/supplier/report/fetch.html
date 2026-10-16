@@ -10,7 +10,7 @@
     <td class="text-right">
       <strong>{{ opening_balance|currency }}</strong>
     </td>
-    <td>-</td>
+    <td class="mobile-hide">-</td>
   </tr>
 {% endif %}
 {% if page_obj %}
@@ -24,26 +24,26 @@
           <span class="badge badge-secondary">Payment</span>
         {% endif %}
       </td>
-      <td>
+      <td class="mobile-hide">
         {% if transaction.type == "invoice" %}
-          # {{ transaction.reference|default:"-" }}
+          <strong># {{ transaction.reference|default:"-" }}</strong>
         {% else %}
           {{ transaction.reference|default:"-" }}
         {% endif %}
       </td>
-      <td>
+      <td class="mobile-hide">
         <strong>{{ transaction.description }}</strong>
       </td>
       <td class="text-right">
         {% if transaction.credit > 0 %}
-          {{ transaction.credit|currency }}
+          <strong class="text-success">{{ transaction.credit|currency }}</strong>
         {% else %}
           <span class="text-muted">-</span>
         {% endif %}
       </td>
       <td class="text-right">
         {% if transaction.debit > 0 %}
-          {{ transaction.debit|currency }}
+          <strong class="text-danger">{{ transaction.debit|currency }}</strong>
         {% else %}
           <span class="text-muted">-</span>
         {% endif %}
@@ -53,7 +53,9 @@
           {{ transaction.running_balance|currency }}
         </strong>
       </td>
-      <td>{{ transaction.notes|default:"-"|truncatechars:15 }}</td>
+      <td class="mobile-hide">
+        <small class="secondary-text">{{ transaction.notes|default:"-"|truncatechars:15 }}</small>
+      </td>
     </tr>
   {% endfor %}
 {% else %}

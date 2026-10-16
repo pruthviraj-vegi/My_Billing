@@ -1614,6 +1614,8 @@ def _supplier_inventory_totals(supplier_id):
     profit = revenue - cogs
     profit_margin = (profit / revenue * 100) if revenue > 0 else Decimal("0")
     sold_pct = (net_sales / stock_in * 100) if stock_in > 0 else Decimal("0")
+    remaining_pct = (remaining / stock_in * 100) if stock_in > 0 else Decimal("0")
+    damage_pct = (damage / stock_in * 100) if stock_in > 0 else Decimal("0")
 
     return {
         "all_invoices_count": all_invoices_count,
@@ -1631,6 +1633,8 @@ def _supplier_inventory_totals(supplier_id):
         "total_damage_value": totals["total_damage_value"],
         "total_remaining": remaining,
         "sold_percentage": sold_pct,
+        "remaining_percentage": remaining_pct,
+        "damage_percentage": damage_pct,
     }
 
 

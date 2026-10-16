@@ -409,7 +409,8 @@
   }
 
   .form-actions {
-    flex-direction: column;
+    flex-direction: row;
+    gap: 0.75rem;
   }
 
   .form-card {
@@ -682,18 +683,25 @@
     gap: 10px;
   }
 
+  .form-sidebar-actions,
   .cart-sidebar-actions {
     flex-direction: row !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    justify-content: flex-end !important; /* align buttons to the right */
     gap: 0.5rem !important;
   }
 
+  .form-sidebar-actions .form-options-row,
+  .form-sidebar-actions .cart-options-row,
+  .cart-sidebar-actions .form-options-row,
   .cart-sidebar-actions .cart-options-row {
     flex: 0 0 auto;
     padding: 0.25rem 0.5rem !important;
   }
 
+  .form-sidebar-actions .form-submit-btn,
+  .form-sidebar-actions .submit-cart-btn,
+  .cart-sidebar-actions .form-submit-btn,
   .cart-sidebar-actions .submit-cart-btn {
     flex: 0 0 auto;
     margin: 0 !important;
@@ -1532,15 +1540,19 @@
     gap: 0.65rem !important;
   }
 
-  .delete-actions,
-  .form-actions {
+  .delete-actions {
     flex-direction: column-reverse;
     gap: 0.5rem;
     width: 100%;
   }
 
-  .delete-actions .btn,
-  .form-actions .btn {
+  .form-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+
+  .delete-actions .btn {
     width: 100%;
     justify-content: center;
   }

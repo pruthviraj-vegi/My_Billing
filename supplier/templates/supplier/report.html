@@ -15,11 +15,6 @@
         <i class="fas fa-download"></i>
         Download Report
       </button>
-      <a href="{% url 'supplier:detail' supplier.pk %}"
-         class="btn btn-secondary">
-        <i class="fas fa-arrow-left"></i>
-        Back
-      </a>
     </div>
   </div>
   <!-- Breadcrumb Navigation -->
@@ -34,17 +29,17 @@
     <span class="breadcrumb-active">Report</span>
   </nav>
   <!-- Main Layout -->
-  <div class="col d-flex flex-row">
+  <div class="col d-flex flex-row detail-layout two-column-layout">
     <!-- Left Column - Supplier Details and Summary -->
-    <div class="col-md-2 d-flex flex-column gap-2">
+    <div class="col-md-3 d-flex flex-column gap-2 details-sidebar-column layout-sidebar-column">
       <!-- Supplier Details Column -->
-      <div class="column details-column">
-        <div class="column-header">
-          <h3>
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
             <i class="fas fa-user"></i> Supplier Details
           </h3>
         </div>
-        <div class="details-info-compact">
+        <div class="sidebar-card-body">
           <div class="detail-name-compact">
             <h4>{{ supplier.name }}</h4>
             <span class="detail-status {% if not supplier.is_deleted %}status-active{% else %}status-inactive{% endif %}">
@@ -94,46 +89,48 @@
         </div>
       </div>
       <!-- Summary Cards -->
-      <div class="summary-card-compact" id="supplierSummaryCard">
-        <div class="summary-icon-compact">
-          <i class="fas fa-file-invoice"></i>
+      <div class="sidebar-card" id="supplierSummaryCard">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
+            <i class="fas fa-file-invoice"></i> Amounts
+          </h3>
         </div>
-        <div class="summary-content-compact">
-          <h4>Amounts</h4>
-          <div class="summary-stats-compact">
-            <div class="stat-item-compact">
-              <span class="stat-number-compact" id="totalInvoiced">0</span>
-              <span class="stat-label-compact">Total Invoiced</span>
+        <div class="sidebar-card-body">
+          <div class="summary-stats-grid">
+            <div class="stat-item">
+              <span class="stat-number" id="totalInvoiced">0</span>
+              <span class="stat-label"> Invoiced</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact text-success" id="totalPaid">0</span>
-              <span class="stat-label-compact">Total Paid</span>
+            <div class="stat-item">
+              <span class="stat-number text-success" id="totalPaid">0</span>
+              <span class="stat-label"> Paid</span>
             </div>
-            <div class="stat-item-compact">
-              <span class="stat-number-compact" id="outstandingBalance">0</span>
-              <span class="stat-label-compact">Outstanding</span>
+            <div class="stat-item">
+              <span class="stat-number" id="outstandingBalance">0</span>
+              <span class="stat-label">Outstanding</span>
             </div>
           </div>
         </div>
       </div>
       <!-- Transaction Summary Card -->
-      <div class="summary-card-compact" id="transactionSummaryCard">
-        <div class="summary-icon-compact">
-          <i class="fas fa-list"></i>
+      <div class="sidebar-card" id="transactionSummaryCard">
+        <div class="sidebar-card-header">
+          <h3 class="sidebar-card-title">
+            <i class="fas fa-list"></i> Transactions
+          </h3>
         </div>
-        <div class="summary-content-compact">
-          <h4>Transactions</h4>
-          <div class="summary-stats-compact">
-            <div class="stat-item-compact">
-              <span class="stat-number-compact" id="transactionCount">0</span>
-              <span class="stat-label-compact">Total Count</span>
+        <div class="sidebar-card-body">
+          <div class="summary-stats-grid">
+            <div class="stat-item">
+              <span class="stat-number" id="transactionCount">0</span>
+              <span class="stat-label">Total Count</span>
             </div>
           </div>
         </div>
       </div>
     </div>
     <!-- Right Column - Transaction Table -->
-    <div class="col-md-10 d-flex flex-column gap-2 ps-1">
+    <div class="col-md-9 d-flex flex-column gap-2 ps-1 layout-main-column">
       <!-- Transaction Table -->
       <div class="table-section" id="reportSection">
         <div class="table-header">
@@ -259,7 +256,7 @@
 
           if (outstandingBalance) {
             outstandingBalance.textContent = formatCurrency(data.outstanding_balance)
-            outstandingBalance.className = 'stat-number-compact ' + (data.outstanding_balance > 0 ? 'text-danger' : 'text-success')
+            outstandingBalance.className = 'stat-number ' + (data.outstanding_balance > 0 ? 'text-danger' : 'text-success')
           }
 
           // Insert table HTML from backend

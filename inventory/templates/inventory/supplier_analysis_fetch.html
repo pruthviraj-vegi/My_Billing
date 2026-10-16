@@ -53,10 +53,10 @@
                     {{ product.remaining_quantity|floatformat:0 }}
                 </strong>
             </td>
-            <td>{{ product.purchase_price|currency }}</td>
+            <td class="sensitive-col">{{ product.purchase_price|currency }}</td>
             <td>{{ product.selling_price|currency }}</td>
             <td>{{ product.sales_revenue|currency }}</td>
-            <td>
+            <td class="sensitive-col">
                 <span class="{% if product.profit > 0 %}text-success{% elif product.profit < 0 %}text-danger{% else %}text-muted{% endif %} fw-bold">
                     {{ product.profit|currency }}
                 </span>

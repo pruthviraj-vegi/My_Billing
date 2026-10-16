@@ -2342,7 +2342,7 @@ textarea:focus~.form-help .form-help-text,
 .form-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.75rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
@@ -4992,15 +4992,18 @@ textarea:focus~.form-help .form-help-text,
   padding: 0;
 }
 
-/* Sidebar actions footer */
+/* Sidebar actions footer — general and cart support */
+.form-sidebar-actions,
 .cart-sidebar-actions {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end; /* align buttons to the right */
   gap: 0.5rem;
 }
 
+.cart-summary-card .form-sidebar-actions,
+.cart-summary-sidebar .form-sidebar-actions,
 .cart-summary-card .cart-sidebar-actions,
 .cart-summary-sidebar .cart-sidebar-actions {
   padding: 0 1rem 0.85rem 1rem !important;
@@ -5008,6 +5011,7 @@ textarea:focus~.form-help .form-help-text,
 }
 
 /* Custom button overrides inside the summary sidebar to match the layout exactly */
+.form-sidebar-actions .btn,
 .cart-sidebar-actions .btn,
 .cart-summary-card .btn,
 .cart-summary-sidebar .btn {
@@ -5021,6 +5025,18 @@ textarea:focus~.form-help .form-help-text,
   font-weight: 600 !important;
 }
 
+/* Prevent unwanted floating / jumping on hover in sidebar action buttons */
+.form-sidebar-actions .btn:hover,
+.cart-sidebar-actions .btn:hover,
+.cart-summary-card .btn:hover,
+.cart-summary-sidebar .btn:hover {
+  transform: none !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.form-sidebar-actions .form-submit-btn,
+.form-sidebar-actions .submit-cart-btn,
+.cart-sidebar-actions .form-submit-btn,
 .cart-sidebar-actions .submit-cart-btn,
 .cart-summary-card .submit-cart-btn,
 .cart-summary-sidebar .submit-cart-btn {
@@ -5033,6 +5049,7 @@ textarea:focus~.form-help .form-help-text,
   border-radius: 0.375rem !important;
 }
 
+.form-sidebar-actions .btn svg.btn-icon,
 .cart-sidebar-actions .btn svg.btn-icon,
 .cart-summary-card .btn svg.btn-icon,
 .cart-summary-sidebar .btn svg.btn-icon {
@@ -5056,6 +5073,7 @@ textarea:focus~.form-help .form-help-text,
 }
 
 /* Options row buttons (replacing dropdown) */
+.form-options-row,
 .cart-options-row {
   display: flex;
   flex-direction: row;
@@ -5067,6 +5085,7 @@ textarea:focus~.form-help .form-help-text,
   padding: 0.2rem 0.5rem;
 }
 
+.form-option-btn,
 .cart-option-btn {
   display: flex;
   align-items: center;
@@ -5080,11 +5099,16 @@ textarea:focus~.form-help .form-help-text,
   font-size: 0.85rem;
 }
 
-.cart-option-btn:hover {
-  background: var(--primary-bg-hover, rgba(37, 99, 235, 0.1));
-  color: var(--primary, #2563eb);
+.form-option-btn:hover,
+.form-option-btn:focus-visible,
+.cart-option-btn:hover,
+.cart-option-btn:focus-visible {
+  background: var(--primary, #2563eb) !important;
+  color: #ffffff !important;
+  outline: none;
 }
 
+button.form-option-btn,
 button.cart-option-btn {
   background: transparent;
   border: none;
@@ -5092,17 +5116,28 @@ button.cart-option-btn {
   cursor: pointer;
 }
 
+.form-option-btn.text-danger,
+.form-option-btn-danger,
 .cart-option-btn.text-danger,
 .cart-option-btn-danger,
 #clearCartBtn {
   color: var(--danger) !important;
 }
 
+/* Danger hover & focus states: solid red background with crisp white highlight for instant focus */
+.form-option-btn.text-danger:hover,
+.form-option-btn.text-danger:focus-visible,
+.form-option-btn-danger:hover,
+.form-option-btn-danger:focus-visible,
 .cart-option-btn.text-danger:hover,
+.cart-option-btn.text-danger:focus-visible,
 .cart-option-btn-danger:hover,
-#clearCartBtn:hover {
-  background: rgba(220, 53, 69, 0.12) !important;
-  color: var(--danger) !important;
+.cart-option-btn-danger:focus-visible,
+#clearCartBtn:hover,
+#clearCartBtn:focus-visible {
+  background: var(--danger) !important;
+  color: #ffffff !important;
+  outline: none;
 }
 
 /* Action button optimizations - consolidated above */
