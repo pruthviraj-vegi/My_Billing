@@ -1,10 +1,11 @@
 import csv
 import io
 import logging
+import re
 from decimal import Decimal, InvalidOperation
 
-from django.db import transaction
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
+from django.db import models, transaction
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Max, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 
@@ -1270,10 +1271,7 @@ class DamageResolutionService:
 class BulkUploadService:
     """Service class for BulkUpload batch and item operations."""
 
-    REQUIRED_CSV_FIELDS = [
-        "brand", "name", "category", "cloth_type", "uom", "hsn_code",
-        "quantity", "purchase_price", "mrp", "size", "color", "minimum_quantity",
-    ]
+    REQUIRED_CSV_FIELDS = ["brand", "name"]
 
     @staticmethod
     def fuzzy_match(value, model, field="name", threshold=80, cache=None):
@@ -1285,30 +1283,44 @@ class BulkUploadService:
             return None, 0, []
 
         value = value.strip()
+        query_key = (model, field, "query", value.lower())
+        if cache is not None and query_key in cache:
+            return cache[query_key]
+
         cache_key = (model, field)
         exact_cache_key = (model, field, "exact_map")
+        choices_cache_key = (model, field, "choices_list")
 
         if cache is not None and cache_key in cache:
             instances = cache[cache_key]
             exact_map = cache[exact_cache_key]
+            choices_list = cache.get(choices_cache_key)
         else:
             instances = list(model.objects.filter(**{f"{field}__isnull": False}))
             exact_map = {getattr(inst, field, "").strip().lower(): inst for inst in instances if getattr(inst, field, None)}
+            choices_list = [getattr(inst, field, "") for inst in instances if getattr(inst, field, None)]
             if cache is not None:
                 cache[cache_key] = instances
                 cache[exact_cache_key] = exact_map
+                cache[choices_cache_key] = choices_list
 
         # Fast O(1) exact match check
         exact_inst = exact_map.get(value.lower())
         if exact_inst:
-            return exact_inst, 100, []
+            res = (exact_inst, 100, [])
+            if cache is not None:
+                cache[query_key] = res
+            return res
 
         # Fuzzy match check
         if process is None or not instances:
-            return None, 0, []
+            res = (None, 0, [])
+            if cache is not None:
+                cache[query_key] = res
+            return res
 
-        names = {inst.pk: getattr(inst, field, "") for inst in instances}
-        choices_list = list(names.values())
+        if choices_list is None:
+            choices_list = [getattr(inst, field, "") for inst in instances if getattr(inst, field, None)]
 
         matches = process.extract(value, choices_list, limit=5, scorer=fuzz.token_sort_ratio)
         nearby = [{"name": m[0], "score": m[1]} for m in matches if m[1] >= 60]
@@ -1317,35 +1329,87 @@ class BulkUploadService:
         if best_match and best_match[1] >= threshold:
             for inst in instances:
                 if getattr(inst, field, "") == best_match[0]:
-                    return inst, best_match[1], nearby
-            return None, 0, nearby
+                    res = (inst, best_match[1], nearby)
+                    if cache is not None:
+                        cache[query_key] = res
+                    return res
 
-        return None, 0, nearby
+        res = (None, 0, nearby)
+        if cache is not None:
+            cache[query_key] = res
+        return res
 
     @classmethod
     def process_csv_import(cls, batch, csv_file):
         """Parse CSV file, create BulkUploadItem records with fuzzy-matched FK lookups."""
         try:
-            decoded = csv_file.read().decode("utf-8-sig")
-        except UnicodeDecodeError:
-            return {"success": False, "message": "File must be UTF-8 encoded CSV."}
+            if hasattr(csv_file, "seek"):
+                try:
+                    csv_file.seek(0)
+                except Exception:
+                    pass
+
+            raw_content = csv_file.read()
+            if not raw_content:
+                return {
+                    "success": False,
+                    "total_rows": 0,
+                    "rows_created": 0,
+                    "errors": ["The uploaded file is empty."],
+                    "matches": [],
+                    "message": "The uploaded CSV file is empty.",
+                }
+
+            decoded = None
+            for encoding in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+                try:
+                    decoded = raw_content.decode(encoding)
+                    break
+                except (UnicodeDecodeError, LookupError):
+                    continue
+
+            if decoded is None:
+                decoded = raw_content.decode("latin-1", errors="replace")
+
+        except Exception as e:
+            return {
+                "success": False,
+                "total_rows": 0,
+                "rows_created": 0,
+                "errors": [f"Could not read CSV file: {str(e)}"],
+                "matches": [],
+                "message": f"Could not read CSV file: {str(e)}",
+            }
 
         reader = csv.DictReader(io.StringIO(decoded))
         if not reader.fieldnames:
-            return {"success": False, "message": "CSV file has no headers."}
+            return {
+                "success": False,
+                "total_rows": 0,
+                "rows_created": 0,
+                "errors": ["CSV file has no headers or is empty."],
+                "matches": [],
+                "message": "CSV file has no headers.",
+            }
 
-        headers_lower = [h.strip().lower() for h in reader.fieldnames]
+        headers_lower = [h.strip().lower() for h in reader.fieldnames if h and isinstance(h, str)]
         missing = [f for f in cls.REQUIRED_CSV_FIELDS if f not in headers_lower]
         if missing:
             return {
                 "success": False,
+                "total_rows": 0,
+                "rows_created": 0,
+                "errors": [f"Missing required columns in CSV header: {', '.join(missing)}"],
+                "matches": [],
                 "message": f"Missing required columns: {', '.join(missing)}",
             }
 
         rows_created = 0
+        total_rows = 0
         errors = []
         matches_log = []
-        sort_order = batch.items.count()
+        max_order = batch.items.aggregate(models.Max("sort_order"))["sort_order__max"]
+        sort_order = max_order if max_order is not None else 0
         fuzzy_cache = {}
         items_to_create = []
 
@@ -1353,14 +1417,21 @@ class BulkUploadService:
             for row_num, row in enumerate(reader, start=2):
                 try:
                     normalized = {
-                        key.strip().lower(): (val or "").strip()
+                        key.strip().lower(): str(val or "").strip()
                         for key, val in row.items()
+                        if key and isinstance(key, str)
                     }
+
+                    # Skip empty rows (e.g. blank lines at bottom of CSV)
+                    if not any(val for val in normalized.values()):
+                        continue
+
+                    total_rows += 1
 
                     brand = normalized.get("brand", "")
                     name = normalized.get("name", "")
                     if not brand or not name:
-                        errors.append(f"Row {row_num}: brand and name are required.")
+                        errors.append(f"Row {row_num}: 'brand' and 'name' are required fields.")
                         continue
 
                     category, _, _ = cls.fuzzy_match(
@@ -1382,23 +1453,28 @@ class BulkUploadService:
                         normalized.get("color", ""), Color, "name", threshold=80, cache=fuzzy_cache
                     )
 
-                    if category:
-                        matches_log.append(f"Row {row_num}: matched category '{normalized.get('category','')}' → '{category.name}'")
-                    if cloth_type:
-                        matches_log.append(f"Row {row_num}: matched cloth type '{normalized.get('cloth_type','')}' → '{cloth_type.name}'")
-                    if uom:
-                        matches_log.append(f"Row {row_num}: matched UOM '{normalized.get('uom','')}' → '{uom.name}'")
-                    if hsn_code:
-                        matches_log.append(f"Row {row_num}: matched HSN '{normalized.get('hsn_code','')}' → '{hsn_code.code}'")
-                    if size:
-                        matches_log.append(f"Row {row_num}: matched size '{normalized.get('size','')}' → '{size.name}'")
-                    if color:
-                        matches_log.append(f"Row {row_num}: matched color '{normalized.get('color','')}' → '{color.name}'")
+                    if category and normalized.get("category"):
+                        matches_log.append(f"Row {row_num}: auto-matched Category '{normalized.get('category')}' → '{category.name}'")
+                    if cloth_type and normalized.get("cloth_type"):
+                        matches_log.append(f"Row {row_num}: auto-matched Cloth Type '{normalized.get('cloth_type')}' → '{cloth_type.name}'")
+                    if uom and normalized.get("uom"):
+                        matches_log.append(f"Row {row_num}: auto-matched UOM '{normalized.get('uom')}' → '{uom.name}'")
+                    if hsn_code and normalized.get("hsn_code"):
+                        matches_log.append(f"Row {row_num}: auto-matched HSN '{normalized.get('hsn_code')}' → '{hsn_code.code}'")
+                    if size and normalized.get("size"):
+                        matches_log.append(f"Row {row_num}: auto-matched Size '{normalized.get('size')}' → '{size.name}'")
+                    if color and normalized.get("color"):
+                        matches_log.append(f"Row {row_num}: auto-matched Color '{normalized.get('color')}' → '{color.name}'")
 
                     def parse_decimal(val, default="0"):
+                        if val is None or val == "":
+                            return Decimal(default)
+                        cleaned = re.sub(r"[^\d.-]", "", str(val))
+                        if not cleaned or cleaned in (".", "-"):
+                            return Decimal(default)
                         try:
-                            return Decimal(val or default)
-                        except InvalidOperation:
+                            return Decimal(cleaned)
+                        except (InvalidOperation, TypeError, ValueError):
                             return Decimal(default)
 
                     sort_order += 1
@@ -1432,13 +1508,51 @@ class BulkUploadService:
             if items_to_create:
                 BulkUploadItem.objects.bulk_create(items_to_create, batch_size=500)
 
+        if total_rows == 0:
+            return {
+                "success": False,
+                "total_rows": 0,
+                "rows_created": 0,
+                "errors": ["CSV file contains no data rows."],
+                "matches": [],
+                "message": "CSV file contains no data rows.",
+            }
+
+        total_errors_count = len(errors)
+        total_matches_count = len(matches_log)
+
+        # Cap detailed log lists to prevent DOM memory exhaustion on large CSVs
+        MAX_LOG_ITEMS = 250
+        capped_errors = list(errors[:MAX_LOG_ITEMS])
+        if total_errors_count > MAX_LOG_ITEMS:
+            capped_errors.append(f"... and {total_errors_count - MAX_LOG_ITEMS} more error(s).")
+
+        capped_matches = list(matches_log[:MAX_LOG_ITEMS])
+        if total_matches_count > MAX_LOG_ITEMS:
+            capped_matches.append(f"... and {total_matches_count - MAX_LOG_ITEMS} more auto-match(es).")
+
+        if rows_created == 0 and errors:
+            return {
+                "success": False,
+                "total_rows": total_rows,
+                "rows_created": 0,
+                "errors": capped_errors,
+                "matches": capped_matches,
+                "errors_count": total_errors_count,
+                "matches_count": total_matches_count,
+                "message": f"Failed to import items. All {total_rows} row(s) had errors.",
+            }
+
         return {
             "success": True,
+            "total_rows": total_rows,
             "rows_created": rows_created,
-            "errors": errors,
-            "matches": matches_log,
-            "message": f"Imported {rows_created} items from CSV." + (
-                f" {len(errors)} errors." if errors else ""
+            "errors": capped_errors,
+            "matches": capped_matches,
+            "errors_count": total_errors_count,
+            "matches_count": total_matches_count,
+            "message": f"Imported {rows_created} of {total_rows} items from CSV." + (
+                f" ({total_errors_count} error{'s' if total_errors_count > 1 else ''})" if total_errors_count else ""
             ),
         }
 
@@ -1457,8 +1571,13 @@ class BulkUploadService:
                 try:
                     val = data[field]
                     if val is not None and val != "":
-                        setattr(item, field, converter(val))
-                except (ValueError, InvalidOperation):
+                        if converter is Decimal:
+                            cleaned = re.sub(r"[^\d.-]", "", str(val))
+                            if cleaned and cleaned not in (".", "-"):
+                                setattr(item, field, Decimal(cleaned))
+                        else:
+                            setattr(item, field, converter(val))
+                except (ValueError, InvalidOperation, TypeError):
                     pass
 
         fk_map = {
@@ -1532,8 +1651,10 @@ class BulkUploadService:
             for f in ["quantity", "minimum_quantity", "purchase_price", "mrp", "discount_percentage", "commission_percentage"]:
                 if f in data and data[f] is not None and data[f] != "":
                     try:
-                        setattr(item, f, Decimal(str(data[f])))
-                    except InvalidOperation:
+                        cleaned = re.sub(r"[^\d.-]", "", str(data[f]))
+                        if cleaned and cleaned not in (".", "-"):
+                            setattr(item, f, Decimal(cleaned))
+                    except (InvalidOperation, TypeError, ValueError):
                         pass
             fk_map = {
                 "product": Product, "variant": ProductVariant, "category": Category,

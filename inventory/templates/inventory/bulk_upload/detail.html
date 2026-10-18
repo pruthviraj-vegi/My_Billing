@@ -7,18 +7,18 @@
 
 {% block extra_css %}
 <style>
-  /* ── Bulk Upload Toolbar & Select2 Integration ── */
-  .bulk-nav-toolbar {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md, 8px);
-    padding: 0.5rem 0.75rem;
-    box-shadow: var(--shadow-sm);
+  /* ── Bulk Upload Navigation inside .search-filter-section ── */
+  .search-filter-section:has(.breadcrumb-inline):not(:has(.search-filter-form)) > .breadcrumb-inline {
+    border-radius: var(--radius-lg, 0.75rem);
+    border-bottom: none;
+  }
+
+  .bulk-search-filter-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
     gap: 0.75rem;
+    flex-wrap: wrap;
     width: 100%;
     box-sizing: border-box;
   }
@@ -102,6 +102,66 @@
     from { opacity: 0; transform: translateY(5px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+  /* ── CSV Upload & Progress Console Styles ── */
+  .bulk-log-console {
+    background: var(--bg-hover, #0f172a);
+    color: var(--text-primary, #f1f5f9);
+    border: 1px solid var(--border-color, #334155);
+    border-radius: var(--radius-md, 8px);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+  }
+  .bulk-log-line {
+    padding: 3px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    word-break: break-word;
+  }
+  .bulk-log-line.log-error {
+    color: #f87171;
+  }
+  .bulk-log-line.log-match {
+    color: #38bdf8;
+  }
+  .bulk-log-line.log-info {
+    color: #94a3b8;
+  }
+  .bulk-log-line.log-success {
+    color: #4ade80;
+  }
+  .bulk-upload-dropzone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    transition: all 0.2s ease-in-out;
+  }
+  .bulk-upload-dropzone.dragover {
+    border-color: var(--primary-color, #2563eb);
+    background: rgba(37, 99, 235, 0.05);
+    transform: scale(1.005);
+  }
+  .stat-card-mini {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+  }
+  .stat-card-mini .stat-val {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .stat-card-mini .stat-lbl {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 </style>
 {% endblock extra_css %}
 
@@ -117,6 +177,9 @@
         </div>
     </div>
     <div class="page-actions d-flex gap-2 flex-wrap">
+        <a href="{% url 'inventory_bulk_upload:sample_csv' %}" class="btn btn-outline-secondary btn-sm" title="Download Sample CSV Template">
+            <i class="fas fa-file-download me-1"></i> Sample CSV
+        </a>
         <button type="button" class="btn btn-primary btn-sm" id="uploadCsvBtn">
             <i class="fas fa-upload me-1"></i> Upload CSV
         </button>
@@ -136,29 +199,30 @@
 
 <!-- Hidden CSRF & File elements -->
 {% csrf_token %}
-<input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="display:none;">
-<div id="uploadStatus" class="mb-2" style="display:none;"></div>
+<input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="position:fixed;top:-1000px;left:-1000px;opacity:0;pointer-events:none;">
 
-<!-- Breadcrumb Navigation (Standard Project Layout) -->
-<nav class="breadcrumb breadcrumb-right mb-3">
-    <a href="{% url 'inventory_bulk_upload:home' %}" class="breadcrumb-item">Bulk Upload</a>
-    <span class="breadcrumb-separator">/</span>
-    <span class="breadcrumb-active">Batch #{{ batch.id }}</span>
-</nav>
-
-<!-- Standard Form Container (matches product_create.html) -->
-<div class="form-container invoice-form-container">
+<!-- Search & Navigation Section with Inline Breadcrumbs (Standard Project Layout) -->
+<div class="search-filter-section mb-3">
+    <!-- Inline Breadcrumbs -->
+    <nav class="breadcrumb-inline" aria-label="breadcrumb">
+        <a href="{% url 'inventory:dashboard' %}" class="breadcrumb-item" title="Inventory">
+            <i class="fas fa-home breadcrumb-home-icon"></i>
+        </a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="{% url 'inventory_bulk_upload:home' %}" class="breadcrumb-item">Bulk Upload</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-active">Batch #{{ batch.id }}</span>
+    </nav>
 
     {% if items_list %}
-    <!-- Unified Item Navigation & Filter Bar -->
-    <div class="bulk-nav-toolbar mb-3">
+    <div class="search-filter-form bulk-search-filter-bar">
         <div class="bulk-nav-controls">
             <!-- Filter Dropdown: Drafts Only / Completed / All Items -->
             <div class="d-flex align-items-center gap-1">
                 <label for="statusFilterSelect" class="form-label mb-0" style="white-space: nowrap; font-size: 0.8rem;">
                     <i class="fas fa-filter me-1 text-secondary"></i> View:
                 </label>
-                <select id="statusFilterSelect" class="form-select form-select-sm bulk-status-filter">
+                <select id="statusFilterSelect" class="form-select form-select-sm bulk-status-filter" style="width: auto;">
                     <option value="draft" {% if summary.draft_items > 0 %}selected{% endif %}>Drafts ({{ summary.draft_items }})</option>
                     <option value="all">All Items ({{ summary.total_items }})</option>
                     <option value="committed" {% if summary.draft_items == 0 %}selected{% endif %}>Completed ({{ summary.committed_items }})</option>
@@ -190,6 +254,10 @@
         </div>
     </div>
     {% endif %}
+</div>
+
+<!-- Standard Form Container (matches product_create.html) -->
+<div class="form-container invoice-form-container">
 
     <!-- Active Item Form Container (Standard 2-Column Form Card) -->
     <div id="activeItemContainer">
@@ -198,17 +266,126 @@
             <i class="fas fa-spinner fa-spin me-2"></i> Loading item details...
         </div>
         {% else %}
-        <div class="form-card text-center p-5">
-            <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-secondary"></i>
+        <div class="form-card text-center p-5 bulk-upload-dropzone" id="emptyDropzone">
+            <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-primary"></i>
             <h5 style="color: var(--text-primary);">No Items in this Batch</h5>
             <p class="text-secondary" style="font-size: 0.85rem;">Upload a CSV file containing your product and variant details to begin.</p>
-            <button type="button" class="btn btn-primary btn-sm mt-2" id="emptyUploadBtn">
-                <i class="fas fa-upload me-1"></i> Upload CSV File
-            </button>
+            <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                <button type="button" class="btn btn-primary btn-sm" id="emptyUploadBtn">
+                    <i class="fas fa-upload me-1"></i> Upload CSV File
+                </button>
+                <a href="{% url 'inventory_bulk_upload:sample_csv' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-file-download me-1"></i> Download Sample CSV
+                </a>
+            </div>
+            <p class="text-secondary small mt-3 mb-0" style="opacity: 0.75;"><i class="fas fa-info-circle me-1"></i> Tip: You can also drag & drop a .csv file directly onto this card</p>
         </div>
         {% endif %}
     </div>
 
+</div>
+
+<!-- CSV Upload Progress & Logs Modal -->
+<div class="modal fade" id="csvUploadModal" tabindex="-1" aria-labelledby="csvUploadModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: var(--radius-md, 10px);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title d-flex align-items-center gap-2" id="csvUploadModalLabel" style="font-size: 1.05rem;">
+                    <i class="fas fa-file-csv text-primary"></i>
+                    <span>CSV Upload & Batch Processing</span>
+                </h5>
+                <button type="button" class="btn-close" id="csvModalCloseBtn" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4">
+                <!-- File Details & Status Header -->
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div>
+                        <span class="fw-semibold" id="uploadFileName">filename.csv</span>
+                        <span class="text-secondary small ms-1" id="uploadFileSize"></span>
+                    </div>
+                    <span id="uploadBadgeStatus" class="badge bg-primary">Uploading...</span>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mb-3">
+                    <div class="progress" style="height: 10px; border-radius: 6px; background: var(--bg-hover, rgba(0,0,0,0.06));">
+                        <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 25%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                        <small class="text-secondary" id="uploadStatusText">Preparing file upload...</small>
+                        <small class="text-secondary fw-semibold" id="uploadProgressPct">25%</small>
+                    </div>
+                </div>
+
+                <!-- Live processing phases -->
+                <div class="d-flex gap-2 mb-3 small flex-wrap" id="processingPhases">
+                    <span class="badge bg-primary" id="phase1"><i class="fas fa-arrow-up me-1"></i> 1. File Upload</span>
+                    <span class="badge bg-secondary opacity-75" id="phase2"><i class="fas fa-cogs me-1"></i> 2. Validation & Lookups</span>
+                    <span class="badge bg-secondary opacity-75" id="phase3"><i class="fas fa-check-circle me-1"></i> 3. Creating Items</span>
+                </div>
+
+                <!-- Results Summary Stats (hidden while in progress) -->
+                <div id="uploadResultsSection" style="display: none;">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-sm-3">
+                            <div class="stat-card-mini">
+                                <div class="stat-val text-primary" id="statTotalRows">0</div>
+                                <div class="stat-lbl">Total Rows</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <div class="stat-card-mini">
+                                <div class="stat-val text-success" id="statRowsCreated">0</div>
+                                <div class="stat-lbl">Imported</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <div class="stat-card-mini">
+                                <div class="stat-val text-danger" id="statErrorsCount">0</div>
+                                <div class="stat-lbl">Errors / Skipped</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <div class="stat-card-mini">
+                                <div class="stat-val text-info" id="statMatchesCount">0</div>
+                                <div class="stat-lbl">Auto-Matches</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Alert Banner -->
+                    <div id="uploadResultBanner" class="alert py-2 px-3 mb-3 d-flex align-items-center gap-2" role="alert">
+                    </div>
+
+                    <!-- Logs Console Header with Filter Tabs -->
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <div class="btn-group btn-group-sm" role="group" id="logFilterTabs">
+                            <button type="button" class="btn btn-outline-secondary active" data-filter="all">All Logs (<span id="countLogAll">0</span>)</button>
+                            <button type="button" class="btn btn-outline-danger" data-filter="error">Errors (<span id="countLogError">0</span>)</button>
+                            <button type="button" class="btn btn-outline-info" data-filter="match">Matches (<span id="countLogMatch">0</span>)</button>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="copyLogsBtn" title="Copy logs to clipboard">
+                            <i class="far fa-copy me-1"></i> Copy Logs
+                        </button>
+                    </div>
+
+                    <!-- Log Console Window -->
+                    <div class="bulk-log-console" id="uploadLogConsole">
+                        <div class="text-secondary">No log entries.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <a href="{% url 'inventory_bulk_upload:sample_csv' %}" class="btn btn-outline-secondary btn-sm me-auto" id="downloadSampleBtn" style="display: none;">
+                    <i class="fas fa-file-download me-1"></i> Sample CSV
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" id="modalDismissBtn" disabled>Close</button>
+                <button type="button" class="btn btn-primary btn-sm" id="modalActionBtn" style="display: none;">
+                    <i class="fas fa-check me-1"></i> View Items
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock content %}
 
@@ -253,10 +430,452 @@
         ];
 
         document.addEventListener('DOMContentLoaded', function() {
-            if (!ITEMS.length) {
-                document.getElementById('emptyUploadBtn')?.addEventListener('click', () => {
-                    document.getElementById('csvFileInput').click();
+            const fileInput = document.getElementById('csvFileInput');
+            const uploadBtn = document.getElementById('uploadCsvBtn');
+            const emptyUploadBtn = document.getElementById('emptyUploadBtn');
+            const emptyDropzone = document.getElementById('emptyDropzone');
+
+            // ════════════════════════════════════════════════════════════════
+            // ── CSV UPLOAD WITH LIVE PROGRESS BAR & DETAILED LOG CONSOLE ──
+            // ════════════════════════════════════════════════════════════════
+            let currentLogs = [];
+
+            function setPhaseActive(step) {
+                const p1 = document.getElementById('phase1');
+                const p2 = document.getElementById('phase2');
+                const p3 = document.getElementById('phase3');
+                if (!p1 || !p2 || !p3) return;
+
+                p1.className = step >= 1 ? (step > 1 ? 'badge bg-success' : 'badge bg-primary') : 'badge bg-secondary opacity-75';
+                p2.className = step >= 2 ? (step > 2 ? 'badge bg-success' : 'badge bg-primary') : 'badge bg-secondary opacity-75';
+                p3.className = step >= 3 ? (step > 3 ? 'badge bg-success' : 'badge bg-primary') : 'badge bg-secondary opacity-75';
+            }
+
+            function handleCsvUpload(file) {
+                if (!file) return;
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Please select a valid .csv file.', 'error');
+                    } else {
+                        alert('Please select a valid .csv file.');
+                    }
+                    return;
+                }
+
+                const modalEl = document.getElementById('csvUploadModal');
+                let modal = null;
+                try {
+                    if (window.bootstrap && bootstrap.Modal) {
+                        modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                    } else if (window.$ && $.fn.modal) {
+                        $(modalEl).modal('show');
+                    } else {
+                        modalEl.classList.add('show');
+                        modalEl.style.display = 'block';
+                    }
+                } catch (e) {
+                    console.warn('Modal open fallback:', e);
+                    if (window.$ && $.fn.modal) $(modalEl).modal('show');
+                }
+
+                const fileNameEl = document.getElementById('uploadFileName');
+                const fileSizeEl = document.getElementById('uploadFileSize');
+                const progressBar = document.getElementById('uploadProgressBar');
+                const statusText = document.getElementById('uploadStatusText');
+                const progressPct = document.getElementById('uploadProgressPct');
+                const badgeStatus = document.getElementById('uploadBadgeStatus');
+                const closeBtn = document.getElementById('csvModalCloseBtn');
+                const dismissBtn = document.getElementById('modalDismissBtn');
+                const actionBtn = document.getElementById('modalActionBtn');
+                const resultsSection = document.getElementById('uploadResultsSection');
+                const downloadSampleBtn = document.getElementById('downloadSampleBtn');
+
+                if (fileNameEl) fileNameEl.textContent = file.name;
+                if (fileSizeEl) {
+                    fileSizeEl.textContent = '(' + (file.size < 1024 ? file.size + ' B' : (file.size / 1024).toFixed(1) + ' KB') + ')';
+                }
+
+                // Reset UI to in-progress state
+                if (resultsSection) resultsSection.style.display = 'none';
+                if (actionBtn) actionBtn.style.display = 'none';
+                if (downloadSampleBtn) downloadSampleBtn.style.display = 'none';
+                if (closeBtn) closeBtn.disabled = true;
+                if (dismissBtn) dismissBtn.disabled = true;
+                if (badgeStatus) {
+                    badgeStatus.className = 'badge bg-primary';
+                    badgeStatus.textContent = 'Uploading...';
+                }
+
+                if (progressBar) {
+                    progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary';
+                    progressBar.style.width = '25%';
+                }
+                if (progressPct) progressPct.textContent = '25%';
+                if (statusText) statusText.textContent = 'Uploading CSV file to server...';
+
+                setPhaseActive(1);
+
+                const formData = new FormData();
+                formData.append('csv_file', file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', UPLOAD_URL, true);
+                xhr.setRequestHeader('X-CSRFToken', CSRF_TOKEN);
+
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const percent = Math.min(Math.round((e.loaded / e.total) * 60), 60);
+                        if (progressBar) progressBar.style.width = percent + '%';
+                        if (progressPct) progressPct.textContent = percent + '%';
+                    }
+                };
+
+                xhr.upload.onload = function() {
+                    if (progressBar) progressBar.style.width = '75%';
+                    if (progressPct) progressPct.textContent = '75%';
+                    setPhaseActive(2);
+                    if (statusText) statusText.textContent = 'Validating columns and matching master data...';
+                };
+
+                xhr.onload = function() {
+                    if (closeBtn) closeBtn.disabled = false;
+                    if (dismissBtn) dismissBtn.disabled = false;
+
+                    let data;
+                    try {
+                        data = JSON.parse(xhr.responseText);
+                    } catch (e) {
+                        data = {
+                            success: false,
+                            message: 'Server error (' + xhr.status + ')',
+                            errors: [xhr.responseText.substring(0, 300) || 'Unknown server error'],
+                            matches: [],
+                            rows_created: 0,
+                            total_rows: 0
+                        };
+                    }
+
+                    renderUploadResults(data);
+                };
+
+                xhr.onerror = function() {
+                    if (closeBtn) closeBtn.disabled = false;
+                    if (dismissBtn) dismissBtn.disabled = false;
+                    renderUploadResults({
+                        success: false,
+                        message: 'Network error occurred during file upload.',
+                        errors: ['Connection lost or network timeout. Please verify your connection and try again.'],
+                        matches: [],
+                        rows_created: 0,
+                        total_rows: 0
+                    });
+                };
+
+                xhr.send(formData);
+            }
+
+            function renderUploadResults(data) {
+                const progressBar = document.getElementById('uploadProgressBar');
+                const statusText = document.getElementById('uploadStatusText');
+                const progressPct = document.getElementById('uploadProgressPct');
+                const badgeStatus = document.getElementById('uploadBadgeStatus');
+                const resultsSection = document.getElementById('uploadResultsSection');
+                const resultBanner = document.getElementById('uploadResultBanner');
+                const actionBtn = document.getElementById('modalActionBtn');
+                const downloadSampleBtn = document.getElementById('downloadSampleBtn');
+
+                latestUploadData = data;
+
+                const totalRows = data.total_rows || (data.rows_created + (data.errors_count !== undefined ? data.errors_count : (data.errors ? data.errors.length : 0)));
+                const rowsCreated = data.rows_created || 0;
+                const errors = data.errors || [];
+                const matches = data.matches || [];
+                const errorsCount = data.errors_count !== undefined ? data.errors_count : errors.length;
+                const matchesCount = data.matches_count !== undefined ? data.matches_count : matches.length;
+
+                setPhaseActive(3);
+
+                if (progressBar) {
+                    progressBar.style.width = '100%';
+                    progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                    if (rowsCreated > 0) {
+                        progressBar.className = 'progress-bar bg-success';
+                    } else {
+                        progressBar.className = 'progress-bar bg-danger';
+                    }
+                }
+                if (progressPct) progressPct.textContent = '100%';
+                if (statusText) {
+                    statusText.textContent = rowsCreated > 0 ? 'Processing complete.' : 'Upload failed.';
+                }
+
+                if (badgeStatus) {
+                    if (rowsCreated > 0) {
+                        badgeStatus.className = 'badge bg-success';
+                        badgeStatus.textContent = errorsCount > 0 ? 'Completed with Warnings' : 'Completed Successfully';
+                    } else {
+                        badgeStatus.className = 'badge bg-danger';
+                        badgeStatus.textContent = 'Import Failed';
+                    }
+                }
+
+                // Stats Cards
+                const statTotal = document.getElementById('statTotalRows');
+                const statCreated = document.getElementById('statRowsCreated');
+                const statErrors = document.getElementById('statErrorsCount');
+                const statMatches = document.getElementById('statMatchesCount');
+                if (statTotal) statTotal.textContent = totalRows;
+                if (statCreated) statCreated.textContent = rowsCreated;
+                if (statErrors) statErrors.textContent = errorsCount;
+                if (statMatches) statMatches.textContent = matchesCount;
+
+                // Banner
+                if (resultBanner) {
+                    if (rowsCreated > 0) {
+                        if (errorsCount > 0) {
+                            resultBanner.className = 'alert alert-warning py-2 px-3 mb-3 d-flex align-items-center gap-2';
+                            resultBanner.innerHTML = `<i class="fas fa-exclamation-triangle fa-lg text-warning"></i> <div><strong>${rowsCreated} of ${totalRows} items imported.</strong> ${errorsCount} rows were skipped due to errors.</div>`;
+                        } else {
+                            resultBanner.className = 'alert alert-success py-2 px-3 mb-3 d-flex align-items-center gap-2';
+                            resultBanner.innerHTML = `<i class="fas fa-check-circle fa-lg text-success"></i> <div><strong>Success!</strong> All ${rowsCreated} items were imported into this batch as drafts.</div>`;
+                        }
+                    } else {
+                        resultBanner.className = 'alert alert-danger py-2 px-3 mb-3 d-flex align-items-center gap-2';
+                        resultBanner.innerHTML = `<i class="fas fa-times-circle fa-lg text-danger"></i> <div><strong>Import Failed.</strong> ${data.message || 'No items were created.'}</div>`;
+                    }
+                }
+
+                // Build Log Entries
+                currentLogs = [];
+                errors.forEach(err => {
+                    currentLogs.push({ type: 'error', text: err });
                 });
+                matches.forEach(m => {
+                    currentLogs.push({ type: 'match', text: m });
+                });
+                if (rowsCreated > 0) {
+                    currentLogs.unshift({ type: 'success', text: `Successfully created ${rowsCreated} draft items in Batch #${BATCH_ID}.` });
+                }
+
+                renderLogConsole('all');
+
+                // Action buttons in modal footer
+                if (rowsCreated > 0) {
+                    if (actionBtn) {
+                        actionBtn.style.display = 'inline-block';
+                        actionBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i> View Imported Items';
+                        actionBtn.onclick = function() {
+                            location.reload();
+                        };
+                    }
+                    if (downloadSampleBtn) downloadSampleBtn.style.display = 'none';
+                } else {
+                    if (actionBtn) actionBtn.style.display = 'none';
+                    if (downloadSampleBtn) downloadSampleBtn.style.display = 'inline-block';
+                }
+
+                if (resultsSection) resultsSection.style.display = 'block';
+
+                if (fileInput) fileInput.value = '';
+            }
+
+            let latestUploadData = null;
+
+            function renderLogConsole(filterType) {
+                const consoleEl = document.getElementById('uploadLogConsole');
+                const countAll = document.getElementById('countLogAll');
+                const countError = document.getElementById('countLogError');
+                const countMatch = document.getElementById('countLogMatch');
+
+                const totalErrors = (latestUploadData && latestUploadData.errors_count !== undefined)
+                    ? latestUploadData.errors_count
+                    : currentLogs.filter(l => l.type === 'error').length;
+                const totalMatches = (latestUploadData && latestUploadData.matches_count !== undefined)
+                    ? latestUploadData.matches_count
+                    : currentLogs.filter(l => l.type === 'match').length;
+
+                if (countAll) countAll.textContent = currentLogs.length;
+                if (countError) countError.textContent = totalErrors;
+                if (countMatch) countMatch.textContent = totalMatches;
+
+                if (!consoleEl) return;
+
+                const filtered = currentLogs.filter(l => {
+                    if (filterType === 'error') return l.type === 'error';
+                    if (filterType === 'match') return l.type === 'match';
+                    return true;
+                });
+
+                if (filtered.length === 0) {
+                    consoleEl.innerHTML = '<div class="text-secondary small py-2"><i class="fas fa-check-circle me-1 text-success"></i> No entries for this filter.</div>';
+                    return;
+                }
+
+                let html = '';
+                filtered.forEach(item => {
+                    let icon = '<i class="fas fa-info-circle log-info"></i>';
+                    let cls = 'log-info';
+                    if (item.type === 'error') {
+                        icon = '<i class="fas fa-exclamation-circle text-danger"></i>';
+                        cls = 'log-error';
+                    } else if (item.type === 'match') {
+                        icon = '<i class="fas fa-magic text-info"></i>';
+                        cls = 'log-match';
+                    } else if (item.type === 'success') {
+                        icon = '<i class="fas fa-check-circle text-success"></i>';
+                        cls = 'log-success';
+                    }
+                    html += `<div class="bulk-log-line ${cls}">${icon} <span>${escapeHtml(item.text)}</span></div>`;
+                });
+
+                consoleEl.innerHTML = html;
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // Tab click handling for logs
+            document.getElementById('logFilterTabs')?.addEventListener('click', function(e) {
+                const btn = e.target.closest('button[data-filter]');
+                if (!btn) return;
+                this.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderLogConsole(btn.dataset.filter);
+            });
+
+            // Copy logs to clipboard
+            document.getElementById('copyLogsBtn')?.addEventListener('click', function() {
+                const text = currentLogs.map(l => `[${l.type.toUpperCase()}] ${l.text}`).join('\n');
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        const originalHtml = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-check me-1 text-success"></i> Copied!';
+                        setTimeout(() => { this.innerHTML = originalHtml; }, 1800);
+                    });
+                } else {
+                    alert(text);
+                }
+            });
+
+            // Reload page on modal dismiss if items were created
+            const uploadModalEl = document.getElementById('csvUploadModal');
+            uploadModalEl?.addEventListener('hidden.bs.modal', function() {
+                if (currentLogs.some(l => l.type === 'success')) {
+                    location.reload();
+                }
+            });
+
+            // Trigger file upload from buttons
+            function triggerUpload(e) {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                const input = document.getElementById('csvFileInput');
+                if (input) {
+                    input.value = '';
+                    input.click();
+                }
+            }
+
+            uploadBtn?.addEventListener('click', triggerUpload);
+            emptyUploadBtn?.addEventListener('click', triggerUpload);
+
+            $(document).on('change', '#csvFileInput', function() {
+                if (this.files && this.files.length) {
+                    handleCsvUpload(this.files[0]);
+                }
+            });
+
+            // Drag & drop support on empty dropzone
+            if (emptyDropzone) {
+                ['dragenter', 'dragover'].forEach(evt => {
+                    emptyDropzone.addEventListener(evt, e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        emptyDropzone.classList.add('dragover');
+                    });
+                });
+                ['dragleave', 'drop'].forEach(evt => {
+                    emptyDropzone.addEventListener(evt, e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        emptyDropzone.classList.remove('dragover');
+                    });
+                });
+                emptyDropzone.addEventListener('drop', e => {
+                    const dt = e.dataTransfer;
+                    if (dt && dt.files && dt.files.length) {
+                        handleCsvUpload(dt.files[0]);
+                    }
+                });
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // ── BATCH LEVEL ACTIONS (Commit All & Clear Drafts) ───────────
+            // ════════════════════════════════════════════════════════════════
+            document.getElementById('commitAllBtn')?.addEventListener('click', function() {
+                if (!confirm('Commit all uncommitted draft items in this batch to inventory?')) return;
+                const btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Committing...';
+                fetch(COMMIT_ALL_URL, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        setTimeout(() => location.reload(), 600);
+                    } else {
+                        showNotification(data.message || 'Bulk commit failed', 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check-double me-1"></i> Commit All';
+                    }
+                })
+                .catch(err => {
+                    showNotification('Error: ' + err.message, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check-double me-1"></i> Commit All';
+                });
+            });
+
+            document.getElementById('deleteUncommittedBtn')?.addEventListener('click', function() {
+                if (!confirm('Delete all uncommitted draft items from this batch?')) return;
+                const btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Deleting...';
+                fetch(DELETE_UNCOMMITTED_URL, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        setTimeout(() => location.reload(), 600);
+                    } else {
+                        showNotification(data.message || 'Delete failed', 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Clear Drafts';
+                    }
+                })
+                .catch(err => {
+                    showNotification('Error: ' + err.message, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Clear Drafts';
+                });
+            });
+
+            // ════════════════════════════════════════════════════════════════
+            // ── ITEM STEPPER & WORKSPACE NAVIGATION (Only if ITEMS > 0) ───
+            // ════════════════════════════════════════════════════════════════
+            if (!ITEMS.length) {
                 return;
             }
 
@@ -270,9 +889,6 @@
             const prevBtn = document.getElementById('prevItemBtn');
             const nextBtn = document.getElementById('nextItemBtn');
             const stepperInfo = document.getElementById('stepperInfo');
-            const fileInput = document.getElementById('csvFileInput');
-            const uploadBtn = document.getElementById('uploadCsvBtn');
-            const uploadStatus = document.getElementById('uploadStatus');
 
             // ── Update Item Selector Dropdown based on Status Filter ──
             function populateItemDropdown(preserveItemId) {
@@ -729,96 +1345,6 @@
                 .catch(err => {
                     showNotification('Error: ' + err.message, 'error');
                     delBtn.disabled = false;
-                });
-            });
-
-            // ── Batch Actions: Commit All ──
-            document.getElementById('commitAllBtn')?.addEventListener('click', function() {
-                if (!confirm('Commit all uncommitted draft items in this batch to inventory?')) return;
-                const btn = this;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Committing...';
-                fetch(COMMIT_ALL_URL, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': CSRF_TOKEN }
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        showNotification(data.message, 'success');
-                        setTimeout(() => location.reload(), 600);
-                    } else {
-                        showNotification(data.message || 'Bulk commit failed', 'error');
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-check-double me-1"></i> Commit All';
-                    }
-                })
-                .catch(err => {
-                    showNotification('Error: ' + err.message, 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-check-double me-1"></i> Commit All';
-                });
-            });
-
-            // ── Batch Actions: Clear Drafts ──
-            document.getElementById('deleteUncommittedBtn')?.addEventListener('click', function() {
-                if (!confirm('Delete all uncommitted draft items from this batch?')) return;
-                const btn = this;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Deleting...';
-                fetch(DELETE_UNCOMMITTED_URL, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': CSRF_TOKEN }
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        showNotification(data.message, 'success');
-                        setTimeout(() => location.reload(), 600);
-                    } else {
-                        showNotification(data.message || 'Delete failed', 'error');
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Clear Drafts';
-                    }
-                })
-                .catch(err => {
-                    showNotification('Error: ' + err.message, 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Clear Drafts';
-                });
-            });
-
-            // ── CSV Upload Button ──
-            uploadBtn?.addEventListener('click', () => fileInput?.click());
-
-            fileInput?.addEventListener('change', function() {
-                if (!this.files.length) return;
-                const formData = new FormData();
-                formData.append('csv_file', this.files[0]);
-
-                if (uploadStatus) {
-                    uploadStatus.style.display = 'block';
-                    uploadStatus.innerHTML = '<div class="alert alert-info py-2 px-3 mb-2"><i class="fas fa-spinner fa-spin me-2"></i> Processing and uploading CSV...</div>';
-                }
-
-                fetch(UPLOAD_URL, {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-CSRFToken': CSRF_TOKEN }
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        showNotification(data.message, 'success');
-                        setTimeout(() => location.reload(), 500);
-                    } else {
-                        if (uploadStatus) uploadStatus.innerHTML = '<div class="alert alert-danger py-2 px-3 mb-2"><i class="fas fa-times-circle me-2"></i> ' + data.message + '</div>';
-                    }
-                    if (fileInput) fileInput.value = '';
-                })
-                .catch(err => {
-                    if (uploadStatus) uploadStatus.innerHTML = '<div class="alert alert-danger py-2 px-3 mb-2"><i class="fas fa-times-circle me-2"></i> ' + err.message + '</div>';
-                    if (fileInput) fileInput.value = '';
                 });
             });
 
