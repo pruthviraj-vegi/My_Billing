@@ -671,6 +671,10 @@
   margin-bottom: 1.25rem;
 }
 
+.dashboardContent .detail-dash-grid {
+  margin-bottom: 0;
+}
+
 .detail-dash-grid .dash-hero-card {
   margin-bottom: 0;
   padding: 1rem 1.15rem;
@@ -781,6 +785,16 @@
   font-weight: 500;
 }
 
+.hero-tag .counting-number,
+.hero-tag span {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  color: inherit !important;
+  margin: 0 !important;
+  display: inline !important;
+}
+
 /* Hero Numbers */
 .hero-val-display {
   display: flex;
@@ -856,6 +870,16 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.hero-submetric-val .counting-number,
+.hero-submetrics .counting-number {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  color: inherit !important;
+  margin: 0 !important;
+  display: inline !important;
 }
 
 .hero-submetric-val.profit-val {

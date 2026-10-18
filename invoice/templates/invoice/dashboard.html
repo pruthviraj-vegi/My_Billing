@@ -48,7 +48,7 @@
     <div id="dashboardContent" class="dashboardContent">
 
         <!-- ── HERO FINANCIAL & CASHFLOW TIER ── -->
-        <div class="dash-hero-grid">
+        <div class="dash-hero-grid detail-dash-grid mb-0">
             <!-- Hero Card: Net Revenue Command Center -->
             <div class="dash-hero-card dash-stagger-item" style="--delay: 1;">
                 <div>
@@ -57,26 +57,26 @@
                             <i class="fa-solid fa-chart-line"></i>
                             Net Realized Revenue
                         </span>
-                        <span class="hero-tag" id="heroPeriodTag">Selected Period</span>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="hero-tag" id="heroPeriodTag">Selected Period</span>
+                            <span class="hero-delta-badge neutral" id="heroDeltaBadge">
+                                <i class="fa-solid fa-arrows-left-right"></i>
+                                <span id="heroDeltaText">--</span>
+                            </span>
+                        </div>
                     </div>
                     <div class="hero-val-display">
                         <span class="hero-number-lg counting-number" id="heroNetAmount" data-count="0">0</span>
-                        <span class="hero-delta-badge neutral" id="heroDeltaBadge">
-                            <i class="fa-solid fa-arrows-left-right"></i>
-                            <span id="heroDeltaText">--</span>
-                        </span>
-                    </div>
-                    <div class="stat-label-small" style="margin-top: 0.15rem;">
-                        Net of discounts, returns &amp; cancellations
+                        <span class="stat-label-small ms-1">net realized</span>
                     </div>
                 </div>
 
                 <div class="hero-submetrics">
                     <div class="hero-submetric-item">
                         <span class="hero-submetric-label">Estimated Profit</span>
-                        <div class="hero-submetric-val profit-val">
+                        <div class="hero-submetric-val text-success" id="heroProfitContainer">
                             <span class="counting-number" id="heroProfit" data-count="0">0</span>
-                            <span class="margin-pill" id="heroMarginPct">(0%)</span>
+                            <small class="text-secondary" id="heroMarginPct">(0%)</small>
                         </div>
                     </div>
                     <div class="hero-submetric-item">
@@ -88,7 +88,7 @@
                     <div class="hero-submetric-item">
                         <span class="hero-submetric-label">Total Invoices</span>
                         <div class="hero-submetric-val">
-                            <span class="counting-number" id="heroTotalBills" data-count="0">0</span> bills
+                            <span class="counting-number" id="heroTotalBills" data-count="0">0</span> <small class="text-secondary">bills</small>
                         </div>
                     </div>
                 </div>
@@ -102,57 +102,42 @@
                             <i class="fa-solid fa-money-bill-transfer"></i>
                             Cashflow &amp; Retail Pulse
                         </span>
-                        <span class="hero-tag">Inflow Mix</span>
+                        <span class="hero-tag text-success" id="recoveryRateTag">
+                            <i class="fa-solid fa-chart-line me-1"></i><span id="metricRecoveryRate">0.0</span>% Collected
+                        </span>
+                    </div>
+                    <div class="hero-val-display">
+                        <span class="hero-number-lg counting-number" id="heroPaidReceived" data-count="0">0</span>
+                        <span class="stat-label-small ms-1">total collected</span>
                     </div>
 
-                    <!-- Split Progress Meter -->
-                    <div class="cashflow-bar-wrapper">
-                        <div class="cashflow-bar-header">
-                            <span>
-                                Cash: <strong id="cashPctText">0%</strong> (<span id="cashAmtText">0</span>)
-                            </span>
-                            <span>
-                                Credit: <strong id="creditPctText">0%</strong> (<span id="creditAmtText">0</span>)
-                            </span>
-                        </div>
+                    <!-- Split Progress Meter (The Graph) -->
+                    <div class="cashflow-bar-wrapper mt-2">
                         <div class="cashflow-bar-track">
-                            <div class="cashflow-fill-cash" id="cashflowCashBar" style="width: 50%;"></div>
-                            <div class="cashflow-fill-credit" id="cashflowCreditBar" style="width: 50%;"></div>
-                        </div>
-                        <div class="cashflow-legend-row">
-                            <div class="cashflow-legend-col">
-                                <span class="cashflow-dot cash"></span>
-                                <span>Immediate Inflow</span>
-                            </div>
-                            <div class="cashflow-legend-col">
-                                <span class="cashflow-dot credit"></span>
-                                <span>Ledger / Receivable</span>
-                            </div>
+                            <div class="cashflow-fill-cash" id="cashflowCashBar" style="width: 50%;" data-bs-toggle="tooltip" data-bs-placement="top" title="Cash Inflow"></div>
+                            <div class="cashflow-fill-credit" id="cashflowCreditBar" style="width: 50%;" data-bs-toggle="tooltip" data-bs-placement="top" title="Credit Ledger"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Highlight Gauges -->
-                <div class="health-highlights-row">
-                    <div class="health-box">
-                        <span class="health-box-label">
-                            <i class="fa-solid fa-bag-shopping"></i>
-                            Avg Bill Size (AOV)
-                        </span>
-                        <div class="health-box-val">
+                <div class="hero-submetrics">
+                    <div class="hero-submetric-item">
+                        <span class="hero-submetric-label">Avg Bill Size (AOV)</span>
+                        <div class="hero-submetric-val">
                             <span class="counting-number" id="metricAOV" data-count="0">0</span>
                         </div>
-                        <span class="health-box-sub">Average ticket value</span>
                     </div>
-                    <div class="health-box">
-                        <span class="health-box-label">
-                            <i class="fa-solid fa-shield-halved"></i>
-                            Collection Rate
-                        </span>
-                        <div class="health-box-val">
-                            <span class="counting-number" id="metricRecoveryRate" data-count="0">0</span>%
+                    <div class="hero-submetric-item">
+                        <span class="hero-submetric-label">Immediate Cash</span>
+                        <div class="hero-submetric-val text-success">
+                            <span class="counting-number" id="cashAmtSubmetric" data-count="0">0</span>
                         </div>
-                        <span class="health-box-sub">Due: <span id="metricOutstanding">0</span></span>
+                    </div>
+                    <div class="hero-submetric-item">
+                        <span class="hero-submetric-label">Credit Ledger</span>
+                        <div class="hero-submetric-val text-warning">
+                            <span class="counting-number" id="creditAmtSubmetric" data-count="0">0</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -377,19 +362,26 @@
                     heroGrossAmount: stats.total_amount || 0,
                     heroProfit: stats.total_profit || 0,
                     heroTotalBills: stats.total_invoices || 0,
+                    heroPaidReceived: stats.total_paid || 0,
+                    cashAmtSubmetric: stats.cash_amount || 0,
+                    creditAmtSubmetric: stats.credit_amount || 0,
                     totalPaid: stats.total_paid || 0,
                     totalDiscount: stats.total_discount || 0,
                     totalReturnAmount: stats.total_return_amount || 0,
                     totalCancelledAmount: stats.total_cancelled_amount || 0,
-                    metricAOV: stats.aov || 0,
-                    metricRecoveryRate: stats.recovery_rate || 0
+                    metricAOV: stats.aov || 0
                 });
             }
 
-            // 2. Margin Percentage Badge
+            // 2. Margin Percentage Badge & Profit Theming
             const marginEl = document.getElementById('heroMarginPct');
+            const profitContainer = document.getElementById('heroProfitContainer');
             if (marginEl) {
                 marginEl.textContent = `(${stats.margin_percentage || 0}%)`;
+            }
+            if (profitContainer) {
+                const profit = stats.total_profit || 0;
+                profitContainer.className = 'hero-submetric-val ' + (profit >= 0 ? 'text-success' : 'text-danger');
             }
 
             // 3. Outstanding Credit
@@ -398,25 +390,43 @@
                 outEl.textContent = formatINR(stats.outstanding_amount || 0);
             }
 
-            // 4. Cash vs Credit Inflow Meter
+            // 4. Collection Rate Badge & Inflow Mix
+            const recTag = document.getElementById('recoveryRateTag');
+            const recRateVal = document.getElementById('metricRecoveryRate');
+            if (recTag) {
+                const rate = Number(stats.recovery_rate || 0);
+                recTag.className = 'hero-tag ' + (rate >= 80 ? 'text-success' : rate >= 50 ? 'text-warning' : 'text-danger');
+                if (recRateVal) {
+                    recRateVal.textContent = rate.toFixed(1);
+                }
+            }
+
             const cashPct = stats.cash_percentage || 0;
             const creditPct = stats.credit_percentage || 0;
             const cashAmt = stats.cash_amount || 0;
             const creditAmt = stats.credit_amount || 0;
 
-            const cashBar = document.getElementById('cashflowCashBar');
-            const creditBar = document.getElementById('cashflowCreditBar');
             const cashPctText = document.getElementById('cashPctText');
             const creditPctText = document.getElementById('creditPctText');
             const cashAmtText = document.getElementById('cashAmtText');
             const creditAmtText = document.getElementById('creditAmtText');
 
-            if (cashBar) cashBar.style.width = `${cashPct}%`;
-            if (creditBar) creditBar.style.width = `${creditPct}%`;
             if (cashPctText) cashPctText.textContent = `${cashPct}%`;
             if (creditPctText) creditPctText.textContent = `${creditPct}%`;
             if (cashAmtText) cashAmtText.textContent = formatINR(cashAmt);
             if (creditAmtText) creditAmtText.textContent = formatINR(creditAmt);
+
+            // Progress Meter Track (The Graph)
+            const cashBar = document.getElementById('cashflowCashBar');
+            const creditBar = document.getElementById('cashflowCreditBar');
+            if (cashBar) {
+                cashBar.style.width = `${cashPct}%`;
+                cashBar.setAttribute('title', `Cash Inflow: ${cashPct}% (${formatINR(cashAmt)})`);
+            }
+            if (creditBar) {
+                creditBar.style.width = `${creditPct}%`;
+                creditBar.setAttribute('title', `Credit Ledger: ${creditPct}% (${formatINR(creditAmt)})`);
+            }
 
             // 5. Update Revenue Line Chart & Summary
             if (data.comparison_data) {
