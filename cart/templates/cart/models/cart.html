@@ -60,15 +60,9 @@
                     <span class="summary-label">Amount</span>
                     <span class="summary-value counting-number" id="totalSellingPrice" data-decimals="2" data-count="{{ total_selling_price }}">{{ total_selling_price|currency }}</span>
                 </div>
-                {% if cart.advance_payment > 0 %}
-                <div class="summary-row">
-                    <span class="summary-label">Advance</span>
-                    <span class="summary-value" id="advancePayment" data-advance="{{ cart.advance_payment }}">{{ cart.advance_payment|currency }}</span>
-                </div>
-                {% endif %}
 
                 <div class="summary-row discount-summary-row">
-                    <span class="summary-label">Discounted Amount</span>
+                    <span class="summary-label">Discount</span>
                     <span class="summary-value text-danger counting-number" id="discountedAmount" data-decimals="2" data-count="{{ total_selling_price|sub:cart.total_amount }}">{{ total_selling_price|sub:cart.total_amount|currency }}</span>
                 </div>
 
@@ -76,6 +70,20 @@
                     <span class="summary-label">Estimated Profit</span>
                     <span class="summary-value text-success counting-number" id="estimatedProfit" data-decimals="2" data-count="{{ cart.total_profit }}">{{ cart.total_profit|currency }}</span>
                 </div>
+
+                <hr class="summary-divider" style="margin: 0.4rem 0; border: none; border-top: 1px solid var(--border-color);">
+
+                <div class="summary-row">
+                    <span class="summary-label">Bill Amount</span>
+                    <span class="summary-value counting-number" id="billAmount" data-decimals="2" data-count="{{ cart.total_amount }}">{{ cart.total_amount|currency }}</span>
+                </div>
+
+                {% if cart.advance_payment > 0 %}
+                <div class="summary-row">
+                    <span class="summary-label">Advance</span>
+                    <span class="summary-value" id="advancePayment" data-advance="{{ cart.advance_payment }}">{{ cart.advance_payment|currency }}</span>
+                </div>
+                {% endif %}
 
                 <!-- Final Amount placed at the bottom without label, highlighted in big font -->
                 <div class="summary-row total-row final-amount-row" title="Final Amount">

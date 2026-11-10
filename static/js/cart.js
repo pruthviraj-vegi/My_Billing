@@ -1116,6 +1116,7 @@ class CartManager {
                     totalSellingPrice: 0,
                     discountedAmount: 0,
                     estimatedProfit: 0,
+                    billAmount: 0,
                     netAmount: 0
                 });
             } else {
@@ -1126,6 +1127,8 @@ class CartManager {
                 if (discountedAmountEl) discountedAmountEl.textContent = this.format(0);
                 const estimatedProfitEl = document.getElementById('estimatedProfit');
                 if (estimatedProfitEl) estimatedProfitEl.textContent = this.format(0);
+                const billAmountEl = document.getElementById('billAmount');
+                if (billAmountEl) billAmountEl.textContent = this.format(0);
                 const netAmountEl = document.getElementById('netAmount');
                 if (netAmountEl) netAmountEl.textContent = this.format(0);
             }
@@ -1187,6 +1190,7 @@ class CartManager {
             updateCount('totalSellingPrice', roundedSelling);
             updateCount('discountedAmount', discount);
             updateCount('estimatedProfit', roundedProfit);
+            updateCount('billAmount', roundedActual);
             updateCount('netAmount', netAmount);
         } else {
             if (this.dom.totalItems) this.dom.totalItems.textContent = roundedQty.toFixed(2);
@@ -1195,6 +1199,8 @@ class CartManager {
             if (discountedAmountEl) discountedAmountEl.textContent = this.format(discount);
             const estimatedProfitEl = document.getElementById('estimatedProfit');
             if (estimatedProfitEl) estimatedProfitEl.textContent = this.format(roundedProfit);
+            const billAmountEl = document.getElementById('billAmount');
+            if (billAmountEl) billAmountEl.textContent = this.format(roundedActual);
             const netAmountEl = document.getElementById('netAmount') || document.getElementById('finalAmount');
             if (netAmountEl) netAmountEl.textContent = this.format(netAmount);
         }
