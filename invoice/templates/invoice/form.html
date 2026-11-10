@@ -6,6 +6,38 @@
 {% endblock title %}
 
 
+{% block extra_css %}
+<style>
+  .credit-fields-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition: grid-template-rows 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+                opacity 0.22s ease,
+                margin-bottom 0.3s ease,
+                visibility 0.3s;
+    margin-bottom: 0;
+  }
+  .credit-fields-wrapper.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+    margin-bottom: 0.5rem;
+  }
+  .credit-fields-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+  #advanceSummaryRow {
+    display: none;
+  }
+  #advanceSummaryRow.is-open {
+    display: flex;
+  }
+</style>
+{% endblock extra_css %}
+
 {% block content %}
 <!-- Page Header -->
 <div class="page-header">
@@ -92,9 +124,12 @@
                   </small>
                 </div>
               </div>
-              <!-- Created By, Amount, and Discount Row -->
-              <!-- Created By Field -->
-              <div class="col-md-4">
+            </div>
+
+            <!-- Sold By, Payment Method, and Invoice Type (Cash/Credit) Row -->
+            <div class="row">
+              <!-- Created By / Sold By Field -->
+              <div class="col-md-4 mb-2">
                 <div class="form-group {% if form.sold_by.errors %}has-error{% endif %}">
                   <label for="{{ form.sold_by.id_for_label }}" class="form-label">{{ form.sold_by.label }}</label>
                   {{ form.sold_by }}
@@ -111,100 +146,8 @@
                   </small>
                 </div>
               </div>
-              <!-- Invoice Type, Advance Amount, and Due Date Row -->
-              <!-- Invoice Type Field -->
-              <div class="col-md-4">
-                <div class="form-group {% if form.payment_type.errors %}has-error{% endif %}">
-                  <label for="{{ form.payment_type.id_for_label }}" class="form-label">{{ form.payment_type.label }}</label>
-                  {{ form.payment_type }}
-                  <small class="form-help {% if form.payment_type.errors %}has-error{% endif %}">
-                    {% if form.payment_type.errors %}
-                    {% for error in form.payment_type.errors %}
-                    <span class="form-error-inline">
-                      <i class="fas fa-exclamation-circle"></i>
-                      {{ error }}
-                    </span>
-                    {% endfor %}
-                    {% endif %}
-                    <span class="form-help-text">Select the type of invoice (Cash or Credit)</span>
-                  </small>
-                </div>
-              </div>
-              <!-- Advance Amount and Notes Row -->
-              <!-- Advance Amount Field -->
-              <div class="col-md-4">
-                <div class="form-group {% if form.advance_amount.errors %}has-error{% endif %}">
-                  <label for="{{ form.advance_amount.id_for_label }}" class="form-label">{{ form.advance_amount.label }}</label>
-                  {{ form.advance_amount }}
-                  {% if form.advance_amount.errors %}
-                  {% for error in form.advance_amount.errors %}
-                  <small class="form-help form-error-inline">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ error }}
-                  </small>
-                  {% endfor %}
-                  {% elif form.advance_amount.help_text %}
-                  <small class="form-help"><span class="form-help-text">{{ form.advance_amount.help_text }}</span></small>
-                  {% endif %}
-                </div>
-              </div>
-              <!-- Discount Amount Field -->
-              <div class="col-md-4">
-                <div class="form-group {% if form.discount_amount.errors %}has-error{% endif %}">
-                  <label for="{{ form.discount_amount.id_for_label }}" class="form-label">{{ form.discount_amount.label }}</label>
-                  {{ form.discount_amount }}
-                  {% if form.discount_amount.errors %}
-                  {% for error in form.discount_amount.errors %}
-                  <small class="form-help form-error-inline">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ error }}
-                  </small>
-                  {% endfor %}
-                  {% elif form.discount_amount.help_text %}
-                  <small class="form-help"><span class="form-help-text">{{ form.discount_amount.help_text }}</span></small>
-                  {% endif %}
-                </div>
-              </div>
-              <!-- Amount Field -->
-              <div class="col-md-4">
-                <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
-                  <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
-                  {{ form.amount }}
-                  {% if form.amount.errors %}
-                  {% for error in form.amount.errors %}
-                  <small class="form-help form-error-inline">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ error }}
-                  </small>
-                  {% endfor %}
-                  {% elif form.amount.help_text %}
-                  <small class="form-help"><span class="form-help-text">{{ form.amount.help_text }}</span></small>
-                  {% endif %}
-                </div>
-              </div>
-              <!-- Due Date Field -->
-              <div class="col-md-4">
-                <div class="form-group {% if form.due_date.errors %}has-error{% endif %}">
-                  <label for="{{ form.due_date.id_for_label }}" class="form-label">{{ form.due_date.label }}</label>
-                  {{ form.due_date }}
-                  <small class="form-help {% if form.due_date.errors %}has-error{% endif %}">
-                    {% if form.due_date.errors %}
-                    {% for error in form.due_date.errors %}
-                    <span class="form-error-inline">
-                      <i class="fas fa-exclamation-circle"></i>
-                      {{ error }}
-                    </span>
-                    {% endfor %}
-                    {% endif %}
-                    <span class="form-help-text">Required for credit invoices</span>
-                  </small>
-                </div>
-              </div>
-            </div>
-            <!-- Payment Method and Invoice Date Row -->
-            <div class="row">
               <!-- Payment Method Field -->
-              <div class="col-md-6 mb-2">
+              <div class="col-md-4 mb-2">
                 <div class="form-group {% if form.payment_method.errors %}has-error{% endif %}">
                   <label for="{{ form.payment_method.id_for_label }}" class="form-label">{{ form.payment_method.label }}</label>
                   {{ form.payment_method }}
@@ -221,8 +164,107 @@
                   </small>
                 </div>
               </div>
+              <!-- Invoice Type (Cash or Credit) Field -->
+              <div class="col-md-4 mb-2">
+                <div class="form-group {% if form.payment_type.errors %}has-error{% endif %}">
+                  <label for="{{ form.payment_type.id_for_label }}" class="form-label">{{ form.payment_type.label }}</label>
+                  {{ form.payment_type }}
+                  <small class="form-help {% if form.payment_type.errors %}has-error{% endif %}">
+                    {% if form.payment_type.errors %}
+                    {% for error in form.payment_type.errors %}
+                    <span class="form-error-inline">
+                      <i class="fas fa-exclamation-circle"></i>
+                      {{ error }}
+                    </span>
+                    {% endfor %}
+                    {% endif %}
+                    <span class="form-help-text">Select the type of invoice (Cash or Credit)</span>
+                  </small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Credit-Specific Fields Row (Advance Amount & Due Date) - Only shown when credit is on -->
+            <div id="creditFieldsWrapper" class="credit-fields-wrapper {% if form.payment_type.value == 'CREDIT' or form.instance.payment_type == 'CREDIT' or form.advance_amount.errors or form.due_date.errors %}is-open{% endif %}">
+              <div class="credit-fields-inner">
+                <div class="row">
+                  <!-- Advance Amount Field -->
+                  <div class="col-md-6 mb-2">
+                    <div class="form-group {% if form.advance_amount.errors %}has-error{% endif %}">
+                      <label for="{{ form.advance_amount.id_for_label }}" class="form-label">{{ form.advance_amount.label }}</label>
+                      {{ form.advance_amount }}
+                      {% if form.advance_amount.errors %}
+                      {% for error in form.advance_amount.errors %}
+                      <small class="form-help form-error-inline">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                      </small>
+                      {% endfor %}
+                      {% elif form.advance_amount.help_text %}
+                      <small class="form-help"><span class="form-help-text">{{ form.advance_amount.help_text }}</span></small>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <!-- Due Date Field -->
+                  <div class="col-md-6 mb-2">
+                    <div class="form-group {% if form.due_date.errors %}has-error{% endif %}">
+                      <label for="{{ form.due_date.id_for_label }}" class="form-label">{{ form.due_date.label }}</label>
+                      {{ form.due_date }}
+                      <small class="form-help {% if form.due_date.errors %}has-error{% endif %}">
+                        {% if form.due_date.errors %}
+                        {% for error in form.due_date.errors %}
+                        <span class="form-error-inline">
+                          <i class="fas fa-exclamation-circle"></i>
+                          {{ error }}
+                        </span>
+                        {% endfor %}
+                        {% endif %}
+                        <span class="form-help-text">Required for credit invoices</span>
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Amount, Discount, and Invoice Date Row -->
+            <div class="row">
+              <!-- Amount Field -->
+              <div class="col-md-4 mb-2">
+                <div class="form-group {% if form.amount.errors %}has-error{% endif %}">
+                  <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
+                  {{ form.amount }}
+                  {% if form.amount.errors %}
+                  {% for error in form.amount.errors %}
+                  <small class="form-help form-error-inline">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ error }}
+                  </small>
+                  {% endfor %}
+                  {% elif form.amount.help_text %}
+                  <small class="form-help"><span class="form-help-text">{{ form.amount.help_text }}</span></small>
+                  {% endif %}
+                </div>
+              </div>
+              <!-- Discount Amount Field -->
+              <div class="col-md-4 mb-2">
+                <div class="form-group {% if form.discount_amount.errors %}has-error{% endif %}">
+                  <label for="{{ form.discount_amount.id_for_label }}" class="form-label">{{ form.discount_amount.label }}</label>
+                  {{ form.discount_amount }}
+                  {% if form.discount_amount.errors %}
+                  {% for error in form.discount_amount.errors %}
+                  <small class="form-help form-error-inline">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ error }}
+                  </small>
+                  {% endfor %}
+                  {% elif form.discount_amount.help_text %}
+                  <small class="form-help"><span class="form-help-text">{{ form.discount_amount.help_text }}</span></small>
+                  {% endif %}
+                </div>
+              </div>
               <!-- Invoice Date Field -->
-              <div class="col-md-6 mb-2">
+              <div class="col-md-4 mb-2">
                 <div class="form-group {% if form.invoice_date.errors %}has-error{% endif %}">
                   <label for="{{ form.invoice_date.id_for_label }}" class="form-label">{{ form.invoice_date.label }}</label>
                   {{ form.invoice_date }}
@@ -241,20 +283,22 @@
               </div>
             </div>
             <!-- Notes Field -->
-            <div class="col-md-12">
-              <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
-                <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
-                {{ form.notes }}
-                {% if form.notes.errors %}
-                {% for error in form.notes.errors %}
-                <small class="form-help form-error-inline">
-                  <i class="fas fa-exclamation-circle"></i>
-                  {{ error }}
-                </small>
-                {% endfor %}
-                {% elif form.notes.help_text %}
-                <small class="form-help"><span class="form-help-text">{{ form.notes.help_text }}</span></small>
-                {% endif %}
+            <div class="row">
+              <div class="col-md-12">
+                <div class="form-group {% if form.notes.errors %}has-error{% endif %}">
+                  <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+                  {{ form.notes }}
+                  {% if form.notes.errors %}
+                  {% for error in form.notes.errors %}
+                  <small class="form-help form-error-inline">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{ error }}
+                  </small>
+                  {% endfor %}
+                  {% elif form.notes.help_text %}
+                  <small class="form-help"><span class="form-help-text">{{ form.notes.help_text }}</span></small>
+                  {% endif %}
+                </div>
               </div>
             </div>
           </div>
@@ -286,12 +330,12 @@
                 <span class="total-value text-success" id="cartAdvanceDisplay">{{ cart.advance_payment|currency }}</span>
               </div>
               {% endif %}
-              <div class="total-row">
+              <div class="total-row {% if form.payment_type.value == 'CREDIT' or form.instance.payment_type == 'CREDIT' or form.advance_amount.errors or form.due_date.errors %}is-open{% endif %}" id="advanceSummaryRow">
                 <span class="total-label">Advance:</span>
                 <span class="total-value text-success" id="advanceDisplay">0.00</span>
               </div>
               <div class="total-row total-final">
-                <span class="total-label">Balance Due:</span>
+                <span class="total-label" id="finalBalanceLabel">{% if form.payment_type.value == 'CREDIT' or form.instance.payment_type == 'CREDIT' %}Balance Due:{% elif cart.advance_payment > 0 %}Balance Due:{% else %}Final Amount:{% endif %}</span>
                 <span class="total-value" id="balanceDisplay">0.00</span>
               </div>
             </div>
@@ -468,8 +512,22 @@
 
     toggleFields = function () {
       const selectedValue = PaymentTypeSelect ? PaymentTypeSelect.value : 'CASH';
+      const creditWrapper = document.getElementById('creditFieldsWrapper');
+      const advanceSummaryRow = document.getElementById('advanceSummaryRow');
+      const finalBalanceLabel = document.getElementById('finalBalanceLabel');
 
       if (selectedValue === 'CASH') {
+        // Hide credit fields smoothly via CSS Grid
+        if (creditWrapper) {
+          creditWrapper.classList.remove('is-open');
+        }
+        if (advanceSummaryRow) {
+          advanceSummaryRow.classList.remove('is-open');
+        }
+        if (finalBalanceLabel) {
+          finalBalanceLabel.textContent = cartAdvanceVal > 0 ? 'Balance Due:' : 'Final Amount:';
+        }
+
         // Make advance amount and due date readonly for cash invoices
         advanceAmountField.readOnly = true;
         dueDateField.readOnly = true;
@@ -488,10 +546,32 @@
         dueDateField.closest('.form-group')?.classList.add('field-disabled');
         dueDateField.closest('.input-date-wrapper')?.classList.add('field-disabled');
       } else {
+        // Show credit fields smoothly via CSS Grid
+        if (creditWrapper) {
+          creditWrapper.classList.add('is-open');
+        }
+        if (advanceSummaryRow) {
+          advanceSummaryRow.classList.add('is-open');
+        }
+        if (finalBalanceLabel) {
+          finalBalanceLabel.textContent = 'Balance Due:';
+        }
+
         // Enable fields for credit invoices
         advanceAmountField.readOnly = false;
         dueDateField.readOnly = false;
         dueDateField.removeAttribute('data-disabled');
+
+        // Set default due date (30 days from now) if empty
+        if (!dueDateField.value) {
+          const d = new Date();
+          d.setDate(d.getDate() + 30);
+          const pad = n => String(n).padStart(2, '0');
+          dueDateField.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          if (dueDateField.dispatchEvent) {
+            dueDateField.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
 
         // Add required attribute for credit invoices
         dueDateField.setAttribute('required', 'required');

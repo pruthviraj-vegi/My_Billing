@@ -3,6 +3,39 @@
 {% block title %}
   Create Product
 {% endblock title %}
+{% block extra_css %}
+  <style>
+    .variant-break-divider {
+      position: relative;
+      margin: 1.25rem 0 1rem 0;
+    }
+    .variant-break-divider .divider-line {
+      height: 1px;
+      background: var(--border-color, #dee2e6);
+    }
+    .variant-break-divider .btn {
+      background: var(--bg-surface, #ffffff);
+      border: 1px solid var(--border-color, #dee2e6);
+      color: var(--text-secondary, #6c757d);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      transition: all 0.2s ease-in-out;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      white-space: nowrap;
+    }
+    .variant-break-divider .btn:hover,
+    .variant-break-divider .btn:focus {
+      background: var(--bg-surface-hover, #f8f9fa);
+      border-color: var(--primary, #0d6efd);
+      color: var(--primary, #0d6efd);
+    }
+    .variant-optional-fields .input-group > .select2-container,
+    .variant-optional-fields .select2-container {
+      width: 100% !important;
+      flex: 1 1 auto;
+    }
+  </style>
+{% endblock extra_css %}
 {% block content %}
 
   <!-- Page Header -->
@@ -186,9 +219,9 @@
             <!-- Variant Details Section -->
             <div class="form-section">
               <h5 class="section-title"><i class="fas fa-tags"></i> Variant Details</h5>
-              <!-- Row 1: Size and Color -->
+              <!-- Primary Variant Fields -->
               <div class="row">
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="form-group {% if variant_form.quantity.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.quantity.id_for_label }}" class="form-label">{{ variant_form.quantity.label }}</label>
                     {{ variant_form.quantity }}
@@ -205,7 +238,7 @@
                     </small>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="form-group {% if variant_form.purchase_price.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.purchase_price.id_for_label }}"
                            class="form-label">{{ variant_form.purchase_price.label }}</label>
@@ -226,7 +259,7 @@
                     </small>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="form-group {% if variant_form.mrp.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.mrp.id_for_label }}" class="form-label">{{ variant_form.mrp.label }}</label>
                     {{ variant_form.mrp }}
@@ -243,8 +276,7 @@
                     </small>
                   </div>
                 </div>
-                <!-- Row 4: Discount Percentage -->
-                <div class="col-md-3">
+                <div class="col-md-6">
                   <div class="form-group {% if variant_form.discount_percentage.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.discount_percentage.id_for_label }}"
                            class="form-label">{{ variant_form.discount_percentage.label }}</label>
@@ -262,7 +294,7 @@
                     </small>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-6">
                   <div class="form-group {% if variant_form.commission_percentage.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.commission_percentage.id_for_label }}"
                            class="form-label">{{ variant_form.commission_percentage.label }}</label>
@@ -280,7 +312,32 @@
                     </small>
                   </div>
                 </div>
-                <div class="col-md-3">
+              </div>
+
+              <!-- Break-like divider to reveal optional attributes -->
+              <div class="variant-break-divider d-flex align-items-center my-3">
+                <div class="divider-line flex-grow-1"></div>
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm px-3 rounded-pill d-inline-flex align-items-center gap-2"
+                        id="toggle-optional-variant-btn"
+                        aria-expanded="{% if variant_form.size.errors or variant_form.color.errors or variant_form.minimum_quantity.errors or variant_form.size.value or variant_form.color.value or variant_form.minimum_quantity.value %}true{% else %}false{% endif %}"
+                        aria-controls="optional-variant-fields">
+                  <i class="fas {% if variant_form.size.errors or variant_form.color.errors or variant_form.minimum_quantity.errors or variant_form.size.value or variant_form.color.value or variant_form.minimum_quantity.value %}fa-eye-slash{% else %}fa-eye{% endif %}" id="toggle-optional-icon"></i>
+                  <span id="toggle-optional-text">
+                    {% if variant_form.size.errors or variant_form.color.errors or variant_form.minimum_quantity.errors or variant_form.size.value or variant_form.color.value or variant_form.minimum_quantity.value %}
+                      Hide Attributes (Size, Color, Min Qty)
+                    {% else %}
+                      See More (Size, Color, Min Qty)
+                    {% endif %}
+                  </span>
+                  <i class="fas {% if variant_form.size.errors or variant_form.color.errors or variant_form.minimum_quantity.errors or variant_form.size.value or variant_form.color.value or variant_form.minimum_quantity.value %}fa-chevron-up{% else %}fa-chevron-down{% endif %}" id="toggle-optional-chevron"></i>
+                </button>
+                <div class="divider-line flex-grow-1"></div>
+              </div>
+
+              <!-- Optional Variant Details (Size, Color, Minimum Quantity) -->
+              <div id="optional-variant-fields" class="row variant-optional-fields {% if not variant_form.size.errors and not variant_form.color.errors and not variant_form.minimum_quantity.errors and not variant_form.size.value and not variant_form.color.value and not variant_form.minimum_quantity.value %}d-none{% endif %}">
+                <div class="col-md-4">
                   <div class="form-group {% if variant_form.size.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.size.id_for_label }}" class="form-label">{{ variant_form.size.label }}</label>
                     <div class="input-group">{{ variant_form.size }}</div>
@@ -297,7 +354,7 @@
                     </small>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="form-group {% if variant_form.color.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.color.id_for_label }}" class="form-label">{{ variant_form.color.label }}</label>
                     <div class="input-group">{{ variant_form.color }}</div>
@@ -314,7 +371,7 @@
                     </small>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="form-group {% if variant_form.minimum_quantity.errors %}has-error{% endif %}">
                     <label for="{{ variant_form.minimum_quantity.id_for_label }}"
                            class="form-label">{{ variant_form.minimum_quantity.label }}</label>
@@ -441,6 +498,40 @@
 
       $('#id_name').wordSuggestion({
         url: urls.suggestions
+      });
+
+      // Toggle optional variant fields (Size, Color, Minimum Quantity)
+      $('#toggle-optional-variant-btn').on('click', function(e) {
+        e.preventDefault();
+        const $container = $('#optional-variant-fields');
+        const isHidden = $container.hasClass('d-none') || !$container.is(':visible');
+
+        if (isHidden) {
+          $container.removeClass('d-none').hide().slideDown(200, function() {
+            // Ensure Select2 dropdowns recalculate container width
+            $('#id_size, #id_color').each(function() {
+              if ($(this).data('select2')) {
+                $(this).select2({
+                  placeholder: "Type to search...",
+                  allowClear: true,
+                  width: '100%'
+                });
+              }
+            });
+          });
+          $(this).attr('aria-expanded', 'true');
+          $('#toggle-optional-text').text('Hide Attributes (Size, Color, Min Qty)');
+          $('#toggle-optional-icon').removeClass('fa-eye').addClass('fa-eye-slash');
+          $('#toggle-optional-chevron').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        } else {
+          $container.slideUp(200, function() {
+            $container.addClass('d-none');
+          });
+          $(this).attr('aria-expanded', 'false');
+          $('#toggle-optional-text').text('See More (Size, Color, Min Qty)');
+          $('#toggle-optional-icon').removeClass('fa-eye-slash').addClass('fa-eye');
+          $('#toggle-optional-chevron').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        }
       });
     });
   </script>

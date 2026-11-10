@@ -89,8 +89,10 @@ def variant_details(request, variant_id):
         "supplier_invoice", "supplier_invoice__supplier"
     ).order_by("-timestamp")[:20]
 
-    # Get media files for this variant
+    # Get media files for this variant — split into hero + sub images
     media_files = variant.media_files.all()
+    hero_media = variant.hero_image  # Featured / main image (or None)
+    sub_media = variant.sub_images   # All non-featured media
 
     # Calculate stock statistics
     stock_stats = {
@@ -110,6 +112,8 @@ def variant_details(request, variant_id):
         "recent_logs": recent_logs,
         "stock_stats": stock_stats,
         "media_files": media_files,
+        "hero_media": hero_media,
+        "sub_media": sub_media,
         "media_form": VariantMediaForm(),
         "suggestions": DamageResolutionService.suggest_resolution(variant),
         "pending_damage_records": variant.damaged_records.filter(

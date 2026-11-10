@@ -529,6 +529,19 @@ class ProductVariant(
         else:
             super().save(*args, **kwargs)
 
+    @property
+    def hero_image(self):
+        """Return the featured (hero) media for this variant, or the first media if none marked."""
+        return self.media_files.filter(is_featured=True).first() or self.media_files.first()
+
+    @property
+    def sub_images(self):
+        """Return all sub (non-hero) media files for this variant."""
+        hero = self.hero_image
+        if not hero:
+            return self.media_files.none()
+        return self.media_files.exclude(pk=hero.pk)
+
 
 class VariantMedia(models.Model):
     """Media (image or video) associated with a product variant."""
@@ -662,6 +675,12 @@ class VariantMedia(models.Model):
             else:
                 self.media_type = self.MediaType.IMAGE
 
+        # Auto-mark as featured (hero) if this is the first media for the variant
+        is_new = self.pk is None
+        if is_new and not self.is_featured:
+            if not VariantMedia.objects.filter(variant=self.variant).exists():
+                self.is_featured = True
+
         # Ensure only one featured media per variant
         if self.is_featured:
             VariantMedia.objects.filter(variant=self.variant, is_featured=True).exclude(
@@ -669,7 +688,6 @@ class VariantMedia(models.Model):
             ).update(is_featured=False)
 
         # Save first so the file is on disk
-        is_new = self.pk is None
         super().save(*args, **kwargs)
 
         # Generate thumbnail for new images (not videos)
